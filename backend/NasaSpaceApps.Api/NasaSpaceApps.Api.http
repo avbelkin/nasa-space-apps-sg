@@ -14,3 +14,13 @@ GET {{NasaSpaceApps.Api_HostAddress}}/api/satellites/orbits?pastMinutes=45&futur
 Accept: application/json
 
 ###
+
+GET {{NasaSpaceApps.Api_HostAddress}}/api/firms/status
+Accept: application/json
+
+###
+
+GET {{NasaSpaceApps.Api_HostAddress}}/api/hotspots?bbox=100,-5,115,5&days=1&sensor=all
+Accept: application/json
+
+###

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Runtime.InteropServices;
+using NasaSpaceApps.Api.Firms;
 using NasaSpaceApps.Api.Satellites;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,8 +17,11 @@ var allowedOrigins = builder.Configuration
     ?.Where(origin => !string.IsNullOrWhiteSpace(origin))
     .ToArray() ?? [];
 
+var firmsOptions = FirmsOptions.FromConfiguration(builder.Configuration, builder.Environment);
+
 builder.Services.AddOpenApi();
 builder.Services.AddMemoryCache();
+builder.Services.AddSingleton(firmsOptions);
 builder.Services.AddHttpClient("CelesTrak", client =>
 {
     client.BaseAddress = new Uri("https://celestrak.org/");
@@ -28,8 +32,19 @@ builder.Services.AddHttpClient("CelesTrak", client =>
 {
     AutomaticDecompression = DecompressionMethods.All,
 });
+builder.Services.AddHttpClient("Firms", client =>
+{
+    client.BaseAddress = new Uri("https://firms.modaps.eosdis.nasa.gov/");
+    client.Timeout = TimeSpan.FromSeconds(25);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "NasaSpaceApps-EarthFireCalendar/1.0 (+https://github.com/avbelkin/nasa-space-apps-sg)");
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    AutomaticDecompression = DecompressionMethods.All,
+});
 builder.Services.AddSingleton<CelesTrakTleDownloader>();
 builder.Services.AddSingleton<SatelliteOrbitService>();
+builder.Services.AddSingleton<FirmsClient>();
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -64,14 +79,61 @@ app.MapGet("/health", () => Results.Ok(new
     timestampUtc = DateTimeOffset.UtcNow
 }));
 
-app.MapGet("/api/status", (IHostEnvironment env) => Results.Ok(new
+app.MapGet("/api/status", (IHostEnvironment env, FirmsOptions firms) => Results.Ok(new
 {
     service = "NasaSpaceApps.Api",
     status = "ok",
     environment = env.EnvironmentName,
     framework = RuntimeInformation.FrameworkDescription,
-    timestampUtc = DateTimeOffset.UtcNow
+    timestampUtc = DateTimeOffset.UtcNow,
+    firmsConfigured = firms.IsConfigured,
+    firmsKeyFormatValid = firms.IsKeyFormatValid,
+    firmsConfigSource = firms.ConfigSource
 }));
+
+app.MapGet("/api/firms/status", async (FirmsClient firmsClient, CancellationToken cancellationToken) =>
+{
+    var status = await firmsClient.GetStatusAsync(cancellationToken);
+    return Results.Ok(status);
+});
+
+app.MapGet("/api/hotspots", async (
+    string? bbox,
+    int? days,
+    string? sensor,
+    FirmsOptions firms,
+    FirmsClient firmsClient,
+    CancellationToken cancellationToken) =>
+{
+    if (!firms.IsConfigured)
+    {
+        return Results.Json(
+            new { error = "FIRMS_MAP_KEY is not configured on this backend instance." },
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    try
+    {
+        var response = await firmsClient.GetAreaHotspotsAsync(bbox, days, sensor, cancellationToken);
+        return Results.Ok(response);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Json(
+            new { error = firms.Redact(ex.Message) },
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+    catch (HttpRequestException ex)
+    {
+        return Results.Json(
+            new { error = $"Failed to query NASA FIRMS: {firms.Redact(ex.Message)}" },
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+});
 
 app.MapGet("/api/satellites/orbits", async (
     int? pastMinutes,

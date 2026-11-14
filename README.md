@@ -11,7 +11,7 @@
 ## Public Availability
 
 - **Live Web UI (GitHub Pages)**: [https://avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg) — publicly accessible React + MapLibre 3D globe SPA deployed automatically from `main` via [`.github/workflows/deploy-ui.yml`](.github/workflows/deploy-ui.yml).
-- **Backend API (Google Cloud Run, `asia-southeast1`)**: `https://earth-fire-calendar-api-354cntvldq-as.a.run.app` (`/health`, `/api/status`, `/api/satellites/orbits`).
+- **Backend API (Google Cloud Run, `asia-southeast1`)**: `https://earth-fire-calendar-api-354cntvldq-as.a.run.app` (`/health`, `/api/status`, `/api/firms/status`, `/api/hotspots`, `/api/satellites/orbits`).
 
 ## Stack
 
@@ -47,7 +47,9 @@ dotnet run --project backend/NasaSpaceApps.Api
 
 Endpoints:
 - `GET /health`
-- `GET /api/status`
+- `GET /api/status` — Service metadata plus safe `FIRMS_MAP_KEY` configuration/format diagnostics (reads `FIRMS_MAP_KEY` / `Firms:MapKey` / Windows User env in Development)
+- `GET /api/firms/status` — Cached NASA FIRMS `mapkey_status` quota check & `data_availability` windows
+- `GET /api/hotspots?bbox=west,south,east,north&days=1..5&sensor=all|modis|viirs` — Cached live MODIS & VIIRS active-fire detections from NASA FIRMS
 - `GET /api/satellites/orbits` — Cached CelesTrak TLE orbits & sensor swath parameters for MODIS (`Terra`, `Aqua`) and VIIRS (`NOAA-20`, `NOAA-21`)
 
 ### 2. Frontend (`http://localhost:5173`)
