@@ -202,7 +202,7 @@ function App() {
     <div className="app-frame">
       <header className="top-bar wrapper-surface">
         <div className="brand-group">
-          <h1>NASA Space Apps SG &mdash; Earth Fire Calendar</h1>
+          <h1>Earth Fire Calendar</h1>
           <p className="brand-subtitle">
             Earth-first MODIS &amp; VIIRS harmonization: seasonal dynamics vs. current calendar anomalies
           </p>
@@ -446,6 +446,53 @@ function App() {
             </div>
           </dl>
         </section>
+
+        <footer className="panel-section panel-attribution">
+          <h3>Data Sources &amp; Attribution</h3>
+          <dl className="meta-list">
+            <div className="meta-row">
+              <dt>Active-Fire &amp; Sensor Reference</dt>
+              <dd>
+                MODIS (NASA EOS Terra &amp; Aqua) and VIIRS (NOAA/NASA JPSS) swath parameters and target hotspot schema via{' '}
+                <a
+                  href="https://firms.modaps.eosdis.nasa.gov/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  NASA FIRMS
+                </a>{' '}
+                (seasonal anomaly values shown are illustrative baselines pending live FIRMS feed integration).
+              </dd>
+            </div>
+            <div className="meta-row">
+              <dt>Orbital Ephemerides</dt>
+              <dd>
+                NORAD GP / TLE orbital elements from{' '}
+                <a href="https://celestrak.org/" target="_blank" rel="noopener noreferrer">
+                  CelesTrak
+                </a>
+                .
+              </dd>
+            </div>
+            <div className="meta-row">
+              <dt>Earth Basemap</dt>
+              <dd>
+                Sentinel-2 cloudless via{' '}
+                <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer">
+                  s2maps.eu
+                </a>{' '}
+                by{' '}
+                <a href="https://eox.at" target="_blank" rel="noopener noreferrer">
+                  EOX IT Services GmbH
+                </a>{' '}
+                (contains modified Copernicus Sentinel data 2025).
+              </dd>
+            </div>
+          </dl>
+          <p className="panel-note">
+            Independent project built for the 2026 NASA Space Apps Challenge. Not affiliated with, endorsed by, or an official product of NASA.
+          </p>
+        </footer>
       </aside>
     </div>
   )

@@ -386,7 +386,13 @@ export function EarthMapStage({
         zoom: DEFAULT_ZOOM,
         cancelPendingTileRequestsWhileZooming: false,
         maxTileCacheZoomLevels: 8,
-        attributionControl: { compact: true },
+        attributionControl: {
+          compact: true,
+          customAttribution: [
+            'Fire/sensor reference: <a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener noreferrer">NASA FIRMS</a> (NASA EOS MODIS, NOAA/NASA VIIRS; illustrative baseline)',
+            'Orbits: <a href="https://celestrak.org/" target="_blank" rel="noopener noreferrer">CelesTrak</a>',
+          ],
+        },
       })
 
       mapInstanceRef.current = map

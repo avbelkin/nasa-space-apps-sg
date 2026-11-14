@@ -1,8 +1,8 @@
-# NASA Space Apps SG
+# Earth Fire Calendar
 
 ## Project Purpose
 
-Built for the **2026 NASA Space Apps Challenge — [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/?tab=details)**. Rather than a calendar-first grid, our **Earth-first** visualization uses **MapLibre GL JS** to display seasonal burning dynamics alongside the current situation—showing where fire activity fits typical calendar patterns and where calendar anomalies emerge across harmonized **MODIS** (~1 km, 2000–present) and **VIIRS** (375 m, 2012–present) records.
+**Earth Fire Calendar** *(provisional title, subject to reconsideration later)* is an independent entry built for the **2026 NASA Space Apps Challenge — [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/?tab=details)**. It is not affiliated with, endorsed by, or an official product of NASA, and does not use NASA branding or logos. Rather than a calendar-first grid, our **Earth-first** visualization uses **MapLibre GL JS** to display seasonal burning dynamics alongside the current situation—showing where fire activity fits typical calendar patterns and where calendar anomalies emerge across harmonized **MODIS** (~1 km, 2000–present) and **VIIRS** (375 m, 2012–present) records, attributing **NASA FIRMS**, **CelesTrak**, and **EOX/Copernicus** data sources.
 
 - [doc/README.md](doc/README.md) — Challenge background, Earth-first seasonal & anomaly approach, target users, and NASA FIRMS data sources.
 - [doc/architecture-and-harmonization.md](doc/architecture-and-harmonization.md) — MapLibre two-tier CSS Grid layout, UI/backend split, and harmonization pipeline design notes.

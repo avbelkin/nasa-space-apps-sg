@@ -49,4 +49,10 @@ Build an **Earth-first** interactive web application (powered by **MapLibre GL J
   - **VIIRS 375 m** (`VNP14IMGTDL` / `VJ114IMGTDL` / `VJ214IMGTDL`)
 - Core attributes used for harmonization and filtering: `latitude`, `longitude`, `acq_date`, `acq_time`, `satellite`, `instrument`, `confidence`, `frp`, `scan`, `track`, and `daynight`.
 
+## Branding & Data Attribution
+
+- **Provisional UI Title**: Use **Earth Fire Calendar** for now (subject to later reconsideration).
+- **No NASA Branding or Logos**: Although built for the 2026 NASA Space Apps Challenge, the application must not be branded as a NASA project/product or display NASA or Space Apps logos/insignias.
+- **Explicit NASA Data Attribution**: Whenever NASA datasets, APIs, or mission/sensor parameters are used (such as NASA FIRMS feeds/archives, Terra/Aqua MODIS, or NOAA/NASA JPSS VIIRS), expose clear factual NASA data attribution alongside a non-affiliation/non-endorsement statement, and clearly indicate when illustrative/stub baselines are displayed.
+
 See [architecture-and-harmonization.md](./architecture-and-harmonization.md) for how this repository's React UI and ASP.NET Core backend divide the workload.
