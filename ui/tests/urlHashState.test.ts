@@ -64,6 +64,7 @@ test('serializeUrlHash and parseUrlHash round-trip core controls and extensible 
     projectionMode: 'mercator',
     selectedMonth: 2,
     showOrbits: false,
+    showClouds: false,
     extraParams: {
       aoi: 'sea-1',
       hotspots: 'on',
@@ -73,7 +74,7 @@ test('serializeUrlHash and parseUrlHash round-trip core controls and extensible 
   const hash = serializeUrlHash(input)
   assert.equal(
     hash,
-    '#z=6.45&lat=1.3521&lng=103.8198&mode=sensors&sensor=viirs&proj=mercator&month=3&orbits=0&aoi=sea-1&hotspots=on',
+    '#z=6.45&lat=1.3521&lng=103.8198&mode=sensors&sensor=viirs&proj=mercator&month=3&orbits=0&clouds=0&aoi=sea-1&hotspots=on',
   )
 
   const parsed = parseUrlHash(hash)
@@ -84,6 +85,12 @@ test('serializeUrlHash and parseUrlHash round-trip core controls and extensible 
 
   const disabledOrbits = parseUrlHash('#orbits=off')
   assert.equal(disabledOrbits?.showOrbits, false)
+
+  const enabledClouds = parseUrlHash('#clouds=true')
+  assert.equal(enabledClouds?.showClouds, true)
+
+  const disabledClouds = parseUrlHash('#clouds=off')
+  assert.equal(disabledClouds?.showClouds, false)
 })
 
 test('coordinate normalization rounds to 4 decimals and wraps longitudes into [-180, 180]', () => {

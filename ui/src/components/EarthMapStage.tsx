@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FeatureCollection, MultiLineString, Point, Polygon } from 'geojson'
-import { LngLat, LngLatBounds, Map as MapLibreMap, Marker } from 'maplibre-gl'
+import { LngLat, LngLatBounds, Map as MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl'
 import type { ErrorEvent, GeoJSONSource, MapMovementEvent, StyleSpecification } from 'maplibre-gl'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import {
   buildStubGeoJson,
@@ -20,6 +21,11 @@ import {
   normalizeLng,
   type MapViewportState,
 } from '../state/urlHashState'
+import {
+  createSatelliteCloudLayer,
+  SATELLITE_CLOUDS_LAYER_ID,
+  type SatelliteCloudLayerController,
+} from '../utils/satelliteCloudLayer'
 import type { LiveOrbitalState, LiveSatelliteSnapshot } from '../utils/satelliteOrbits'
 
 export interface CameraFocusRequest {
@@ -42,6 +48,11 @@ interface EarthMapStageProps {
   cameraFocusRequest: CameraFocusRequest | null
   autoLocateOnMount: boolean
   geolocationMaxZoom?: number
+  apiBaseUrl: string
+  cloudsDisabled?: boolean
+  showClouds: boolean
+  onShowCloudsChange: (next: boolean) => void
+  cloudRefreshNonce?: number
   orbitalState: LiveOrbitalState
   showOrbits: boolean
   onShowOrbitsChange: (next: boolean) => void
@@ -374,6 +385,11 @@ export function EarthMapStage({
   cameraFocusRequest,
   autoLocateOnMount,
   geolocationMaxZoom = DEFAULT_GEOLOCATION_MAX_ZOOM,
+  apiBaseUrl,
+  cloudsDisabled = false,
+  showClouds,
+  onShowCloudsChange,
+  cloudRefreshNonce = 0,
   orbitalState,
   showOrbits,
   onShowOrbitsChange,
@@ -382,6 +398,8 @@ export function EarthMapStage({
 }: EarthMapStageProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<MapLibreMap | null>(null)
+  const styleReadyRef = useRef(false)
+  const cloudLayerRef = useRef<SatelliteCloudLayerController | null>(null)
   const satMarkersRef = useRef<Map<string, SatelliteMarkerEntry>>(new Map())
   const initialViewportRef = useRef<MapViewportState>(initialViewport)
   const latestOnViewportChangeRef = useRef(onViewportChange)
@@ -410,10 +428,14 @@ export function EarthMapStage({
   const latestGeoJsonRef = useRef(geoJson)
   const latestUserGeoJsonRef = useRef(userLocationGeoJson)
   const latestProjectionRef = useRef(projectionMode)
+  const latestApiBaseUrlRef = useRef(apiBaseUrl)
+  const latestCloudsDisabledRef = useRef(cloudsDisabled)
+  const latestShowCloudsRef = useRef(showClouds)
   const latestOrbitalStateRef = useRef(orbitalState)
   const latestShowOrbitsRef = useRef(showOrbits)
   const latestSelectedSatIdRef = useRef(selectedSatelliteId)
   const onSelectSatelliteRef = useRef(onSelectSatellite)
+  const lastCloudRefreshNonceRef = useRef(cloudRefreshNonce)
 
   useEffect(() => {
     latestOnViewportChangeRef.current = onViewportChange
@@ -509,6 +531,8 @@ export function EarthMapStage({
     const startViewport = initialViewportRef.current
 
     try {
+      setWorkerUrl(maplibreWorkerUrl)
+      styleReadyRef.current = false
       map = new MapLibreMap({
         container,
         style: createBaseStyle(
@@ -526,15 +550,27 @@ export function EarthMapStage({
           customAttribution: [
             'Fire/sensor reference: <a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener noreferrer">NASA FIRMS</a> (NASA EOS MODIS, NOAA/NASA VIIRS; illustrative baseline)',
             'Orbits: <a href="https://celestrak.org/" target="_blank" rel="noopener noreferrer">CelesTrak</a>',
+            'Clouds: <a href="https://layers.extremum.org" target="_blank" rel="noopener noreferrer">Extremum</a> (EUMETSAT / NOAA / JMA VIS-IR)',
           ],
         },
       })
 
       mapInstanceRef.current = map
 
-      map.on('load', () => {
+      map.on('style.load', () => {
         if (!map) {
           return
+        }
+        styleReadyRef.current = true
+        if (!map.getLayer(SATELLITE_CLOUDS_LAYER_ID)) {
+          const cloudLayer = createSatelliteCloudLayer({
+            apiBaseUrl: latestApiBaseUrlRef.current,
+            disabled: latestCloudsDisabledRef.current,
+            initialVisible: latestShowCloudsRef.current,
+          })
+          cloudLayerRef.current = cloudLayer
+          // Insert directly below satellite swaths/tracks so spacecraft & swaths stay above clouds.
+          map.addLayer(cloudLayer, 'satellite-swaths-fill')
         }
         setGeoJsonSourceData(map, 'fire-anomalies', latestGeoJsonRef.current)
         syncOrbitalSources(map, latestOrbitalStateRef.current)
@@ -586,12 +622,14 @@ export function EarthMapStage({
 
     const markerMap = satMarkersRef.current
     return () => {
+      styleReadyRef.current = false
       for (const entry of markerMap.values()) {
         entry.marker.remove()
       }
       markerMap.clear()
       resizeObserver?.disconnect()
       map?.remove()
+      cloudLayerRef.current = null
       mapInstanceRef.current = null
     }
   }, [])
@@ -599,7 +637,7 @@ export function EarthMapStage({
   useEffect(() => {
     latestGeoJsonRef.current = geoJson
     const map = mapInstanceRef.current
-    if (!map || !map.isStyleLoaded()) {
+    if (!map || !styleReadyRef.current) {
       return
     }
     setGeoJsonSourceData(map, 'fire-anomalies', geoJson)
@@ -608,7 +646,7 @@ export function EarthMapStage({
   useEffect(() => {
     latestUserGeoJsonRef.current = userLocationGeoJson
     const map = mapInstanceRef.current
-    if (!map || !map.isStyleLoaded()) {
+    if (!map || !styleReadyRef.current) {
       return
     }
     setGeoJsonSourceData(map, 'user-geolocation', userLocationGeoJson)
@@ -624,16 +662,35 @@ export function EarthMapStage({
     if (!map) {
       return
     }
-    if (map.isStyleLoaded()) {
+    if (styleReadyRef.current) {
       syncOrbitalSources(map, orbitalState)
     }
     syncSatelliteMarkers(map, orbitalState.snapshots, showOrbits, selectedSatelliteId)
   }, [orbitalState, showOrbits, selectedSatelliteId, onSelectSatellite])
 
   useEffect(() => {
+    latestShowCloudsRef.current = showClouds
+    latestCloudsDisabledRef.current = cloudsDisabled
+    const cloudLayer = cloudLayerRef.current
+    if (!cloudLayer) {
+      return
+    }
+    cloudLayer.setDisabled(cloudsDisabled)
+    cloudLayer.setVisible(showClouds)
+  }, [showClouds, cloudsDisabled])
+
+  useEffect(() => {
+    if (cloudRefreshNonce === lastCloudRefreshNonceRef.current) {
+      return
+    }
+    lastCloudRefreshNonceRef.current = cloudRefreshNonce
+    cloudLayerRef.current?.refreshNow()
+  }, [cloudRefreshNonce])
+
+  useEffect(() => {
     latestProjectionRef.current = projectionMode
     const map = mapInstanceRef.current
-    if (!map || !map.isStyleLoaded()) {
+    if (!map || !styleReadyRef.current) {
       return
     }
     map.setProjection({ type: projectionMode })
@@ -838,8 +895,16 @@ export function EarthMapStage({
       <div
         className="map-hud map-hud-top-end"
         role="group"
-        aria-label="Map projection, orbits, location, and zoom controls"
+        aria-label="Map projection, clouds, orbits, location, and zoom controls"
       >
+        <button
+          type="button"
+          className="hud-btn"
+          aria-pressed={showClouds}
+          onClick={() => onShowCloudsChange(!showClouds)}
+        >
+          Clouds
+        </button>
         <button
           type="button"
           className="hud-btn"
@@ -907,6 +972,12 @@ export function EarthMapStage({
             <li>
               <span className="legend-glyph legend-glyph-viirs" aria-hidden="true">&#9679;</span>
               <span>VIIRS Orbits (NOAA-20, NOAA-21 &middot; Solid past / Dashed +90m)</span>
+            </li>
+          )}
+          {showClouds && !cloudsDisabled && (
+            <li>
+              <span className="legend-glyph legend-glyph-clouds" aria-hidden="true">&#9729;</span>
+              <span>Live VIS/IR Clouds (Day/Night Terminator)</span>
             </li>
           )}
           {userLocation && (

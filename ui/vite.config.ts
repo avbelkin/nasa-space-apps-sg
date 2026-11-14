@@ -15,6 +15,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
+    worker: {
+      format: 'es',
+    },
     plugins: [
       react(),
       {

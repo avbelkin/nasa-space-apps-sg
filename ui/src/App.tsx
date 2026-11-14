@@ -74,6 +74,8 @@ function App() {
     initialResolution.state.selectedMonth,
   )
   const [showOrbits, setShowOrbits] = useState<boolean>(initialResolution.state.showOrbits)
+  const [showClouds, setShowClouds] = useState<boolean>(initialResolution.state.showClouds)
+  const [cloudRefreshNonce, setCloudRefreshNonce] = useState<number>(0)
   const [viewport, setViewport] = useState<MapViewportState>(() => ({
     zoom: initialResolution.state.zoom,
     lat: initialResolution.state.lat,
@@ -107,9 +109,19 @@ function App() {
       projectionMode,
       selectedMonth,
       showOrbits,
+      showClouds,
       extraParams,
     })
-  }, [viewport, viewMode, sensorFilter, projectionMode, selectedMonth, showOrbits, extraParams])
+  }, [
+    viewport,
+    viewMode,
+    sensorFilter,
+    projectionMode,
+    selectedMonth,
+    showOrbits,
+    showClouds,
+    extraParams,
+  ])
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -125,6 +137,7 @@ function App() {
       setProjectionMode(parsed.projectionMode)
       setSelectedMonth(parsed.selectedMonth)
       setShowOrbits(parsed.showOrbits)
+      setShowClouds(parsed.showClouds)
       setExtraParams(parsed.extraParams)
       setViewport({
         zoom: parsed.zoom,
@@ -178,6 +191,7 @@ function App() {
     setConnectionState('checking')
     setErrorMessage(null)
     setOrbitsError(null)
+    setCloudRefreshNonce((value) => value + 1)
     void fetchApiStatus().then(applySuccess, applyFailure)
     void fetchSatelliteOrbits(apiBaseUrl).then(applyOrbitsSuccess, applyOrbitsFailure)
   }
@@ -337,6 +351,11 @@ function App() {
         cameraFocusRequest={cameraFocusRequest}
         autoLocateOnMount={initialResolution.source === 'default'}
         geolocationMaxZoom={DEFAULT_GEOLOCATION_MAX_ZOOM}
+        apiBaseUrl={apiBaseUrl}
+        cloudsDisabled={isProdUnconfigured}
+        showClouds={showClouds}
+        onShowCloudsChange={setShowClouds}
+        cloudRefreshNonce={cloudRefreshNonce}
         orbitalState={orbitalState}
         showOrbits={showOrbits}
         onShowOrbitsChange={(next) => {
@@ -555,6 +574,16 @@ function App() {
                 NORAD GP / TLE orbital elements from{' '}
                 <a href="https://celestrak.org/" target="_blank" rel="noopener noreferrer">
                   CelesTrak
+                </a>
+                .
+              </dd>
+            </div>
+            <div className="meta-row">
+              <dt>Satellite Clouds (VIS/IR)</dt>
+              <dd>
+                Live geostationary VIS/IR cloud composites (EUMETSAT, NOAA, JMA) proxied from{' '}
+                <a href="https://layers.extremum.org" target="_blank" rel="noopener noreferrer">
+                  layers.extremum.org
                 </a>
                 .
               </dd>

@@ -24,6 +24,7 @@ export interface UrlHashState extends MapViewportState {
   projectionMode: ProjectionMode
   selectedMonth: number
   showOrbits: boolean
+  showClouds: boolean
   extraParams?: Record<string, string>
 }
 
@@ -43,6 +44,7 @@ export const DEFAULT_URL_HASH_STATE: UrlHashState = {
   projectionMode: 'globe',
   selectedMonth: 8,
   showOrbits: true,
+  showClouds: true,
 }
 
 const VALID_VIEW_MODES: readonly ViewMode[] = ['anomaly', 'seasonal', 'sensors']
@@ -103,6 +105,17 @@ interface HashFeatureCodec {
 
 function isOneOf<T extends string>(value: string, allowed: readonly T[]): value is T {
   return (allowed as readonly string[]).includes(value)
+}
+
+function parseBooleanHashFlag(raw: string): boolean | null {
+  const normalized = raw.trim().toLowerCase()
+  if (normalized === '1' || normalized === 'true' || normalized === 'on') {
+    return true
+  }
+  if (normalized === '0' || normalized === 'false' || normalized === 'off') {
+    return false
+  }
+  return null
 }
 
 function parseMonthValue(raw: string): number | null {
@@ -177,16 +190,24 @@ const HASH_FEATURE_CODECS: readonly HashFeatureCodec[] = [
     key: 'orbits',
     serialize: (state) => (state.showOrbits ? '1' : '0'),
     parse: (raw, draft) => {
-      const normalized = raw.trim().toLowerCase()
-      if (normalized === '1' || normalized === 'true' || normalized === 'on') {
-        draft.showOrbits = true
-        return true
+      const parsed = parseBooleanHashFlag(raw)
+      if (parsed === null) {
+        return false
       }
-      if (normalized === '0' || normalized === 'false' || normalized === 'off') {
-        draft.showOrbits = false
-        return true
+      draft.showOrbits = parsed
+      return true
+    },
+  },
+  {
+    key: 'clouds',
+    serialize: (state) => (state.showClouds ? '1' : '0'),
+    parse: (raw, draft) => {
+      const parsed = parseBooleanHashFlag(raw)
+      if (parsed === null) {
+        return false
       }
-      return false
+      draft.showClouds = parsed
+      return true
     },
   },
 ]
@@ -244,6 +265,7 @@ function cloneFallbackState(fallback: UrlHashState): UrlHashState {
     projectionMode: fallback.projectionMode,
     selectedMonth: fallback.selectedMonth,
     showOrbits: fallback.showOrbits,
+    showClouds: fallback.showClouds,
     ...(fallback.extraParams ? { extraParams: { ...fallback.extraParams } } : {}),
   }
 }

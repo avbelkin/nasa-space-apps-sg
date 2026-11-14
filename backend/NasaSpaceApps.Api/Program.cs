@@ -1,5 +1,6 @@
 using System.Net;
 using System.Runtime.InteropServices;
+using NasaSpaceApps.Api.Clouds;
 using NasaSpaceApps.Api.Firms;
 using NasaSpaceApps.Api.Satellites;
 
@@ -18,10 +19,13 @@ var allowedOrigins = builder.Configuration
     .ToArray() ?? [];
 
 var firmsOptions = FirmsOptions.FromConfiguration(builder.Configuration, builder.Environment);
+var cloudOptions = ExtremumCloudOptions.FromConfiguration(builder.Configuration);
 
 builder.Services.AddOpenApi();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton(firmsOptions);
+builder.Services.AddSingleton(cloudOptions);
+builder.Services.AddSingleton<ExtremumCloudInstanceIdentity>();
 builder.Services.AddHttpClient("CelesTrak", client =>
 {
     client.BaseAddress = new Uri("https://celestrak.org/");
@@ -42,9 +46,21 @@ builder.Services.AddHttpClient("Firms", client =>
 {
     AutomaticDecompression = DecompressionMethods.All,
 });
+builder.Services.AddHttpClient(ExtremumCloudOptions.HttpClientName, client =>
+{
+    client.BaseAddress = new Uri(cloudOptions.BaseUrl);
+    client.Timeout = Timeout.InfiniteTimeSpan;
+    client.DefaultRequestHeaders.Clear();
+}).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+{
+    // Disable handler CookieContainer so our single explicit gis-uuid Cookie header is preserved verbatim.
+    UseCookies = false,
+    AutomaticDecompression = DecompressionMethods.All,
+});
 builder.Services.AddSingleton<CelesTrakTleDownloader>();
 builder.Services.AddSingleton<SatelliteOrbitService>();
 builder.Services.AddSingleton<FirmsClient>();
+builder.Services.AddSingleton<ExtremumCloudTileClient>();
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -150,4 +166,45 @@ app.MapGet("/api/satellites/orbits", async (
     return Results.Ok(response);
 });
 
+app.MapGet("/api/weather/satellite/{z:int}/{x:int}/{y:int}.png", async (
+    int z,
+    int x,
+    int y,
+    HttpContext httpContext,
+    ExtremumCloudTileClient cloudClient,
+    CancellationToken cancellationToken) =>
+{
+    if (!ExtremumCloudTileClient.IsValidZoom(z))
+    {
+        return Results.NotFound();
+    }
+
+    if (!ExtremumCloudTileClient.IsValidCoords(z, x, y))
+    {
+        return Results.BadRequest(new { error = "Tile coordinates out of range for zoom level." });
+    }
+
+    httpContext.Response.Headers.CacheControl = "no-store, no-cache";
+
+    try
+    {
+        var result = await cloudClient.GetTileAsync(z, x, y, cancellationToken);
+        return result.Status == CloudTileStatus.NoContent
+            ? Results.NoContent()
+            : Results.File(result.PngBytes!, "image/png");
+    }
+    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+    {
+        return Results.StatusCode(499);
+    }
+    catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+    {
+        return Results.Json(
+            new { error = "Upstream satellite cloud service unavailable." },
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+});
+
 app.Run();
+
+public partial class Program;
