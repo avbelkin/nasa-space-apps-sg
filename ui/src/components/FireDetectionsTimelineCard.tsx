@@ -195,27 +195,29 @@ export function FireDetectionsTimelineCard({ timeline }: FireDetectionsTimelineC
         </div>
       </div>
 
-      <table className="visually-hidden">
-        <caption>{timeline.accessibleSummary}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Time</th>
-            <th scope="col">Satellite</th>
-            <th scope="col">Status</th>
-            <th scope="col">Details</th>
-          </tr>
-        </thead>
-        <tbody>
-          {timeline.accessibleRows.map((row, index) => (
-            <tr key={`${index}-${row.timeLabel}-${row.satellite}`}>
-              <td>{row.timeLabel}</td>
-              <td>{row.satellite}</td>
-              <td>{row.status}</td>
-              <td>{row.detail}</td>
+      <div className="visually-hidden">
+        <table>
+          <caption>{timeline.accessibleSummary}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Time</th>
+              <th scope="col">Satellite</th>
+              <th scope="col">Status</th>
+              <th scope="col">Details</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {timeline.accessibleRows.map((row, index) => (
+              <tr key={`${index}-${row.timeLabel}-${row.satellite}`}>
+                <td>{row.timeLabel}</td>
+                <td>{row.satellite}</td>
+                <td>{row.status}</td>
+                <td>{row.detail}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

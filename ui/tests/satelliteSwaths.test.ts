@@ -371,17 +371,19 @@ test('formatSatelliteHudSection advances elapsed minutes, flips processing to re
   assert.equal(rolloverSection.summary, 'Next: NOAA-20 in ~3m')
 })
 
-test('satellite passes stay above map attribution and pinned fire details render below the map', () => {
+test('satellite passes stay at the bottom of the map and the side panel groups detections and credits', () => {
   const appCss = fs.readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
   const mapStage = fs.readFileSync(new URL('../src/components/EarthMapStage.tsx', import.meta.url), 'utf8')
-  const app = fs.readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  const panel = fs.readFileSync(new URL('../src/components/SidePanel.tsx', import.meta.url), 'utf8')
   const hud = appCss.match(/\.map-hud-bottom\s*\{([^}]*)\}/)?.[1]
   assert.ok(hud)
   assert.match(hud, /align-self:\s*end;/)
-  assert.match(hud, /margin-block-end:\s*var\(--attribution-clearance,/)
+  assert.match(mapStage, /attributionControl:\s*false/)
   assert.match(mapStage, /className="map-hud-bottom">\s*<SatelliteHud/)
   assert.doesNotMatch(mapStage, /<FireDetectionsTimelineCard|<PinnedFireDetails/)
-  assert.match(app, /<EarthMapStage[\s\S]*?\/>\s*\{pinnedFireSelection && \(\s*<PinnedFireDetails/)
+  assert.match(panel, /<SegmentedControl[\s\S]*?\/>\s*<\/div>\s*\{pinnedDetails\}/)
+  assert.match(panel, /className="panel-bottom">\s*<LiveFiresSection[^>]*\/>\s*\{legend\}\s*<AttributionFooter/)
+  assert.match(appCss, /\.panel-bottom\s*\{[^}]*margin-block-start:\s*auto;/)
 })
 
 test('interpolateTrackAtTime and swaths advance smoothly across 30fps frames, heading wraparound, and antimeridian', () => {
