@@ -34,7 +34,8 @@ export const ENABLE_RAIN_CLOUD_BACKDROP = true
 export const RAIN_CLOUD_BACKDROP_MAX_OPACITY = 0.22
 export const RAIN_DOT_BASE_GRID_CELLS = 32
 export const RAIN_DOT_BASE_SPACING_CSS_PX = 21.5
-export const RAIN_DOT_RADIUS_CSS_PX = 2.6
+export const RAIN_DOT_MIN_RADIUS_CSS_PX = 1.45
+export const RAIN_DOT_RADIUS_CSS_PX = 1.75
 
 export interface RainShaderBuildOptions {
   colorMode?: RainDotColorMode
@@ -856,7 +857,7 @@ float sampleHexLatticeMask(vec2 worldMercator, float freq, float worldPerCssPx, 
   float distCells = length(nearest);
   float cellsPerCssPx = freq * worldPerCssPx;
   float radiusCells = min(0.38, radiusCssPx * cellsPerCssPx);
-  float aaCells = max(1.15 * cellsPerCssPx, 1e-5);
+  float aaCells = max(1.05 * cellsPerCssPx, 1e-5);
   return 1.0 - smoothstep(radiusCells - aaCells * 0.5, radiusCells + aaCells * 0.5, distCells);
 }
 
@@ -971,7 +972,7 @@ void main() {
     1.0
   );
   float dotStrength = smoothstep(0.0, 1.0, normIntensity);
-  float radiusCssPx = mix(2.15, ${RAIN_DOT_RADIUS_CSS_PX.toFixed(2)}, dotStrength);
+  float radiusCssPx = mix(${RAIN_DOT_MIN_RADIUS_CSS_PX.toFixed(2)}, ${RAIN_DOT_RADIUS_CSS_PX.toFixed(2)}, dotStrength);
   float dotMask = (dotStrength > 0.001) ? evaluateZoomOctaveDots(v_worldMercator, worldPerCssPx, radiusCssPx) : 0.0;
   vec3 dotColor = ${colorMode === 'white' ? 'vec3(0.973, 0.980, 0.988)' : 'evaluateRainbowDotColor(total)'};
   float dotA = clamp(dotStrength * dotMask * u_opacity, 0.0, 1.0);

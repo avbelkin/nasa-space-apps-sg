@@ -22,6 +22,8 @@ import {
   RAIN_FADE_START_ZOOM,
   RAIN_DOT_BASE_GRID_CELLS,
   RAIN_DOT_BASE_SPACING_CSS_PX,
+  RAIN_DOT_MIN_RADIUS_CSS_PX,
+  RAIN_DOT_RADIUS_CSS_PX,
   RAIN_SOLO_OPACITY_MULTIPLIER,
   RAIN_TEXTURE_SIZE,
   RAIN_TILE_GUTTER,
@@ -359,6 +361,8 @@ test('normalizeRainCoveringTiles locks source tiles to z=3 and WebGL2 shaders ma
   assert.equal(MAX_RAIN_TILE_ZOOM, 3)
   assert.ok(RAIN_DOT_BASE_SPACING_CSS_PX >= 18.5)
   assert.equal(RAIN_DOT_BASE_GRID_CELLS % 8, 0)
+  assert.ok(RAIN_DOT_MIN_RADIUS_CSS_PX < RAIN_DOT_RADIUS_CSS_PX)
+  assert.ok(RAIN_DOT_RADIUS_CSS_PX <= 1.85)
   const expanded = normalizeRainCoveringTiles([
     { canonical: { z: 2, x: 0, y: 0 }, wrap: 0 },
     { canonical: { z: 3, x: 6, y: 3 }, wrap: 0 },
