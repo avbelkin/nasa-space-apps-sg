@@ -6,6 +6,7 @@ import {
 } from 'maplibre-gl'
 import {
   buildCloudFragmentShaderSource,
+  buildCloudPolarCapUrl,
   buildCloudTileUrl,
   buildCloudVertexShaderSource,
   CLOUD_REFRESH_INTERVAL_MS,
@@ -13,9 +14,11 @@ import {
   computeGlobeSubdivisionGranularity,
   computeTileSubUv,
   DEFAULT_CLOUD_BASE_OPACITY,
+  getTilePolarHemisphere,
   MAX_CLOUD_TILE_ZOOM,
   MIN_CLOUD_TILE_ZOOM,
   normalizeCloudCoveringTiles,
+  type PolarHemisphere,
 } from './satelliteCloudShader.ts'
 
 export const SATELLITE_CLOUDS_LAYER_ID = 'satellite-clouds-layer'
@@ -32,10 +35,13 @@ interface CompiledProgramEntry {
   uProjectionClippingPlane: WebGLUniformLocation | null
   uProjectionTransition: WebGLUniformLocation | null
   uProjectionFallbackMatrix: WebGLUniformLocation | null
+  uTileMercator: WebGLUniformLocation | null
   uUvOffset: WebGLUniformLocation | null
   uUvScale: WebGLUniformLocation | null
   uTileTexture: WebGLUniformLocation | null
+  uPolarCapTexture: WebGLUniformLocation | null
   uOpacity: WebGLUniformLocation | null
+  uPolarCapMode: WebGLUniformLocation | null
 }
 
 interface TileMeshEntry {
@@ -46,17 +52,20 @@ interface TileMeshEntry {
   indexType: number
 }
 
-interface TileCacheEntry {
-  key: string
-  z: number
-  x: number
-  y: number
+interface TextureCacheEntry {
   texture: WebGLTexture | null
   hasEmptyResponse: boolean
   fetchedEpoch: number
   loadingEpoch: number | null
   retryAfterMs: number
   abortController: AbortController | null
+}
+
+interface TileCacheEntry extends TextureCacheEntry {
+  key: string
+  z: number
+  x: number
+  y: number
   lastUsedSeq: number
 }
 
@@ -125,10 +134,13 @@ function createProgramEntry(
     uProjectionClippingPlane: gl.getUniformLocation(program, 'u_projection_clipping_plane'),
     uProjectionTransition: gl.getUniformLocation(program, 'u_projection_transition'),
     uProjectionFallbackMatrix: gl.getUniformLocation(program, 'u_projection_fallback_matrix'),
+    uTileMercator: gl.getUniformLocation(program, 'u_tileMercator'),
     uUvOffset: gl.getUniformLocation(program, 'u_uv_offset'),
     uUvScale: gl.getUniformLocation(program, 'u_uv_scale'),
     uTileTexture: gl.getUniformLocation(program, 'u_tileTexture'),
+    uPolarCapTexture: gl.getUniformLocation(program, 'u_polarCapTexture'),
     uOpacity: gl.getUniformLocation(program, 'u_opacity'),
+    uPolarCapMode: gl.getUniformLocation(program, 'u_polarCapMode'),
   }
 }
 
@@ -153,6 +165,37 @@ export function createSatelliteCloudLayer({
   const programs = new Map<string, CompiledProgramEntry>()
   const meshes = new Map<string, TileMeshEntry>()
   const tiles = new Map<string, TileCacheEntry>()
+  const polarCaps = new Map<PolarHemisphere, TextureCacheEntry>()
+  let emptyFallbackTexture: WebGLTexture | null = null
+
+  const getOrCreateFallbackTexture = (gl: WebGL2RenderingContext): WebGLTexture => {
+    if (emptyFallbackTexture) {
+      return emptyFallbackTexture
+    }
+    const tex = gl.createTexture()
+    if (!tex) {
+      throw new Error('Failed to allocate fallback WebGL2 texture for satellite cloud layer.')
+    }
+    gl.bindTexture(gl.TEXTURE_2D, tex)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      1,
+      1,
+      0,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      new Uint8Array([0, 0, 0, 255]),
+    )
+    gl.bindTexture(gl.TEXTURE_2D, null)
+    emptyFallbackTexture = tex
+    return tex
+  }
 
   const evictCacheIfNeeded = (gl: WebGL2RenderingContext) => {
     if (tiles.size <= MAX_CACHED_TILES) {
@@ -179,12 +222,25 @@ export function createSatelliteCloudLayer({
       entry.abortController = null
       entry.loadingEpoch = null
     }
+    for (const entry of polarCaps.values()) {
+      entry.abortController?.abort()
+      entry.abortController = null
+      entry.loadingEpoch = null
+    }
   }
 
   const clearGpuHandles = (deleteLiveObjects: boolean) => {
     const gl = glRef
     if (deleteLiveObjects && gl && !contextLost) {
+      if (emptyFallbackTexture) {
+        gl.deleteTexture(emptyFallbackTexture)
+      }
       for (const entry of tiles.values()) {
+        if (entry.texture) {
+          gl.deleteTexture(entry.texture)
+        }
+      }
+      for (const entry of polarCaps.values()) {
         if (entry.texture) {
           gl.deleteTexture(entry.texture)
         }
@@ -200,7 +256,15 @@ export function createSatelliteCloudLayer({
         gl.deleteShader(compiled.fragmentShader)
       }
     }
+    emptyFallbackTexture = null
     for (const entry of tiles.values()) {
+      entry.texture = null
+      entry.hasEmptyResponse = false
+      entry.fetchedEpoch = 0
+      entry.loadingEpoch = null
+      entry.retryAfterMs = 0
+    }
+    for (const entry of polarCaps.values()) {
       entry.texture = null
       entry.hasEmptyResponse = false
       entry.fetchedEpoch = 0
@@ -269,6 +333,112 @@ export function createSatelliteCloudLayer({
     return entry
   }
 
+  const fetchTextureEntry = (
+    gl: WebGL2RenderingContext,
+    entry: TextureCacheEntry,
+    url: string,
+    label: string,
+    onUploaded?: () => void,
+  ) => {
+    const nowMs = Date.now()
+    if (
+      entry.fetchedEpoch >= refreshEpoch ||
+      entry.loadingEpoch === refreshEpoch ||
+      nowMs < entry.retryAfterMs
+    ) {
+      return
+    }
+
+    entry.abortController?.abort()
+    const abortController = new AbortController()
+    const targetEpoch = refreshEpoch
+
+    entry.abortController = abortController
+    entry.loadingEpoch = targetEpoch
+
+    void fetch(url, { signal: abortController.signal })
+      .then(async (response) => {
+        if (response.status === 204) {
+          if (disposed || targetEpoch !== refreshEpoch) {
+            return
+          }
+          if (entry.texture && !contextLost) {
+            gl.deleteTexture(entry.texture)
+          }
+          entry.texture = null
+          entry.hasEmptyResponse = true
+          entry.fetchedEpoch = targetEpoch
+          entry.retryAfterMs = 0
+          mapRef?.triggerRepaint()
+          return
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} fetching cloud texture ${label}`)
+        }
+
+        const blob = await response.blob()
+        if (disposed || abortController.signal.aborted || contextLost) {
+          return
+        }
+
+        const bitmap = await (
+          typeof createImageBitmap === 'function'
+            ? createImageBitmap(blob, {
+                premultiplyAlpha: 'none',
+                colorSpaceConversion: 'none',
+              }).catch(() => createImageBitmap(blob))
+            : Promise.reject(new Error('createImageBitmap unavailable'))
+        )
+
+        try {
+          if (disposed || abortController.signal.aborted || contextLost) {
+            return
+          }
+
+          let texture = entry.texture
+          if (!texture) {
+            texture = gl.createTexture()
+            if (!texture) {
+              throw new Error(`Failed to allocate WebGL2 texture for cloud ${label}.`)
+            }
+            entry.texture = texture
+          }
+
+          gl.bindTexture(gl.TEXTURE_2D, texture)
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0)
+          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0)
+          gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4)
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bitmap)
+          gl.bindTexture(gl.TEXTURE_2D, null)
+
+          entry.hasEmptyResponse = false
+          entry.fetchedEpoch = targetEpoch
+          entry.retryAfterMs = 0
+          onUploaded?.()
+          mapRef?.triggerRepaint()
+        } finally {
+          bitmap.close()
+        }
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return
+        }
+        entry.retryAfterMs = Date.now() + ERROR_RETRY_BACKOFF_MS
+      })
+      .finally(() => {
+        if (entry.abortController === abortController) {
+          entry.abortController = null
+          entry.loadingEpoch = null
+        }
+      })
+  }
+
   const ensureTileFetched = (z: number, x: number, y: number) => {
     const gl = glRef
     if (!gl || contextLost || disposed || isDisabled) {
@@ -296,104 +466,48 @@ export function createSatelliteCloudLayer({
       entry.lastUsedSeq = ++useSeq
     }
 
-    const nowMs = Date.now()
-    if (
-      entry.fetchedEpoch >= refreshEpoch ||
-      entry.loadingEpoch === refreshEpoch ||
-      nowMs < entry.retryAfterMs
-    ) {
+    fetchTextureEntry(
+      gl,
+      entry,
+      buildCloudTileUrl(apiBaseUrl, z, x, y, refreshTimestamp),
+      key,
+      () => evictCacheIfNeeded(gl),
+    )
+  }
+
+  const ensurePolarCapFetched = (pole: PolarHemisphere) => {
+    const gl = glRef
+    if (!gl || contextLost || disposed || isDisabled) {
       return
     }
 
-    entry.abortController?.abort()
-    const abortController = new AbortController()
-    const targetEpoch = refreshEpoch
-    const url = buildCloudTileUrl(apiBaseUrl, z, x, y, refreshTimestamp)
+    let entry = polarCaps.get(pole)
+    if (!entry) {
+      entry = {
+        texture: null,
+        hasEmptyResponse: false,
+        fetchedEpoch: 0,
+        loadingEpoch: null,
+        retryAfterMs: 0,
+        abortController: null,
+      }
+      polarCaps.set(pole, entry)
+    }
 
-    entry.abortController = abortController
-    entry.loadingEpoch = targetEpoch
+    fetchTextureEntry(
+      gl,
+      entry,
+      buildCloudPolarCapUrl(apiBaseUrl, pole, refreshTimestamp),
+      `polar/${pole}`,
+    )
+  }
 
-    void fetch(url, { signal: abortController.signal })
-      .then(async (response) => {
-        if (response.status === 204) {
-          if (disposed || targetEpoch !== refreshEpoch) {
-            return
-          }
-          if (entry.texture && !contextLost) {
-            gl.deleteTexture(entry.texture)
-          }
-          entry.texture = null
-          entry.hasEmptyResponse = true
-          entry.fetchedEpoch = targetEpoch
-          entry.retryAfterMs = 0
-          mapRef?.triggerRepaint()
-          return
-        }
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status} fetching cloud tile ${key}`)
-        }
-
-        const blob = await response.blob()
-        if (disposed || abortController.signal.aborted || contextLost) {
-          return
-        }
-
-        const bitmap = await (
-          typeof createImageBitmap === 'function'
-            ? createImageBitmap(blob, {
-                premultiplyAlpha: 'none',
-                colorSpaceConversion: 'none',
-              }).catch(() => createImageBitmap(blob))
-            : Promise.reject(new Error('createImageBitmap unavailable'))
-        )
-
-        try {
-          if (disposed || abortController.signal.aborted || contextLost) {
-            return
-          }
-
-          let texture = entry.texture
-          if (!texture) {
-            texture = gl.createTexture()
-            if (!texture) {
-              throw new Error('Failed to allocate WebGL2 texture for cloud tile.')
-            }
-            entry.texture = texture
-          }
-
-          gl.bindTexture(gl.TEXTURE_2D, texture)
-          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0)
-          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0)
-          gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4)
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bitmap)
-          gl.bindTexture(gl.TEXTURE_2D, null)
-
-          entry.hasEmptyResponse = false
-          entry.fetchedEpoch = targetEpoch
-          entry.retryAfterMs = 0
-          evictCacheIfNeeded(gl)
-          mapRef?.triggerRepaint()
-        } finally {
-          bitmap.close()
-        }
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          return
-        }
-        entry.retryAfterMs = Date.now() + ERROR_RETRY_BACKOFF_MS
-      })
-      .finally(() => {
-        if (entry.abortController === abortController) {
-          entry.abortController = null
-          entry.loadingEpoch = null
-        }
-      })
+  const resolvePolarCapTexture = (pole: PolarHemisphere): WebGLTexture | null => {
+    const entry = polarCaps.get(pole)
+    if (entry?.hasEmptyResponse && entry.fetchedEpoch === refreshEpoch) {
+      return null
+    }
+    return entry?.texture ?? null
   }
 
   const resolveRenderableTexture = (
@@ -436,6 +550,9 @@ export function createSatelliteCloudLayer({
     refreshTimestamp = nowMs
     refreshEpoch += 1
     for (const entry of tiles.values()) {
+      entry.retryAfterMs = 0
+    }
+    for (const entry of polarCaps.values()) {
       entry.retryAfterMs = 0
     }
     mapRef?.triggerRepaint()
@@ -509,6 +626,7 @@ export function createSatelliteCloudLayer({
       abortAllTileRequests()
       clearGpuHandles(true)
       tiles.clear()
+      polarCaps.clear()
       glRef = null
       mapRef = null
     },
@@ -542,6 +660,7 @@ export function createSatelliteCloudLayer({
       }
 
       const isGlobe = variantKey.includes('globe')
+      const fallbackTexture = getOrCreateFallbackTexture(gl)
 
       gl.useProgram(programEntry.program)
       gl.enable(gl.BLEND)
@@ -550,9 +669,11 @@ export function createSatelliteCloudLayer({
       gl.cullFace(gl.BACK)
       gl.frontFace(gl.CCW)
 
-      gl.activeTexture(gl.TEXTURE0)
       if (programEntry.uTileTexture !== null) {
         gl.uniform1i(programEntry.uTileTexture, 0)
+      }
+      if (programEntry.uPolarCapTexture !== null) {
+        gl.uniform1i(programEntry.uPolarCapTexture, 1)
       }
       if (programEntry.uOpacity !== null) {
         gl.uniform1f(programEntry.uOpacity, opacity)
@@ -566,7 +687,13 @@ export function createSatelliteCloudLayer({
 
         ensureTileFetched(z, x, y)
         const resolved = resolveRenderableTexture(z, x, y)
-        if (!resolved) {
+        const hemisphere = isGlobe ? getTilePolarHemisphere(z, y) : null
+        let polarCapTexture: WebGLTexture | null = null
+        if (hemisphere !== null) {
+          ensurePolarCapFetched(hemisphere)
+          polarCapTexture = resolvePolarCapTexture(hemisphere)
+        }
+        if (!resolved && !polarCapTexture) {
           continue
         }
 
@@ -607,20 +734,34 @@ export function createSatelliteCloudLayer({
             projectionData.fallbackMatrix as Float32Array,
           )
         }
+        if (programEntry.uTileMercator !== null) {
+          const invCount = 1 / (1 << z)
+          gl.uniform3f(programEntry.uTileMercator, x * invCount, y * invCount, invCount)
+        }
         if (programEntry.uUvOffset !== null) {
-          gl.uniform2fv(programEntry.uUvOffset, resolved.uvOffset)
+          gl.uniform2fv(programEntry.uUvOffset, resolved?.uvOffset ?? [0, 0])
         }
         if (programEntry.uUvScale !== null) {
-          gl.uniform1f(programEntry.uUvScale, resolved.uvScale)
+          gl.uniform1f(programEntry.uUvScale, resolved?.uvScale ?? 1)
+        }
+        if (programEntry.uPolarCapMode !== null) {
+          const mode = polarCapTexture ? (hemisphere === 'north' ? 1 : -1) : 0
+          gl.uniform1f(programEntry.uPolarCapMode, mode)
         }
 
         const mesh = getOrCreateMesh(gl, z, y, isGlobe)
-        gl.bindTexture(gl.TEXTURE_2D, resolved.texture)
+        gl.activeTexture(gl.TEXTURE1)
+        gl.bindTexture(gl.TEXTURE_2D, polarCapTexture ?? fallbackTexture)
+        gl.activeTexture(gl.TEXTURE0)
+        gl.bindTexture(gl.TEXTURE_2D, resolved?.texture ?? fallbackTexture)
         gl.bindVertexArray(mesh.vao)
         gl.drawElements(gl.TRIANGLES, mesh.indexCount, mesh.indexType, 0)
       }
 
       gl.bindVertexArray(null)
+      gl.activeTexture(gl.TEXTURE1)
+      gl.bindTexture(gl.TEXTURE_2D, null)
+      gl.activeTexture(gl.TEXTURE0)
       gl.bindTexture(gl.TEXTURE_2D, null)
     },
 

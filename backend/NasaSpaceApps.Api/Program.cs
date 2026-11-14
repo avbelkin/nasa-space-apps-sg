@@ -290,11 +290,39 @@ app.MapGet("/api/weather/satellite/{z:int}/{x:int}/{y:int}.png", async (
         return Results.BadRequest(new { error = "Tile coordinates out of range for zoom level." });
     }
 
+    return await ExecuteCloudProxyAsync(
+        httpContext,
+        ct => cloudClient.GetTileAsync(z, x, y, ct),
+        cancellationToken);
+});
+
+app.MapGet("/api/weather/satellite/polar/{pole}.png", async (
+    string pole,
+    HttpContext httpContext,
+    ExtremumCloudTileClient cloudClient,
+    CancellationToken cancellationToken) =>
+{
+    if (!ExtremumCloudTileClient.TryNormalizePole(pole, out var normalizedPole))
+    {
+        return Results.BadRequest(new { error = "Polar hemisphere must be 'north' or 'south'." });
+    }
+
+    return await ExecuteCloudProxyAsync(
+        httpContext,
+        ct => cloudClient.GetPolarCapAsync(normalizedPole, ct),
+        cancellationToken);
+});
+
+static async Task<IResult> ExecuteCloudProxyAsync(
+    HttpContext httpContext,
+    Func<CancellationToken, Task<CloudTileResult>> fetchAsync,
+    CancellationToken cancellationToken)
+{
     httpContext.Response.Headers.CacheControl = "no-store, no-cache";
 
     try
     {
-        var result = await cloudClient.GetTileAsync(z, x, y, cancellationToken);
+        var result = await fetchAsync(cancellationToken);
         return result.Status == CloudTileStatus.NoContent
             ? Results.NoContent()
             : Results.File(result.PngBytes!, "image/png");
@@ -309,7 +337,7 @@ app.MapGet("/api/weather/satellite/{z:int}/{x:int}/{y:int}.png", async (
             new { error = "Upstream satellite cloud service unavailable." },
             statusCode: StatusCodes.Status502BadGateway);
     }
-});
+}
 
 app.Run();
 

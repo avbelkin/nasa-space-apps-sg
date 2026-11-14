@@ -3,6 +3,16 @@ export const MAX_CLOUD_TILE_ZOOM = 7
 export const CLOUD_TILE_INNER_SIZE = 256
 export const CLOUD_TILE_GUTTER = 1
 export const CLOUD_TEXTURE_SIZE = CLOUD_TILE_INNER_SIZE + CLOUD_TILE_GUTTER * 2
+export const POLAR_CAP_INNER_SIZE = 512
+export const POLAR_CAP_GUTTER = 1
+export const POLAR_CAP_TEXTURE_SIZE = POLAR_CAP_INNER_SIZE + POLAR_CAP_GUTTER * 2
+export const POLAR_CAP_BOUNDARY_LAT_DEG = 78
+export const POLAR_CAP_BLEND_START_LAT_DEG = 78.5
+export const POLAR_CAP_BLEND_END_LAT_DEG = 84.5
+export const POLAR_CAP_TAN_HALF_COLAT = Math.tan(
+  ((90 - POLAR_CAP_BOUNDARY_LAT_DEG) * 0.5 * Math.PI) / 180,
+)
+export type PolarHemisphere = 'north' | 'south'
 export const DEFAULT_CLOUD_BASE_OPACITY = 0.65
 export const CLOUD_FADE_START_ZOOM = 5.25
 export const CLOUD_FADE_END_ZOOM = 9
@@ -83,6 +93,12 @@ export function computeCloudLayerOpacity(
   return Math.min(1, baseOpacity) * fadeFactor
 }
 
+function joinCloudApiUrl(apiBaseUrl: string, path: string, refreshTimestamp: number): string {
+  const normalizedBase = apiBaseUrl.trim().replace(/\/$/, '')
+  const url = `${path}?timestamp=${Math.trunc(refreshTimestamp)}`
+  return normalizedBase ? `${normalizedBase}${url}` : url
+}
+
 export function buildCloudTileUrl(
   apiBaseUrl: string,
   z: number,
@@ -90,9 +106,69 @@ export function buildCloudTileUrl(
   y: number,
   refreshTimestamp: number,
 ): string {
-  const normalizedBase = apiBaseUrl.trim().replace(/\/$/, '')
-  const path = `/api/weather/satellite/${z}/${x}/${y}.png?timestamp=${Math.trunc(refreshTimestamp)}`
-  return normalizedBase ? `${normalizedBase}${path}` : path
+  return joinCloudApiUrl(
+    apiBaseUrl,
+    `/api/weather/satellite/${z}/${x}/${y}.png`,
+    refreshTimestamp,
+  )
+}
+
+export function buildCloudPolarCapUrl(
+  apiBaseUrl: string,
+  pole: PolarHemisphere,
+  refreshTimestamp: number,
+): string {
+  return joinCloudApiUrl(
+    apiBaseUrl,
+    `/api/weather/satellite/polar/${pole}.png`,
+    refreshTimestamp,
+  )
+}
+
+function mercatorYToLatDeg(mercY: number): number {
+  return (Math.atan(Math.sinh(Math.PI * (1 - 2 * mercY))) * 180) / Math.PI
+}
+
+export function getTilePolarHemisphere(z: number, y: number): PolarHemisphere | null {
+  if (!Number.isInteger(z) || !Number.isInteger(y) || z < MIN_CLOUD_TILE_ZOOM || z > MAX_CLOUD_TILE_ZOOM) {
+    return null
+  }
+  const count = 1 << z
+  if (y < 0 || y >= count) {
+    return null
+  }
+  const latTopDeg = mercatorYToLatDeg(y / count)
+  if (latTopDeg >= POLAR_CAP_BLEND_START_LAT_DEG) {
+    return 'north'
+  }
+  const latBottomDeg = mercatorYToLatDeg((y + 1) / count)
+  if (latBottomDeg <= -POLAR_CAP_BLEND_START_LAT_DEG) {
+    return 'south'
+  }
+  return null
+}
+
+export function projectSphereDirToPolarCapUv(
+  dirX: number,
+  dirY: number,
+  dirZ: number,
+): [number, number] {
+  const len = Math.hypot(dirX, dirY, dirZ)
+  if (len <= 0) {
+    return [0.5, 0.5]
+  }
+  const dx = dirX / len
+  const dy = dirY / len
+  const dz = dirZ / len
+  const denom = (1 + Math.abs(dz)) * POLAR_CAP_TAN_HALF_COLAT
+  const projX = dx / denom
+  const projY = dy / denom
+  const u = Math.min(1, Math.max(0, projX * 0.5 + 0.5))
+  const v = Math.min(1, Math.max(0, projY * 0.5 + 0.5))
+  return [
+    (POLAR_CAP_GUTTER + u * POLAR_CAP_INNER_SIZE) / POLAR_CAP_TEXTURE_SIZE,
+    (POLAR_CAP_GUTTER + v * POLAR_CAP_INNER_SIZE) / POLAR_CAP_TEXTURE_SIZE,
+  ]
 }
 
 /**
@@ -134,20 +210,43 @@ export function buildCloudVertexShaderSource(shaderData: CloudShaderVariantData)
 ${shaderData.vertexShaderPrelude}
 ${shaderData.define}
 layout(location = 0) in vec2 a_pos;
+uniform vec3 u_tileMercator;
 uniform vec2 u_uv_offset;
 uniform float u_uv_scale;
 out vec2 v_textureCoord;
+out vec3 v_sphereDir;
 #ifdef GLOBE
 out float v_depth;
 #endif
+const float CLOUD_PI = 3.14159265358979323846;
+
 void main() {
   vec2 inTile = a_pos / 8192.0;
+  bool isNorthPole = false;
+  bool isSouthPole = false;
 #ifdef GLOBE
-  if (a_pos.y < -32767.5) { inTile.y = 0.0; }
-  if (a_pos.y > 32766.5) { inTile.y = 1.0; }
+  if (a_pos.y < -32767.5) {
+    inTile.y = 0.0;
+    isNorthPole = true;
+  }
+  if (a_pos.y > 32766.5) {
+    inTile.y = 1.0;
+    isSouthPole = true;
+  }
 #endif
   vec2 inSourceTile = u_uv_offset + inTile * u_uv_scale;
   v_textureCoord = (1.0 + inSourceTile * ${CLOUD_TILE_INNER_SIZE.toFixed(1)}) / ${CLOUD_TEXTURE_SIZE.toFixed(1)};
+  if (isNorthPole) {
+    v_sphereDir = vec3(0.0, 0.0, 1.0);
+  } else if (isSouthPole) {
+    v_sphereDir = vec3(0.0, 0.0, -1.0);
+  } else {
+    vec2 merc = u_tileMercator.xy + inTile * u_tileMercator.z;
+    float lon = (merc.x * 2.0 - 1.0) * CLOUD_PI;
+    float lat = atan(sinh(CLOUD_PI * (1.0 - 2.0 * merc.y)));
+    float cosLat = cos(lat);
+    v_sphereDir = vec3(cosLat * cos(lon), cosLat * sin(lon), sin(lat));
+  }
   gl_Position = projectTile(a_pos, a_pos);
 #ifdef GLOBE
   v_depth = gl_Position.z / gl_Position.w;
@@ -158,22 +257,35 @@ void main() {
 
 /**
  * WebGL2 port of extremum's terminator-aware VIS/IR satellite cloud shader
- * (R = 10.8um IR brightness temp, G = solar VIS reflectance) with NW cloud-top embossing
+ * (R = 10.8um IR brightness temp, G = solar VIS reflectance) with NW cloud-top embossing,
+ * stereographic polar-cap blending across |lat| >= 78.5 deg on the 3D globe,
  * and premultiplied alpha output.
  */
 export function buildCloudFragmentShaderSource(shaderData: CloudShaderVariantData): string {
+  const sinBlendStart = Math.sin((POLAR_CAP_BLEND_START_LAT_DEG * Math.PI) / 180).toFixed(10)
+  const sinBlendEnd = Math.sin((POLAR_CAP_BLEND_END_LAT_DEG * Math.PI) / 180).toFixed(10)
+
   return `#version 300 es
 precision highp float;
 ${shaderData.define}
 uniform sampler2D u_tileTexture;
+uniform sampler2D u_polarCapTexture;
 uniform float u_opacity;
+uniform float u_polarCapMode;
 in vec2 v_textureCoord;
+in vec3 v_sphereDir;
 #ifdef GLOBE
 in float v_depth;
 #endif
 out vec4 fragColor;
 
 const float TEXTURE_PIXEL_SIZE = ${CLOUD_TEXTURE_SIZE.toFixed(1)};
+const float POLAR_CAP_INNER = ${POLAR_CAP_INNER_SIZE.toFixed(1)};
+const float POLAR_CAP_GUTTER = ${POLAR_CAP_GUTTER.toFixed(1)};
+const float POLAR_CAP_PIXEL_SIZE = ${POLAR_CAP_TEXTURE_SIZE.toFixed(1)};
+const float POLAR_CAP_TAN_HALF_COLAT = ${POLAR_CAP_TAN_HALF_COLAT.toFixed(10)};
+const float POLAR_CAP_SIN_BLEND_START = ${sinBlendStart};
+const float POLAR_CAP_SIN_BLEND_END = ${sinBlendEnd};
 const float GAMMA_BRIGHT = 1.75;
 const float GAMMA_DARK = 1.2;
 const float BLUR_OFFSET_SCALE = 1.36;
@@ -200,36 +312,78 @@ vec2 applyGamma(vec2 c) {
   return pow(1.0 - t, vec2(GAMMA_DARK));
 }
 
-vec2 sampleGamma(vec2 uv) {
-  return applyGamma(texture(u_tileTexture, uv).rg);
+vec2 sampleGammaFrom(sampler2D tex, vec2 uv) {
+  return applyGamma(texture(tex, uv).rg);
 }
 
-float computeEmboss(vec2 uv, vec2 stepSize) {
-  float nx = sampleGamma(uv + vec2(stepSize.x, 0.0)).x - sampleGamma(uv - vec2(stepSize.x, 0.0)).x;
-  float ny = sampleGamma(uv - vec2(0.0, stepSize.y)).x - sampleGamma(uv + vec2(0.0, stepSize.y)).x;
+float computeEmbossFrom(sampler2D tex, vec2 uv, vec2 stepSize) {
+  float nx = sampleGammaFrom(tex, uv + vec2(stepSize.x, 0.0)).x - sampleGammaFrom(tex, uv - vec2(stepSize.x, 0.0)).x;
+  float ny = sampleGammaFrom(tex, uv - vec2(0.0, stepSize.y)).x - sampleGammaFrom(tex, uv + vec2(0.0, stepSize.y)).x;
   return EMBOSS_BASE + nx + EMBOSS_Y_WEIGHT * ny;
 }
 
-vec3 sampleProcessed(vec2 uv, vec2 stepSize) {
-  vec2 g = sampleGamma(uv);
-  return vec3(g.x, g.y, computeEmboss(uv, stepSize));
+vec3 sampleProcessedFrom(sampler2D tex, vec2 uv, vec2 stepSize) {
+  vec2 g = sampleGammaFrom(tex, uv);
+  return vec3(g.x, g.y, computeEmbossFrom(tex, uv, stepSize));
+}
+
+void sampleSharpenInputs(sampler2D tex, vec2 uv, float pixelSize, out vec3 orig, out vec3 blur) {
+  vec2 stepSize = vec2(1.0 / pixelSize);
+  vec2 blurStep = stepSize * BLUR_OFFSET_SCALE;
+  orig = sampleProcessedFrom(tex, uv, stepSize);
+  blur = (
+    sampleProcessedFrom(tex, uv + vec2(blurStep.x, 0.0), stepSize) +
+    sampleProcessedFrom(tex, uv - vec2(blurStep.x, 0.0), stepSize) +
+    sampleProcessedFrom(tex, uv + vec2(0.0, blurStep.y), stepSize) +
+    sampleProcessedFrom(tex, uv - vec2(0.0, blurStep.y), stepSize)
+  ) * QUARTER_WEIGHT;
 }
 
 void main() {
 #ifdef GLOBE
   if (v_depth > 1.0) discard;
 #endif
-  vec4 raw = texture(u_tileTexture, v_textureCoord);
-  if (raw.r + raw.g < MIN_CLOUD_SIGNAL) discard;
-  vec2 stepSize = vec2(1.0 / TEXTURE_PIXEL_SIZE);
-  vec2 blurStep = stepSize * BLUR_OFFSET_SCALE;
-  vec3 orig = sampleProcessed(v_textureCoord, stepSize);
-  vec3 blur = (
-    sampleProcessed(v_textureCoord + vec2(blurStep.x, 0.0), stepSize) +
-    sampleProcessed(v_textureCoord - vec2(blurStep.x, 0.0), stepSize) +
-    sampleProcessed(v_textureCoord + vec2(0.0, blurStep.y), stepSize) +
-    sampleProcessed(v_textureCoord - vec2(0.0, blurStep.y), stepSize)
-  ) * QUARTER_WEIGHT;
+  vec3 dir = normalize(v_sphereDir);
+  float polarWeight = 0.0;
+#ifdef GLOBE
+  bool matchNorth = u_polarCapMode > 0.5 && dir.z > 0.0;
+  bool matchSouth = u_polarCapMode < -0.5 && dir.z < 0.0;
+  if (matchNorth || matchSouth) {
+    polarWeight = smoothstep(POLAR_CAP_SIN_BLEND_START, POLAR_CAP_SIN_BLEND_END, abs(dir.z));
+  }
+#endif
+  vec2 polarUv = vec2(0.5);
+  float rawSignal = 0.0;
+  if (polarWeight < 1.0) {
+    vec4 tileRaw = texture(u_tileTexture, v_textureCoord);
+    rawSignal = max(rawSignal, tileRaw.r + tileRaw.g);
+  }
+  if (polarWeight > 0.0) {
+    vec2 proj = dir.xy / ((1.0 + abs(dir.z)) * POLAR_CAP_TAN_HALF_COLAT);
+    vec2 inPolarCap = clamp(proj * 0.5 + 0.5, 0.0, 1.0);
+    polarUv = (POLAR_CAP_GUTTER + inPolarCap * POLAR_CAP_INNER) / POLAR_CAP_PIXEL_SIZE;
+    vec4 polarRaw = texture(u_polarCapTexture, polarUv);
+    rawSignal = max(rawSignal, polarRaw.r + polarRaw.g);
+  }
+  if (rawSignal < MIN_CLOUD_SIGNAL) discard;
+
+  vec3 orig = vec3(0.0, 0.0, EMBOSS_BASE);
+  vec3 blur = vec3(0.0, 0.0, EMBOSS_BASE);
+  if (polarWeight <= 0.0) {
+    sampleSharpenInputs(u_tileTexture, v_textureCoord, TEXTURE_PIXEL_SIZE, orig, blur);
+  } else if (polarWeight >= 1.0) {
+    sampleSharpenInputs(u_polarCapTexture, polarUv, POLAR_CAP_PIXEL_SIZE, orig, blur);
+  } else {
+    vec3 tileOrig;
+    vec3 tileBlur;
+    vec3 polarOrig;
+    vec3 polarBlur;
+    sampleSharpenInputs(u_tileTexture, v_textureCoord, TEXTURE_PIXEL_SIZE, tileOrig, tileBlur);
+    sampleSharpenInputs(u_polarCapTexture, polarUv, POLAR_CAP_PIXEL_SIZE, polarOrig, polarBlur);
+    orig = mix(tileOrig, polarOrig, polarWeight);
+    blur = mix(tileBlur, polarBlur, polarWeight);
+  }
+
   vec3 sharp = clamp(orig + SHARPEN_STRENGTH * (orig - blur), 0.0, 1.0);
   float ir = sharp.x;
   float vis = sharp.y;

@@ -182,4 +182,85 @@ public sealed class SatelliteCloudsEndpointTests
         Assert.Equal(expectedStatus, response.StatusCode);
         Assert.Empty(upstreamHandler.Requests);
     }
+
+    [Theory]
+    [InlineData("north", "north")]
+    [InlineData("NORTH", "north")]
+    [InlineData("south", "south")]
+    public async Task ProxiesPolarCapPngWithHeadersCachingAndNormalizedPole(
+        string requestedPole,
+        string expectedNormalizedPole)
+    {
+        var upstreamHandler = new RecordingUpstreamHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(SamplePngBytes),
+        });
+
+        await using var factory = CreateFactory(upstreamHandler);
+        using var client = factory.CreateClient();
+
+        var firstResponse = await client.GetAsync($"/api/weather/satellite/polar/{requestedPole}.png");
+        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        Assert.Equal("image/png", firstResponse.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(SamplePngBytes, await firstResponse.Content.ReadAsByteArrayAsync());
+        Assert.Contains("no-store", firstResponse.Headers.CacheControl?.ToString() ?? string.Empty);
+
+        var recorded = Assert.Single(upstreamHandler.Requests);
+        Assert.Equal($"https://layers.extremum.org/v3/weather/satellite/polar/{expectedNormalizedPole}.png", recorded.Uri);
+        Assert.Matches(
+            new Regex("^gis-uuid=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"),
+            recorded.Cookie ?? string.Empty);
+
+        var cachedResponse = await client.GetAsync($"/api/weather/satellite/polar/{requestedPole.ToLowerInvariant()}.png");
+        Assert.Equal(HttpStatusCode.OK, cachedResponse.StatusCode);
+        Assert.Single(upstreamHandler.Requests);
+    }
+
+    [Theory]
+    [InlineData("/api/weather/satellite/polar/invalid.png")]
+    [InlineData("/api/weather/satellite/polar/east.png")]
+    public async Task RejectsInvalidPolarHemisphereWithoutCallingUpstream(string path)
+    {
+        var upstreamHandler = new RecordingUpstreamHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(SamplePngBytes),
+        });
+
+        await using var factory = CreateFactory(upstreamHandler);
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync(path);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(upstreamHandler.Requests);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NoContent)]
+    [InlineData(HttpStatusCode.NotFound)]
+    public async Task PolarCapPassesThroughUpstreamNoContentOrNotFoundAsNoContent(HttpStatusCode upstreamStatus)
+    {
+        var upstreamHandler = new RecordingUpstreamHandler(_ => new HttpResponseMessage(upstreamStatus));
+
+        await using var factory = CreateFactory(upstreamHandler);
+        using var client = factory.CreateClient();
+
+        var firstResponse = await client.GetAsync("/api/weather/satellite/polar/north.png");
+        Assert.Equal(HttpStatusCode.NoContent, firstResponse.StatusCode);
+
+        var cachedResponse = await client.GetAsync("/api/weather/satellite/polar/north.png");
+        Assert.Equal(HttpStatusCode.NoContent, cachedResponse.StatusCode);
+        Assert.Single(upstreamHandler.Requests);
+    }
+
+    [Fact]
+    public async Task PolarCapReturnsBadGatewayWhenUpstreamFails()
+    {
+        var upstreamHandler = new RecordingUpstreamHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
+
+        await using var factory = CreateFactory(upstreamHandler);
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/weather/satellite/polar/south.png");
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+    }
 }
