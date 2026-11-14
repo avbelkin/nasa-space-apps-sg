@@ -3,14 +3,20 @@ import test from 'node:test'
 import {
   clampGeolocationTargetZoom,
   clampLat,
+  computeGreatCircleDistanceKm,
+  DEFAULT_CENTER,
   DEFAULT_GEOLOCATION_MAX_ZOOM,
+  DEFAULT_ZOOM,
   createDefaultUrlHashState,
+  INITIAL_LOCATE_MIN_MOVE_DISTANCE_KM,
   LEGACY_URL_HASH_STORAGE_KEY,
   normalizeLng,
   parseUrlHash,
   resolveInitialUrlHashState,
   serializeStoredState,
   serializeUrlHash,
+  shouldMoveOnInitialLocate,
+  SINGAPORE_CENTER,
   syncUrlHashAndStorage,
   URL_HASH_STORAGE_KEY,
   type BrowserSyncTarget,
@@ -448,4 +454,58 @@ test('lights sits in the same registry: on by default and absent, lights=0 when 
     TODAY,
   )
   assert.equal(restored.state.showNightLights, false)
+})
+
+test('default viewport centers on Singapore at globe zoom z1.75', () => {
+  assert.deepEqual(SINGAPORE_CENTER, [103.8198, 1.3521])
+  assert.deepEqual(DEFAULT_CENTER, [103.8198, 1.3521])
+  assert.equal(DEFAULT_ZOOM, 1.75)
+
+  assert.equal(DEFAULT_URL_HASH_STATE.lat, 1.3521)
+  assert.equal(DEFAULT_URL_HASH_STATE.lng, 103.8198)
+  assert.equal(DEFAULT_URL_HASH_STATE.zoom, 1.75)
+
+  assert.equal(clampLat(Number.NaN), 1.3521)
+  assert.equal(normalizeLng(Number.NaN), 103.8198)
+})
+
+test('shouldMoveOnInitialLocate enforces 100 km bounce-prevention threshold from Singapore', () => {
+  assert.equal(INITIAL_LOCATE_MIN_MOVE_DISTANCE_KM, 100)
+
+  const nearbyLocations: readonly [string, [number, number]][] = [
+    ['Singapore center', [103.8198, 1.3521]],
+    ['Changi', [103.9915, 1.3644]],
+    ['Tuas', [103.6366, 1.3404]],
+    ['Johor Bahru', [103.7414, 1.4927]],
+    ['Batam', [104.0305, 1.0456]],
+  ]
+  for (const [label, coords] of nearbyLocations) {
+    const distanceKm = computeGreatCircleDistanceKm(SINGAPORE_CENTER, coords)
+    assert.ok(distanceKm < 100, `${label} should be < 100 km (got ${distanceKm.toFixed(2)} km)`)
+    assert.equal(shouldMoveOnInitialLocate(coords), false, `${label} should not trigger move`)
+  }
+
+  const distantLocations: readonly [string, [number, number]][] = [
+    ['Malacca', [102.2501, 2.1896]],
+    ['Kuala Lumpur', [101.6869, 3.139]],
+    ['Jakarta', [106.8456, -6.2088]],
+    ['London', [-0.1276, 51.5072]],
+  ]
+  for (const [label, coords] of distantLocations) {
+    const distanceKm = computeGreatCircleDistanceKm(SINGAPORE_CENTER, coords)
+    assert.ok(distanceKm >= 100, `${label} should be >= 100 km (got ${distanceKm.toFixed(2)} km)`)
+    assert.equal(shouldMoveOnInitialLocate(coords), true, `${label} should trigger move`)
+  }
+
+  const crossAntimeridianShort = computeGreatCircleDistanceKm([179.9, 0], [-179.9, 0])
+  assert.ok(
+    crossAntimeridianShort > 20 && crossAntimeridianShort < 25,
+    `expected ~22.2 km across antimeridian, got ${crossAntimeridianShort.toFixed(2)} km`,
+  )
+  assert.equal(shouldMoveOnInitialLocate([-179.9, 0], [179.9, 0]), false)
+  assert.equal(shouldMoveOnInitialLocate([-175, 0], [179, 0]), true)
+
+  assert.equal(Number.isNaN(computeGreatCircleDistanceKm(SINGAPORE_CENTER, [Number.NaN, 1.3521])), true)
+  assert.equal(shouldMoveOnInitialLocate([Number.NaN, 1.3521]), false)
+  assert.equal(shouldMoveOnInitialLocate([103.8198, Number.POSITIVE_INFINITY]), false)
 })

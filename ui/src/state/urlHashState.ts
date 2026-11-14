@@ -11,9 +11,11 @@ import {
 // builds, so its values say nothing about a visitor's choice and are ignored.
 export const URL_HASH_STORAGE_KEY = 'nasa_fire_calendar_state_v2'
 export const LEGACY_URL_HASH_STORAGE_KEY = 'nasa_fire_calendar_url_hash'
-export const DEFAULT_CENTER: [number, number] = [108, 8]
+export const SINGAPORE_CENTER: readonly [number, number] = [103.8198, 1.3521]
+export const DEFAULT_CENTER: [number, number] = [SINGAPORE_CENTER[0], SINGAPORE_CENTER[1]]
 export const DEFAULT_ZOOM = 1.75
 export const DEFAULT_GEOLOCATION_MAX_ZOOM = 7
+export const INITIAL_LOCATE_MIN_MOVE_DISTANCE_KM = 100
 export const MIN_ZOOM = 0
 export const MAX_ZOOM = 22
 
@@ -115,6 +117,64 @@ export function clampGeolocationTargetZoom(
   }
 
   return clampZoom(Math.min(effectiveMaxZoom, Math.max(MIN_ZOOM, candidateZoom)))
+}
+
+const EARTH_MEAN_RADIUS_KM = 6371.0088
+const DEG_TO_RAD = Math.PI / 180
+
+/** Computes the great-circle distance in kilometers between two `[lng, lat]` coordinates. */
+export function computeGreatCircleDistanceKm(
+  fromLngLat: readonly [number, number],
+  toLngLat: readonly [number, number],
+): number {
+  const [rawFromLng, rawFromLat] = fromLngLat
+  const [rawToLng, rawToLat] = toLngLat
+  // Validate raw inputs before clamping/wrapping so non-finite values do not become DEFAULT_CENTER.
+  if (
+    !Number.isFinite(rawFromLng) ||
+    !Number.isFinite(rawFromLat) ||
+    !Number.isFinite(rawToLng) ||
+    !Number.isFinite(rawToLat)
+  ) {
+    return Number.NaN
+  }
+
+  const fromLat = Math.min(90, Math.max(-90, rawFromLat))
+  const toLat = Math.min(90, Math.max(-90, rawToLat))
+  let dLngDeg = ((((rawToLng - rawFromLng + 180) % 360) + 360) % 360) - 180
+  if (dLngDeg === -180 && rawToLng - rawFromLng > 0) {
+    dLngDeg = 180
+  }
+
+  const dLatRad = (toLat - fromLat) * DEG_TO_RAD
+  const dLngRad = dLngDeg * DEG_TO_RAD
+  const sinHalfLat = Math.sin(dLatRad / 2)
+  const sinHalfLng = Math.sin(dLngRad / 2)
+  const a =
+    sinHalfLat * sinHalfLat +
+    Math.cos(fromLat * DEG_TO_RAD) * Math.cos(toLat * DEG_TO_RAD) * sinHalfLng * sinHalfLng
+  const clampedA = Math.min(1, Math.max(0, a))
+  return 2 * EARTH_MEAN_RADIUS_KM * Math.asin(Math.sqrt(clampedA))
+}
+
+/**
+ * Returns whether initial auto-locate should move the camera from `referenceCenter`,
+ * skipping small local offsets below `minMoveDistanceKm` to prevent camera bounce.
+ */
+export function shouldMoveOnInitialLocate(
+  locatedLngLat: readonly [number, number],
+  referenceCenter: readonly [number, number] = DEFAULT_CENTER,
+  minMoveDistanceKm = INITIAL_LOCATE_MIN_MOVE_DISTANCE_KM,
+): boolean {
+  const distanceKm = computeGreatCircleDistanceKm(referenceCenter, locatedLngLat)
+  if (!Number.isFinite(distanceKm)) {
+    return false
+  }
+  const effectiveThresholdKm =
+    Number.isFinite(minMoveDistanceKm) && minMoveDistanceKm >= 0
+      ? minMoveDistanceKm
+      : INITIAL_LOCATE_MIN_MOVE_DISTANCE_KM
+  return distanceKm >= effectiveThresholdKm
 }
 
 interface HashFeatureCodec {
