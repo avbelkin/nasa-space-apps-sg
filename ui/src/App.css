@@ -1,15 +1,16 @@
-/* Outer Controls Wrapper: wraps topbar, timeline, and side inspector around the map stage */
+/* Outer Controls Wrapper: wraps topbar, timeline, side inspector, and bottom legend around the map stage */
 .app-frame {
   display: grid;
   inline-size: 100%;
   min-block-size: 100dvh;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(56dvh, 1fr) auto auto;
+  grid-template-rows: auto minmax(56dvh, 1fr) auto auto auto;
   grid-template-areas:
     "topbar"
     "mapstage"
     "timeline"
-    "sidepanel";
+    "sidepanel"
+    "legend";
   gap: 0.75rem;
   padding: 0.75rem;
 }
@@ -18,11 +19,12 @@
   .app-frame {
     block-size: 100dvh;
     grid-template-columns: minmax(0, 1fr) minmax(19rem, 23rem);
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
     grid-template-areas:
       "topbar   topbar"
       "mapstage sidepanel"
-      "timeline sidepanel";
+      "timeline sidepanel"
+      "legend   legend";
   }
 }
 
@@ -145,11 +147,11 @@
   grid-template-columns: 0.75rem auto minmax(0, 1fr) auto 0.75rem;
   grid-template-rows: 0.75rem auto minmax(0, 1fr) auto 0.75rem;
   grid-template-areas:
-    ". .                . .              ."
-    ". hud-top-start    . hud-top-end    ."
-    ". .                . .              ."
-    ". hud-bottom-start . hud-bottom-end ."
-    ". .                . .              .";
+    ". .             . .              ."
+    ". hud-top-start . hud-top-end    ."
+    ". .             . .              ."
+    ". .             . hud-bottom-end ."
+    ". .             . .              .";
   gap: 0.5rem;
   border-radius: 0.75rem;
   border: 1px solid var(--border-subtle);
@@ -263,14 +265,6 @@
   gap: 0.35rem;
 }
 
-.map-hud-bottom-start {
-  grid-area: hud-bottom-start;
-  align-self: end;
-  justify-self: start;
-  display: grid;
-  gap: 0.4rem;
-}
-
 .map-hud-bottom-end {
   grid-area: hud-bottom-end;
   align-self: end;
@@ -343,15 +337,14 @@
 @container mapstage (inline-size < 36rem) {
   .map-stage {
     grid-template-columns: 0.5rem minmax(0, 1fr) 0.5rem;
-    grid-template-rows: 0.5rem auto auto minmax(0, 1fr) auto auto 0.5rem;
+    grid-template-rows: 0.5rem auto auto minmax(0, 1fr) auto 0.5rem;
     grid-template-areas:
-      ". .                ."
-      ". hud-top-start    ."
-      ". hud-top-end      ."
-      ". .                ."
-      ". hud-bottom-end   ."
-      ". hud-bottom-start ."
-      ". .                .";
+      ". .              ."
+      ". hud-top-start  ."
+      ". hud-top-end    ."
+      ". .              ."
+      ". hud-bottom-end ."
+      ". .              .";
   }
 
   .map-hud-top-end,
@@ -400,7 +393,55 @@
   color: #ffffff;
 }
 
-.hud-legend-header {
+/* Outer Bottom Map Anomaly & Orbit Legend */
+.legend-bar {
+  --legend-anomaly: #ea580c;
+  --legend-typical: #ca8a04;
+  --legend-below: #0284c7;
+  --legend-modis: #0891b2;
+  --legend-viirs: #059669;
+  --legend-user: #2563eb;
+  --legend-nadir-bg: rgb(146 180 222 / 0.35);
+  --legend-nadir-border: #3b6998;
+  --legend-wide-bg: rgb(244 154 116 / 0.22);
+  --legend-wide-border: #c25929;
+  --legend-geo-text: #92400e;
+
+  @media (prefers-color-scheme: dark) {
+    --legend-anomaly: #fb923c;
+    --legend-typical: #facc15;
+    --legend-below: #38bdf8;
+    --legend-modis: #22d3ee;
+    --legend-viirs: #34d399;
+    --legend-user: #60a5fa;
+    --legend-nadir-bg: rgb(146 180 222 / 0.28);
+    --legend-nadir-border: #92b4de;
+    --legend-wide-bg: rgb(244 154 116 / 0.16);
+    --legend-wide-border: #f49a74;
+    --legend-geo-text: #fde68a;
+  }
+
+  @supports (color: light-dark(white, black)) {
+    --legend-anomaly: light-dark(#ea580c, #fb923c);
+    --legend-typical: light-dark(#ca8a04, #facc15);
+    --legend-below: light-dark(#0284c7, #38bdf8);
+    --legend-modis: light-dark(#0891b2, #22d3ee);
+    --legend-viirs: light-dark(#059669, #34d399);
+    --legend-user: light-dark(#2563eb, #60a5fa);
+    --legend-nadir-bg: light-dark(rgb(146 180 222 / 0.35), rgb(146 180 222 / 0.28));
+    --legend-nadir-border: light-dark(#3b6998, #92b4de);
+    --legend-wide-bg: light-dark(rgb(244 154 116 / 0.22), rgb(244 154 116 / 0.16));
+    --legend-wide-border: light-dark(#c25929, #f49a74);
+    --legend-geo-text: light-dark(#92400e, #fde68a);
+  }
+
+  grid-area: legend;
+  padding: 0.6rem 1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.legend-header {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -408,23 +449,33 @@
   gap: 0.4rem 0.9rem;
 }
 
-.hud-coords {
-  font-size: 0.78rem;
-  font-variant-numeric: tabular-nums;
-  color: #cbd5e1;
+.legend-heading {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
-.hud-legend-list {
+.legend-coords {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.legend-list {
   margin: 0;
   padding: 0;
   list-style: none;
   display: flex;
   flex-wrap: wrap;
+  flex-wrap: balance;
   gap: 0.4rem 0.85rem;
   font-size: 0.78rem;
 }
 
-.hud-legend-list li {
+.legend-list li {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -436,23 +487,23 @@
 }
 
 .legend-glyph-anomaly {
-  color: #fb923c;
+  color: var(--legend-anomaly);
 }
 
 .legend-glyph-typical {
-  color: #facc15;
+  color: var(--legend-typical);
 }
 
 .legend-glyph-below {
-  color: #38bdf8;
+  color: var(--legend-below);
 }
 
 .legend-glyph-modis {
-  color: #22d3ee;
+  color: var(--legend-modis);
 }
 
 .legend-glyph-viirs {
-  color: #34d399;
+  color: var(--legend-viirs);
 }
 
 .legend-glyph-swath-nadir {
@@ -460,8 +511,8 @@
   inline-size: 0.85rem;
   block-size: 0.65rem;
   border-radius: 0.125rem;
-  background-color: rgb(146 180 222 / 0.25);
-  border: 1px solid rgb(146 180 222 / 0.65);
+  background-color: var(--legend-nadir-bg);
+  border: 1.5px solid var(--legend-nadir-border);
 }
 
 .legend-glyph-swath-wide {
@@ -469,18 +520,18 @@
   inline-size: 0.85rem;
   block-size: 0.65rem;
   border-radius: 0.125rem;
-  background-color: rgb(244 154 116 / 0.12);
-  border: 1px dashed rgb(244 154 116 / 0.55);
+  background-color: var(--legend-wide-bg);
+  border: 1.5px dashed var(--legend-wide-border);
 }
 
 .legend-glyph-user {
-  color: #60a5fa;
+  color: var(--legend-user);
 }
 
-.hud-geo-status {
+.legend-geo-status {
   margin: 0;
   font-size: 0.76rem;
-  color: #fde68a;
+  color: var(--legend-geo-text);
 }
 
 /* Outer Bottom Seasonal / Calendar Timeline Scrubber */
