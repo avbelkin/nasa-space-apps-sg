@@ -59,6 +59,16 @@ import {
   type SatelliteCloudLayerController,
 } from '../utils/satelliteCloudLayer'
 import {
+  createGlobeHaloLayer,
+  GLOBE_HALO_LAYER_ID,
+  type GlobeHaloLayerController,
+} from '../utils/globeHaloLayer'
+import {
+  createSpaceStarfieldController,
+  DEFAULT_VERTICAL_FOV_DEG,
+  type SpaceStarfieldController,
+} from '../utils/spaceStarfield'
+import {
   NADIR_SWATH_COLOR,
   NADIR_SWATH_FILL_OPACITY,
   NADIR_SWATH_STROKE_OPACITY,
@@ -797,9 +807,12 @@ export function EarthMapStage({
 }: EarthMapStageProps) {
   const stageRef = useRef<HTMLElement | null>(null)
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
+  const spaceCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const starfieldControllerRef = useRef<SpaceStarfieldController | null>(null)
   const mapInstanceRef = useRef<MapLibreMap | null>(null)
   const nightLightsLayerRef = useRef<NightLightsLayerController | null>(null)
   const cloudLayerRef = useRef<SatelliteCloudLayerController | null>(null)
+  const globeHaloLayerRef = useRef<GlobeHaloLayerController | null>(null)
   const satMarkersRef = useRef<Map<string, SatelliteMarkerEntry>>(new Map())
   const initialViewportRef = useRef<MapViewportState>(initialViewport)
   const userInteractedRef = useRef(false)
@@ -1125,6 +1138,32 @@ export function EarthMapStage({
   }
 
   useEffect(() => {
+    const canvas = spaceCanvasRef.current
+    if (!canvas) {
+      return
+    }
+    const controller = createSpaceStarfieldController({
+      canvas,
+      initialPose: {
+        lngDeg: initialViewportRef.current.lng,
+        latDeg: initialViewportRef.current.lat,
+        bearingDeg: 0,
+        pitchDeg: 0,
+        rollDeg: 0,
+        zoom: initialViewportRef.current.zoom,
+        fovDeg: DEFAULT_VERTICAL_FOV_DEG,
+        unixMs: Date.now(),
+        isGlobe: latestProjectionRef.current === 'globe',
+      },
+    })
+    starfieldControllerRef.current = controller
+    return () => {
+      controller.dispose()
+      starfieldControllerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
     const container = mapContainerRef.current
     if (!container) {
       return
@@ -1240,6 +1279,12 @@ export function EarthMapStage({
         if (!map) {
           return
         }
+        if (!map.getLayer(GLOBE_HALO_LAYER_ID)) {
+          const globeHaloLayer = createGlobeHaloLayer()
+          globeHaloLayerRef.current = globeHaloLayer
+          // Render atmospheric limb glow above clouds/surface and below satellite swaths/tracks.
+          map.addLayer(globeHaloLayer, 'satellite-swaths-wide-fill')
+        }
         setGeoJsonSourceData(map, 'fire-anomalies', latestGeoJsonRef.current)
         syncOrbitalSources(map, latestOrbitalStateRef.current)
         setGeoJsonSourceData(map, 'user-geolocation', latestUserGeoJsonRef.current)
@@ -1327,6 +1372,16 @@ export function EarthMapStage({
           }
         }
 
+        if (!map.getLayer(GLOBE_HALO_LAYER_ID)) {
+          try {
+            const globeHaloLayer = createGlobeHaloLayer()
+            map.addLayer(globeHaloLayer, 'satellite-swaths-wide-fill')
+            globeHaloLayerRef.current = globeHaloLayer
+          } catch {
+            globeHaloLayerRef.current = null
+          }
+        }
+
         // A map click selects the region in place; the list stays the keyboard path to regions.
         map.on('click', STATUS_MARK_LAYER_ID, (event: MapLayerMouseEvent) => {
           const regionId: unknown = event.features?.[0]?.properties?.id
@@ -1340,6 +1395,24 @@ export function EarthMapStage({
         })
         map.on('mouseleave', STATUS_MARK_LAYER_ID, () => {
           map?.getCanvas().style.removeProperty('cursor')
+        })
+      })
+
+      map.on('render', () => {
+        if (!map) {
+          return
+        }
+        const center = map.getCenter()
+        starfieldControllerRef.current?.updateCamera({
+          lngDeg: center.lng,
+          latDeg: center.lat,
+          bearingDeg: map.getBearing(),
+          pitchDeg: map.getPitch(),
+          rollDeg: map.getRoll(),
+          zoom: map.getZoom(),
+          fovDeg: map.getVerticalFieldOfView(),
+          unixMs: Date.now(),
+          isGlobe: latestProjectionRef.current === 'globe',
         })
       })
 
@@ -1393,6 +1466,7 @@ export function EarthMapStage({
       map?.remove()
       nightLightsLayerRef.current = null
       cloudLayerRef.current = null
+      globeHaloLayerRef.current = null
       mapInstanceRef.current = null
     }
   }, [])
@@ -1739,6 +1813,7 @@ export function EarthMapStage({
         </div>
       )}
 
+      <canvas ref={spaceCanvasRef} className="space-backdrop-canvas" aria-hidden="true" />
       <div ref={mapContainerRef} className="map-canvas" />
 
       {mapError && (
