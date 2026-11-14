@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
@@ -16,16 +17,14 @@ public sealed class FirmsClient(
 {
     public const string DefaultBbox = "95,-11,141,20";
     public const int DefaultLiveWindowHours = 24;
-    public const int MaxTileZoom = 12;
 
     private const string KeyStatusCacheKey = "firms:mapkey-status";
     private const string AvailabilityCacheKey = "firms:data-availability";
-    private const string GlobalSnapshotCacheKey = "firms:global-snapshot-v1";
     private static readonly TimeSpan KeyStatusCacheDuration = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan AvailabilityCacheDuration = TimeSpan.FromHours(6);
     private static readonly TimeSpan HotspotsCacheDuration = TimeSpan.FromMinutes(15);
-    private static readonly TimeSpan GlobalSnapshotCacheDuration = TimeSpan.FromMinutes(20);
-    private static readonly TimeSpan GlobalFailureBackoffDuration = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan AreaSnapshotCacheDuration = TimeSpan.FromMinutes(20);
+    private static readonly TimeSpan AreaFailureBackoffDuration = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan LiveResponseCacheDuration = TimeSpan.FromMinutes(5);
     private static readonly string[] LiveSpotColumns =
     [
@@ -42,8 +41,8 @@ public sealed class FirmsClient(
 
     private readonly SemaphoreSlim _statusLock = new(1, 1);
     private readonly SemaphoreSlim _hotspotsLock = new(1, 1);
-    private readonly SemaphoreSlim _globalSnapshotLock = new(1, 1);
-    private volatile CachedGlobalSnapshot? _lastGlobalSnapshot;
+    private readonly SemaphoreSlim _areaSnapshotLock = new(1, 1);
+    private readonly ConcurrentDictionary<string, CachedAreaSnapshot> _lastAreaSnapshots = new(StringComparer.Ordinal);
 
     private sealed record CachedKeyQuota(
         int? TransactionLimit,
@@ -51,16 +50,13 @@ public sealed class FirmsClient(
         string? TransactionInterval,
         string? ErrorMessage);
 
-    private sealed record CachedGlobalSnapshot(
+    private sealed record CachedAreaSnapshot(
         DateTimeOffset FetchedAtUtc,
         bool Stale,
         IReadOnlyList<FirmsHotspot> Spots);
 
     private readonly record struct BoundingBox(double West, double South, double East, double North)
     {
-        public bool Contains(double latitude, double longitude) =>
-            longitude >= West && longitude <= East && latitude >= South && latitude <= North;
-
         public string ToQueryString() => string.Join(',',
             West.ToString(CultureInfo.InvariantCulture),
             South.ToString(CultureInfo.InvariantCulture),
@@ -193,23 +189,20 @@ public sealed class FirmsClient(
         CancellationToken cancellationToken = default)
     {
         var windowHours = Math.Clamp(hours ?? DefaultLiveWindowHours, 1, 48);
+        var dayRange = windowHours <= 24 ? 2 : 3;
         var (sensorFilter, sources) = ResolveSources(string.IsNullOrWhiteSpace(sensor) ? "harmonized" : sensor);
-        BoundingBox? parsedBbox = string.IsNullOrWhiteSpace(bbox)
-            ? null
-            : ParseBoundingBox(bbox, enforceSpanLimit: false);
+        var area = ResolveLiveArea(bbox);
 
-        var snapshot = await GetGlobalSnapshotAsync(cancellationToken).ConfigureAwait(false);
-        var canUseGlobalCache = parsedBbox is null && windowHours == DefaultLiveWindowHours;
-        var responseCacheKey = $"firms:live:{snapshot.FetchedAtUtc.UtcTicks}:{sensorFilter}";
-        if (canUseGlobalCache &&
-            cache.TryGetValue(responseCacheKey, out FirmsLiveSpotsResponse? cachedResponse) &&
+        var snapshot = await GetAreaSnapshotAsync(area, dayRange, sources, cancellationToken).ConfigureAwait(false);
+        var responseCacheKey = $"firms:live:{snapshot.FetchedAtUtc.UtcTicks}:{sensorFilter}:{area}:{windowHours}";
+        if (cache.TryGetValue(responseCacheKey, out FirmsLiveSpotsResponse? cachedResponse) &&
             cachedResponse is not null)
         {
             return cachedResponse;
         }
 
         var nowUtc = DateTimeOffset.UtcNow;
-        var filtered = FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours, sources, parsedBbox);
+        var filtered = FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours);
 
         var sourceCounts = new Dictionary<int, int>();
         var modisCount = 0;
@@ -283,11 +276,7 @@ public sealed class FirmsClient(
             Columns: LiveSpotColumns,
             Spots: rows);
 
-        if (canUseGlobalCache)
-        {
-            cache.Set(responseCacheKey, response, LiveResponseCacheDuration);
-        }
-
+        cache.Set(responseCacheKey, response, LiveResponseCacheDuration);
         return response;
     }
 
@@ -298,67 +287,50 @@ public sealed class FirmsClient(
         CancellationToken cancellationToken = default)
     {
         var windowHours = Math.Clamp(hours ?? DefaultLiveWindowHours, 1, 48);
+        var dayRange = windowHours <= 24 ? 2 : 3;
         var (sensorFilter, sources) = ResolveSources(string.IsNullOrWhiteSpace(sensor) ? "harmonized" : sensor);
-        BoundingBox? parsedBbox = string.IsNullOrWhiteSpace(bbox)
-            ? null
-            : ParseBoundingBox(bbox, enforceSpanLimit: false);
+        var area = ResolveLiveArea(bbox);
 
-        var snapshot = await GetGlobalSnapshotAsync(cancellationToken).ConfigureAwait(false);
+        var snapshot = await GetAreaSnapshotAsync(area, dayRange, sources, cancellationToken).ConfigureAwait(false);
         var nowUtc = DateTimeOffset.UtcNow;
-        var filtered = FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours, sources, parsedBbox);
+        var filtered = FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours);
 
         return BuildGeoJsonFeatureCollection(filtered, nowUtc, snapshot, windowHours, sensorFilter);
     }
 
-    public async Task<FirmsGeoJsonFeatureCollection> GetTileSpotsGeoJsonAsync(
-        int zoom,
-        int x,
-        int y,
-        string? sensor = null,
-        int? hours = null,
-        CancellationToken cancellationToken = default)
-    {
-        if (zoom < 0 || zoom > MaxTileZoom || !WebMercatorTile.TryCreate(zoom, x, y, out var tile))
-        {
-            throw new ArgumentException($"Invalid tile coordinates z={zoom}, x={x}, y={y}. Supported zoom range is 0..{MaxTileZoom}.");
-        }
-
-        var windowHours = Math.Clamp(hours ?? DefaultLiveWindowHours, 1, 48);
-        var (sensorFilter, sources) = ResolveSources(string.IsNullOrWhiteSpace(sensor) ? "harmonized" : sensor);
-
-        var snapshot = await GetGlobalSnapshotAsync(cancellationToken).ConfigureAwait(false);
-        var nowUtc = DateTimeOffset.UtcNow;
-        var filtered = FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours, sources, bbox: null, tile: tile);
-
-        return BuildGeoJsonFeatureCollection(filtered, nowUtc, snapshot, windowHours, sensorFilter);
-    }
-
-    private async Task<CachedGlobalSnapshot> GetGlobalSnapshotAsync(CancellationToken cancellationToken)
+    private async Task<CachedAreaSnapshot> GetAreaSnapshotAsync(
+        string area,
+        int dayRange,
+        string[] sources,
+        CancellationToken cancellationToken)
     {
         if (!options.IsConfigured)
         {
             throw new InvalidOperationException("FIRMS_MAP_KEY is not configured.");
         }
 
-        if (cache.TryGetValue(GlobalSnapshotCacheKey, out CachedGlobalSnapshot? cached) && cached is not null)
+        var sourcesKey = string.Join(',', sources);
+        var snapshotCacheKey = $"firms:area-snapshot:{sourcesKey}:{area}:{dayRange}";
+
+        if (cache.TryGetValue(snapshotCacheKey, out CachedAreaSnapshot? cached) && cached is not null)
         {
             return cached;
         }
 
-        await _globalSnapshotLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _areaSnapshotLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (cache.TryGetValue(GlobalSnapshotCacheKey, out cached) && cached is not null)
+            if (cache.TryGetValue(snapshotCacheKey, out cached) && cached is not null)
             {
                 return cached;
             }
 
             var escapedKey = Uri.EscapeDataString(options.MapKey);
-            var fetchTasks = FirmsSensorCatalog.All.Select(async meta =>
+            var fetchTasks = sources.Select(async source =>
             {
-                var relativeUrl = $"api/area/csv/{escapedKey}/{meta.Dataset}/world/2";
+                var relativeUrl = $"api/area/csv/{escapedKey}/{source}/{area}/{dayRange}";
                 var csv = await FetchStringAsync(relativeUrl, cancellationToken).ConfigureAwait(false);
-                return FirmsCsvParser.ParseHotspots(csv, meta.Dataset);
+                return FirmsCsvParser.ParseHotspots(csv, source);
             });
 
             try
@@ -370,14 +342,16 @@ public sealed class FirmsClient(
                     .ThenBy(h => h.AcquiredAtUtc)
                     .ToArray();
 
-                var fresh = new CachedGlobalSnapshot(
+                var fresh = new CachedAreaSnapshot(
                     FetchedAtUtc: DateTimeOffset.UtcNow,
                     Stale: false,
                     Spots: combined);
 
-                _lastGlobalSnapshot = fresh;
-                cache.Set(GlobalSnapshotCacheKey, fresh, GlobalSnapshotCacheDuration);
-                logger.LogInformation("Refreshed global NASA FIRMS 48h snapshot with {Count} hotspots.", combined.Length);
+                _lastAreaSnapshots[snapshotCacheKey] = fresh;
+                cache.Set(snapshotCacheKey, fresh, AreaSnapshotCacheDuration);
+                logger.LogInformation(
+                    "Refreshed NASA FIRMS {DayRange}d snapshot for area={Area}, sources={Sources} ({Count} hotspots).",
+                    dayRange, area, sourcesKey, combined.Length);
                 return fresh;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -387,12 +361,14 @@ public sealed class FirmsClient(
             catch (Exception ex)
             {
                 var safeMessage = options.Redact(ex.Message);
-                logger.LogWarning("Failed to refresh global NASA FIRMS snapshot: {Error}", safeMessage);
+                logger.LogWarning(
+                    "Failed to refresh NASA FIRMS snapshot for area={Area}, sources={Sources}: {Error}",
+                    area, sourcesKey, safeMessage);
 
-                if (_lastGlobalSnapshot is not null)
+                if (_lastAreaSnapshots.TryGetValue(snapshotCacheKey, out var previous))
                 {
-                    var degraded = _lastGlobalSnapshot with { Stale = true };
-                    cache.Set(GlobalSnapshotCacheKey, degraded, GlobalFailureBackoffDuration);
+                    var degraded = previous with { Stale = true };
+                    cache.Set(snapshotCacheKey, degraded, AreaFailureBackoffDuration);
                     return degraded;
                 }
 
@@ -406,40 +382,29 @@ public sealed class FirmsClient(
         }
         finally
         {
-            _globalSnapshotLock.Release();
+            _areaSnapshotLock.Release();
         }
     }
+
+    private static string ResolveLiveArea(string? bbox) =>
+        string.IsNullOrWhiteSpace(bbox) || string.Equals(bbox.Trim(), "world", StringComparison.OrdinalIgnoreCase)
+            ? "world"
+            : ParseBoundingBox(bbox, enforceSpanLimit: false).ToQueryString();
 
     private static List<FirmsHotspot> FilterSnapshotSpots(
         IReadOnlyList<FirmsHotspot> spots,
         DateTimeOffset nowUtc,
-        int windowHours,
-        string[] sources,
-        BoundingBox? bbox,
-        WebMercatorTile? tile = null)
+        int windowHours)
     {
         var cutoff = nowUtc.AddHours(-windowHours);
-        var sourceSet = new HashSet<string>(sources, StringComparer.OrdinalIgnoreCase);
         var filtered = new List<FirmsHotspot>(Math.Min(spots.Count, 8192));
 
         foreach (var spot in spots)
         {
-            if (spot.AcquiredAtUtc <= cutoff || !sourceSet.Contains(spot.SourceDataset))
+            if (spot.AcquiredAtUtc > cutoff)
             {
-                continue;
+                filtered.Add(spot);
             }
-
-            if (bbox.HasValue && !bbox.Value.Contains(spot.Latitude, spot.Longitude))
-            {
-                continue;
-            }
-
-            if (tile.HasValue && !tile.Value.Contains(spot.Latitude, spot.Longitude))
-            {
-                continue;
-            }
-
-            filtered.Add(spot);
         }
 
         return filtered;
@@ -448,7 +413,7 @@ public sealed class FirmsClient(
     private static FirmsGeoJsonFeatureCollection BuildGeoJsonFeatureCollection(
         IReadOnlyList<FirmsHotspot> spots,
         DateTimeOffset nowUtc,
-        CachedGlobalSnapshot snapshot,
+        CachedAreaSnapshot snapshot,
         int windowHours,
         string sensorFilter)
     {

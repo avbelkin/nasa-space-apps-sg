@@ -21,6 +21,11 @@ import {
   type LiveSatelliteSnapshot,
   type SatelliteOrbitsResponse,
 } from './utils/satelliteOrbits'
+import {
+  fetchLiveFireSpots,
+  summarizeFireSpotsForSensor,
+  type FirmsLiveSpotsResponse,
+} from './utils/fireSpots'
 
 interface ApiStatusResponse {
   service: string
@@ -37,6 +42,7 @@ const apiBaseUrl = rawApiBaseUrl.trim().replace(/\/$/, '')
 const statusEndpoint = apiBaseUrl ? `${apiBaseUrl}/api/status` : '/api/status'
 const isProdUnconfigured = import.meta.env.PROD && !apiBaseUrl
 const ORBITS_REFRESH_INTERVAL_MS = 20 * 60 * 1000
+const FIRES_REFRESH_INTERVAL_MS = 15 * 60 * 1000
 
 const STATUS_LABELS: Record<ConnectionState, string> = {
   checking: 'Checking...',
@@ -61,6 +67,17 @@ function formatDeg(value: number, posHemisphere: string, negHemisphere: string):
   return `${Math.abs(value).toFixed(2)}\u00b0${hemisphere}`
 }
 
+function formatUtcTimestamp(iso: string | null): string {
+  if (!iso) {
+    return 'N/A'
+  }
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) {
+    return 'N/A'
+  }
+  return `${date.toISOString().slice(0, 16).replace('T', ' ')} UTC`
+}
+
 function App() {
   const [initialResolution] = useState(resolveInitialUrlHashState)
   const [viewMode, setViewMode] = useState<ViewMode>(initialResolution.state.viewMode)
@@ -76,6 +93,10 @@ function App() {
   const [showOrbits, setShowOrbits] = useState<boolean>(initialResolution.state.showOrbits)
   const [showClouds, setShowClouds] = useState<boolean>(initialResolution.state.showClouds)
   const [cloudRefreshNonce, setCloudRefreshNonce] = useState<number>(0)
+  const [showFires, setShowFires] = useState<boolean>(
+    () => initialResolution.state.extraParams?.fires !== '0',
+  )
+  const [pulsePaused, setPulsePaused] = useState<boolean>(false)
   const [viewport, setViewport] = useState<MapViewportState>(() => ({
     zoom: initialResolution.state.zoom,
     lat: initialResolution.state.lat,
@@ -100,6 +121,10 @@ function App() {
   const [orbitsPayload, setOrbitsPayload] = useState<SatelliteOrbitsResponse | null>(null)
   const [orbitsError, setOrbitsError] = useState<string | null>(null)
   const [nowUnixMs, setNowUnixMs] = useState<number>(() => Date.now())
+
+  const [fireSpotsPayload, setFireSpotsPayload] = useState<FirmsLiveSpotsResponse | null>(null)
+  const [fireSpotsLoading, setFireSpotsLoading] = useState<boolean>(!isProdUnconfigured)
+  const [fireSpotsError, setFireSpotsError] = useState<string | null>(null)
 
   useEffect(() => {
     lastSyncedHashRef.current = syncUrlHashAndStorage({
@@ -138,6 +163,7 @@ function App() {
       setSelectedMonth(parsed.selectedMonth)
       setShowOrbits(parsed.showOrbits)
       setShowClouds(parsed.showClouds)
+      setShowFires(parsed.extraParams?.fires !== '0')
       setExtraParams(parsed.extraParams)
       setViewport({
         zoom: parsed.zoom,
@@ -181,6 +207,30 @@ function App() {
     setOrbitsError(error instanceof Error ? error.message : 'Orbit feed unavailable')
   }
 
+  const applyFiresSuccess = (data: FirmsLiveSpotsResponse) => {
+    setFireSpotsPayload(data)
+    setFireSpotsError(null)
+    setFireSpotsLoading(false)
+  }
+
+  const applyFiresFailure = (error: unknown) => {
+    setFireSpotsError(error instanceof Error ? error.message : 'NASA FIRMS feed unavailable')
+    setFireSpotsLoading(false)
+  }
+
+  const handleShowFiresChange = (next: boolean) => {
+    setShowFires(next)
+    setExtraParams((prev) => {
+      const nextParams = { ...(prev ?? {}) }
+      if (next) {
+        delete nextParams.fires
+      } else {
+        nextParams.fires = '0'
+      }
+      return Object.keys(nextParams).length > 0 ? nextParams : undefined
+    })
+  }
+
   const handleCheckBackend = () => {
     if (isProdUnconfigured) {
       setConnectionState('unconfigured')
@@ -192,8 +242,11 @@ function App() {
     setErrorMessage(null)
     setOrbitsError(null)
     setCloudRefreshNonce((value) => value + 1)
+    setFireSpotsError(null)
+    setFireSpotsLoading(true)
     void fetchApiStatus().then(applySuccess, applyFailure)
     void fetchSatelliteOrbits(apiBaseUrl).then(applyOrbitsSuccess, applyOrbitsFailure)
+    void fetchLiveFireSpots(apiBaseUrl).then(applyFiresSuccess, applyFiresFailure)
   }
 
   useEffect(() => {
@@ -229,11 +282,29 @@ function App() {
       )
     }
 
+    const refreshFires = () => {
+      void fetchLiveFireSpots(apiBaseUrl, controller.signal).then(
+        (data) => {
+          if (!controller.signal.aborted) {
+            applyFiresSuccess(data)
+          }
+        },
+        (error: unknown) => {
+          if (!controller.signal.aborted) {
+            applyFiresFailure(error)
+          }
+        },
+      )
+    }
+
     refreshOrbits()
-    const refreshTimer = window.setInterval(refreshOrbits, ORBITS_REFRESH_INTERVAL_MS)
+    refreshFires()
+    const orbitsTimer = window.setInterval(refreshOrbits, ORBITS_REFRESH_INTERVAL_MS)
+    const firesTimer = window.setInterval(refreshFires, FIRES_REFRESH_INTERVAL_MS)
 
     return () => {
-      window.clearInterval(refreshTimer)
+      window.clearInterval(orbitsTimer)
+      window.clearInterval(firesTimer)
       controller.abort()
     }
   }, [])
@@ -278,6 +349,11 @@ function App() {
       requestId: ++focusRequestSeqRef.current,
     })
   }
+
+  const fireSummary = useMemo(
+    () => summarizeFireSpotsForSensor(fireSpotsPayload, sensorFilter),
+    [fireSpotsPayload, sensorFilter],
+  )
 
   const tleSourceSummary = useMemo(() => {
     if (!orbitsPayload || orbitsPayload.satellites.length === 0) {
@@ -366,6 +442,11 @@ function App() {
         }}
         selectedSatelliteId={selectedSatelliteId}
         onSelectSatellite={handleSelectSatellite}
+        fireSpotsPayload={fireSpotsPayload}
+        showFires={showFires}
+        onShowFiresChange={handleShowFiresChange}
+        pulsePaused={pulsePaused}
+        onPulsePausedChange={setPulsePaused}
       />
 
       <section className="timeline-bar wrapper-surface" aria-labelledby="timeline-heading">
@@ -420,6 +501,63 @@ function App() {
           <p className="panel-note">
             Illustrative stub harmonizer data across <code>{sensorFilter}</code> mode; select a region below to focus Earth.
           </p>
+        </section>
+
+        <section className="panel-section" aria-labelledby="live-fires-heading">
+          <h3 id="live-fires-heading">Live Active Fire Spots (NASA FIRMS &middot; 24h)</h3>
+          {isProdUnconfigured ? (
+            <p className="panel-note">
+              Backend URL not configured (<code>VITE_API_BASE_URL</code>). Connect the Cloud Run API or run the local backend to stream live NASA FIRMS active fire spots.
+            </p>
+          ) : fireSpotsError && !fireSpotsPayload ? (
+            <p className="panel-note">
+              Live NASA FIRMS feed unavailable ({fireSpotsError}). Displaying illustrative regional baselines until backend connectivity is restored.
+            </p>
+          ) : fireSpotsLoading && !fireSpotsPayload ? (
+            <p className="panel-note">
+              Fetching global 24h NASA FIRMS hotspots (MODIS 1 km &amp; VIIRS 375 m)&hellip;
+            </p>
+          ) : fireSpotsPayload ? (
+            <>
+              <div className="baseline-compare">
+                <div className="metric-tile">
+                  <span className="metric-label">Active Spots (24h)</span>
+                  <span className="metric-value">
+                    {fireSummary.totalCount.toLocaleString('en-US')}
+                  </span>
+                </div>
+                <div className="metric-tile">
+                  <span className="metric-label">Peak FRP</span>
+                  <span className="metric-value">{fireSummary.maxFrpMw.toFixed(1)} MW</span>
+                </div>
+                <div className="metric-tile">
+                  <span className="metric-label">MODIS 1km</span>
+                  <span className="metric-value">
+                    {fireSummary.modisCount.toLocaleString('en-US')}
+                  </span>
+                </div>
+                <div className="metric-tile">
+                  <span className="metric-label">VIIRS 375m</span>
+                  <span className="metric-value">
+                    {fireSummary.viirsCount.toLocaleString('en-US')}
+                  </span>
+                </div>
+              </div>
+              <p className="panel-note">
+                Latest detection: <strong>{formatUtcTimestamp(fireSummary.latestAcquiredAtUtc)}</strong>{' '}
+                &middot; Snapshot fetched {formatUtcTimestamp(fireSpotsPayload.fetchedAtUtc)}
+                {fireSpotsPayload.stale ? ' (cached fallback)' : ''}.
+              </p>
+              <p className="panel-note">
+                Pulse strength reflects detection age (&lt;24h), dot scale reflects Fire Radiative Power (MW), and opacity reflects sensor confidence. Hover or click spots on Earth to inspect details.
+              </p>
+              {fireSpotsError && (
+                <p className="panel-note">
+                  Latest refresh failed ({fireSpotsError}); showing cached snapshot.
+                </p>
+              )}
+            </>
+          ) : null}
         </section>
 
         <section className="panel-section" aria-labelledby="orbits-heading">
@@ -557,7 +695,7 @@ function App() {
             <div className="meta-row">
               <dt>Active-Fire &amp; Sensor Reference</dt>
               <dd>
-                MODIS (NASA EOS Terra &amp; Aqua) and VIIRS (NOAA/NASA JPSS) swath parameters and target hotspot schema via{' '}
+                Live last-24h global active-fire hotspots (MODIS Collection 6.1 1 km &amp; NOAA/NASA JPSS VIIRS 375 m) via{' '}
                 <a
                   href="https://firms.modaps.eosdis.nasa.gov/"
                   target="_blank"
@@ -565,7 +703,7 @@ function App() {
                 >
                   NASA FIRMS
                 </a>{' '}
-                (seasonal anomaly values shown are illustrative baselines pending live FIRMS feed integration).
+                (monthly seasonal calendar bars and regional indices remain illustrative baselines).
               </dd>
             </div>
             <div className="meta-row">

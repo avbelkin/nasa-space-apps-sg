@@ -11,11 +11,11 @@
 ## Public Availability
 
 - **Live Web UI (GitHub Pages)**: [https://avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg) — publicly accessible React + MapLibre 3D globe SPA deployed automatically from `main` via [`.github/workflows/deploy-ui.yml`](.github/workflows/deploy-ui.yml).
-- **Backend API (Google Cloud Run, `asia-southeast1`)**: `https://earth-fire-calendar-api-354cntvldq-as.a.run.app` (`/health`, `/api/status`, `/api/firms/status`, `/api/hotspots`, `/api/nasa/status`, `/api/nasa/epic`, `/api/nasa/wildfires`, `/api/satellites/orbits`).
+- **Backend API (Google Cloud Run, `asia-southeast1`)**: `https://earth-fire-calendar-api-354cntvldq-as.a.run.app` (`/health`, `/api/status`, `/api/firms/status`, `/api/fires/spots`, `/api/fires/spots.geojson`, `/api/hotspots`, `/api/nasa/status`, `/api/nasa/epic`, `/api/nasa/wildfires`, `/api/satellites/orbits`).
 
 ## Stack
 
-- **`ui/`** — Pure React + TypeScript + Vite + **MapLibre GL JS** (`maplibre-gl`) static SPA published to **GitHub Pages**, defaulting to a **3D Globe** view over **EOX Sentinel-2 Cloudless** imagery inside an outer CSS Grid wrapper and nested CSS Grid map stage with over-map controls.
+- **`ui/`** — Pure React + TypeScript + Vite + **MapLibre GL JS** (`maplibre-gl`) static SPA published to **GitHub Pages**, defaulting to a **3D Globe** view over **EOX Sentinel-2 Cloudless** imagery inside an outer CSS Grid wrapper and nested CSS Grid map stage with over-map controls, live 24h NASA FIRMS WebGL pulsing active-fire spots, and CelesTrak satellite orbits.
 - **`backend/`** — ASP.NET Core (`.NET 10`) Minimal API containerized for **Google Cloud Run**.
 
 ## Team Git Workflow
@@ -49,6 +49,8 @@ Endpoints:
 - `GET /health`
 - `GET /api/status` — Service metadata plus safe `FIRMS_MAP_KEY` & `NASA_API_KEY` configuration/format diagnostics (reads env vars / configuration / Windows User env in Development)
 - `GET /api/firms/status` — Cached NASA FIRMS `mapkey_status` quota check & `data_availability` windows
+- `GET /api/fires/spots?hours=1..48&sensor=harmonized|modis|viirs&bbox=w,s,e,n` — Cached 20-minute rolling 24h (`MODIS_NRT`, `VIIRS_NOAA20_NRT`, `VIIRS_NOAA21_NRT`) compact fire spot feed queried directly from NASA FIRMS Area API (`api/area/csv`)
+- `GET /api/fires/spots.geojson?hours=1..48&sensor=harmonized|modis|viirs&bbox=w,s,e,n` — GeoJSON FeatureCollection variant of the cached NASA FIRMS active-fire Area API feed
 - `GET /api/hotspots?bbox=west,south,east,north&days=1..5&sensor=all|modis|viirs` — Cached live MODIS & VIIRS active-fire detections from NASA FIRMS
 - `GET /api/nasa/status` — Cached `api.nasa.gov` (`NASA_API_KEY`) reachability, `X-RateLimit-Limit` / `Remaining` quota, and latest DSCOVR EPIC observation check
 - `GET /api/nasa/epic` — Cached latest DSCOVR EPIC natural-color Earth imagery metadata & archive PNG URLs via `api.nasa.gov`

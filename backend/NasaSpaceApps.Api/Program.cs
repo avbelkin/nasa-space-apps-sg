@@ -242,17 +242,6 @@ app.MapGet("/api/fires/spots.geojson", (
     CancellationToken cancellationToken) =>
     ExecuteFirmsQueryAsync(firms, () => firmsClient.GetLiveSpotsGeoJsonAsync(sensor, hours, bbox, cancellationToken)));
 
-app.MapGet("/api/fires/spots/{z:int}/{x:int}/{y:int}.geojson", (
-    int z,
-    int x,
-    int y,
-    string? sensor,
-    int? hours,
-    FirmsOptions firms,
-    FirmsClient firmsClient,
-    CancellationToken cancellationToken) =>
-    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetTileSpotsGeoJsonAsync(z, x, y, sensor, hours, cancellationToken)));
-
 app.MapGet("/api/satellites/orbits", async (
     int? pastMinutes,
     int? futureMinutes,
