@@ -38,7 +38,8 @@ const ORBITS_REFRESH_INTERVAL_MS = 20 * 60 * 1000
 const FOCUS_ZOOM = 3.6
 
 function App() {
-  const [initialResolution] = useState(resolveInitialUrlHashState)
+  const [todayMonth] = useState(() => new Date().getMonth())
+  const [initialResolution] = useState(() => resolveInitialUrlHashState())
   // No UI for the view mode any more; kept so the `mode` key in old links still round-trips.
   const [viewMode, setViewMode] = useState<ViewMode>(initialResolution.state.viewMode)
   const [sensorFilter, setSensorFilter] = useState<SensorFilter>(
@@ -316,7 +317,11 @@ function App() {
         onSelectRegion={handleSelectRegionOnMap}
       />
 
-      <MonthStrip selectedMonth={selectedMonth} onSelectMonth={setSelectedMonth} />
+      <MonthStrip
+        selectedMonth={selectedMonth}
+        todayMonth={todayMonth}
+        onSelectMonth={setSelectedMonth}
+      />
 
       <SidePanel
         selectedMonth={selectedMonth}
