@@ -867,7 +867,7 @@ export function EarthMapStage({
 
   const [hoverSpotCard, setHoverSpotCard] = useState<SpotTooltipCardState | null>(null)
   const [pinnedSpotCard, setPinnedSpotCard] = useState<SpotTooltipCardState | null>(null)
-  const [reducedMotion, setReducedMotion] = useState(false)
+  const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion)
   const visibleHoverSpotCard =
     showFires && hoverSpotCard && hoverSpotCard.sensorFilter === sensorFilter
       ? hoverSpotCard

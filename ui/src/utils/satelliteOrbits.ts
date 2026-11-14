@@ -143,6 +143,10 @@ const DEFAULT_SATELLITE_STYLE: SatelliteVisualStyle = {
 }
 
 export const SATELLITE_ANIMATION_INTERVAL_MS = 500
+export const SATELLITE_ORBITS_REFRESH_INTERVAL_MS = 60_000
+export const SATELLITE_ORBITS_IDLE_REFRESH_INTERVAL_MS = 20 * 60 * 1000
+export const SATELLITE_HUD_VIEWPORT_DEBOUNCE_MS = 350
+export const SATELLITE_HUD_MIN_MOVE_KM = 25
 // Swath hues live in the shared data palette; re-exported here next to their opacities
 export const NADIR_SWATH_COLOR = SWATH_COLORS.nadir
 export const NADIR_SWATH_FILL_OPACITY = 0.14
@@ -155,6 +159,7 @@ export const WIDE_SWATH_DASH_ARRAY: [number, number] = [4, 6]
 const MAX_HUD_FRESHNESS_ITEMS = 3
 const MINUTES_PER_HOUR = 60
 const MINUTES_PER_DAY = MINUTES_PER_HOUR * 24
+const EARTH_MEAN_RADIUS_KM = 6371
 
 const DEG_TO_RAD = Math.PI / 180
 const RAD_TO_DEG = 180 / Math.PI
@@ -441,15 +446,122 @@ function formatDurationBrief(minutes: number): string {
   return `${days}d`
 }
 
+/** Computes great-circle distance in kilometers between two WGS84/spherical coordinates. */
+export function computeGreatCircleDistanceKm(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const lat1 = a.lat * DEG_TO_RAD
+  const lat2 = b.lat * DEG_TO_RAD
+  const dLat = lat2 - lat1
+  const dLng = normalizeLng(b.lng - a.lng) * DEG_TO_RAD
+  const sinLat = Math.sin(dLat * 0.5)
+  const sinLng = Math.sin(dLng * 0.5)
+  const h = sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng
+  const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)))
+  return EARTH_MEAN_RADIUS_KM * c
+}
+
+/** Returns true when the map center has moved far enough to warrant re-evaluating HUD overpasses. */
+export function hasSatelliteHudCenterMoved(
+  previous: { lat: number; lng: number } | null | undefined,
+  next: { lat: number; lng: number },
+  minMoveKm: number = SATELLITE_HUD_MIN_MOVE_KM,
+): boolean {
+  if (!Number.isFinite(next.lat) || !Number.isFinite(next.lng)) {
+    return false
+  }
+  if (!previous || !Number.isFinite(previous.lat) || !Number.isFinite(previous.lng)) {
+    return true
+  }
+  return computeGreatCircleDistanceKm(previous, next) >= minMoveKm
+}
+
+/** Whole elapsed minutes since the orbit payload was generated, clamped at zero. */
+export function computeSatelliteHudElapsedMinutes(
+  generatedAtUtc: string | number | null | undefined,
+  nowUnixMs: number | undefined,
+): number {
+  const generatedAtMs =
+    typeof generatedAtUtc === 'number'
+      ? generatedAtUtc
+      : typeof generatedAtUtc === 'string'
+        ? Date.parse(generatedAtUtc)
+        : Number.NaN
+  if (
+    !Number.isFinite(generatedAtMs) ||
+    typeof nowUnixMs !== 'number' ||
+    !Number.isFinite(nowUnixMs)
+  ) {
+    return 0
+  }
+  return Math.max(0, Math.floor((nowUnixMs - generatedAtMs) / 60_000))
+}
+
+/** Advances cached satellite HUD overpass freshness entries forward by whole elapsed minutes. */
+export function advanceSatelliteHudEntries(
+  hudEntries: readonly SatelliteHudEntry[],
+  elapsedMinutes: number,
+): SatelliteHudEntry[] {
+  const wholeMinutes = Number.isFinite(elapsedMinutes) ? Math.max(0, Math.floor(elapsedMinutes)) : 0
+  if (wholeMinutes <= 0) {
+    return [...hudEntries]
+  }
+  return hudEntries.map((entry) => {
+    if (
+      typeof entry.nextPassMinutes === 'number' &&
+      Number.isFinite(entry.nextPassMinutes) &&
+      wholeMinutes >= entry.nextPassMinutes
+    ) {
+      const minutesSincePass = wholeMinutes - entry.nextPassMinutes
+      return {
+        ...entry,
+        minutesSincePass,
+        isIngested: minutesSincePass >= entry.ingestionLagMinutes,
+        nextPassMinutes: null,
+      }
+    }
+    const minutesSincePass = entry.minutesSincePass + wholeMinutes
+    const nextPassMinutes =
+      typeof entry.nextPassMinutes === 'number' && Number.isFinite(entry.nextPassMinutes)
+        ? Math.max(1, entry.nextPassMinutes - wholeMinutes)
+        : null
+    return {
+      ...entry,
+      minutesSincePass,
+      isIngested: entry.isIngested || minutesSincePass >= entry.ingestionLagMinutes,
+      nextPassMinutes,
+    }
+  })
+}
+
+export interface FormatSatelliteHudOptions {
+  sensorFilter: SensorFilter
+  showOrbits: boolean
+  generatedAtUtc?: string | number | null
+  nowUnixMs?: number
+  elapsedMinutes?: number
+}
+
 export function formatSatelliteHudSection(
   hudEntries: readonly SatelliteHudEntry[] | null | undefined,
-  options: { sensorFilter: SensorFilter; showOrbits: boolean },
+  options: FormatSatelliteHudOptions,
 ): SatelliteHudSection | null {
   if (!options.showOrbits || !Array.isArray(hudEntries) || hudEntries.length === 0) {
     return null
   }
 
-  const matching = hudEntries.filter((entry) =>
+  const elapsedMinutes =
+    options.elapsedMinutes !== undefined
+      ? Number.isFinite(options.elapsedMinutes)
+        ? Math.max(0, Math.floor(options.elapsedMinutes))
+        : 0
+      : computeSatelliteHudElapsedMinutes(options.generatedAtUtc, options.nowUnixMs)
+
+  const effectiveEntries =
+    elapsedMinutes > 0 ? advanceSatelliteHudEntries(hudEntries, elapsedMinutes) : hudEntries
+
+  const matching = effectiveEntries.filter((entry) =>
     shouldIncludeSatelliteInHud(entry, options.sensorFilter),
   )
   if (matching.length === 0) {

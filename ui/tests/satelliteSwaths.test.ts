@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  advanceSatelliteHudEntries,
+  computeGreatCircleDistanceKm,
   computeLiveOrbitalState,
+  computeSatelliteHudElapsedMinutes,
   formatSatelliteHudSection,
+  hasSatelliteHudCenterMoved,
   NADIR_SWATH_COLOR,
   NADIR_SWATH_FILL_OPACITY,
   NADIR_SWATH_STROKE_OPACITY,
   SATELLITE_ANIMATION_INTERVAL_MS,
+  SATELLITE_HUD_MIN_MOVE_KM,
   WIDE_SWATH_COLOR,
   WIDE_SWATH_DASH_ARRAY,
   WIDE_SWATH_FILL_OPACITY,
@@ -221,4 +226,107 @@ test('computeLiveOrbitalState builds separate 49-vertex wide and nadir swaths pl
   assert.equal(hidden.wideSwathsGeoJson.features.length, 0)
   assert.equal(hidden.nadirSwathsGeoJson.features.length, 0)
   assert.equal(hidden.positionsGeoJson.features.length, 0)
+})
+
+test('hasSatelliteHudCenterMoved respects minMoveKm threshold and antimeridian wrap', () => {
+  const singapore = { lat: 1.3521, lng: 103.8198 }
+  assert.equal(hasSatelliteHudCenterMoved(null, singapore), true)
+  assert.equal(hasSatelliteHudCenterMoved(singapore, { lat: 1.4, lng: 103.85 }), false)
+  assert.equal(hasSatelliteHudCenterMoved(singapore, { lat: 1.8, lng: 103.8198 }), true)
+
+  // Antimeridian crossing: 0.1 deg apart (~11 km at equator) vs 1.0 deg apart (~111 km at equator)
+  const nearEast = { lat: 0, lng: 179.95 }
+  const nearWest = { lat: 0, lng: -179.95 }
+  assert.ok(computeGreatCircleDistanceKm(nearEast, nearWest) < SATELLITE_HUD_MIN_MOVE_KM)
+  assert.equal(hasSatelliteHudCenterMoved(nearEast, nearWest), false)
+
+  const farEast = { lat: 0, lng: 179.5 }
+  const farWest = { lat: 0, lng: -179.5 }
+  assert.ok(computeGreatCircleDistanceKm(farEast, farWest) >= SATELLITE_HUD_MIN_MOVE_KM)
+  assert.equal(hasSatelliteHudCenterMoved(farEast, farWest), true)
+})
+
+test('formatSatelliteHudSection advances elapsed minutes, flips processing to ready, and handles pass rollover', () => {
+  const generatedAtUtc = '2026-11-14T15:00:00Z'
+  const generatedAtMs = Date.parse(generatedAtUtc)
+
+  assert.equal(computeSatelliteHudElapsedMinutes(generatedAtUtc, generatedAtMs + 59_000), 0)
+  assert.equal(computeSatelliteHudElapsedMinutes(generatedAtUtc, generatedAtMs + 60_000), 1)
+  assert.equal(computeSatelliteHudElapsedMinutes(generatedAtUtc, generatedAtMs - 5_000), 0)
+
+  const hudEntries: SatelliteHudEntry[] = [
+    {
+      noradId: 43013,
+      name: 'NOAA-20',
+      minutesSincePass: 85,
+      ingestionLagMinutes: 90,
+      isIngested: false,
+      isNadir: true,
+      nextPassMinutes: 15,
+      layerVariantIds: ['viirs', 'harmonized', 'wF'],
+    },
+    {
+      noradId: 25994,
+      name: 'Terra',
+      minutesSincePass: 140,
+      ingestionLagMinutes: 120,
+      isIngested: true,
+      isNadir: false,
+      nextPassMinutes: 10,
+      layerVariantIds: ['modis', 'harmonized', 'wF'],
+    },
+    {
+      noradId: 54234,
+      name: 'NOAA-21',
+      minutesSincePass: 200,
+      ingestionLagMinutes: 90,
+      isIngested: true,
+      isNadir: false,
+      nextPassMinutes: 25,
+      layerVariantIds: ['viirs', 'harmonized', 'wF'],
+    },
+  ]
+
+  // Sub-minute elapsed delta keeps original snapshot without flickering
+  const initialSection = formatSatelliteHudSection(hudEntries, {
+    sensorFilter: 'harmonized',
+    showOrbits: true,
+    generatedAtUtc,
+    nowUnixMs: generatedAtMs + 45_000,
+  })
+  assert.ok(initialSection)
+  assert.equal(initialSection.items[0].value, '1.4h ago')
+  assert.equal(initialSection.items[0].badge, 'processing')
+  assert.equal(initialSection.summary, 'Next: Terra in ~10m')
+
+  // +6 minutes: NOAA-20 crosses 90m ingestion lag -> flips processing to ready; Terra next pass shrinks to 4m
+  const readySection = formatSatelliteHudSection(hudEntries, {
+    sensorFilter: 'harmonized',
+    showOrbits: true,
+    generatedAtUtc,
+    nowUnixMs: generatedAtMs + 6 * 60_000,
+  })
+  assert.ok(readySection)
+  assert.equal(readySection.items[0].label, 'NOAA-20')
+  assert.equal(readySection.items[0].value, '1.5h ago')
+  assert.equal(readySection.items[0].badge, 'ready')
+  assert.equal(readySection.items[0].detail, '')
+  assert.equal(readySection.summary, 'Next: Terra in ~4m')
+
+  // +12 minutes: Terra passes overhead (nextPassMinutes=10 -> 2m ago, processing) and moves to top; summary updates to NOAA-20
+  const rolledEntries = advanceSatelliteHudEntries(hudEntries, 12)
+  assert.equal(rolledEntries[1].minutesSincePass, 2)
+  assert.equal(rolledEntries[1].isIngested, false)
+  assert.equal(rolledEntries[1].nextPassMinutes, null)
+
+  const rolloverSection = formatSatelliteHudSection(hudEntries, {
+    sensorFilter: 'harmonized',
+    showOrbits: true,
+    elapsedMinutes: 12,
+  })
+  assert.ok(rolloverSection)
+  assert.equal(rolloverSection.items[0].label, 'Terra')
+  assert.equal(rolloverSection.items[0].value, '2m ago')
+  assert.equal(rolloverSection.items[0].badge, 'processing')
+  assert.equal(rolloverSection.summary, 'Next: NOAA-20 in ~3m')
 })
