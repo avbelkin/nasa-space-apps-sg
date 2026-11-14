@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import { EarthMapStage } from './components/EarthMapStage'
+import { EarthMapStage, type CameraFocusRequest } from './components/EarthMapStage'
 import {
   evaluateRegionsForMonth,
   MONTHLY_PROFILE,
@@ -8,6 +8,13 @@ import {
   type SensorFilter,
   type ViewMode,
 } from './data/stubSeasonalData'
+import {
+  DEFAULT_GEOLOCATION_MAX_ZOOM,
+  parseUrlHash,
+  resolveInitialUrlHashState,
+  syncUrlHashAndStorage,
+  type MapViewportState,
+} from './state/urlHashState'
 import {
   computeLiveOrbitalState,
   fetchSatelliteOrbits,
@@ -55,14 +62,31 @@ function formatDeg(value: number, posHemisphere: string, negHemisphere: string):
 }
 
 function App() {
-  const [viewMode, setViewMode] = useState<ViewMode>('anomaly')
-  const [sensorFilter, setSensorFilter] = useState<SensorFilter>('harmonized')
-  const [projectionMode, setProjectionMode] = useState<ProjectionMode>('globe')
-  const [selectedMonth, setSelectedMonth] = useState<number>(8)
+  const [initialResolution] = useState(resolveInitialUrlHashState)
+  const [viewMode, setViewMode] = useState<ViewMode>(initialResolution.state.viewMode)
+  const [sensorFilter, setSensorFilter] = useState<SensorFilter>(
+    initialResolution.state.sensorFilter,
+  )
+  const [projectionMode, setProjectionMode] = useState<ProjectionMode>(
+    initialResolution.state.projectionMode,
+  )
+  const [selectedMonth, setSelectedMonth] = useState<number>(
+    initialResolution.state.selectedMonth,
+  )
+  const [showOrbits, setShowOrbits] = useState<boolean>(initialResolution.state.showOrbits)
+  const [viewport, setViewport] = useState<MapViewportState>(() => ({
+    zoom: initialResolution.state.zoom,
+    lat: initialResolution.state.lat,
+    lng: initialResolution.state.lng,
+  }))
+  const [extraParams, setExtraParams] = useState<Record<string, string> | undefined>(
+    initialResolution.state.extraParams,
+  )
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
   const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null)
-  const [focusCoordinates, setFocusCoordinates] = useState<[number, number] | null>(null)
-  const [showOrbits, setShowOrbits] = useState<boolean>(true)
+  const [cameraFocusRequest, setCameraFocusRequest] = useState<CameraFocusRequest | null>(null)
+  const focusRequestSeqRef = useRef(0)
+  const lastSyncedHashRef = useRef('')
 
   const [connectionState, setConnectionState] = useState<ConnectionState>(() =>
     isProdUnconfigured ? 'unconfigured' : 'checking',
@@ -74,6 +98,51 @@ function App() {
   const [orbitsPayload, setOrbitsPayload] = useState<SatelliteOrbitsResponse | null>(null)
   const [orbitsError, setOrbitsError] = useState<string | null>(null)
   const [nowUnixMs, setNowUnixMs] = useState<number>(() => Date.now())
+
+  useEffect(() => {
+    lastSyncedHashRef.current = syncUrlHashAndStorage({
+      ...viewport,
+      viewMode,
+      sensorFilter,
+      projectionMode,
+      selectedMonth,
+      showOrbits,
+      extraParams,
+    })
+  }, [viewport, viewMode, sensorFilter, projectionMode, selectedMonth, showOrbits, extraParams])
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (window.location.hash === lastSyncedHashRef.current) {
+        return
+      }
+      const parsed = parseUrlHash(window.location.hash)
+      if (!parsed) {
+        return
+      }
+      setViewMode(parsed.viewMode)
+      setSensorFilter(parsed.sensorFilter)
+      setProjectionMode(parsed.projectionMode)
+      setSelectedMonth(parsed.selectedMonth)
+      setShowOrbits(parsed.showOrbits)
+      setExtraParams(parsed.extraParams)
+      setViewport({
+        zoom: parsed.zoom,
+        lat: parsed.lat,
+        lng: parsed.lng,
+      })
+      setCameraFocusRequest({
+        lng: parsed.lng,
+        lat: parsed.lat,
+        zoom: parsed.zoom,
+        animate: false,
+        requestId: ++focusRequestSeqRef.current,
+      })
+    }
+
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
 
   const applySuccess = (data: ApiStatusResponse) => {
     setPayload(data)
@@ -187,7 +256,13 @@ function App() {
     setSelectedSatelliteId(satellite.id)
     setShowOrbits(true)
     setNowUnixMs(Date.now())
-    setFocusCoordinates([satellite.lng, satellite.lat])
+    setCameraFocusRequest({
+      lng: satellite.lng,
+      lat: satellite.lat,
+      zoom: 3.6,
+      animate: true,
+      requestId: ++focusRequestSeqRef.current,
+    })
   }
 
   const tleSourceSummary = useMemo(() => {
@@ -257,7 +332,11 @@ function App() {
         onSensorFilterChange={setSensorFilter}
         projectionMode={projectionMode}
         onProjectionModeChange={setProjectionMode}
-        focusCoordinates={focusCoordinates}
+        initialViewport={initialResolution.state}
+        onViewportChange={setViewport}
+        cameraFocusRequest={cameraFocusRequest}
+        autoLocateOnMount={initialResolution.source === 'default'}
+        geolocationMaxZoom={DEFAULT_GEOLOCATION_MAX_ZOOM}
         orbitalState={orbitalState}
         showOrbits={showOrbits}
         onShowOrbitsChange={(next) => {
@@ -388,7 +467,13 @@ function App() {
                   aria-pressed={selectedRegionId === regime.id}
                   onClick={() => {
                     setSelectedRegionId(regime.id)
-                    setFocusCoordinates([...regime.coordinates])
+                    setCameraFocusRequest({
+                      lng: regime.coordinates[0],
+                      lat: regime.coordinates[1],
+                      zoom: 3.6,
+                      animate: true,
+                      requestId: ++focusRequestSeqRef.current,
+                    })
                   }}
                 >
                   <span className="region-card-top">

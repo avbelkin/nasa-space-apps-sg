@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FeatureCollection, MultiLineString, Point, Polygon } from 'geojson'
-import { Map as MapLibreMap, Marker } from 'maplibre-gl'
-import type { ErrorEvent, GeoJSONSource, StyleSpecification } from 'maplibre-gl'
+import { LngLat, LngLatBounds, Map as MapLibreMap, Marker } from 'maplibre-gl'
+import type { ErrorEvent, GeoJSONSource, MapMovementEvent, StyleSpecification } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import {
   buildStubGeoJson,
@@ -10,7 +10,25 @@ import {
   type SensorFilter,
   type ViewMode,
 } from '../data/stubSeasonalData'
+import {
+  clampGeolocationTargetZoom,
+  clampLat,
+  clampZoom,
+  DEFAULT_CENTER,
+  DEFAULT_GEOLOCATION_MAX_ZOOM,
+  DEFAULT_ZOOM,
+  normalizeLng,
+  type MapViewportState,
+} from '../state/urlHashState'
 import type { LiveOrbitalState, LiveSatelliteSnapshot } from '../utils/satelliteOrbits'
+
+export interface CameraFocusRequest {
+  lng: number
+  lat: number
+  zoom: number
+  animate: boolean
+  requestId: number
+}
 
 interface EarthMapStageProps {
   selectedMonth: number
@@ -19,7 +37,11 @@ interface EarthMapStageProps {
   onSensorFilterChange: (next: SensorFilter) => void
   projectionMode: ProjectionMode
   onProjectionModeChange: (next: ProjectionMode) => void
-  focusCoordinates: [number, number] | null
+  initialViewport: MapViewportState
+  onViewportChange: (next: MapViewportState) => void
+  cameraFocusRequest: CameraFocusRequest | null
+  autoLocateOnMount: boolean
+  geolocationMaxZoom?: number
   orbitalState: LiveOrbitalState
   showOrbits: boolean
   onShowOrbitsChange: (next: boolean) => void
@@ -34,14 +56,64 @@ interface SatelliteMarkerEntry {
   labelSpan: HTMLSpanElement
 }
 
-const DEFAULT_CENTER: [number, number] = [108, 8]
-const DEFAULT_ZOOM = 1.75
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
 const VIEW_MODE_LABELS: Record<ViewMode, string> = {
   anomaly: 'Anomaly vs. Typical Calendar',
   seasonal: 'Seasonal Climatology Dynamic',
   sensors: 'MODIS 1km vs. VIIRS 375m Coverage',
+}
+
+const GEOLOCATION_POSITION_OPTIONS: PositionOptions = {
+  enableHighAccuracy: false,
+  timeout: 8000,
+  maximumAge: 300_000,
+}
+
+let inFlightGeolocationPromise: Promise<GeolocationPosition> | null = null
+
+function requestCurrentBrowserPosition(options: PositionOptions): Promise<GeolocationPosition> {
+  if (inFlightGeolocationPromise) {
+    return inFlightGeolocationPromise
+  }
+  inFlightGeolocationPromise = new Promise<GeolocationPosition>((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, options)
+  }).finally(() => {
+    inFlightGeolocationPromise = null
+  })
+  return inFlightGeolocationPromise
+}
+
+function formatGeolocationError(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'code' in error) {
+    const code = (error as { code?: unknown }).code
+    if (code === 1) {
+      return 'Location permission denied.'
+    }
+    if (code === 3) {
+      return 'Location request timed out.'
+    }
+  }
+  return 'Current location unavailable.'
+}
+
+function buildUserLocationGeoJson(coords: [number, number] | null): FeatureCollection<Point> {
+  return {
+    type: 'FeatureCollection',
+    features: coords
+      ? [
+          {
+            type: 'Feature',
+            id: 'user-location',
+            geometry: {
+              type: 'Point',
+              coordinates: coords,
+            },
+            properties: {},
+          },
+        ]
+      : [],
+  }
 }
 
 function createSpacecraftIconSvg(): SVGSVGElement {
@@ -52,7 +124,14 @@ function createSpacecraftIconSvg(): SVGSVGElement {
   svg.setAttribute('aria-hidden', 'true')
   svg.classList.add('sat-marker-icon')
 
-  const makeRect = (x: string, y: string, width: string, height: string, className: string, rx?: string) => {
+  const makeRect = (
+    x: string,
+    y: string,
+    width: string,
+    height: string,
+    className: string,
+    rx?: string,
+  ) => {
     const rect = document.createElementNS(SVG_NS, 'rect')
     rect.setAttribute('x', x)
     rect.setAttribute('y', y)
@@ -79,6 +158,7 @@ function createBaseStyle(
   projection: ProjectionMode,
   initialFireData: FeatureCollection<Point>,
   initialOrbitalState: LiveOrbitalState,
+  initialUserData: FeatureCollection<Point>,
 ): StyleSpecification {
   return {
     version: 8,
@@ -113,6 +193,10 @@ function createBaseStyle(
       'fire-anomalies': {
         type: 'geojson',
         data: initialFireData,
+      },
+      'user-geolocation': {
+        type: 'geojson',
+        data: initialUserData,
       },
     },
     layers: [
@@ -235,6 +319,27 @@ function createBaseStyle(
           'circle-stroke-color': '#f8fafc',
         },
       },
+      {
+        id: 'user-geolocation-halo',
+        type: 'circle',
+        source: 'user-geolocation',
+        paint: {
+          'circle-radius': 14,
+          'circle-color': '#3b82f6',
+          'circle-opacity': 0.28,
+        },
+      },
+      {
+        id: 'user-geolocation-dot',
+        type: 'circle',
+        source: 'user-geolocation',
+        paint: {
+          'circle-radius': 6,
+          'circle-color': '#60a5fa',
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#ffffff',
+        },
+      },
     ],
   }
 }
@@ -264,7 +369,11 @@ export function EarthMapStage({
   onSensorFilterChange,
   projectionMode,
   onProjectionModeChange,
-  focusCoordinates,
+  initialViewport,
+  onViewportChange,
+  cameraFocusRequest,
+  autoLocateOnMount,
+  geolocationMaxZoom = DEFAULT_GEOLOCATION_MAX_ZOOM,
   orbitalState,
   showOrbits,
   onShowOrbitsChange,
@@ -274,25 +383,48 @@ export function EarthMapStage({
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<MapLibreMap | null>(null)
   const satMarkersRef = useRef<Map<string, SatelliteMarkerEntry>>(new Map())
+  const initialViewportRef = useRef<MapViewportState>(initialViewport)
+  const latestOnViewportChangeRef = useRef(onViewportChange)
+  const userInteractedRef = useRef(false)
+  const isMountedRef = useRef(false)
 
   const [mapError, setMapError] = useState<string | null>(null)
-  const [viewport, setViewport] = useState({
-    lng: DEFAULT_CENTER[0],
-    lat: DEFAULT_CENTER[1],
-    zoom: DEFAULT_ZOOM,
-  })
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
+  const [isLocating, setIsLocating] = useState(false)
+  const [geoErrorMessage, setGeoErrorMessage] = useState<string | null>(null)
+  const [viewport, setViewport] = useState<MapViewportState>(() => ({
+    lng: normalizeLng(initialViewport.lng),
+    lat: clampLat(initialViewport.lat),
+    zoom: clampZoom(initialViewport.zoom),
+  }))
 
   const geoJson = useMemo(
     () => buildStubGeoJson(selectedMonth, sensorFilter),
     [selectedMonth, sensorFilter],
   )
+  const userLocationGeoJson = useMemo(
+    () => buildUserLocationGeoJson(userLocation),
+    [userLocation],
+  )
 
   const latestGeoJsonRef = useRef(geoJson)
+  const latestUserGeoJsonRef = useRef(userLocationGeoJson)
   const latestProjectionRef = useRef(projectionMode)
   const latestOrbitalStateRef = useRef(orbitalState)
   const latestShowOrbitsRef = useRef(showOrbits)
   const latestSelectedSatIdRef = useRef(selectedSatelliteId)
   const onSelectSatelliteRef = useRef(onSelectSatellite)
+
+  useEffect(() => {
+    latestOnViewportChangeRef.current = onViewportChange
+  }, [onViewportChange])
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   const syncSatelliteMarkers = (
     map: MapLibreMap,
@@ -333,6 +465,7 @@ export function EarthMapStage({
         button.append(iconSvg, labelSpan)
         button.addEventListener('click', (event) => {
           event.stopPropagation()
+          userInteractedRef.current = true
           const current = latestOrbitalStateRef.current.snapshots.find((item) => item.id === sat.id)
           if (current) {
             onSelectSatelliteRef.current(current)
@@ -373,6 +506,7 @@ export function EarthMapStage({
 
     let map: MapLibreMap | null = null
     let resizeObserver: ResizeObserver | null = null
+    const startViewport = initialViewportRef.current
 
     try {
       map = new MapLibreMap({
@@ -381,9 +515,10 @@ export function EarthMapStage({
           latestProjectionRef.current,
           latestGeoJsonRef.current,
           latestOrbitalStateRef.current,
+          latestUserGeoJsonRef.current,
         ),
-        center: DEFAULT_CENTER,
-        zoom: DEFAULT_ZOOM,
+        center: [normalizeLng(startViewport.lng), clampLat(startViewport.lat)],
+        zoom: clampZoom(startViewport.zoom),
         cancelPendingTileRequestsWhileZooming: false,
         maxTileCacheZoomLevels: 8,
         attributionControl: {
@@ -403,6 +538,7 @@ export function EarthMapStage({
         }
         setGeoJsonSourceData(map, 'fire-anomalies', latestGeoJsonRef.current)
         syncOrbitalSources(map, latestOrbitalStateRef.current)
+        setGeoJsonSourceData(map, 'user-geolocation', latestUserGeoJsonRef.current)
         map.setProjection({ type: latestProjectionRef.current })
         syncSatelliteMarkers(
           map,
@@ -412,16 +548,24 @@ export function EarthMapStage({
         )
       })
 
+      map.on('movestart', (event: MapMovementEvent) => {
+        if (event.originalEvent) {
+          userInteractedRef.current = true
+        }
+      })
+
       map.on('moveend', () => {
         if (!map) {
           return
         }
-        const center = map.getCenter()
-        setViewport({
-          lng: Number(center.lng.toFixed(2)),
-          lat: Number(center.lat.toFixed(2)),
-          zoom: Number(map.getZoom().toFixed(1)),
-        })
+        const wrapped = map.getCenter().wrap()
+        const nextViewport: MapViewportState = {
+          lng: normalizeLng(wrapped.lng),
+          lat: clampLat(wrapped.lat),
+          zoom: clampZoom(map.getZoom()),
+        }
+        setViewport(nextViewport)
+        latestOnViewportChangeRef.current(nextViewport)
       })
 
       map.on('error', (event: ErrorEvent) => {
@@ -462,6 +606,15 @@ export function EarthMapStage({
   }, [geoJson])
 
   useEffect(() => {
+    latestUserGeoJsonRef.current = userLocationGeoJson
+    const map = mapInstanceRef.current
+    if (!map || !map.isStyleLoaded()) {
+      return
+    }
+    setGeoJsonSourceData(map, 'user-geolocation', userLocationGeoJson)
+  }, [userLocationGeoJson])
+
+  useEffect(() => {
     latestOrbitalStateRef.current = orbitalState
     latestShowOrbitsRef.current = showOrbits
     latestSelectedSatIdRef.current = selectedSatelliteId
@@ -487,28 +640,152 @@ export function EarthMapStage({
   }, [projectionMode])
 
   useEffect(() => {
-    const map = mapInstanceRef.current
-    if (!map || !focusCoordinates) {
+    if (!cameraFocusRequest) {
       return
     }
-    map.flyTo({
-      center: focusCoordinates,
-      zoom: 3.6,
-      duration: 900,
-    })
-  }, [focusCoordinates])
-
-  const handleZoom = (delta: number) => {
+    userInteractedRef.current = true
     const map = mapInstanceRef.current
     if (!map) {
+      const nextViewport: MapViewportState = {
+        lng: normalizeLng(cameraFocusRequest.lng),
+        lat: clampLat(cameraFocusRequest.lat),
+        zoom: clampZoom(cameraFocusRequest.zoom),
+      }
+      queueMicrotask(() => {
+        setViewport(nextViewport)
+        latestOnViewportChangeRef.current(nextViewport)
+      })
+      return
+    }
+
+    if (cameraFocusRequest.animate) {
+      map.flyTo({
+        center: [cameraFocusRequest.lng, cameraFocusRequest.lat],
+        zoom: cameraFocusRequest.zoom,
+        duration: 900,
+      })
+    } else {
+      map.jumpTo({
+        center: [cameraFocusRequest.lng, cameraFocusRequest.lat],
+        zoom: cameraFocusRequest.zoom,
+      })
+    }
+  }, [cameraFocusRequest])
+
+  const triggerGeolocation = useCallback(
+    (silentError: boolean, isCancelled?: () => boolean) => {
+      if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+        if (!silentError) {
+          setGeoErrorMessage('Geolocation is not supported by this browser.')
+        }
+        return
+      }
+
+      setIsLocating(true)
+      if (!silentError) {
+        setGeoErrorMessage(null)
+      }
+
+      void requestCurrentBrowserPosition(GEOLOCATION_POSITION_OPTIONS)
+        .then((position) => {
+          if (!isMountedRef.current || isCancelled?.()) {
+            return
+          }
+
+          const lng = normalizeLng(position.coords.longitude)
+          const lat = clampLat(position.coords.latitude)
+          setUserLocation([lng, lat])
+          setGeoErrorMessage(null)
+
+          if (silentError && userInteractedRef.current) {
+            return
+          }
+
+          const map = mapInstanceRef.current
+          if (!map) {
+            const targetZoom = clampGeolocationTargetZoom(geolocationMaxZoom, geolocationMaxZoom)
+            const nextViewport: MapViewportState = { lng, lat, zoom: targetZoom }
+            setViewport(nextViewport)
+            latestOnViewportChangeRef.current(nextViewport)
+            return
+          }
+
+          const safeRadius =
+            Number.isFinite(position.coords.accuracy) && position.coords.accuracy > 0
+              ? position.coords.accuracy
+              : 100
+          const fitted = map.cameraForBounds(
+            LngLatBounds.fromLngLat(new LngLat(lng, lat), safeRadius),
+            {
+              maxZoom: geolocationMaxZoom,
+              padding: 40,
+            },
+          )
+          const targetZoom = clampGeolocationTargetZoom(fitted?.zoom, geolocationMaxZoom)
+          map.flyTo({
+            center: fitted?.center ?? [lng, lat],
+            zoom: targetZoom,
+            duration: 900,
+          })
+        })
+        .catch((error: unknown) => {
+          if (!isMountedRef.current || isCancelled?.()) {
+            return
+          }
+          if (!silentError) {
+            setGeoErrorMessage(formatGeolocationError(error))
+          }
+        })
+        .finally(() => {
+          if (isMountedRef.current && !isCancelled?.()) {
+            setIsLocating(false)
+          }
+        })
+    },
+    [geolocationMaxZoom],
+  )
+
+  useEffect(() => {
+    if (!autoLocateOnMount) {
+      return
+    }
+    let cancelled = false
+    queueMicrotask(() => {
+      if (!cancelled) {
+        triggerGeolocation(true, () => cancelled)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [autoLocateOnMount, triggerGeolocation])
+
+  const handleZoom = (delta: number) => {
+    userInteractedRef.current = true
+    const map = mapInstanceRef.current
+    if (!map) {
+      const nextViewport: MapViewportState = {
+        ...viewport,
+        zoom: clampZoom(viewport.zoom + delta),
+      }
+      setViewport(nextViewport)
+      latestOnViewportChangeRef.current(nextViewport)
       return
     }
     map.zoomTo(map.getZoom() + delta, { duration: 250 })
   }
 
   const handleResetView = () => {
+    userInteractedRef.current = true
     const map = mapInstanceRef.current
     if (!map) {
+      const nextViewport: MapViewportState = {
+        lng: DEFAULT_CENTER[0],
+        lat: DEFAULT_CENTER[1],
+        zoom: DEFAULT_ZOOM,
+      }
+      setViewport(nextViewport)
+      latestOnViewportChangeRef.current(nextViewport)
       return
     }
     map.flyTo({
@@ -558,7 +835,11 @@ export function EarthMapStage({
         </div>
       </div>
 
-      <div className="map-hud map-hud-top-end" role="group" aria-label="Map projection, orbits, and zoom controls">
+      <div
+        className="map-hud map-hud-top-end"
+        role="group"
+        aria-label="Map projection, orbits, location, and zoom controls"
+      >
         <button
           type="button"
           className="hud-btn"
@@ -577,6 +858,14 @@ export function EarthMapStage({
         >
           {projectionMode === 'globe' ? '3D Globe' : '2D Map'}
         </button>
+        <button
+          type="button"
+          className="hud-btn"
+          onClick={() => triggerGeolocation(false)}
+          disabled={isLocating}
+        >
+          {isLocating ? 'Locating…' : 'My Location'}
+        </button>
         <button type="button" className="hud-btn" aria-label="Zoom in" onClick={() => handleZoom(1)}>
           +
         </button>
@@ -592,7 +881,7 @@ export function EarthMapStage({
         <div className="hud-legend-header">
           <span className="hud-kicker">{MONTH_LABELS[selectedMonth]} &middot; {VIEW_MODE_LABELS[viewMode]}</span>
           <span className="hud-coords">
-            Lat {viewport.lat}&deg;, Lon {viewport.lng}&deg; &middot; z{viewport.zoom}
+            Lat {viewport.lat.toFixed(2)}&deg;, Lon {viewport.lng.toFixed(2)}&deg; &middot; z{viewport.zoom}
           </span>
         </div>
         <ul className="hud-legend-list" role="list">
@@ -620,7 +909,18 @@ export function EarthMapStage({
               <span>VIIRS Orbits (NOAA-20, NOAA-21 &middot; Solid past / Dashed +90m)</span>
             </li>
           )}
+          {userLocation && (
+            <li>
+              <span className="legend-glyph legend-glyph-user" aria-hidden="true">&#9673;</span>
+              <span>Your Location</span>
+            </li>
+          )}
         </ul>
+        {geoErrorMessage && (
+          <p className="hud-geo-status" role="status">
+            {geoErrorMessage}
+          </p>
+        )}
       </div>
     </main>
   )

@@ -318,6 +318,11 @@
   color: #f8fafc;
 }
 
+.hud-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 .hud-btn[aria-pressed='true'] {
   background-color: #2563eb;
   border-color: #93c5fd;
@@ -377,6 +382,16 @@
 
 .legend-glyph-viirs {
   color: #34d399;
+}
+
+.legend-glyph-user {
+  color: #60a5fa;
+}
+
+.hud-geo-status {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #fde68a;
 }
 
 /* Outer Bottom Seasonal / Calendar Timeline Scrubber */
