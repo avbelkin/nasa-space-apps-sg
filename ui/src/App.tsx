@@ -350,7 +350,7 @@ function App() {
     setCameraFocusRequest({
       lng: region.coordinates[0],
       lat: region.coordinates[1],
-      zoom: FOCUS_ZOOM,
+      zoom: region.focusZoom ?? FOCUS_ZOOM,
       animate: true,
       requestId: ++focusRequestSeqRef.current,
     })

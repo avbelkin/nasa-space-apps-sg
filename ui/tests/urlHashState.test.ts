@@ -362,11 +362,15 @@ test('selected region is restored on load from the hash and from storage, and wr
 
   const { target, storageMap } = createMockBrowserTarget()
   const selectedHash = syncUrlHashAndStorage(
-    { ...DEFAULT_URL_HASH_STATE, selectedRegionId: 'sea-equatorial' },
+    { ...DEFAULT_URL_HASH_STATE, selectedRegionId: 'singapore' },
     target,
   )
   assert.equal(target.location.hash, selectedHash)
-  assert.match(storageMap.get(URL_HASH_STORAGE_KEY) ?? '', /region=sea-equatorial/)
+  assert.match(storageMap.get(URL_HASH_STORAGE_KEY) ?? '', /region=singapore/)
+  assert.equal(
+    parseUrlHash('#z=3&region=sea-equatorial', DEFAULT_URL_HASH_STATE)?.selectedRegionId,
+    'singapore',
+  )
 
   syncUrlHashAndStorage({ ...DEFAULT_URL_HASH_STATE }, target)
   assert.doesNotMatch(target.location.hash, /region=/)

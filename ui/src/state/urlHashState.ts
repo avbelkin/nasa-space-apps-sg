@@ -1,6 +1,7 @@
 import {
   MONTH_LABELS,
   REGIONAL_FIRE_REGIMES,
+  SINGAPORE_REGION_ID,
   type ProjectionMode,
   type SensorFilter,
   type ViewMode,
@@ -63,6 +64,9 @@ const VALID_VIEW_MODES: readonly ViewMode[] = ['anomaly', 'seasonal', 'sensors']
 const VALID_SENSOR_FILTERS: readonly SensorFilter[] = ['harmonized', 'modis', 'viirs']
 const VALID_PROJECTION_MODES: readonly ProjectionMode[] = ['globe', 'mercator']
 const VALID_REGION_IDS: readonly string[] = REGIONAL_FIRE_REGIMES.map((regime) => regime.id)
+const LEGACY_REGION_ID_ALIASES: Readonly<Record<string, string>> = {
+  'sea-equatorial': SINGAPORE_REGION_ID,
+}
 
 function normalizeZero(value: number): number {
   return value === 0 ? 0 : value
@@ -240,10 +244,11 @@ const HASH_FEATURE_CODECS: readonly HashFeatureCodec[] = [
     key: 'region',
     serialize: (state) => state.selectedRegionId ?? null,
     parse: (raw, draft) => {
-      if (!VALID_REGION_IDS.includes(raw)) {
+      const resolved = LEGACY_REGION_ID_ALIASES[raw] ?? raw
+      if (!VALID_REGION_IDS.includes(resolved)) {
         return false
       }
-      draft.selectedRegionId = raw
+      draft.selectedRegionId = resolved
       return true
     },
   },
