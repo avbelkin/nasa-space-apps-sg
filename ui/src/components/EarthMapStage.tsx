@@ -143,6 +143,8 @@ export function EarthMapStage({
         style: createBaseStyle(latestProjectionRef.current, latestGeoJsonRef.current),
         center: DEFAULT_CENTER,
         zoom: DEFAULT_ZOOM,
+        cancelPendingTileRequestsWhileZooming: false,
+        maxTileCacheZoomLevels: 8,
         attributionControl: { compact: true },
       })
 
