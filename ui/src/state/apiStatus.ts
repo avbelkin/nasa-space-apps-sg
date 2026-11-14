@@ -22,10 +22,10 @@ export const CONNECTION_LABELS: Record<ConnectionState, string> = {
 }
 
 export const CONNECTION_SHORT_LABELS: Record<ConnectionState, string> = {
-  checking: 'Checking API',
-  connected: 'API online',
-  unreachable: 'API offline',
-  unconfigured: 'API not set up',
+  checking: 'Checking data service',
+  connected: 'Data service online',
+  unreachable: 'Data service offline',
+  unconfigured: 'Data service not connected',
 }
 
 export async function fetchApiStatus(signal?: AbortSignal): Promise<ApiStatusResponse> {

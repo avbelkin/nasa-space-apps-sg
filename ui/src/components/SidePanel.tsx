@@ -16,7 +16,7 @@ import { ScopeRow } from './panel/ScopeRow'
 import { SegmentedControl, type SegmentedOption } from './SegmentedControl'
 
 const SENSOR_FILTER_OPTIONS: readonly SegmentedOption<SensorFilter>[] = [
-  { value: 'harmonized', label: 'Harmonized' },
+  { value: 'harmonized', label: 'Combined', ariaLabel: 'MODIS and VIIRS combined' },
   { value: 'modis', label: 'MODIS' },
   { value: 'viirs', label: 'VIIRS' },
 ]

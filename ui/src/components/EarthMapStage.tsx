@@ -234,13 +234,13 @@ function formatGeolocationError(error: unknown): string {
   if (typeof error === 'object' && error !== null && 'code' in error) {
     const code = (error as { code?: unknown }).code
     if (code === 1) {
-      return 'Location permission denied.'
+      return 'Location access is blocked in this browser.'
     }
     if (code === 3) {
-      return 'Location request timed out.'
+      return 'Finding your location took too long. Try again.'
     }
   }
-  return 'Current location unavailable.'
+  return 'Your location is not available right now.'
 }
 
 function buildUserLocationGeoJson(coords: [number, number] | null): FeatureCollection<Point> {
@@ -668,7 +668,7 @@ export function EarthMapStage({
       entry.button.setAttribute('aria-pressed', activeSatId === sat.id ? 'true' : 'false')
       entry.button.setAttribute(
         'aria-label',
-        `Focus ${sat.name} (${sat.instrumentLabel}) at ${sat.lat.toFixed(1)} degrees latitude, ${sat.lng.toFixed(1)} degrees longitude`,
+        `Show ${sat.name} (${sat.instrumentLabel}), now at latitude ${sat.lat.toFixed(1)}, longitude ${sat.lng.toFixed(1)}`,
       )
       entry.iconSvg.style.transform = `rotate(${sat.headingDeg.toFixed(1)}deg)`
       entry.labelSpan.textContent = `${sat.glyph} ${sat.shortBadge}`
@@ -893,7 +893,7 @@ export function EarthMapStage({
 
   const triggerGeolocation = useCallback(() => {
     if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
-      setGeoErrorMessage('Geolocation is not supported by this browser.')
+      setGeoErrorMessage('Your browser cannot share your location.')
       return
     }
 
@@ -1004,8 +1004,8 @@ export function EarthMapStage({
       <div ref={mapContainerRef} className="map-canvas" />
 
       {mapError && (
-        <div className="map-fallback-banner" role="status">
-          <p>Map layers unavailable here ({mapError}).</p>
+        <div className="map-fallback-banner" role="status" title={mapError}>
+          <p>This browser could not draw the fire and satellite layers on the map.</p>
         </div>
       )}
     </main>

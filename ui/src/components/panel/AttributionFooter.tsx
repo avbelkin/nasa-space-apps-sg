@@ -31,21 +31,21 @@ export function AttributionFooter({ connectionState }: AttributionFooterProps) {
           <div className="panel-details-body">
             <dl className="meta-list">
               <div className="meta-row">
-                <dt>Active-fire &amp; sensor reference</dt>
+                <dt>Fire detections</dt>
                 <dd>
-                  MODIS (NASA EOS Terra &amp; Aqua) and VIIRS (NOAA/NASA JPSS) swath parameters and
-                  target hotspot schema via{' '}
+                  Active fires seen by MODIS (NASA EOS Terra &amp; Aqua) and VIIRS (NOAA/NASA JPSS),
+                  published by{' '}
                   <a href="https://firms.modaps.eosdis.nasa.gov/" {...EXTERNAL}>
                     NASA FIRMS
-                  </a>{' '}
-                  (seasonal anomaly values shown are illustrative baselines pending live FIRMS feed
-                  integration).
+                  </a>
+                  . The fire activity values shown here are sample values until FIRMS data is
+                  connected.
                 </dd>
               </div>
               <div className="meta-row">
-                <dt>Orbital ephemerides</dt>
+                <dt>Satellite orbits</dt>
                 <dd>
-                  NORAD GP / TLE orbital elements from{' '}
+                  Orbital elements (NORAD GP / TLE) from{' '}
                   <a href="https://celestrak.org/" {...EXTERNAL}>
                     CelesTrak
                   </a>
