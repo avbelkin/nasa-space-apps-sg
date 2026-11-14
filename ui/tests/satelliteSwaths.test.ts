@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
 import test from 'node:test'
 import {
   advanceSatelliteHudEntries,
@@ -329,4 +330,15 @@ test('formatSatelliteHudSection advances elapsed minutes, flips processing to re
   assert.equal(rolloverSection.items[0].value, '2m ago')
   assert.equal(rolloverSection.items[0].badge, 'processing')
   assert.equal(rolloverSection.summary, 'Next: NOAA-20 in ~3m')
+})
+
+test('map-hud-bottom keeps SatelliteHud bottom-anchored when fire-tooltip-card appears', () => {
+  const appCss = fs.readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
+  const match = appCss.match(/\.map-hud-bottom\s*\{([^}]*)\}/)
+  assert.ok(match, 'expected .map-hud-bottom CSS rule')
+  const body = match[1]
+  assert.match(body, /display:\s*flex\s*;/)
+  assert.match(body, /flex-wrap:\s*wrap\s*;/)
+  assert.match(body, /align-items:\s*flex-end\s*;/)
+  assert.doesNotMatch(body, /wrap-reverse/)
 })

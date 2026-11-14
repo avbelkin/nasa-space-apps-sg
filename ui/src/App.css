@@ -395,18 +395,15 @@
   rotate: 180deg;
 }
 
-/* Satellite overpass freshness card: bottom-end, beside the control column (so the two never
-   stack into a short map) and always just above MapLibre's attribution control
-   (--attribution-clearance is its measured height, set by EarthMapStage) */
 /* Bottom row of the map: the fire spot card at the start and the satellite pass card at the end,
-   beside the control column and just above MapLibre's attribution (--attribution-clearance is its
-   measured height, set by EarthMapStage). When both do not fit, the row wraps and the pass card
-   moves above the fire card. The row itself lets the map take the pointer. */
+   both bottom-aligned beside the control column and just above MapLibre's attribution
+   (--attribution-clearance is its measured height, set by EarthMapStage). When both do not fit on
+   one line, the fire card sits on the upper line so the satellite pass card never shifts. */
 .map-hud-bottom {
   grid-area: hud-bottom-end;
   align-self: end;
   display: flex;
-  flex-wrap: wrap-reverse;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 0.375rem 0.5rem;
   min-inline-size: 0;
