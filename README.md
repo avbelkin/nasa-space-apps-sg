@@ -8,6 +8,11 @@
 - [doc/architecture-and-harmonization.md](doc/architecture-and-harmonization.md) — MapLibre two-tier CSS Grid layout, UI/backend split, and harmonization pipeline design notes.
 - [doc/cloud-run-and-credits.md](doc/cloud-run-and-credits.md) — Google Cloud Run scaling/hibernation modes, Vertex AI & Secret Manager setup, and Google AI Ultra credits guide.
 
+## Public Availability
+
+- **Live Web UI (GitHub Pages)**: [https://avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg) — publicly accessible React + MapLibre 3D globe SPA deployed automatically from `main` via [`.github/workflows/deploy-ui.yml`](.github/workflows/deploy-ui.yml).
+- **Backend API (Google Cloud Run, `asia-southeast1`)**: `https://earth-fire-calendar-api-354cntvldq-as.a.run.app` (`/health`, `/api/status`, `/api/satellites/orbits`).
+
 ## Stack
 
 - **`ui/`** — Pure React + TypeScript + Vite + **MapLibre GL JS** (`maplibre-gl`) static SPA published to **GitHub Pages**, defaulting to a **3D Globe** view over **EOX Sentinel-2 Cloudless** imagery inside an outer CSS Grid wrapper and nested CSS Grid map stage with over-map controls.
@@ -58,6 +63,8 @@ During local development, Vite proxies `/api` and `/health` requests to `http://
 ## GitHub Actions Deployment Configuration
 
 ### UI (`deploy-ui.yml` -> GitHub Pages)
+
+The built static site is publicly published at [https://avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg).
 
 Repository variables under **Settings -> Secrets and variables -> Actions -> Variables**:
 

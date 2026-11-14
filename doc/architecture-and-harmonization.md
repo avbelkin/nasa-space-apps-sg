@@ -6,6 +6,7 @@ This repository implements the [Harmonization of MODIS and VIIRS Hot Spots](./RE
 
 ### 1. Frontend (`ui/` — Pure React + TypeScript + Vite on GitHub Pages)
 
+- **Public Availability**: Publicly accessible on GitHub Pages at [https://avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg), deployed via [deploy-ui.yml](../.github/workflows/deploy-ui.yml).
 - **Earth-First Mapping Engine (`maplibre-gl`)**: Keyless **MapLibre GL JS** canvas defaulting to a **3D `globe` projection** (with an optional 2D `mercator` toggle) over **EOX Sentinel-2 Cloudless (`s2cloudless-2025_3857`)** raster WMTS imagery (`{z}/{y}/{x}.jpg` with required EOX/Copernicus attribution) to visualize active-fire hotspots, typical seasonal activity bands, and current calendar anomaly departures directly on Earth.
 - **Two-Tier CSS Grid Layout**:
   - **Outer Controls Wrapper (`.app-frame`)**: CSS Grid page shell wrapping perimeter controls *around* the map:

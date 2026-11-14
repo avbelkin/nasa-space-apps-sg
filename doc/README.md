@@ -2,6 +2,7 @@
 
 ## Challenge Overview
 
+- **Public Web UI**: [https://avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg)
 - **Event**: 2026 NASA Space Apps Challenge (`nasa-space-apps-sg`)
 - **Challenge**: [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/?tab=details)
 - **Difficulty**: Intermediate / Advanced

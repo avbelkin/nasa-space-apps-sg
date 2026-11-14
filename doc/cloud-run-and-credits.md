@@ -1,6 +1,6 @@
 # Cloud Run Deployment, Lifecycle & Google AI Ultra Credits
 
-This guide documents the public operational setup for **Earth Fire Calendar**'s `.NET 10` backend on **Google Cloud Run** (`asia-southeast1`), how **Google AI Ultra (20x)** developer credits cover infrastructure and AI workloads, and how to switch Cloud Run between **warm** judging mode and **hibernate** idle mode.
+This guide documents the public operational setup for **Earth Fire Calendar**'s `.NET 10` backend on **Google Cloud Run** (`asia-southeast1`)—which serves the publicly available GitHub Pages frontend at [https://avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg)—how **Google AI Ultra (20x)** developer credits cover infrastructure and AI workloads, and how to switch Cloud Run between **warm** judging mode and **hibernate** idle mode.
 
 ---
 
@@ -21,7 +21,7 @@ A **Google AI Ultra (20x)** subscription unlocks three developer benefits used a
 
 ## 2. Cloud Run Scaling & Lifecycle Modes (`warm` vs. `hibernate`)
 
-Because the backend caches CelesTrak orbital TLEs and NASA FIRMS responses in memory (12-hour TTL), keeping a single warm instance eliminates cold starts during active development and judge evaluations. Between hackathon submission and final checks—when the backend is largely idle—switching to `hibernate` drops idle compute charges to **\$0**.
+Because the backend caches CelesTrak orbital TLEs and NASA FIRMS responses in memory (12-hour TTL), keeping a single warm instance eliminates cold starts during active development and judge evaluations. Between hackathon submission and final checks—when the backend is largely idle—switching to `hibernate` drops idle compute charges to **\$0**, while the static GitHub Pages UI at [https://avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg) remains instantaneously available 24/7 at \$0 hosting cost and wakes the Cloud Run API on demand (~1–3 s) whenever API endpoints are queried.
 
 | Setting | `warm` Mode (Active / Judging) | `hibernate` Mode (Post-Hackathon Idle) |
 | :--- | :--- | :--- |
