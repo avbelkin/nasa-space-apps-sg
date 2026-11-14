@@ -43,6 +43,7 @@ builder.Services.AddHttpClient("Firms", client =>
     AutomaticDecompression = DecompressionMethods.All,
 });
 builder.Services.AddSingleton<CelesTrakTleDownloader>();
+builder.Services.AddSingleton<SatelliteTrackerProcessor>();
 builder.Services.AddSingleton<SatelliteOrbitService>();
 builder.Services.AddSingleton<FirmsClient>();
 builder.Services.AddCors(options =>
@@ -135,19 +136,110 @@ app.MapGet("/api/hotspots", async (
     }
 });
 
+static bool TryParseViewportBounds(
+    double? west,
+    double? south,
+    double? east,
+    double? north,
+    double? lat,
+    double? lng,
+    out GeoBounds? bounds,
+    out string? error)
+{
+    bounds = null;
+    error = null;
+
+    if (west.HasValue || south.HasValue || east.HasValue || north.HasValue)
+    {
+        if (!west.HasValue || !south.HasValue || !east.HasValue || !north.HasValue)
+        {
+            error = "west, south, east, and north must all be provided when filtering by bounding box.";
+            return false;
+        }
+
+        var candidate = new GeoBounds(west.Value, south.Value, east.Value, north.Value);
+        if (!candidate.IsValid)
+        {
+            error = "Bounds must be finite coordinates with -90 <= south < north <= 90 and -180 <= west, east <= 180.";
+            return false;
+        }
+
+        bounds = candidate;
+        return true;
+    }
+
+    if (lat.HasValue || lng.HasValue)
+    {
+        if (!lat.HasValue || !lng.HasValue ||
+            !double.IsFinite(lat.Value) || !double.IsFinite(lng.Value) ||
+            lat.Value < -90.0 || lat.Value > 90.0 ||
+            lng.Value < -180.0 || lng.Value > 180.0)
+        {
+            error = "lat and lng must both be finite coordinates within [-90, 90] and [-180, 180].";
+            return false;
+        }
+
+        const double fallbackHalfSpanDegrees = 5.0;
+        var centerLat = Math.Clamp(lat.Value, -84.9, 84.9);
+        var centerLng = Math.Clamp(lng.Value, -179.8, 179.8);
+        var southVal = Math.Clamp(centerLat - fallbackHalfSpanDegrees, -85.0, 84.0);
+        var northVal = Math.Clamp(Math.Max(southVal + 0.2, centerLat + fallbackHalfSpanDegrees), -84.0, 85.0);
+        var westVal = Math.Clamp(centerLng - fallbackHalfSpanDegrees, -179.9, 179.7);
+        var eastVal = Math.Clamp(Math.Max(westVal + 0.2, centerLng + fallbackHalfSpanDegrees), -179.7, 179.9);
+        bounds = new GeoBounds(westVal, southVal, eastVal, northVal);
+        return true;
+    }
+
+    return true;
+}
+
 app.MapGet("/api/satellites/orbits", async (
     int? pastMinutes,
     int? futureMinutes,
     int? stepSeconds,
+    double? west,
+    double? south,
+    double? east,
+    double? north,
+    double? lat,
+    double? lng,
     SatelliteOrbitService orbitService,
     CancellationToken cancellationToken) =>
 {
+    if (!TryParseViewportBounds(west, south, east, north, lat, lng, out var bounds, out var error))
+    {
+        return Results.BadRequest(new { error });
+    }
+
     var response = await orbitService.GetOrbitsAsync(
         pastMinutes ?? 45,
         futureMinutes ?? 90,
         stepSeconds ?? 30,
+        bounds,
         cancellationToken);
     return Results.Ok(response);
+});
+
+app.MapGet("/api/satellites/swaths", async (
+    double? west,
+    double? south,
+    double? east,
+    double? north,
+    double? lat,
+    double? lng,
+    SatelliteTrackerProcessor trackerProcessor,
+    CancellationToken cancellationToken) =>
+{
+    if (!TryParseViewportBounds(west, south, east, north, lat, lng, out var bounds, out var error))
+    {
+        return Results.BadRequest(new { error });
+    }
+
+    var snapshot = await trackerProcessor.GetViewportSnapshotAsync(
+        bounds ?? GeoBounds.World,
+        nowUtc: null,
+        cancellationToken);
+    return Results.Ok(snapshot.ToGeoJson());
 });
 
 app.Run();

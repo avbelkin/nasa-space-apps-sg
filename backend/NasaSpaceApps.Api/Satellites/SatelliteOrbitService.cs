@@ -25,8 +25,9 @@ public sealed record SatelliteOrbitDto(
     string InstrumentLabel,
     string CrossingNote,
     double NadirSwathKm,
-    double WideSwathKm,
+    double? WideSwathKm,
     int TypicalIngestionLagMinutes,
+    IReadOnlyList<string> LayerVariantIds,
     string TleSource,
     DateTimeOffset TleEpochUtc,
     double InclinationDeg,
@@ -39,14 +40,19 @@ public sealed record SatelliteOrbitsResponse(
     long WindowStartUnixMs,
     long WindowEndUnixMs,
     int StepSeconds,
-    IReadOnlyList<SatelliteOrbitDto> Satellites);
+    IReadOnlyList<SatelliteOrbitDto> Satellites,
+    IReadOnlyList<GeoJsonFeatureDto> Swaths,
+    IReadOnlyList<SatelliteHudFreshnessEntry> SatelliteHud);
 
-public sealed class SatelliteOrbitService(CelesTrakTleDownloader tleDownloader)
+public sealed class SatelliteOrbitService(
+    CelesTrakTleDownloader tleDownloader,
+    SatelliteTrackerProcessor trackerProcessor)
 {
     public async Task<SatelliteOrbitsResponse> GetOrbitsAsync(
         int pastMinutes = 45,
         int futureMinutes = 90,
         int stepSeconds = 30,
+        GeoBounds? bounds = null,
         CancellationToken cancellationToken = default)
     {
         var clampedPastMinutes = Math.Clamp(pastMinutes, 5, 180);
@@ -109,6 +115,7 @@ public sealed class SatelliteOrbitService(CelesTrakTleDownloader tleDownloader)
                 NadirSwathKm: meta.NadirSwathKm,
                 WideSwathKm: meta.WideSwathKm,
                 TypicalIngestionLagMinutes: meta.TypicalIngestionLagMinutes,
+                LayerVariantIds: meta.LayerVariantIds,
                 TleSource: resolved.Source,
                 TleEpochUtc: new DateTimeOffset(DateTime.SpecifyKind(tle.EpochUtc, DateTimeKind.Utc)),
                 InclinationDeg: Math.Round(tle.InclinationDegrees, 2),
@@ -117,11 +124,23 @@ public sealed class SatelliteOrbitService(CelesTrakTleDownloader tleDownloader)
                 Track: trackDtos));
         }
 
+        var snapshot = await trackerProcessor.GetViewportSnapshotAsync(
+            bounds ?? GeoBounds.World,
+            generatedAtUtc.UtcDateTime,
+            cancellationToken).ConfigureAwait(false);
+        var swathFeatures = snapshot.ToGeoJson().Features
+            .Where(feature =>
+                feature.Properties.TryGetValue("type", out var typeValue) &&
+                string.Equals(typeValue as string, "satellite-swath", StringComparison.Ordinal))
+            .ToList();
+
         return new SatelliteOrbitsResponse(
             GeneratedAtUtc: generatedAtUtc,
             WindowStartUnixMs: windowStartMs,
             WindowEndUnixMs: windowEndMs,
             StepSeconds: clampedStepSeconds,
-            Satellites: satellites);
+            Satellites: satellites,
+            Swaths: swathFeatures,
+            SatelliteHud: snapshot.HudFreshness);
     }
 }
