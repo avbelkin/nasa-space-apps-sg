@@ -1,5 +1,6 @@
 import {
   MONTH_LABELS,
+  REGIONAL_FIRE_REGIMES,
   type ProjectionMode,
   type SensorFilter,
   type ViewMode,
@@ -24,6 +25,8 @@ export interface UrlHashState extends MapViewportState {
   projectionMode: ProjectionMode
   selectedMonth: number
   showOrbits: boolean
+  // Absent when no region is selected
+  selectedRegionId?: string
   extraParams?: Record<string, string>
 }
 
@@ -48,6 +51,7 @@ export const DEFAULT_URL_HASH_STATE: UrlHashState = {
 const VALID_VIEW_MODES: readonly ViewMode[] = ['anomaly', 'seasonal', 'sensors']
 const VALID_SENSOR_FILTERS: readonly SensorFilter[] = ['harmonized', 'modis', 'viirs']
 const VALID_PROJECTION_MODES: readonly ProjectionMode[] = ['globe', 'mercator']
+const VALID_REGION_IDS: readonly string[] = REGIONAL_FIRE_REGIMES.map((regime) => regime.id)
 
 function normalizeZero(value: number): number {
   return value === 0 ? 0 : value
@@ -97,7 +101,8 @@ export function clampGeolocationTargetZoom(
 
 interface HashFeatureCodec {
   key: string
-  serialize: (state: UrlHashState) => string
+  // null leaves the key out of the hash
+  serialize: (state: UrlHashState) => string | null
   parse: (raw: string, draft: UrlHashState) => boolean
 }
 
@@ -189,6 +194,17 @@ const HASH_FEATURE_CODECS: readonly HashFeatureCodec[] = [
       return false
     },
   },
+  {
+    key: 'region',
+    serialize: (state) => state.selectedRegionId ?? null,
+    parse: (raw, draft) => {
+      if (!VALID_REGION_IDS.includes(raw)) {
+        return false
+      }
+      draft.selectedRegionId = raw
+      return true
+    },
+  },
 ]
 
 const RESERVED_CORE_KEYS = new Set<string>([
@@ -206,7 +222,10 @@ export function serializeUrlHash(state: UrlHashState): string {
   params.set('lng', String(normalizeLng(state.lng)))
 
   for (const codec of HASH_FEATURE_CODECS) {
-    params.set(codec.key, codec.serialize(state))
+    const value = codec.serialize(state)
+    if (value !== null) {
+      params.set(codec.key, value)
+    }
   }
 
   if (state.extraParams) {
@@ -244,6 +263,7 @@ function cloneFallbackState(fallback: UrlHashState): UrlHashState {
     projectionMode: fallback.projectionMode,
     selectedMonth: fallback.selectedMonth,
     showOrbits: fallback.showOrbits,
+    ...(fallback.selectedRegionId ? { selectedRegionId: fallback.selectedRegionId } : {}),
     ...(fallback.extraParams ? { extraParams: { ...fallback.extraParams } } : {}),
   }
 }

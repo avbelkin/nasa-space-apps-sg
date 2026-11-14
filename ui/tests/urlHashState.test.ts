@@ -200,6 +200,72 @@ test('resolveInitialUrlHashState resolves hash > storage > default priority', ()
   assert.deepEqual(fromDefault.state, DEFAULT_URL_HASH_STATE)
 })
 
+test('selected region round-trips through the hash and stays out of it when nothing is selected', () => {
+  const withRegion: UrlHashState = { ...DEFAULT_URL_HASH_STATE, selectedRegionId: 'amazon-arc' }
+  const hash = serializeUrlHash(withRegion)
+  assert.match(hash, /&region=amazon-arc(&|$)/)
+  assert.deepEqual(parseUrlHash(hash), withRegion)
+
+  const withoutRegion = serializeUrlHash(DEFAULT_URL_HASH_STATE)
+  assert.doesNotMatch(withoutRegion, /region=/)
+  const parsedWithout = parseUrlHash(withoutRegion)
+  assert.equal(parsedWithout?.selectedRegionId, undefined)
+  assert.equal(parsedWithout !== null && 'selectedRegionId' in parsedWithout, false)
+
+  // A region alone is a valid state hash; extra params survive next to it
+  assert.equal(parseUrlHash('#region=boreal-canada')?.selectedRegionId, 'boreal-canada')
+  const withExtra = parseUrlHash('#z=3&region=mediterranean&aoi=sea-1')
+  assert.equal(withExtra?.selectedRegionId, 'mediterranean')
+  assert.deepEqual(withExtra?.extraParams, { aoi: 'sea-1' })
+})
+
+test('unknown region ids are ignored, never selected and never kept as extra params', () => {
+  const parsed = parseUrlHash('#z=3&lat=10&lng=20&region=atlantis')
+  assert.ok(parsed)
+  assert.equal(parsed.selectedRegionId, undefined)
+  assert.equal(parsed.extraParams, undefined)
+  assert.equal(parsed.zoom, 3)
+  assert.doesNotMatch(serializeUrlHash(parsed), /region=/)
+
+  // Ids are matched exactly
+  assert.equal(parseUrlHash('#z=3&region=Amazon-Arc')?.selectedRegionId, undefined)
+  assert.equal(parseUrlHash('#region=atlantis'), null)
+
+  // The fallback's selection is replaced only by a valid id
+  const fallback: UrlHashState = { ...DEFAULT_URL_HASH_STATE, selectedRegionId: 'boreal-canada' }
+  assert.equal(parseUrlHash('#z=3&region=atlantis', fallback)?.selectedRegionId, 'boreal-canada')
+  assert.equal(parseUrlHash('#z=3&region=mediterranean', fallback)?.selectedRegionId, 'mediterranean')
+})
+
+test('selected region is restored on load from the hash and from storage, and written by sync', () => {
+  const fromHash = resolveInitialUrlHashState(
+    createMockBrowserTarget('#z=0.6&lat=0&lng=20&proj=mercator&region=northern-australia').target,
+  )
+  assert.equal(fromHash.source, 'hash')
+  assert.equal(fromHash.state.selectedRegionId, 'northern-australia')
+  // The link's viewport is kept as is
+  assert.equal(fromHash.state.zoom, 0.6)
+  assert.equal(fromHash.state.lng, 20)
+
+  const fromStorage = resolveInitialUrlHashState(
+    createMockBrowserTarget('', '#z=4&lat=58.6&lng=-114.4&region=boreal-canada').target,
+  )
+  assert.equal(fromStorage.source, 'storage')
+  assert.equal(fromStorage.state.selectedRegionId, 'boreal-canada')
+
+  const { target, storageMap } = createMockBrowserTarget()
+  const selectedHash = syncUrlHashAndStorage(
+    { ...DEFAULT_URL_HASH_STATE, selectedRegionId: 'sea-equatorial' },
+    target,
+  )
+  assert.match(target.location.hash, /region=sea-equatorial/)
+  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), selectedHash)
+
+  const clearedHash = syncUrlHashAndStorage({ ...DEFAULT_URL_HASH_STATE }, target)
+  assert.doesNotMatch(target.location.hash, /region=/)
+  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), clearedHash)
+})
+
 test('clampGeolocationTargetZoom caps geolocation jump at default max zoom z7 while preserving coarser zooms', () => {
   assert.equal(DEFAULT_GEOLOCATION_MAX_ZOOM, 7)
   assert.equal(clampGeolocationTargetZoom(15), 7)
