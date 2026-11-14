@@ -589,6 +589,16 @@ function App() {
               </dd>
             </div>
             <div className="meta-row">
+              <dt>Nighttime Lights (Low Zoom)</dt>
+              <dd>
+                Gap-filled BRDF-corrected Day/Night Band radiance (NOAA-20 / JPSS-1 VIIRS Black Marble) from{' '}
+                <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener noreferrer">
+                  NASA GIBS / Earthdata
+                </a>{' '}
+                masked to the live nighttime hemisphere across <code>z0–z6</code>.
+              </dd>
+            </div>
+            <div className="meta-row">
               <dt>Earth Basemap</dt>
               <dd>
                 Sentinel-2 cloudless via{' '}

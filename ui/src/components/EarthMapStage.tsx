@@ -22,6 +22,11 @@ import {
   type MapViewportState,
 } from '../state/urlHashState'
 import {
+  createNightLightsLayer,
+  NIGHT_LIGHTS_LAYER_ID,
+  type NightLightsLayerController,
+} from '../utils/nightLightsLayer'
+import {
   createSatelliteCloudLayer,
   SATELLITE_CLOUDS_LAYER_ID,
   type SatelliteCloudLayerController,
@@ -399,6 +404,7 @@ export function EarthMapStage({
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<MapLibreMap | null>(null)
   const styleReadyRef = useRef(false)
+  const nightLightsLayerRef = useRef<NightLightsLayerController | null>(null)
   const cloudLayerRef = useRef<SatelliteCloudLayerController | null>(null)
   const satMarkersRef = useRef<Map<string, SatelliteMarkerEntry>>(new Map())
   const initialViewportRef = useRef<MapViewportState>(initialViewport)
@@ -551,6 +557,7 @@ export function EarthMapStage({
             'Fire/sensor reference: <a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener noreferrer">NASA FIRMS</a> (NASA EOS MODIS, NOAA/NASA VIIRS; illustrative baseline)',
             'Orbits: <a href="https://celestrak.org/" target="_blank" rel="noopener noreferrer">CelesTrak</a>',
             'Clouds: <a href="https://layers.extremum.org" target="_blank" rel="noopener noreferrer">Extremum</a> (EUMETSAT / NOAA / JMA VIS-IR)',
+            'Nighttime lights: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener noreferrer">NASA GIBS / Earthdata</a> (NOAA-20 VIIRS Black Marble)',
           ],
         },
       })
@@ -562,6 +569,12 @@ export function EarthMapStage({
           return
         }
         styleReadyRef.current = true
+        if (!map.getLayer(NIGHT_LIGHTS_LAYER_ID)) {
+          const nightLightsLayer = createNightLightsLayer()
+          nightLightsLayerRef.current = nightLightsLayer
+          // Insert above basemap and below clouds/swaths for low-zoom night hemisphere rendering.
+          map.addLayer(nightLightsLayer, 'satellite-swaths-fill')
+        }
         if (!map.getLayer(SATELLITE_CLOUDS_LAYER_ID)) {
           const cloudLayer = createSatelliteCloudLayer({
             apiBaseUrl: latestApiBaseUrlRef.current,
@@ -629,6 +642,7 @@ export function EarthMapStage({
       markerMap.clear()
       resizeObserver?.disconnect()
       map?.remove()
+      nightLightsLayerRef.current = null
       cloudLayerRef.current = null
       mapInstanceRef.current = null
     }
