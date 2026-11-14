@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FeatureCollection, MultiLineString, Point, Polygon } from 'geojson'
 import { LngLat, LngLatBounds, Map as MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl'
 import type {
@@ -42,9 +42,25 @@ import {
   normalizeLng,
   type MapViewportState,
 } from '../state/urlHashState'
-import type { LiveOrbitalState, LiveSatelliteSnapshot } from '../utils/satelliteOrbits'
+import {
+  createSatelliteCloudLayer,
+  SATELLITE_CLOUDS_LAYER_ID,
+  type SatelliteCloudLayerController,
+} from '../utils/satelliteCloudLayer'
+import {
+  NADIR_SWATH_COLOR,
+  NADIR_SWATH_FILL_OPACITY,
+  NADIR_SWATH_STROKE_OPACITY,
+  WIDE_SWATH_COLOR,
+  WIDE_SWATH_DASH_ARRAY,
+  WIDE_SWATH_FILL_OPACITY,
+  WIDE_SWATH_STROKE_OPACITY,
+  type LiveOrbitalState,
+  type LiveSatelliteSnapshot,
+  type SatelliteHudSection,
+} from '../utils/satelliteOrbits'
 import { MapControls } from './MapControls'
-import { MapLegend } from './MapLegend'
+import { SatelliteHud } from './SatelliteHud'
 
 // MapLibre v6 is ESM-only: when bundled it resolves its worker next to the chunk via
 // import.meta.url, a file Vite never emits. Point it at a Vite-emitted worker asset instead.
@@ -58,6 +74,11 @@ export interface CameraFocusRequest {
   requestId: number
 }
 
+// What the legend row outside the map needs to know about the user's location
+export interface GeolocationLegendState {
+  hasUserLocation: boolean
+}
+
 interface EarthMapStageProps {
   selectedMonth: number
   sensorFilter: SensorFilter
@@ -67,13 +88,20 @@ interface EarthMapStageProps {
   onViewportChange: (next: MapViewportState) => void
   cameraFocusRequest: CameraFocusRequest | null
   geolocationMaxZoom?: number
+  apiBaseUrl: string
+  cloudsDisabled?: boolean
+  showClouds: boolean
+  onShowCloudsChange: (next: boolean) => void
+  cloudRefreshNonce?: number
   orbitalState: LiveOrbitalState
+  satelliteHudSection: SatelliteHudSection | null
   showOrbits: boolean
   onShowOrbitsChange: (next: boolean) => void
   selectedSatelliteId: string | null
   onSelectSatellite: (satellite: LiveSatelliteSnapshot) => void
   selectedRegionId: string | null
   onSelectRegion: (regionId: string) => void
+  onGeolocationStateChange?: (state: GeolocationLegendState) => void
 }
 
 interface SatelliteMarkerEntry {
@@ -85,8 +113,6 @@ interface SatelliteMarkerEntry {
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
-// The legend starts open only on a map at least this wide (in rem), matching the CSS breakpoint.
-const WIDE_STAGE_MIN_REM = 36
 const GEO_STATUS_TIMEOUT_MS = 8000
 
 // MapLibre match expression: statusCategory -> palette color (below-typical is the fallback)
@@ -329,9 +355,13 @@ function createBaseStyle(
         attribution:
           'Sentinel-2 cloudless — <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer">s2maps.eu</a> by <a href="https://eox.at" target="_blank" rel="noopener noreferrer">EOX IT Services GmbH</a> (Contains modified Copernicus Sentinel data 2025)',
       },
-      'satellite-swaths': {
+      'satellite-swaths-wide': {
         type: 'geojson',
-        data: initialOrbitalState.swathsGeoJson,
+        data: initialOrbitalState.wideSwathsGeoJson,
+      },
+      'satellite-swaths-nadir': {
+        type: 'geojson',
+        data: initialOrbitalState.nadirSwathsGeoJson,
       },
       'satellite-tracks-past': {
         type: 'geojson',
@@ -364,36 +394,45 @@ function createBaseStyle(
           'raster-saturation': -0.5,
         },
       },
+      // Dual instantaneous swaths in fixed hues (SWATH_COLORS in dataPalette.ts): the wide scan
+      // swath underneath, the nadir swath on top
       {
-        id: 'satellite-swaths-fill',
+        id: 'satellite-swaths-wide-fill',
         type: 'fill',
-        source: 'satellite-swaths',
+        source: 'satellite-swaths-wide',
         paint: {
-          'fill-color': ['get', 'color'],
-          'fill-opacity': ['match', ['get', 'swathRole'], 'nadir', 0.14, 0.045],
+          'fill-color': WIDE_SWATH_COLOR,
+          'fill-opacity': WIDE_SWATH_FILL_OPACITY,
         },
       },
       {
         id: 'satellite-swaths-wide-outline',
         type: 'line',
-        source: 'satellite-swaths',
-        filter: ['==', ['get', 'swathRole'], 'wide'],
+        source: 'satellite-swaths-wide',
         paint: {
-          'line-color': ['get', 'color'],
+          'line-color': WIDE_SWATH_COLOR,
           'line-width': 1,
-          'line-opacity': 0.28,
-          'line-dasharray': [3, 4],
+          'line-opacity': WIDE_SWATH_STROKE_OPACITY,
+          'line-dasharray': WIDE_SWATH_DASH_ARRAY,
+        },
+      },
+      {
+        id: 'satellite-swaths-nadir-fill',
+        type: 'fill',
+        source: 'satellite-swaths-nadir',
+        paint: {
+          'fill-color': NADIR_SWATH_COLOR,
+          'fill-opacity': NADIR_SWATH_FILL_OPACITY,
         },
       },
       {
         id: 'satellite-swaths-nadir-outline',
         type: 'line',
-        source: 'satellite-swaths',
-        filter: ['==', ['get', 'swathRole'], 'nadir'],
+        source: 'satellite-swaths-nadir',
         paint: {
-          'line-color': ['get', 'color'],
-          'line-width': 1.1,
-          'line-opacity': 0.45,
+          'line-color': NADIR_SWATH_COLOR,
+          'line-width': 1,
+          'line-opacity': NADIR_SWATH_STROKE_OPACITY,
         },
       },
       {
@@ -506,14 +545,19 @@ function setGeoJsonSourceData(
   sourceId: string,
   data: FeatureCollection<Point | MultiLineString | Polygon>,
 ): void {
-  const source = map.getSource(sourceId) as GeoJSONSource | undefined
-  if (source) {
-    source.setData(data)
+  try {
+    const source = map.getSource(sourceId) as GeoJSONSource | undefined
+    if (source && typeof source.setData === 'function') {
+      source.setData(data)
+    }
+  } catch {
+    // Style still initializing: the 'style.load' handler applies the latest data.
   }
 }
 
 function syncOrbitalSources(map: MapLibreMap, state: LiveOrbitalState): void {
-  setGeoJsonSourceData(map, 'satellite-swaths', state.swathsGeoJson)
+  setGeoJsonSourceData(map, 'satellite-swaths-wide', state.wideSwathsGeoJson)
+  setGeoJsonSourceData(map, 'satellite-swaths-nadir', state.nadirSwathsGeoJson)
   setGeoJsonSourceData(map, 'satellite-tracks-past', state.pastTracksGeoJson)
   setGeoJsonSourceData(map, 'satellite-tracks-future', state.futureTracksGeoJson)
   setGeoJsonSourceData(map, 'satellite-positions', state.positionsGeoJson)
@@ -528,27 +572,35 @@ export function EarthMapStage({
   onViewportChange,
   cameraFocusRequest,
   geolocationMaxZoom = DEFAULT_GEOLOCATION_MAX_ZOOM,
+  apiBaseUrl,
+  cloudsDisabled = false,
+  showClouds,
+  onShowCloudsChange,
+  cloudRefreshNonce = 0,
   orbitalState,
+  satelliteHudSection,
   showOrbits,
   onShowOrbitsChange,
   selectedSatelliteId,
   onSelectSatellite,
   selectedRegionId,
   onSelectRegion,
+  onGeolocationStateChange,
 }: EarthMapStageProps) {
   const stageRef = useRef<HTMLElement | null>(null)
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<MapLibreMap | null>(null)
+  const cloudLayerRef = useRef<SatelliteCloudLayerController | null>(null)
   const satMarkersRef = useRef<Map<string, SatelliteMarkerEntry>>(new Map())
   const initialViewportRef = useRef<MapViewportState>(initialViewport)
   const latestOnViewportChangeRef = useRef(onViewportChange)
+  const latestOnGeolocationStateChangeRef = useRef(onGeolocationStateChange)
   const isMountedRef = useRef(false)
 
   const [mapError, setMapError] = useState<string | null>(null)
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
   const [isLocating, setIsLocating] = useState(false)
   const [geoErrorMessage, setGeoErrorMessage] = useState<string | null>(null)
-  const [isStageWide, setIsStageWide] = useState(true)
   const [viewport, setViewport] = useState<MapViewportState>(() => ({
     lng: normalizeLng(initialViewport.lng),
     lat: clampLat(initialViewport.lat),
@@ -567,6 +619,10 @@ export function EarthMapStage({
   const latestGeoJsonRef = useRef(geoJson)
   const latestUserGeoJsonRef = useRef(userLocationGeoJson)
   const latestProjectionRef = useRef(projectionMode)
+  const latestApiBaseUrlRef = useRef(apiBaseUrl)
+  const latestCloudsDisabledRef = useRef(cloudsDisabled)
+  const latestShowCloudsRef = useRef(showClouds)
+  const lastCloudRefreshNonceRef = useRef(cloudRefreshNonce)
   const latestOrbitalStateRef = useRef(orbitalState)
   const latestShowOrbitsRef = useRef(showOrbits)
   const latestSelectedSatIdRef = useRef(selectedSatelliteId)
@@ -587,20 +643,13 @@ export function EarthMapStage({
     onSelectSatelliteRef.current = onSelectSatellite
   }, [onSelectSatellite])
 
-  useLayoutEffect(() => {
-    const stage = stageRef.current
-    if (!stage) {
-      return
-    }
-    const update = () => {
-      const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
-      setIsStageWide(stage.getBoundingClientRect().width >= WIDE_STAGE_MIN_REM * rootFontSize)
-    }
-    update()
-    const observer = new ResizeObserver(update)
-    observer.observe(stage)
-    return () => observer.disconnect()
-  }, [])
+  useEffect(() => {
+    latestOnGeolocationStateChangeRef.current = onGeolocationStateChange
+  }, [onGeolocationStateChange])
+
+  useEffect(() => {
+    latestOnGeolocationStateChangeRef.current?.({ hasUserLocation: userLocation !== null })
+  }, [userLocation])
 
   useEffect(() => {
     if (!geoErrorMessage) {
@@ -696,6 +745,7 @@ export function EarthMapStage({
 
     let map: MapLibreMap | null = null
     let resizeObserver: ResizeObserver | null = null
+    let attributionObserver: ResizeObserver | null = null
     const startViewport = initialViewportRef.current
 
     try {
@@ -717,7 +767,7 @@ export function EarthMapStage({
           // Kept short so the EOX/Copernicus basemap credit stays readable on small maps;
           // the side panel carries the full attribution.
           customAttribution:
-            '<a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener noreferrer">NASA FIRMS</a> (sample data) &middot; <a href="https://celestrak.org/" target="_blank" rel="noopener noreferrer">CelesTrak</a>',
+            '<a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener noreferrer">NASA FIRMS</a> (sample data) &middot; <a href="https://celestrak.org/" target="_blank" rel="noopener noreferrer">CelesTrak</a> &middot; Clouds: <a href="https://layers.extremum.org" target="_blank" rel="noopener noreferrer">Extremum</a> (EUMETSAT, NOAA, JMA)',
         },
       })
 
@@ -761,6 +811,22 @@ export function EarthMapStage({
           map.setFilter(layerId, selectionFilter(latestSelectedRegionIdRef.current))
         }
 
+        // Clouds sit above the basemap and below swaths, tracks and data marks. Added after the
+        // marks, so a cloud layer failure (e.g. no WebGL2) cannot keep the marks off the map.
+        if (!map.getLayer(SATELLITE_CLOUDS_LAYER_ID)) {
+          try {
+            const cloudLayer = createSatelliteCloudLayer({
+              apiBaseUrl: latestApiBaseUrlRef.current,
+              disabled: latestCloudsDisabledRef.current,
+              initialVisible: latestShowCloudsRef.current,
+            })
+            map.addLayer(cloudLayer, 'satellite-swaths-wide-fill')
+            cloudLayerRef.current = cloudLayer
+          } catch {
+            cloudLayerRef.current = null
+          }
+        }
+
         // A map click selects the region in place; the list stays the keyboard path to regions.
         map.on('click', STATUS_MARK_LAYER_ID, (event: MapLayerMouseEvent) => {
           const regionId: unknown = event.features?.[0]?.properties?.id
@@ -792,6 +858,20 @@ export function EarthMapStage({
         map?.resize()
       })
       resizeObserver.observe(container)
+
+      // The satellite pass card shares the bottom-end corner with MapLibre's attribution, which
+      // grows when expanded: keep the card just above it, whatever its current height.
+      const attributionCorner = container.querySelector<HTMLElement>('.maplibregl-ctrl-bottom-right')
+      const stage = stageRef.current
+      if (attributionCorner && stage) {
+        attributionObserver = new ResizeObserver(() => {
+          stage.style.setProperty(
+            '--attribution-clearance',
+            `${Math.ceil(attributionCorner.getBoundingClientRect().height)}px`,
+          )
+        })
+        attributionObserver.observe(attributionCorner)
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to initialize MapLibre WebGL canvas.'
       queueMicrotask(() => setMapError(message))
@@ -804,7 +884,9 @@ export function EarthMapStage({
       }
       markerMap.clear()
       resizeObserver?.disconnect()
+      attributionObserver?.disconnect()
       map?.remove()
+      cloudLayerRef.current = null
       mapInstanceRef.current = null
     }
   }, [])
@@ -855,6 +937,25 @@ export function EarthMapStage({
     syncOrbitalSources(map, orbitalState)
     syncSatelliteMarkers(map, orbitalState.snapshots, showOrbits, selectedSatelliteId)
   }, [orbitalState, showOrbits, selectedSatelliteId])
+
+  useEffect(() => {
+    latestShowCloudsRef.current = showClouds
+    latestCloudsDisabledRef.current = cloudsDisabled
+    const cloudLayer = cloudLayerRef.current
+    if (!cloudLayer) {
+      return
+    }
+    cloudLayer.setDisabled(cloudsDisabled)
+    cloudLayer.setVisible(showClouds)
+  }, [showClouds, cloudsDisabled])
+
+  useEffect(() => {
+    if (cloudRefreshNonce === lastCloudRefreshNonceRef.current) {
+      return
+    }
+    lastCloudRefreshNonceRef.current = cloudRefreshNonce
+    cloudLayerRef.current?.refreshNow()
+  }, [cloudRefreshNonce])
 
   useEffect(() => {
     latestProjectionRef.current = projectionMode
@@ -985,19 +1086,9 @@ export function EarthMapStage({
     moveCamera(map, { center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM }, 600)
   }
 
-  const hasOrbitSnapshots = showOrbits && orbitalState.snapshots.length > 0
-
   // HUD before the canvas in DOM order, so Tab reaches the map controls before MapLibre's own.
   return (
     <main ref={stageRef} className="map-stage" aria-label="Fire activity map">
-      <MapLegend
-        selectedMonth={selectedMonth}
-        defaultOpen={isStageWide}
-        showModisOrbits={hasOrbitSnapshots && sensorFilter !== 'viirs'}
-        showViirsOrbits={hasOrbitSnapshots && sensorFilter !== 'modis'}
-        showUserLocation={userLocation !== null}
-      />
-
       <MapControls
         onZoomIn={() => handleZoom(1)}
         onZoomOut={() => handleZoom(-1)}
@@ -1009,7 +1100,11 @@ export function EarthMapStage({
         onProjectionModeChange={onProjectionModeChange}
         showOrbits={showOrbits}
         onShowOrbitsChange={onShowOrbitsChange}
+        showClouds={showClouds}
+        onShowCloudsChange={onShowCloudsChange}
       />
+
+      {satelliteHudSection && <SatelliteHud section={satelliteHudSection} />}
 
       <div ref={mapContainerRef} className="map-canvas" />
 

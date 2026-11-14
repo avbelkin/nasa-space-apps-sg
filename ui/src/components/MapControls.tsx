@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import type { ProjectionMode } from '../data/stubSeasonalData'
-import { LocateIcon, MinusIcon, OrbitIcon, PlusIcon, ResetViewIcon } from './icons'
+import { CloudIcon, LocateIcon, MinusIcon, OrbitIcon, PlusIcon, ResetViewIcon } from './icons'
 import { SegmentedControl, type SegmentedOption } from './SegmentedControl'
 
 const PROJECTION_OPTIONS: readonly SegmentedOption<ProjectionMode>[] = [
@@ -19,6 +19,8 @@ interface MapControlsProps {
   onProjectionModeChange: (next: ProjectionMode) => void
   showOrbits: boolean
   onShowOrbitsChange: (next: boolean) => void
+  showClouds: boolean
+  onShowCloudsChange: (next: boolean) => void
 }
 
 // Top-end column of icon buttons over the map. Each button is its own surface, so the map
@@ -34,6 +36,8 @@ export function MapControls({
   onProjectionModeChange,
   showOrbits,
   onShowOrbitsChange,
+  showClouds,
+  onShowCloudsChange,
 }: MapControlsProps) {
   const geoStatusId = useId()
 
@@ -93,6 +97,17 @@ export function MapControls({
         onClick={() => onShowOrbitsChange(!showOrbits)}
       >
         <OrbitIcon />
+      </button>
+
+      <button
+        type="button"
+        className="hud-btn hud-icon-btn"
+        aria-label="Clouds"
+        title="Clouds"
+        aria-pressed={showClouds}
+        onClick={() => onShowCloudsChange(!showClouds)}
+      >
+        <CloudIcon />
       </button>
     </div>
   )

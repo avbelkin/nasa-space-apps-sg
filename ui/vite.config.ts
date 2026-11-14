@@ -15,6 +15,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
+    worker: {
+      format: 'es',
+    },
     plugins: [
       react(),
       {
@@ -29,6 +32,9 @@ export default defineConfig(({ mode }) => {
     ],
     build: {
       chunkSizeWarningLimit: 1400,
+    },
+    optimizeDeps: {
+      exclude: ['maplibre-gl'],
     },
     server: {
       port: 5173,

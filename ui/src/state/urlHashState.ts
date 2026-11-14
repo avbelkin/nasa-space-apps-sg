@@ -6,8 +6,8 @@ import {
   type ViewMode,
 } from '../data/stubSeasonalData.ts'
 
-// Versioned: the first key was written on every load by builds that defaulted to September with
-// orbits on, so its values say nothing about a visitor's choice and are ignored.
+// Versioned: the first key was written on every load (with a hard-coded September) by earlier
+// builds, so its values say nothing about a visitor's choice and are ignored.
 export const URL_HASH_STORAGE_KEY = 'nasa_fire_calendar_state_v2'
 export const LEGACY_URL_HASH_STORAGE_KEY = 'nasa_fire_calendar_url_hash'
 export const DEFAULT_CENTER: [number, number] = [108, 8]
@@ -28,6 +28,7 @@ export interface UrlHashState extends MapViewportState {
   projectionMode: ProjectionMode
   selectedMonth: number
   showOrbits: boolean
+  showClouds: boolean
   // Absent when no region is selected
   selectedRegionId?: string
   extraParams?: Record<string, string>
@@ -50,8 +51,8 @@ export function createDefaultUrlHashState(now: Date = new Date()): UrlHashState 
     sensorFilter: 'harmonized',
     projectionMode: 'globe',
     selectedMonth: now.getMonth(),
-    // Orbits are a secondary layer; links and stored state can still turn them on.
-    showOrbits: false,
+    showOrbits: true,
+    showClouds: true,
   }
 }
 
@@ -115,6 +116,17 @@ interface HashFeatureCodec {
 
 function isOneOf<T extends string>(value: string, allowed: readonly T[]): value is T {
   return (allowed as readonly string[]).includes(value)
+}
+
+function parseBooleanHashFlag(raw: string): boolean | null {
+  const normalized = raw.trim().toLowerCase()
+  if (normalized === '1' || normalized === 'true' || normalized === 'on') {
+    return true
+  }
+  if (normalized === '0' || normalized === 'false' || normalized === 'off') {
+    return false
+  }
+  return null
 }
 
 function parseMonthValue(raw: string): number | null {
@@ -189,16 +201,24 @@ const HASH_FEATURE_CODECS: readonly HashFeatureCodec[] = [
     key: 'orbits',
     serialize: (state) => (state.showOrbits ? '1' : '0'),
     parse: (raw, draft) => {
-      const normalized = raw.trim().toLowerCase()
-      if (normalized === '1' || normalized === 'true' || normalized === 'on') {
-        draft.showOrbits = true
-        return true
+      const parsed = parseBooleanHashFlag(raw)
+      if (parsed === null) {
+        return false
       }
-      if (normalized === '0' || normalized === 'false' || normalized === 'off') {
-        draft.showOrbits = false
-        return true
+      draft.showOrbits = parsed
+      return true
+    },
+  },
+  {
+    key: 'clouds',
+    serialize: (state) => (state.showClouds ? '1' : '0'),
+    parse: (raw, draft) => {
+      const parsed = parseBooleanHashFlag(raw)
+      if (parsed === null) {
+        return false
       }
-      return false
+      draft.showClouds = parsed
+      return true
     },
   },
   {
@@ -270,6 +290,7 @@ function cloneFallbackState(fallback: UrlHashState): UrlHashState {
     projectionMode: fallback.projectionMode,
     selectedMonth: fallback.selectedMonth,
     showOrbits: fallback.showOrbits,
+    showClouds: fallback.showClouds,
     ...(fallback.selectedRegionId ? { selectedRegionId: fallback.selectedRegionId } : {}),
     ...(fallback.extraParams ? { extraParams: { ...fallback.extraParams } } : {}),
   }

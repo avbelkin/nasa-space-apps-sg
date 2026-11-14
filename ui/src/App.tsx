@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import { EarthMapStage, type CameraFocusRequest } from './components/EarthMapStage'
+import {
+  EarthMapStage,
+  type CameraFocusRequest,
+  type GeolocationLegendState,
+} from './components/EarthMapStage'
+import { MapLegend } from './components/MapLegend'
 import { MonthStrip } from './components/MonthStrip'
 import type { SatelliteFeedState } from './components/panel/SatelliteDetails'
 import { SidePanel } from './components/SidePanel'
@@ -30,7 +35,9 @@ import {
 import {
   computeLiveOrbitalState,
   fetchSatelliteOrbits,
+  formatSatelliteHudSection,
   interpolateTrackAtTime,
+  SATELLITE_ANIMATION_INTERVAL_MS,
   type LiveSatelliteSnapshot,
   type SatelliteOrbitsResponse,
 } from './utils/satelliteOrbits'
@@ -53,6 +60,8 @@ function App() {
     initialResolution.state.selectedMonth,
   )
   const [showOrbits, setShowOrbits] = useState<boolean>(initialResolution.state.showOrbits)
+  const [showClouds, setShowClouds] = useState<boolean>(initialResolution.state.showClouds)
+  const [cloudRefreshNonce, setCloudRefreshNonce] = useState<number>(0)
   const [viewport, setViewport] = useState<MapViewportState>(() => ({
     zoom: initialResolution.state.zoom,
     lat: initialResolution.state.lat,
@@ -65,6 +74,9 @@ function App() {
     initialResolution.state.selectedRegionId ?? null,
   )
   const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null)
+  const [geolocationState, setGeolocationState] = useState<GeolocationLegendState>({
+    hasUserLocation: false,
+  })
   const [cameraFocusRequest, setCameraFocusRequest] = useState<CameraFocusRequest | null>(null)
   const focusRequestSeqRef = useRef(0)
   const lastSyncedHashRef = useRef('')
@@ -79,6 +91,15 @@ function App() {
   const [orbitsPayload, setOrbitsPayload] = useState<SatelliteOrbitsResponse | null>(null)
   const [orbitsError, setOrbitsError] = useState<string | null>(null)
   const [nowUnixMs, setNowUnixMs] = useState<number>(() => Date.now())
+  // Map centre for the satellite overpass request, read when the request is made
+  const viewportRef = useRef<{ lat: number; lng: number }>({
+    lat: initialResolution.state.lat,
+    lng: initialResolution.state.lng,
+  })
+
+  useEffect(() => {
+    viewportRef.current = { lat: viewport.lat, lng: viewport.lng }
+  }, [viewport])
 
   useEffect(() => {
     lastSyncedHashRef.current = syncUrlHashAndStorage({
@@ -88,6 +109,7 @@ function App() {
       projectionMode,
       selectedMonth,
       showOrbits,
+      showClouds,
       ...(selectedRegionId ? { selectedRegionId } : {}),
       extraParams,
     })
@@ -98,6 +120,7 @@ function App() {
     projectionMode,
     selectedMonth,
     showOrbits,
+    showClouds,
     selectedRegionId,
     extraParams,
   ])
@@ -116,6 +139,7 @@ function App() {
       setProjectionMode(parsed.projectionMode)
       setSelectedMonth(parsed.selectedMonth)
       setShowOrbits(parsed.showOrbits)
+      setShowClouds(parsed.showClouds)
       setSelectedRegionId(parsed.selectedRegionId ?? null)
       setExtraParams(parsed.extraParams)
       setViewport({
@@ -170,8 +194,12 @@ function App() {
     setConnectionState('checking')
     setErrorMessage(null)
     setOrbitsError(null)
+    setCloudRefreshNonce((value) => value + 1)
     void fetchApiStatus().then(applySuccess, applyFailure)
-    void fetchSatelliteOrbits(apiBaseUrl).then(applyOrbitsSuccess, applyOrbitsFailure)
+    void fetchSatelliteOrbits(apiBaseUrl, undefined, viewportRef.current).then(
+      applyOrbitsSuccess,
+      applyOrbitsFailure,
+    )
   }
 
   useEffect(() => {
@@ -193,7 +221,7 @@ function App() {
     )
 
     const refreshOrbits = () => {
-      void fetchSatelliteOrbits(apiBaseUrl, controller.signal).then(
+      void fetchSatelliteOrbits(apiBaseUrl, controller.signal, viewportRef.current).then(
         (data) => {
           if (!controller.signal.aborted) {
             applyOrbitsSuccess(data)
@@ -222,7 +250,7 @@ function App() {
     }
     const timer = window.setInterval(() => {
       setNowUnixMs(Date.now())
-    }, 1000)
+    }, SATELLITE_ANIMATION_INTERVAL_MS)
     return () => window.clearInterval(timer)
   }, [orbitsPayload, showOrbits])
 
@@ -236,6 +264,14 @@ function App() {
       ),
     [orbitsPayload, sensorFilter, nowUnixMs, showOrbits],
   )
+
+  const satelliteHudSection = useMemo(
+    () =>
+      formatSatelliteHudSection(orbitsPayload?.satelliteHud ?? [], { sensorFilter, showOrbits }),
+    [orbitsPayload, sensorFilter, showOrbits],
+  )
+
+  const hasOrbitSnapshots = showOrbits && orbitalState.snapshots.length > 0
 
   const monthProfile = MONTHLY_PROFILE[selectedMonth]
   const evaluatedRegions = useMemo(
@@ -316,7 +352,13 @@ function App() {
         onViewportChange={setViewport}
         cameraFocusRequest={cameraFocusRequest}
         geolocationMaxZoom={DEFAULT_GEOLOCATION_MAX_ZOOM}
+        apiBaseUrl={apiBaseUrl}
+        cloudsDisabled={isProdUnconfigured}
+        showClouds={showClouds}
+        onShowCloudsChange={setShowClouds}
+        cloudRefreshNonce={cloudRefreshNonce}
         orbitalState={orbitalState}
+        satelliteHudSection={satelliteHudSection}
         showOrbits={showOrbits}
         onShowOrbitsChange={(next) => {
           setShowOrbits(next)
@@ -328,6 +370,7 @@ function App() {
         onSelectSatellite={handleSelectSatellite}
         selectedRegionId={selectedRegionId}
         onSelectRegion={handleSelectRegionOnMap}
+        onGeolocationStateChange={setGeolocationState}
       />
 
       <MonthStrip
@@ -356,6 +399,15 @@ function App() {
         onCheckApi={handleCheckBackend}
         tleSourceSummary={tleSourceSummary}
         orbitsError={orbitsError}
+      />
+
+      <MapLegend
+        selectedMonth={selectedMonth}
+        viewport={viewport}
+        showSwaths={hasOrbitSnapshots}
+        showModisOrbits={hasOrbitSnapshots && sensorFilter !== 'viirs'}
+        showViirsOrbits={hasOrbitSnapshots && sensorFilter !== 'modis'}
+        showUserLocation={geolocationState.hasUserLocation}
       />
     </div>
   )

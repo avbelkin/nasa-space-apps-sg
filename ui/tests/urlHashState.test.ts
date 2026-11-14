@@ -74,6 +74,7 @@ test('serializeUrlHash and parseUrlHash round-trip core controls and extensible 
     projectionMode: 'mercator',
     selectedMonth: 2,
     showOrbits: false,
+    showClouds: false,
     extraParams: {
       aoi: 'sea-1',
       hotspots: 'on',
@@ -83,7 +84,7 @@ test('serializeUrlHash and parseUrlHash round-trip core controls and extensible 
   const hash = serializeUrlHash(input)
   assert.equal(
     hash,
-    '#z=6.45&lat=1.3521&lng=103.8198&mode=sensors&sensor=viirs&proj=mercator&month=3&orbits=0&aoi=sea-1&hotspots=on',
+    '#z=6.45&lat=1.3521&lng=103.8198&mode=sensors&sensor=viirs&proj=mercator&month=3&orbits=0&clouds=0&aoi=sea-1&hotspots=on',
   )
 
   const parsed = parseUrlHash(hash)
@@ -94,6 +95,12 @@ test('serializeUrlHash and parseUrlHash round-trip core controls and extensible 
 
   const disabledOrbits = parseUrlHash('#orbits=off')
   assert.equal(disabledOrbits?.showOrbits, false)
+
+  const enabledClouds = parseUrlHash('#clouds=true')
+  assert.equal(enabledClouds?.showClouds, true)
+
+  const disabledClouds = parseUrlHash('#clouds=off')
+  assert.equal(disabledClouds?.showClouds, false)
 })
 
 test('coordinate normalization rounds to 4 decimals and wraps longitudes into [-180, 180]', () => {
@@ -218,43 +225,47 @@ test('resolveInitialUrlHashState resolves hash > storage > default priority', ()
   assert.deepEqual(fromDefault.state, DEFAULT_URL_HASH_STATE)
 })
 
-test('defaults follow the given date: current month, orbits off', () => {
+test('defaults follow the given date: current month, orbits and clouds on', () => {
   assert.equal(DEFAULT_URL_HASH_STATE.selectedMonth, 10)
-  assert.equal(DEFAULT_URL_HASH_STATE.showOrbits, false)
+  assert.equal(DEFAULT_URL_HASH_STATE.showOrbits, true)
+  assert.equal(DEFAULT_URL_HASH_STATE.showClouds, true)
   assert.equal(createDefaultUrlHashState(new Date(2027, 0, 1, 12)).selectedMonth, 0)
   assert.equal(createDefaultUrlHashState(new Date(2027, 11, 31, 12)).selectedMonth, 11)
-  assert.match(serializeUrlHash(DEFAULT_URL_HASH_STATE), /&month=11&orbits=0(&|$)/)
+  assert.match(serializeUrlHash(DEFAULT_URL_HASH_STATE), /&month=11&orbits=1&clouds=1(&|$)/)
 })
 
-test('the month comes from the hash or the date, never from storage; orbits restore from either', () => {
+test('the month comes from the hash or the date, never from storage; orbits and clouds restore from either', () => {
   const fresh = resolveInitialUrlHashState(createMockBrowserTarget().target, TODAY)
   assert.equal(fresh.source, 'default')
   assert.equal(fresh.state.selectedMonth, 10)
-  assert.equal(fresh.state.showOrbits, false)
+  assert.equal(fresh.state.showOrbits, true)
+  assert.equal(fresh.state.showClouds, true)
 
   const fromHash = resolveInitialUrlHashState(
-    createMockBrowserTarget('#month=3&orbits=1', '#month=7&orbits=0').target,
+    createMockBrowserTarget('#month=3&orbits=0&clouds=0', '#month=7&orbits=1&clouds=1').target,
     TODAY,
   )
   assert.equal(fromHash.source, 'hash')
   assert.equal(fromHash.state.selectedMonth, 2)
-  assert.equal(fromHash.state.showOrbits, true)
+  assert.equal(fromHash.state.showOrbits, false)
+  assert.equal(fromHash.state.showClouds, false)
 
   // A stored month (written by an older build of this key's format) is ignored
   const fromStorage = resolveInitialUrlHashState(
-    createMockBrowserTarget('', '#z=2&lat=0&lng=0&month=7&orbits=1').target,
+    createMockBrowserTarget('', '#z=2&lat=0&lng=0&month=7&orbits=0&clouds=0').target,
     TODAY,
   )
   assert.equal(fromStorage.source, 'storage')
   assert.equal(fromStorage.state.selectedMonth, 10)
-  assert.equal(fromStorage.state.showOrbits, true)
+  assert.equal(fromStorage.state.showOrbits, false)
+  assert.equal(fromStorage.state.showClouds, false)
   assert.equal(fromStorage.state.zoom, 2)
 
-  // A returning visitor of the old build: its auto-written "September, orbits on" is not read
+  // A returning visitor of an old build: its auto-written state under the old key is not read
   const legacy = resolveInitialUrlHashState(
     createMockBrowserTarget(
       '',
-      '#z=4&lat=58.6&lng=-114.4&mode=anomaly&sensor=viirs&proj=mercator&month=9&orbits=1',
+      '#z=4&lat=58.6&lng=-114.4&mode=anomaly&sensor=viirs&proj=mercator&month=9&orbits=0&clouds=0',
       LEGACY_URL_HASH_STORAGE_KEY,
     ).target,
     TODAY,
@@ -266,7 +277,8 @@ test('the month comes from the hash or the date, never from storage; orbits rest
   const stored = serializeStoredState({
     ...DEFAULT_URL_HASH_STATE,
     selectedMonth: 2,
-    showOrbits: true,
+    showOrbits: false,
+    showClouds: false,
     sensorFilter: 'modis',
     projectionMode: 'mercator',
     selectedRegionId: 'amazon-arc',
@@ -275,7 +287,8 @@ test('the month comes from the hash or the date, never from storage; orbits rest
   const restored = resolveInitialUrlHashState(createMockBrowserTarget('', stored).target, TODAY)
   assert.deepEqual(restored.state, {
     ...DEFAULT_URL_HASH_STATE,
-    showOrbits: true,
+    showOrbits: false,
+    showClouds: false,
     sensorFilter: 'modis',
     projectionMode: 'mercator',
     selectedRegionId: 'amazon-arc',
@@ -368,4 +381,16 @@ test('clampGeolocationTargetZoom caps geolocation jump at default max zoom z7 wh
   assert.equal(clampGeolocationTargetZoom(undefined), 7)
   assert.equal(clampGeolocationTargetZoom(Number.NaN), 7)
   assert.equal(clampGeolocationTargetZoom(14, 11), 11)
+})
+
+test('region and clouds share one registry and round-trip together', () => {
+  const state: UrlHashState = {
+    ...DEFAULT_URL_HASH_STATE,
+    showClouds: false,
+    selectedRegionId: 'boreal-canada',
+  }
+  const hash = serializeUrlHash(state)
+  assert.match(hash, /&orbits=1&clouds=0&region=boreal-canada$/)
+  assert.deepEqual(parseUrlHash(hash, DEFAULT_URL_HASH_STATE), state)
+  assert.equal(parseUrlHash('#clouds=maybe&region=boreal-canada')?.showClouds, true)
 })

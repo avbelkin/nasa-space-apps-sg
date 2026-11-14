@@ -1,5 +1,6 @@
 using System.Net;
 using System.Runtime.InteropServices;
+using NasaSpaceApps.Api.Clouds;
 using NasaSpaceApps.Api.Firms;
 using NasaSpaceApps.Api.NasaOpenApi;
 using NasaSpaceApps.Api.Satellites;
@@ -20,11 +21,14 @@ var allowedOrigins = builder.Configuration
 
 var firmsOptions = FirmsOptions.FromConfiguration(builder.Configuration, builder.Environment);
 var nasaOpenApiOptions = NasaOpenApiOptions.FromConfiguration(builder.Configuration, builder.Environment);
+var cloudOptions = ExtremumCloudOptions.FromConfiguration(builder.Configuration);
 
 builder.Services.AddOpenApi();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton(firmsOptions);
 builder.Services.AddSingleton(nasaOpenApiOptions);
+builder.Services.AddSingleton(cloudOptions);
+builder.Services.AddSingleton<ExtremumCloudInstanceIdentity>();
 builder.Services.AddHttpClient("CelesTrak", client =>
 {
     client.BaseAddress = new Uri("https://celestrak.org/");
@@ -65,10 +69,22 @@ builder.Services.AddHttpClient("NasaEonet", client =>
 {
     AutomaticDecompression = DecompressionMethods.All,
 });
+builder.Services.AddHttpClient(ExtremumCloudOptions.HttpClientName, client =>
+{
+    client.BaseAddress = new Uri(cloudOptions.BaseUrl);
+    client.Timeout = Timeout.InfiniteTimeSpan;
+    client.DefaultRequestHeaders.Clear();
+}).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+{
+    // Disable handler CookieContainer so our single explicit gis-uuid Cookie header is preserved verbatim.
+    UseCookies = false,
+    AutomaticDecompression = DecompressionMethods.All,
+});
 builder.Services.AddSingleton<CelesTrakTleDownloader>();
 builder.Services.AddSingleton<SatelliteOrbitService>();
 builder.Services.AddSingleton<FirmsClient>();
 builder.Services.AddSingleton<NasaOpenApiClient>();
+builder.Services.AddSingleton<ExtremumCloudTileClient>();
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -234,15 +250,71 @@ app.MapGet("/api/satellites/orbits", async (
     int? pastMinutes,
     int? futureMinutes,
     int? stepSeconds,
+    double? lat,
+    double? lng,
     SatelliteOrbitService orbitService,
     CancellationToken cancellationToken) =>
 {
+    if (lat.HasValue != lng.HasValue)
+    {
+        return Results.BadRequest(new { error = "lat and lng must both be provided together." });
+    }
+
+    if (lat.HasValue && (!double.IsFinite(lat.Value) || lat.Value < -90.0 || lat.Value > 90.0 ||
+        !double.IsFinite(lng!.Value) || lng.Value < -180.0 || lng.Value > 180.0))
+    {
+        return Results.BadRequest(new { error = "lat must be within [-90, 90] and lng within [-180, 180]." });
+    }
+
     var response = await orbitService.GetOrbitsAsync(
         pastMinutes ?? 45,
         futureMinutes ?? 90,
         stepSeconds ?? 30,
+        lat ?? 0.0,
+        lng ?? 0.0,
         cancellationToken);
     return Results.Ok(response);
 });
 
+app.MapGet("/api/weather/satellite/{z:int}/{x:int}/{y:int}.png", async (
+    int z,
+    int x,
+    int y,
+    HttpContext httpContext,
+    ExtremumCloudTileClient cloudClient,
+    CancellationToken cancellationToken) =>
+{
+    if (!ExtremumCloudTileClient.IsValidZoom(z))
+    {
+        return Results.NotFound();
+    }
+
+    if (!ExtremumCloudTileClient.IsValidCoords(z, x, y))
+    {
+        return Results.BadRequest(new { error = "Tile coordinates out of range for zoom level." });
+    }
+
+    httpContext.Response.Headers.CacheControl = "no-store, no-cache";
+
+    try
+    {
+        var result = await cloudClient.GetTileAsync(z, x, y, cancellationToken);
+        return result.Status == CloudTileStatus.NoContent
+            ? Results.NoContent()
+            : Results.File(result.PngBytes!, "image/png");
+    }
+    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+    {
+        return Results.StatusCode(499);
+    }
+    catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+    {
+        return Results.Json(
+            new { error = "Upstream satellite cloud service unavailable." },
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+});
+
 app.Run();
+
+public partial class Program;

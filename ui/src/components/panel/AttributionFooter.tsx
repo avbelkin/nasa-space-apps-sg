@@ -14,7 +14,7 @@ export function AttributionFooter({ connectionState }: AttributionFooterProps) {
       <p className="attribution-line">
         Data: <a href="https://firms.modaps.eosdis.nasa.gov/" {...EXTERNAL}>NASA FIRMS</a> (sample
         values) &middot; <a href="https://celestrak.org/" {...EXTERNAL}>CelesTrak</a> &middot;
-        basemap <a href="https://s2maps.eu" {...EXTERNAL}>EOX</a> / Copernicus Sentinel-2. Not
+        clouds <a href="https://layers.extremum.org" {...EXTERNAL}>Extremum</a> &middot; basemap <a href="https://s2maps.eu" {...EXTERNAL}>EOX</a> / Copernicus Sentinel-2. Not
         affiliated with NASA.
       </p>
 
@@ -44,6 +44,16 @@ export function AttributionFooter({ connectionState }: AttributionFooterProps) {
                   Orbital elements (NORAD GP / TLE) from{' '}
                   <a href="https://celestrak.org/" {...EXTERNAL}>
                     CelesTrak
+                  </a>
+                  .
+                </dd>
+              </div>
+              <div className="meta-row">
+                <dt>Satellite clouds</dt>
+                <dd>
+                  Live geostationary visible and infrared cloud images (EUMETSAT, NOAA, JMA) via{' '}
+                  <a href="https://layers.extremum.org" {...EXTERNAL}>
+                    layers.extremum.org
                   </a>
                   .
                 </dd>

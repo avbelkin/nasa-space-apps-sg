@@ -68,6 +68,14 @@ export function OrbitIcon(props: IconProps) {
   )
 }
 
+export function CloudIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M7 18.5h10.5a4 4 0 0 0 .4-8 6 6 0 0 0-11.6-1.3A4.7 4.7 0 0 0 7 18.5Z" />
+    </SvgIcon>
+  )
+}
+
 export function ChevronDownIcon(props: IconProps) {
   return (
     <SvgIcon {...props}>

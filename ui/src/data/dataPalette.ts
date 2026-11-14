@@ -1,9 +1,10 @@
 import type { CSSProperties } from 'react'
-import type { StatusCategory } from './stubSeasonalData'
+import type { StatusCategory } from './stubSeasonalData.ts'
 
 // Single source of truth for every data color on the map, in the legend and in the panels.
 // One hue carries one meaning: orange/neutral/blue are reserved for the status categories,
-// satellites live in green (MODIS) and magenta/violet (VIIRS), and nothing else on the map is blue.
+// satellites live in green (MODIS) and magenta/violet (VIIRS). The pale swath fills (SWATH_COLORS)
+// are the one exception: their hues sit near "above"/"below typical", told apart by opacity and form.
 
 export const STATUS_COLORS: Record<StatusCategory, string> = {
   'anomaly-high': '#fb923c',
@@ -33,6 +34,14 @@ export const SATELLITE_COLORS: Record<KnownSatelliteId, string> = {
 // Fallback for a spacecraft the palette does not know yet; a hue no other meaning uses.
 export const DEFAULT_SATELLITE_COLOR = '#fde047'
 
+// Instantaneous sensor swaths (the team's fixed "extremum" hues): the narrow nadir swath and the
+// wide scan swath of every satellite share these two colors, whatever the spacecraft. They are
+// pale and drawn at low opacity, unlike the opaque, outlined status marks.
+export const SWATH_COLORS = {
+  nadir: '#92b4de',
+  wide: '#f49a74',
+} as const
+
 export const USER_LOCATION_COLORS = {
   fill: '#ffffff',
   ring: '#0f172a',
@@ -51,6 +60,8 @@ export const DATA_PALETTE_CSS_VARIABLES: CSSProperties & Record<`--${string}`, s
   '--data-sat-noaa-20': SATELLITE_COLORS['noaa-20'],
   '--data-sat-noaa-21': SATELLITE_COLORS['noaa-21'],
   '--data-sat-default': DEFAULT_SATELLITE_COLOR,
+  '--data-swath-nadir': SWATH_COLORS.nadir,
+  '--data-swath-wide': SWATH_COLORS.wide,
   '--data-user-fill': USER_LOCATION_COLORS.fill,
   '--data-user-ring': USER_LOCATION_COLORS.ring,
 }

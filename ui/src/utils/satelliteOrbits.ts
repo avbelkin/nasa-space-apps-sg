@@ -1,6 +1,10 @@
 import type { Feature, FeatureCollection, MultiLineString, Point, Polygon } from 'geojson'
-import { DEFAULT_SATELLITE_COLOR, SATELLITE_COLORS } from '../data/dataPalette'
-import type { SensorFilter } from '../data/stubSeasonalData'
+import {
+  DEFAULT_SATELLITE_COLOR,
+  SATELLITE_COLORS,
+  SWATH_COLORS,
+} from '../data/dataPalette.ts'
+import type { SensorFilter } from '../data/stubSeasonalData.ts'
 
 export interface OrbitTrackPoint {
   timestampUnixMs: number
@@ -21,6 +25,14 @@ export interface SatellitePosition {
   isAscending: boolean
 }
 
+export interface SatelliteSwathDto {
+  id: string
+  satelliteId: string
+  swathRole: 'nadir' | 'wide'
+  swathWidthKm: number
+  coordinates: number[][]
+}
+
 export interface SatelliteOrbit {
   id: string
   name: string
@@ -31,6 +43,7 @@ export interface SatelliteOrbit {
   nadirSwathKm: number
   wideSwathKm: number
   typicalIngestionLagMinutes: number
+  layerVariantIds?: string[]
   tleSource: string
   tleEpochUtc: string
   inclinationDeg: number
@@ -39,12 +52,40 @@ export interface SatelliteOrbit {
   track: OrbitTrackPoint[]
 }
 
+export interface SatelliteHudEntry {
+  noradId: number
+  name: string
+  minutesSincePass: number
+  ingestionLagMinutes: number
+  isIngested: boolean
+  isNadir: boolean
+  nextPassMinutes: number | null
+  layerVariantIds: string[]
+}
+
+export interface SatelliteHudItem {
+  id: string
+  label: string
+  value: string
+  detail: string
+  badge: string
+  tone: 'ready' | 'pending'
+}
+
+export interface SatelliteHudSection {
+  title: string
+  summary: string
+  items: SatelliteHudItem[]
+}
+
 export interface SatelliteOrbitsResponse {
   generatedAtUtc: string
   windowStartUnixMs: number
   windowEndUnixMs: number
   stepSeconds: number
   satellites: SatelliteOrbit[]
+  swaths?: SatelliteSwathDto[]
+  satelliteHud?: SatelliteHudEntry[]
 }
 
 export interface LiveSatelliteSnapshot {
@@ -57,6 +98,7 @@ export interface LiveSatelliteSnapshot {
   nadirSwathKm: number
   wideSwathKm: number
   typicalIngestionLagMinutes: number
+  layerVariantIds: string[]
   tleSource: string
   tleEpochUtc: string
   inclinationDeg: number
@@ -74,7 +116,8 @@ export interface LiveSatelliteSnapshot {
 
 export interface LiveOrbitalState {
   snapshots: LiveSatelliteSnapshot[]
-  swathsGeoJson: FeatureCollection<Polygon>
+  wideSwathsGeoJson: FeatureCollection<Polygon>
+  nadirSwathsGeoJson: FeatureCollection<Polygon>
   pastTracksGeoJson: FeatureCollection<MultiLineString>
   futureTracksGeoJson: FeatureCollection<MultiLineString>
   positionsGeoJson: FeatureCollection<Point>
@@ -99,6 +142,20 @@ const DEFAULT_SATELLITE_STYLE: SatelliteVisualStyle = {
   shortBadge: 'SAT',
 }
 
+export const SATELLITE_ANIMATION_INTERVAL_MS = 500
+// Swath hues live in the shared data palette; re-exported here next to their opacities
+export const NADIR_SWATH_COLOR = SWATH_COLORS.nadir
+export const NADIR_SWATH_FILL_OPACITY = 0.14
+export const NADIR_SWATH_STROKE_OPACITY = 0.32
+export const WIDE_SWATH_COLOR = SWATH_COLORS.wide
+export const WIDE_SWATH_FILL_OPACITY = 0.035
+export const WIDE_SWATH_STROKE_OPACITY = 0.12
+export const WIDE_SWATH_DASH_ARRAY: [number, number] = [4, 6]
+
+const MAX_HUD_FRESHNESS_ITEMS = 3
+const MINUTES_PER_HOUR = 60
+const MINUTES_PER_DAY = MINUTES_PER_HOUR * 24
+
 const DEG_TO_RAD = Math.PI / 180
 const RAD_TO_DEG = 180 / Math.PI
 const SWATH_EDGE_SUBDIVISIONS = 12
@@ -113,10 +170,19 @@ const ANTIMERIDIAN_CLAMP_DEG = 179.99
 export async function fetchSatelliteOrbits(
   apiBaseUrl: string,
   signal?: AbortSignal,
+  center?: { lat: number; lng: number },
 ): Promise<SatelliteOrbitsResponse> {
   const endpoint = apiBaseUrl ? `${apiBaseUrl}/api/satellites/orbits` : '/api/satellites/orbits'
-  const url = `${endpoint}?pastMinutes=45&futureMinutes=90&stepSeconds=30`
-  const response = await fetch(url, {
+  const params = new URLSearchParams({
+    pastMinutes: '45',
+    futureMinutes: '90',
+    stepSeconds: '30',
+  })
+  if (center && Number.isFinite(center.lat) && Number.isFinite(center.lng)) {
+    params.set('lat', String(Number(Math.max(-90, Math.min(90, center.lat)).toFixed(4))))
+    params.set('lng', String(Number(normalizeLng(center.lng).toFixed(4))))
+  }
+  const response = await fetch(`${endpoint}?${params.toString()}`, {
     headers: { Accept: 'application/json' },
     signal,
   })
@@ -343,6 +409,113 @@ export function buildInstantaneousSwathPolygon(
   return ring
 }
 
+export function shouldIncludeSatelliteInHud(
+  entry: SatelliteHudEntry | null | undefined,
+  sensorFilter: SensorFilter,
+): boolean {
+  if (!entry) {
+    return false
+  }
+  const variants = Array.isArray(entry.layerVariantIds) ? entry.layerVariantIds : []
+  if (variants.length === 0) {
+    return true
+  }
+  if (sensorFilter === 'harmonized') {
+    return variants.includes('harmonized') || variants.includes('wF')
+  }
+  return variants.includes(sensorFilter)
+}
+
+function formatDurationBrief(minutes: number): string {
+  if (!Number.isFinite(minutes) || minutes < 0) {
+    return ''
+  }
+  if (minutes < MINUTES_PER_HOUR) {
+    return `${Math.round(minutes)}m`
+  }
+  if (minutes < MINUTES_PER_DAY) {
+    const hours = Math.round((minutes / MINUTES_PER_HOUR) * 10) / 10
+    return `${hours}h`
+  }
+  const days = Math.round((minutes / MINUTES_PER_DAY) * 10) / 10
+  return `${days}d`
+}
+
+export function formatSatelliteHudSection(
+  hudEntries: readonly SatelliteHudEntry[] | null | undefined,
+  options: { sensorFilter: SensorFilter; showOrbits: boolean },
+): SatelliteHudSection | null {
+  if (!options.showOrbits || !Array.isArray(hudEntries) || hudEntries.length === 0) {
+    return null
+  }
+
+  const matching = hudEntries.filter((entry) =>
+    shouldIncludeSatelliteInHud(entry, options.sensorFilter),
+  )
+  if (matching.length === 0) {
+    return null
+  }
+
+  const seenSatellites = new Set<string>()
+  const sortedMatching: SatelliteHudEntry[] = []
+  for (const entry of matching.slice().sort((a, b) => a.minutesSincePass - b.minutesSincePass)) {
+    const key = entry.noradId ? String(entry.noradId) : entry.name
+    if (seenSatellites.has(key)) {
+      continue
+    }
+    seenSatellites.add(key)
+    sortedMatching.push(entry)
+  }
+
+  const candidates = sortedMatching.slice(0, MAX_HUD_FRESHNESS_ITEMS)
+  if (candidates.length > 0 && candidates.every((c) => !c.isIngested)) {
+    const firstReady = sortedMatching.find((c) => c.isIngested)
+    if (firstReady) {
+      if (candidates.length < MAX_HUD_FRESHNESS_ITEMS) {
+        candidates.push(firstReady)
+      } else {
+        candidates[candidates.length - 1] = firstReady
+      }
+    }
+  }
+
+  if (candidates.length === 0) {
+    return null
+  }
+
+  const upcoming = sortedMatching
+    .filter((entry) => typeof entry.nextPassMinutes === 'number' && Number.isFinite(entry.nextPassMinutes))
+    .sort((a, b) => (a.nextPassMinutes ?? 0) - (b.nextPassMinutes ?? 0))[0]
+
+  const summary =
+    upcoming && upcoming.nextPassMinutes !== null
+      ? `next ${upcoming.name} ~${formatDurationBrief(upcoming.nextPassMinutes)}`
+      : ''
+
+  const items: SatelliteHudItem[] = candidates.map((entry) => {
+    const isNow = Math.round(entry.minutesSincePass) <= 0
+    const passAgo = isNow ? 'now' : `${formatDurationBrief(entry.minutesSincePass)} ago`
+    const detail = entry.isIngested
+      ? ''
+      : `lag ~${formatDurationBrief(entry.ingestionLagMinutes)}`
+    const badge = entry.isIngested ? 'ready' : 'processing'
+    return {
+      id: `sat-hud-${entry.noradId}`,
+      label: entry.name,
+      value: passAgo,
+      detail,
+      badge,
+      tone: entry.isIngested ? 'ready' : 'pending',
+    }
+  })
+
+  return {
+    title: 'SAT',
+    summary,
+    items,
+  }
+}
+
 export function computeLiveOrbitalState(
   satellites: readonly SatelliteOrbit[],
   sensorFilter: SensorFilter,
@@ -354,7 +527,8 @@ export function computeLiveOrbitalState(
   )
 
   const snapshots: LiveSatelliteSnapshot[] = []
-  const swathFeatures: Array<Feature<Polygon>> = []
+  const wideSwathFeatures: Array<Feature<Polygon>> = []
+  const nadirSwathFeatures: Array<Feature<Polygon>> = []
   const pastTrackFeatures: Array<Feature<MultiLineString>> = []
   const futureTrackFeatures: Array<Feature<MultiLineString>> = []
   const positionFeatures: Array<Feature<Point>> = []
@@ -365,7 +539,7 @@ export function computeLiveOrbitalState(
       shortBadge: `${sat.name.toUpperCase()} · ${sat.instrument.toUpperCase()}`,
     }
 
-    const live = interpolateTrackAtTime(sat, nowUnixMs)
+    const pos = interpolateTrackAtTime(sat, nowUnixMs)
 
     snapshots.push({
       id: sat.id,
@@ -377,16 +551,17 @@ export function computeLiveOrbitalState(
       nadirSwathKm: sat.nadirSwathKm,
       wideSwathKm: sat.wideSwathKm,
       typicalIngestionLagMinutes: sat.typicalIngestionLagMinutes,
+      layerVariantIds: sat.layerVariantIds ?? [sat.instrument, 'harmonized', 'wF'],
       tleSource: sat.tleSource,
       tleEpochUtc: sat.tleEpochUtc,
       inclinationDeg: sat.inclinationDeg,
       periodMinutes: sat.periodMinutes,
-      lat: live.lat,
-      lng: live.lng,
-      altitudeKm: live.altitudeKm,
-      groundSpeedKmS: live.groundSpeedKmS,
-      headingDeg: live.headingDeg,
-      isAscending: live.isAscending,
+      lat: pos.lat,
+      lng: pos.lng,
+      altitudeKm: pos.altitudeKm,
+      groundSpeedKmS: pos.groundSpeedKmS,
+      headingDeg: pos.headingDeg,
+      isAscending: pos.isAscending,
       color: style.color,
       glyph: style.glyph,
       shortBadge: style.shortBadge,
@@ -395,6 +570,20 @@ export function computeLiveOrbitalState(
     if (!showOrbits) {
       continue
     }
+
+    const liveCoord: readonly [number, number] = [pos.lng, pos.lat]
+    positionFeatures.push({
+      type: 'Feature',
+      id: `${sat.id}-pos`,
+      geometry: { type: 'Point', coordinates: [pos.lng, pos.lat] },
+      properties: {
+        id: sat.id,
+        name: sat.name,
+        instrument: sat.instrument,
+        color: style.color,
+        shortBadge: style.shortBadge,
+      },
+    })
 
     const pastRaw: Array<readonly [number, number]> = []
     const futureRaw: Array<readonly [number, number]> = []
@@ -406,7 +595,6 @@ export function computeLiveOrbitalState(
       }
     }
 
-    const liveCoord: readonly [number, number] = [live.lng, live.lat]
     const pastPoints = pastRaw.length > 0 ? [...pastRaw, liveCoord] : []
     const futurePoints = futureRaw.length > 0 ? [liveCoord, ...futureRaw] : []
 
@@ -430,58 +618,51 @@ export function computeLiveOrbitalState(
       })
     }
 
-    const wideRing = buildInstantaneousSwathPolygon(
-      live.lat,
-      live.lng,
-      live.headingDeg,
-      sat.wideSwathKm,
-      280,
-    )
-    swathFeatures.push({
-      type: 'Feature',
-      id: `${sat.id}-swath-wide`,
-      geometry: { type: 'Polygon', coordinates: [wideRing] },
-      properties: {
-        id: sat.id,
-        swathRole: 'wide',
-        color: style.color,
-      },
-    })
+    if (sat.wideSwathKm > sat.nadirSwathKm) {
+      const wideRing = buildInstantaneousSwathPolygon(
+        pos.lat,
+        pos.lng,
+        pos.headingDeg,
+        sat.wideSwathKm,
+        280,
+      )
+      wideSwathFeatures.push({
+        type: 'Feature',
+        id: `${sat.id}-swath-wide`,
+        geometry: { type: 'Polygon', coordinates: [wideRing] },
+        properties: {
+          id: sat.id,
+          name: sat.name,
+          instrument: sat.instrument,
+          swathRole: 'wide',
+        },
+      })
+    }
 
     const nadirRing = buildInstantaneousSwathPolygon(
-      live.lat,
-      live.lng,
-      live.headingDeg,
+      pos.lat,
+      pos.lng,
+      pos.headingDeg,
       sat.nadirSwathKm,
       180,
     )
-    swathFeatures.push({
+    nadirSwathFeatures.push({
       type: 'Feature',
       id: `${sat.id}-swath-nadir`,
       geometry: { type: 'Polygon', coordinates: [nadirRing] },
       properties: {
         id: sat.id,
-        swathRole: 'nadir',
-        color: style.color,
-      },
-    })
-
-    positionFeatures.push({
-      type: 'Feature',
-      id: `${sat.id}-pos`,
-      geometry: { type: 'Point', coordinates: [live.lng, live.lat] },
-      properties: {
-        id: sat.id,
         name: sat.name,
         instrument: sat.instrument,
-        color: style.color,
+        swathRole: 'nadir',
       },
     })
   }
 
   return {
     snapshots,
-    swathsGeoJson: { type: 'FeatureCollection', features: swathFeatures },
+    wideSwathsGeoJson: { type: 'FeatureCollection', features: wideSwathFeatures },
+    nadirSwathsGeoJson: { type: 'FeatureCollection', features: nadirSwathFeatures },
     pastTracksGeoJson: { type: 'FeatureCollection', features: pastTrackFeatures },
     futureTracksGeoJson: { type: 'FeatureCollection', features: futureTrackFeatures },
     positionsGeoJson: { type: 'FeatureCollection', features: positionFeatures },
