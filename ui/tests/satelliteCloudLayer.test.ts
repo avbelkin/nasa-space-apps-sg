@@ -11,16 +11,18 @@ import {
   normalizeCloudCoveringTiles,
 } from '../src/utils/satelliteCloudShader.ts'
 
-test('computeCloudLayerOpacity preserves full base opacity through z7 and fades smoothly to zero by z12', () => {
+test('computeCloudLayerOpacity preserves full base opacity through z5.25 and fades proportionally to zero by z9', () => {
   assert.equal(computeCloudLayerOpacity(0), DEFAULT_CLOUD_BASE_OPACITY)
   assert.equal(computeCloudLayerOpacity(1.75), DEFAULT_CLOUD_BASE_OPACITY)
-  assert.equal(computeCloudLayerOpacity(7), DEFAULT_CLOUD_BASE_OPACITY)
+  assert.equal(computeCloudLayerOpacity(5.25), DEFAULT_CLOUD_BASE_OPACITY)
 
-  const midZoomOpacity = computeCloudLayerOpacity(9.5)
-  assert.ok(Math.abs(midZoomOpacity - DEFAULT_CLOUD_BASE_OPACITY * 0.5) < 1e-9)
+  assert.ok(Math.abs(computeCloudLayerOpacity(6) - DEFAULT_CLOUD_BASE_OPACITY * 0.8) < 1e-9)
+  assert.ok(Math.abs(computeCloudLayerOpacity(7) - DEFAULT_CLOUD_BASE_OPACITY * (2 / 3.75)) < 1e-9)
+  assert.ok(Math.abs(computeCloudLayerOpacity(7.125) - DEFAULT_CLOUD_BASE_OPACITY * 0.5) < 1e-9)
+  assert.ok(Math.abs(computeCloudLayerOpacity(8) - DEFAULT_CLOUD_BASE_OPACITY * (1 / 3.75)) < 1e-9)
 
+  assert.equal(computeCloudLayerOpacity(9), 0)
   assert.equal(computeCloudLayerOpacity(12), 0)
-  assert.equal(computeCloudLayerOpacity(15), 0)
   assert.equal(computeCloudLayerOpacity(2, 0), 0)
 })
 

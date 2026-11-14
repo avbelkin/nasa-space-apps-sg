@@ -4,8 +4,8 @@ export const CLOUD_TILE_INNER_SIZE = 256
 export const CLOUD_TILE_GUTTER = 1
 export const CLOUD_TEXTURE_SIZE = CLOUD_TILE_INNER_SIZE + CLOUD_TILE_GUTTER * 2
 export const DEFAULT_CLOUD_BASE_OPACITY = 0.65
-export const CLOUD_FADE_START_ZOOM = 7
-export const CLOUD_FADE_END_ZOOM = 12
+export const CLOUD_FADE_START_ZOOM = 5.25
+export const CLOUD_FADE_END_ZOOM = 9
 export const CLOUD_REFRESH_INTERVAL_MS = 5 * 60 * 1000
 
 const CLOUD_FADE_SPAN = CLOUD_FADE_END_ZOOM - CLOUD_FADE_START_ZOOM
@@ -60,8 +60,8 @@ export function normalizeCloudCoveringTiles(
 }
 
 /**
- * Matches extremum's SatelliteCloudLayer opacity policy: full base opacity up to z7,
- * linear fade from z7 to z12, hidden at z12+. Keeps clouds visible on global/3D views (z < 7).
+ * Proportionally rescales extremum's SatelliteCloudLayer opacity curve (0..12 → 0..9, ×0.75):
+ * full base opacity through z5.25, linear fade from z5.25 to z9, hidden at z9+.
  */
 export function computeCloudLayerOpacity(
   zoom: number,
