@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import {
   EarthMapStage,
@@ -34,10 +34,15 @@ import {
 } from './state/urlHashState'
 import {
   computeLiveOrbitalState,
+  computeSatelliteHudElapsedMinutes,
   fetchSatelliteOrbits,
   formatSatelliteHudSection,
+  hasSatelliteHudCenterMoved,
   interpolateTrackAtTime,
   SATELLITE_ANIMATION_INTERVAL_MS,
+  SATELLITE_HUD_VIEWPORT_DEBOUNCE_MS,
+  SATELLITE_ORBITS_IDLE_REFRESH_INTERVAL_MS,
+  SATELLITE_ORBITS_REFRESH_INTERVAL_MS,
   type LiveSatelliteSnapshot,
   type SatelliteOrbitsResponse,
 } from './utils/satelliteOrbits'
@@ -47,7 +52,6 @@ import {
   type FirmsLiveSpotsResponse,
 } from './utils/fireSpots'
 
-const ORBITS_REFRESH_INTERVAL_MS = 20 * 60 * 1000
 const FIRES_REFRESH_INTERVAL_MS = 15 * 60 * 1000
 const FOCUS_ZOOM = 3.6
 
@@ -108,10 +112,19 @@ function App() {
     lat: initialResolution.state.lat,
     lng: initialResolution.state.lng,
   })
+  const showOrbitsRef = useRef<boolean>(showOrbits)
+  const orbitsAbortRef = useRef<AbortController | null>(null)
+  const orbitsRequestIdRef = useRef(0)
+  const lastHudCenterRef = useRef<{ lat: number; lng: number } | null>(null)
+  const lastOrbitsFetchedAtMsRef = useRef<number>(0)
 
   useEffect(() => {
     viewportRef.current = { lat: viewport.lat, lng: viewport.lng }
   }, [viewport])
+
+  useEffect(() => {
+    showOrbitsRef.current = showOrbits
+  }, [showOrbits])
 
   const [fireSpotsPayload, setFireSpotsPayload] = useState<FirmsLiveSpotsResponse | null>(null)
   const [fireSpotsLoading, setFireSpotsLoading] = useState<boolean>(!isProdUnconfigured)
@@ -196,16 +209,6 @@ function App() {
     setErrorMessage(error instanceof Error ? error.message : 'Request failed')
   }
 
-  const applyOrbitsSuccess = (data: SatelliteOrbitsResponse) => {
-    setOrbitsPayload(data)
-    setOrbitsError(null)
-    setNowUnixMs(Date.now())
-  }
-
-  const applyOrbitsFailure = (error: unknown) => {
-    setOrbitsError(error instanceof Error ? error.message : 'Orbit feed unavailable')
-  }
-
   const applyFiresSuccess = (data: FirmsLiveSpotsResponse) => {
     setFireSpotsPayload(data)
     setFireSpotsError(null)
@@ -216,6 +219,37 @@ function App() {
     setFireSpotsError(error instanceof Error ? error.message : 'NASA FIRMS feed unavailable')
     setFireSpotsLoading(false)
   }
+
+  const requestSatelliteOrbits = useCallback((center: { lat: number; lng: number }) => {
+    if (isProdUnconfigured) {
+      return
+    }
+    orbitsAbortRef.current?.abort()
+    const controller = new AbortController()
+    orbitsAbortRef.current = controller
+    const requestId = ++orbitsRequestIdRef.current
+    const targetCenter = { lat: center.lat, lng: center.lng }
+    lastHudCenterRef.current = targetCenter
+
+    void fetchSatelliteOrbits(apiBaseUrl, controller.signal, targetCenter).then(
+      (data) => {
+        if (controller.signal.aborted || requestId !== orbitsRequestIdRef.current) {
+          return
+        }
+        lastOrbitsFetchedAtMsRef.current = Date.now()
+        setOrbitsPayload(data)
+        setOrbitsError(null)
+        setNowUnixMs(Date.now())
+      },
+      (error: unknown) => {
+        if (controller.signal.aborted || requestId !== orbitsRequestIdRef.current) {
+          return
+        }
+        lastHudCenterRef.current = null
+        setOrbitsError(error instanceof Error ? error.message : 'Orbit feed unavailable')
+      },
+    )
+  }, [])
 
   const handleCheckBackend = () => {
     if (isProdUnconfigured) {
@@ -231,10 +265,7 @@ function App() {
     setFireSpotsError(null)
     setFireSpotsLoading(true)
     void fetchApiStatus().then(applySuccess, applyFailure)
-    void fetchSatelliteOrbits(apiBaseUrl, undefined, viewportRef.current).then(
-      applyOrbitsSuccess,
-      applyOrbitsFailure,
-    )
+    requestSatelliteOrbits(viewportRef.current)
     void fetchLiveFireSpots(apiBaseUrl).then(applyFiresSuccess, applyFiresFailure)
   }
 
@@ -256,21 +287,6 @@ function App() {
       },
     )
 
-    const refreshOrbits = () => {
-      void fetchSatelliteOrbits(apiBaseUrl, controller.signal, viewportRef.current).then(
-        (data) => {
-          if (!controller.signal.aborted) {
-            applyOrbitsSuccess(data)
-          }
-        },
-        (error: unknown) => {
-          if (!controller.signal.aborted) {
-            applyOrbitsFailure(error)
-          }
-        },
-      )
-    }
-
     const refreshFires = () => {
       void fetchLiveFireSpots(apiBaseUrl, controller.signal).then(
         (data) => {
@@ -286,23 +302,75 @@ function App() {
       )
     }
 
-    refreshOrbits()
+    const maybeRefreshOrbitsOnSchedule = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return
+      }
+      const targetIntervalMs = showOrbitsRef.current
+        ? SATELLITE_ORBITS_REFRESH_INTERVAL_MS
+        : SATELLITE_ORBITS_IDLE_REFRESH_INTERVAL_MS
+      if (Date.now() - lastOrbitsFetchedAtMsRef.current >= targetIntervalMs - 1_000) {
+        requestSatelliteOrbits(viewportRef.current)
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'hidden') {
+        return
+      }
+      const now = Date.now()
+      setNowUnixMs(now)
+      const targetIntervalMs = showOrbitsRef.current
+        ? SATELLITE_ORBITS_REFRESH_INTERVAL_MS
+        : SATELLITE_ORBITS_IDLE_REFRESH_INTERVAL_MS
+      const movedWhileHidden =
+        showOrbitsRef.current &&
+        hasSatelliteHudCenterMoved(lastHudCenterRef.current, viewportRef.current)
+      if (movedWhileHidden || now - lastOrbitsFetchedAtMsRef.current >= targetIntervalMs) {
+        requestSatelliteOrbits(viewportRef.current)
+      }
+    }
+
+    requestSatelliteOrbits(viewportRef.current)
     refreshFires()
-    const orbitsTimer = window.setInterval(refreshOrbits, ORBITS_REFRESH_INTERVAL_MS)
+    const orbitsTimer = window.setInterval(
+      maybeRefreshOrbitsOnSchedule,
+      SATELLITE_ORBITS_REFRESH_INTERVAL_MS,
+    )
     const firesTimer = window.setInterval(refreshFires, FIRES_REFRESH_INTERVAL_MS)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
       window.clearInterval(orbitsTimer)
       window.clearInterval(firesTimer)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       controller.abort()
+      orbitsAbortRef.current?.abort()
     }
-  }, [])
+  }, [requestSatelliteOrbits])
+
+  useEffect(() => {
+    if (isProdUnconfigured || !showOrbits) {
+      return
+    }
+    const center = { lat: viewport.lat, lng: viewport.lng }
+    if (!hasSatelliteHudCenterMoved(lastHudCenterRef.current, center)) {
+      return
+    }
+    const timer = window.setTimeout(() => {
+      requestSatelliteOrbits(center)
+    }, SATELLITE_HUD_VIEWPORT_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [viewport.lat, viewport.lng, showOrbits, requestSatelliteOrbits])
 
   useEffect(() => {
     if (!orbitsPayload || !showOrbits) {
       return
     }
     const timer = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return
+      }
       setNowUnixMs(Date.now())
     }, SATELLITE_ANIMATION_INTERVAL_MS)
     return () => window.clearInterval(timer)
@@ -319,10 +387,19 @@ function App() {
     [orbitsPayload, sensorFilter, nowUnixMs, showOrbits],
   )
 
+  const hudElapsedMinutes = computeSatelliteHudElapsedMinutes(
+    orbitsPayload?.generatedAtUtc,
+    nowUnixMs,
+  )
+
   const satelliteHudSection = useMemo(
     () =>
-      formatSatelliteHudSection(orbitsPayload?.satelliteHud ?? [], { sensorFilter, showOrbits }),
-    [orbitsPayload, sensorFilter, showOrbits],
+      formatSatelliteHudSection(orbitsPayload?.satelliteHud ?? [], {
+        sensorFilter,
+        showOrbits,
+        elapsedMinutes: hudElapsedMinutes,
+      }),
+    [orbitsPayload, sensorFilter, showOrbits, hudElapsedMinutes],
   )
 
   const hasOrbitSnapshots = showOrbits && orbitalState.snapshots.length > 0
