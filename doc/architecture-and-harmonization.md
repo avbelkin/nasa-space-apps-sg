@@ -14,17 +14,20 @@ This repository implements the [Harmonization of MODIS and VIIRS Hot Spots](./RE
     - `sidepanel` (`<aside>`) — Regional seasonal-fit vs. anomaly inspector, harmonization notes, and deployment diagnostics.
   - **Inner Map CSS Grid Container (`.map-stage`)**: Dedicated CSS Grid stage holding the full-bleed MapLibre canvas across all tracks (`grid-column: 1 / -1; grid-row: 1 / -1`) alongside named overlay grid areas (`hud-top-start`, `hud-top-end`, `hud-bottom-start`) for floating controls positioned *over* the map without brittle pixel offsets, keeping unobstructed map tracks directly interactive.
 - **Sensor Transparency & Accessible Visuals**: Toggle between Harmonized, MODIS (1 km), and VIIRS (375 m) layers with explicit text labels and symbols alongside accessible color ramps so researchers and responders never rely on color alone.
+- **Live MODIS & VIIRS Orbital Overlay**: Renders time-bound satellite ground tracks (solid past `-45m`, dashed future `+90m`, split across the `±180°` antimeridian), instantaneous sensor scan swaths (`2,330 km` MODIS wide swath on Terra & Aqua; `3,040 km` VIIRS wide swath on NOAA-20 & NOAA-21), and rotated spacecraft badges over the 3D Sentinel-2 globe, updating positions every second on the client via geodesic interpolation between backend track samples.
 
 ### 2. Backend (`backend/` — ASP.NET Core `.NET 10` Container on Google Cloud Run)
 
+- **CelesTrak TLE Caching & Orbit Propagation (`Satellites/`)**: Downloads TLE catalogs from CelesTrak (`GROUP=resource` for MODIS Terra/Aqua; `GROUP=weather` for VIIRS NOAA-20/NOAA-21), caches them for 12 hours in memory with embedded fallback TLEs, and propagates J2 secular LEO trajectories without blocking client navigation on third-party orbital endpoints.
 - **FIRMS Ingestion & Caching Proxy**: Fetches and caches NASA FIRMS archives / near-real-time API feeds server-side so `FIRMS_MAP_KEY` secrets remain protected on Cloud Run and client requests avoid rate-limit failures.
 - **Spatiotemporal Harmonization Pipeline**:
   1. **Spatial Gridding**: Maps point detections onto a uniform grid (cell size ≥ 1 km, e.g. fixed equal-area / H3 / degree grid) while accounting for MODIS/VIIRS `scan` × `track` footprint growth toward scan edges.
   2. **Temporal Binning & Deduplication**: Aggregates detections per grid cell within daily/pentad windows to eliminate artificial inflation from multiple same-day satellite overpasses (Terra, Aqua, Suomi NPP, NOAA-20, NOAA-21).
   3. **Cross-Sensor Calibration**: Uses the post-2012 MODIS–VIIRS overlap period to align active-fire cell density and Fire Radiative Power (`FRP`) quantiles into a continuous multi-decade metric.
-- **Planned REST API Endpoints**:
-  - `GET /health` — Cloud Run readiness/liveness probe (implemented stub).
-  - `GET /api/status` — Service metadata and environment diagnostics (implemented stub).
+- **REST API Endpoints**:
+  - `GET /health` — Cloud Run readiness/liveness probe.
+  - `GET /api/status` — Service metadata and environment diagnostics.
+  - `GET /api/satellites/orbits` — Time-bound orbital ground tracks, nadir position, heading, speed, and swath parameters for Terra, Aqua, NOAA-20, and NOAA-21.
   - `GET /api/anomalies/summary` *(planned)* — Regional & AOI current situation summary compared against historical calendar baselines (`fitsTypical`, `anomalyScore`, `zScore`, percentile).
   - `GET /api/seasonal/profile` *(planned)* — Harmonized multi-decade monthly/pentad climatology vs. current-year trajectory for the bottom seasonal scrubber and side inspector.
   - `GET /api/hotspots` *(planned)* — Spatial GeoJSON/vector hotspot clusters and harmonized grid cells for MapLibre rendering within a selected date window and sensor filter.
