@@ -516,8 +516,8 @@
 }
 
 /* A narrow or short map folds the control column into two, so it stays clear of the attribution
-   line (with the fire and pulse toggles the single column is about 21rem tall) */
-@container mapstage (inline-size < 36rem) or (block-size < 30rem) {
+   line (with the night-lights, fire and pulse toggles the single column is about 25rem tall) */
+@container mapstage (inline-size < 36rem) or (block-size < 32rem) {
   .map-controls {
     grid-template-columns: repeat(2, var(--hud-btn-size));
     gap: 0.25rem;
@@ -526,6 +526,14 @@
   .map-controls .segmented {
     grid-column: span 2;
     flex-direction: row;
+  }
+}
+
+/* Phone-height maps (< 26rem tall, where expanded attribution reaches ~9.5rem) fold into four
+   columns (three rows) so controls stay clear of attribution in both expanded and collapsed states */
+@container mapstage (block-size < 26rem) {
+  .map-controls {
+    grid-template-columns: repeat(4, var(--hud-btn-size));
   }
 }
 
@@ -1526,6 +1534,18 @@
   .map-controls .segmented-option {
     min-block-size: 2.5rem;
     padding-inline: 0;
+  }
+
+  @container mapstage (26rem <= block-size < 36rem) {
+    .map-controls {
+      grid-template-columns: repeat(2, var(--hud-btn-size));
+      gap: 0.25rem;
+    }
+
+    .map-controls .segmented {
+      grid-column: span 2;
+      flex-direction: row;
+    }
   }
 }
 
