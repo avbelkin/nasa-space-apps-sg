@@ -5,9 +5,11 @@ import {
   clampLat,
   DEFAULT_GEOLOCATION_MAX_ZOOM,
   createDefaultUrlHashState,
+  LEGACY_URL_HASH_STORAGE_KEY,
   normalizeLng,
   parseUrlHash,
   resolveInitialUrlHashState,
+  serializeStoredState,
   serializeUrlHash,
   syncUrlHashAndStorage,
   URL_HASH_STORAGE_KEY,
@@ -19,14 +21,18 @@ import {
 const TODAY = new Date(2026, 10, 14, 12)
 const DEFAULT_URL_HASH_STATE = createDefaultUrlHashState(TODAY)
 
-function createMockBrowserTarget(initialHash = '', initialStoredHash: string | null = null): {
+function createMockBrowserTarget(
+  initialHash = '',
+  initialStoredHash: string | null = null,
+  storageKey = URL_HASH_STORAGE_KEY,
+): {
   target: BrowserSyncTarget
   storageMap: Map<string, string>
   replaceCalls: string[]
 } {
   const storageMap = new Map<string, string>()
   if (initialStoredHash !== null) {
-    storageMap.set(URL_HASH_STORAGE_KEY, initialStoredHash)
+    storageMap.set(storageKey, initialStoredHash)
   }
   const replaceCalls: string[] = []
 
@@ -127,7 +133,7 @@ test('parseUrlHash accepts partial hashes, month names, legacy positional hashes
   assert.equal(parseUrlHash('#99/200/10'), null)
 })
 
-test('syncUrlHashAndStorage updates URL hash and persists exact hash string to localStorage on every update', () => {
+test('syncUrlHashAndStorage updates the URL hash and persists it without the month on every update', () => {
   const { target, storageMap, replaceCalls } = createMockBrowserTarget()
 
   const firstHash = syncUrlHashAndStorage(
@@ -141,7 +147,8 @@ test('syncUrlHashAndStorage updates URL hash and persists exact hash string to l
   )
 
   assert.equal(target.location.hash, firstHash)
-  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), firstHash)
+  assert.match(firstHash, /&month=11&/)
+  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), firstHash.replace('&month=11', ''))
   assert.equal(replaceCalls.length, 1)
 
   const secondHash = syncUrlHashAndStorage(
@@ -157,7 +164,7 @@ test('syncUrlHashAndStorage updates URL hash and persists exact hash string to l
 
   assert.notEqual(secondHash, firstHash)
   assert.equal(target.location.hash, secondHash)
-  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), secondHash)
+  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), secondHash.replace('&month=11', ''))
   assert.equal(replaceCalls.length, 2)
 
   // Calling sync again with identical hash still persists to localStorage without redundant replaceState.
@@ -172,8 +179,12 @@ test('syncUrlHashAndStorage updates URL hash and persists exact hash string to l
     target,
   )
   assert.equal(repeatedHash, secondHash)
-  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), secondHash)
+  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), secondHash.replace('&month=11', ''))
   assert.equal(replaceCalls.length, 2)
+
+  // Nothing is written under the old key
+  assert.equal(storageMap.has(LEGACY_URL_HASH_STORAGE_KEY), false)
+  assert.notEqual(URL_HASH_STORAGE_KEY, LEGACY_URL_HASH_STORAGE_KEY)
 })
 
 test('resolveInitialUrlHashState resolves hash > storage > default priority', () => {
@@ -215,7 +226,7 @@ test('defaults follow the given date: current month, orbits off', () => {
   assert.match(serializeUrlHash(DEFAULT_URL_HASH_STATE), /&month=11&orbits=0(&|$)/)
 })
 
-test('an explicit month or orbits setting in the hash or storage wins over the date defaults', () => {
+test('the month comes from the hash or the date, never from storage; orbits restore from either', () => {
   const fresh = resolveInitialUrlHashState(createMockBrowserTarget().target, TODAY)
   assert.equal(fresh.source, 'default')
   assert.equal(fresh.state.selectedMonth, 10)
@@ -229,13 +240,46 @@ test('an explicit month or orbits setting in the hash or storage wins over the d
   assert.equal(fromHash.state.selectedMonth, 2)
   assert.equal(fromHash.state.showOrbits, true)
 
+  // A stored month (written by an older build of this key's format) is ignored
   const fromStorage = resolveInitialUrlHashState(
     createMockBrowserTarget('', '#z=2&lat=0&lng=0&month=7&orbits=1').target,
     TODAY,
   )
   assert.equal(fromStorage.source, 'storage')
-  assert.equal(fromStorage.state.selectedMonth, 6)
+  assert.equal(fromStorage.state.selectedMonth, 10)
   assert.equal(fromStorage.state.showOrbits, true)
+  assert.equal(fromStorage.state.zoom, 2)
+
+  // A returning visitor of the old build: its auto-written "September, orbits on" is not read
+  const legacy = resolveInitialUrlHashState(
+    createMockBrowserTarget(
+      '',
+      '#z=4&lat=58.6&lng=-114.4&mode=anomaly&sensor=viirs&proj=mercator&month=9&orbits=1',
+      LEGACY_URL_HASH_STORAGE_KEY,
+    ).target,
+    TODAY,
+  )
+  assert.equal(legacy.source, 'default')
+  assert.deepEqual(legacy.state, DEFAULT_URL_HASH_STATE)
+
+  // What sync stores round-trips everything but the month
+  const stored = serializeStoredState({
+    ...DEFAULT_URL_HASH_STATE,
+    selectedMonth: 2,
+    showOrbits: true,
+    sensorFilter: 'modis',
+    projectionMode: 'mercator',
+    selectedRegionId: 'amazon-arc',
+  })
+  assert.doesNotMatch(stored, /month=/)
+  const restored = resolveInitialUrlHashState(createMockBrowserTarget('', stored).target, TODAY)
+  assert.deepEqual(restored.state, {
+    ...DEFAULT_URL_HASH_STATE,
+    showOrbits: true,
+    sensorFilter: 'modis',
+    projectionMode: 'mercator',
+    selectedRegionId: 'amazon-arc',
+  })
 
   // A hash without a month (e.g. an old viewport-only link) gets today's month
   const viewportOnly = resolveInitialUrlHashState(
@@ -307,12 +351,12 @@ test('selected region is restored on load from the hash and from storage, and wr
     { ...DEFAULT_URL_HASH_STATE, selectedRegionId: 'sea-equatorial' },
     target,
   )
-  assert.match(target.location.hash, /region=sea-equatorial/)
-  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), selectedHash)
+  assert.equal(target.location.hash, selectedHash)
+  assert.match(storageMap.get(URL_HASH_STORAGE_KEY) ?? '', /region=sea-equatorial/)
 
-  const clearedHash = syncUrlHashAndStorage({ ...DEFAULT_URL_HASH_STATE }, target)
+  syncUrlHashAndStorage({ ...DEFAULT_URL_HASH_STATE }, target)
   assert.doesNotMatch(target.location.hash, /region=/)
-  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), clearedHash)
+  assert.doesNotMatch(storageMap.get(URL_HASH_STORAGE_KEY) ?? '', /region=/)
 })
 
 test('clampGeolocationTargetZoom caps geolocation jump at default max zoom z7 while preserving coarser zooms', () => {

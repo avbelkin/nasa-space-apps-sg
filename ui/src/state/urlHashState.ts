@@ -6,7 +6,10 @@ import {
   type ViewMode,
 } from '../data/stubSeasonalData.ts'
 
-export const URL_HASH_STORAGE_KEY = 'nasa_fire_calendar_url_hash'
+// Versioned: the first key was written on every load by builds that defaulted to September with
+// orbits on, so its values say nothing about a visitor's choice and are ignored.
+export const URL_HASH_STORAGE_KEY = 'nasa_fire_calendar_state_v2'
+export const LEGACY_URL_HASH_STORAGE_KEY = 'nasa_fire_calendar_url_hash'
 export const DEFAULT_CENTER: [number, number] = [108, 8]
 export const DEFAULT_ZOOM = 1.75
 export const DEFAULT_GEOLOCATION_MAX_ZOOM = 7
@@ -392,6 +395,14 @@ export interface BrowserSyncTarget {
   localStorage: Pick<Storage, 'getItem' | 'setItem'>
 }
 
+// The stored copy leaves the month out: a returning visitor starts on the current month, and only
+// an explicit link (hash) opens another one.
+export function serializeStoredState(state: UrlHashState): string {
+  const params = new URLSearchParams(serializeUrlHash(state).slice(1))
+  params.delete('month')
+  return `#${params.toString()}`
+}
+
 export function syncUrlHashAndStorage(
   state: UrlHashState,
   target: BrowserSyncTarget | undefined = typeof window !== 'undefined' ? window : undefined,
@@ -409,7 +420,7 @@ export function syncUrlHashAndStorage(
         // Ignore restricted History API errors.
       }
     }
-    writeUrlHashToStorage(nextHash, target.localStorage)
+    writeUrlHashToStorage(serializeStoredState(state), target.localStorage)
   }
   return nextHash
 }
@@ -432,11 +443,15 @@ export function resolveInitialUrlHashState(
     return { state: fromHash, source: 'hash' }
   }
 
+  // Viewport, sensor, projection, orbits and region come back from storage; the month never does
   const storedHash = readStoredUrlHash(target.localStorage)
   if (storedHash) {
     const fromStorage = parseUrlHash(storedHash, defaults)
     if (fromStorage) {
-      return { state: fromStorage, source: 'storage' }
+      return {
+        state: { ...fromStorage, selectedMonth: defaults.selectedMonth },
+        source: 'storage',
+      }
     }
   }
 
