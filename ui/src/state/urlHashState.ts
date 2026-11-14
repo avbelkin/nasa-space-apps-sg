@@ -4,7 +4,6 @@ import {
   SINGAPORE_REGION_ID,
   type ProjectionMode,
   type SensorFilter,
-  type ViewMode,
 } from '../data/stubSeasonalData.ts'
 import { snapRainLookbackMinutes } from '../utils/rainCloudShader.ts'
 
@@ -27,7 +26,6 @@ export interface MapViewportState {
 }
 
 export interface UrlHashState extends MapViewportState {
-  viewMode: ViewMode
   sensorFilter: SensorFilter
   projectionMode: ProjectionMode
   selectedMonth: number
@@ -59,7 +57,6 @@ export function createDefaultUrlHashState(now: Date = new Date()): UrlHashState 
     zoom: DEFAULT_ZOOM,
     lat: DEFAULT_CENTER[1],
     lng: DEFAULT_CENTER[0],
-    viewMode: 'anomaly',
     sensorFilter: 'harmonized',
     projectionMode: 'globe',
     selectedMonth: now.getMonth(),
@@ -72,7 +69,6 @@ export function createDefaultUrlHashState(now: Date = new Date()): UrlHashState 
   }
 }
 
-const VALID_VIEW_MODES: readonly ViewMode[] = ['anomaly', 'seasonal', 'sensors']
 const VALID_SENSOR_FILTERS: readonly SensorFilter[] = ['harmonized', 'modis', 'viirs']
 const VALID_PROJECTION_MODES: readonly ProjectionMode[] = ['globe', 'mercator']
 const VALID_REGION_IDS: readonly string[] = REGIONAL_FIRE_REGIMES.map((regime) => regime.id)
@@ -227,17 +223,6 @@ function parseMonthValue(raw: string): number | null {
  */
 const HASH_FEATURE_CODECS: readonly HashFeatureCodec[] = [
   {
-    key: 'mode',
-    serialize: (state) => state.viewMode,
-    parse: (raw, draft) => {
-      if (!isOneOf(raw, VALID_VIEW_MODES)) {
-        return false
-      }
-      draft.viewMode = raw
-      return true
-    },
-  },
-  {
     key: 'sensor',
     serialize: (state) => state.sensorFilter,
     parse: (raw, draft) => {
@@ -368,6 +353,8 @@ const RESERVED_CORE_KEYS = new Set<string>([
   'lat',
   'lng',
   'lon',
+  // Ignore retired `mode` key from earlier builds so it is dropped instead of preserved in extraParams.
+  'mode',
   ...HASH_FEATURE_CODECS.map((codec) => codec.key),
 ])
 
@@ -414,7 +401,6 @@ function cloneFallbackState(fallback: UrlHashState): UrlHashState {
     zoom: clampZoom(fallback.zoom),
     lat: clampLat(fallback.lat),
     lng: normalizeLng(fallback.lng),
-    viewMode: fallback.viewMode,
     sensorFilter: fallback.sensorFilter,
     projectionMode: fallback.projectionMode,
     selectedMonth: fallback.selectedMonth,

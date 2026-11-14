@@ -60,7 +60,12 @@ export function AttributionFooter({ connectionState, liveFiresConfigured }: Attr
               <div className="meta-row">
                 <dt>Satellite clouds</dt>
                 <dd>
-                  Live geostationary visible and infrared cloud images (EUMETSAT, NOAA, JMA) via{' '}
+                  Live geostationary visible and infrared cloud images (EUMETSAT, NOAA, JMA) blended at high latitudes
+                  with NOAA/NASA Suomi NPP &amp; JPSS VIIRS imagery from{' '}
+                  <a href="https://earthdata.nasa.gov/eosdis/science-system-description/eosdis-components/gibs" {...EXTERNAL}>
+                    NASA GIBS / EOSDIS Earthdata
+                  </a>{' '}
+                  via{' '}
                   <a href="https://layers.extremum.org" {...EXTERNAL}>
                     layers.extremum.org
                   </a>

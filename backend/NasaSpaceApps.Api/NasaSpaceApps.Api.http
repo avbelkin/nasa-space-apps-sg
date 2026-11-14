@@ -49,3 +49,11 @@ GET {{NasaSpaceApps.Api_HostAddress}}/api/nasa/wildfires?status=open&days=14&lim
 Accept: application/json
 
 ###
+
+GET {{NasaSpaceApps.Api_HostAddress}}/api/weather/satellite/polar/north.png
+
+###
+
+GET {{NasaSpaceApps.Api_HostAddress}}/api/weather/satellite/polar/south.png
+
+###

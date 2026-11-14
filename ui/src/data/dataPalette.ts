@@ -42,16 +42,12 @@ export const SWATH_COLORS = {
   wide: '#f49a74',
 } as const
 
-// Live NASA FIRMS fire spots (the team's colors): a warm ramp by Fire Radiative Power, or one hue
-// per instrument in the 'sensors' view mode. While live spots are shown, the sample status marks
-// are hidden, so the warm ramp never sits next to the 'above typical' orange on the map.
+// Live NASA FIRMS fire spots: one high-saturation true red (zero blue channel so blurred pulses
+// never drift into pink/magenta, and low green so spots stand apart from amber/gold VIIRS
+// night-time lights on dark backgrounds). FRP is encoded by spot radius rather than hue.
 export const FIRE_SPOT_COLORS = {
-  frpLow: '#fbbf24',
-  frpMid: '#ff9100',
-  frpHigh: '#ff1744',
-  modis: '#22d3ee',
-  viirs: '#fb923c',
-  otherInstrument: '#f59e0b',
+  fill: '#ff1a00',
+  pulse: '#ff1a00',
   stroke: 'rgba(15, 23, 42, 0.65)',
   focusRing: '#ffffff',
 } as const

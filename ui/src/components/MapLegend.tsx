@@ -6,7 +6,7 @@ import {
   SATELLITE_COLORS,
   USER_LOCATION_COLORS,
 } from '../data/dataPalette'
-import { MONTH_LABELS, type ViewMode } from '../data/stubSeasonalData'
+import { MONTH_LABELS } from '../data/stubSeasonalData'
 import { STATUS_TEXT } from '../data/statusDisplay'
 import { STATUS_CATEGORIES } from '../data/statusMarks'
 import type { MapViewportState } from '../state/urlHashState'
@@ -28,7 +28,6 @@ interface MapLegendProps {
   showFires: boolean
   showRain: boolean
   rainSummaryLabel: string | null
-  viewMode: ViewMode
   reducedMotion: boolean
 }
 
@@ -57,7 +56,6 @@ export function MapLegend({
   showFires,
   showRain,
   rainSummaryLabel,
-  viewMode,
   reducedMotion,
 }: MapLegendProps) {
   return (
@@ -78,33 +76,12 @@ export function MapLegend({
           ))
         ) : !showFires ? (
           <li className="legend-note">Fire spots hidden (flame button on the map shows them)</li>
-        ) : viewMode === 'sensors' ? (
-          <>
-            <li>
-              <span className="legend-glyph" aria-hidden="true">
-                <FireDot color={FIRE_SPOT_COLORS.modis} />
-              </span>
-              <span>MODIS 1 km spot (Terra / Aqua)</span>
-            </li>
-            <li>
-              <span className="legend-glyph" aria-hidden="true">
-                <FireDot color={FIRE_SPOT_COLORS.viirs} />
-              </span>
-              <span>VIIRS 375 m spot (NOAA-20 / 21)</span>
-            </li>
-          </>
         ) : (
-          // One key for the FRP ramp keeps the row at two lines on a laptop
           <li>
-            <span>Active spots by FRP:</span>
-            <span className="legend-ramp">
-              <FireDot color={FIRE_SPOT_COLORS.frpLow} />
-              &lt;20
-              <FireDot color={FIRE_SPOT_COLORS.frpMid} />
-              ~20
-              <FireDot color={FIRE_SPOT_COLORS.frpHigh} />
-              &ge;100 MW
+            <span className="legend-glyph" aria-hidden="true">
+              <FireDot color={FIRE_SPOT_COLORS.fill} />
             </span>
+            <span>Active fire spots (24 h, size by FRP)</span>
           </li>
         )}
         {showSwaths && (
