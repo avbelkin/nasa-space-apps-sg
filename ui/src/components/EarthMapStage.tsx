@@ -383,9 +383,13 @@ function setGeoJsonSourceData(
   sourceId: string,
   data: FeatureCollection<Point | MultiLineString | Polygon>,
 ): void {
-  const source = map.getSource(sourceId) as GeoJSONSource | undefined
-  if (source) {
-    source.setData(data)
+  try {
+    const source = map.getSource(sourceId) as GeoJSONSource | undefined
+    if (source && typeof source.setData === 'function') {
+      source.setData(data)
+    }
+  } catch {
+    // Style may still be initializing; map.on('load') syncs initial sources.
   }
 }
 
