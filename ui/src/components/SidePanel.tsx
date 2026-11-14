@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { SensorFilter } from '../data/mapTypes'
 import type { ApiStatusResponse, ConnectionState } from '../state/apiStatus'
 import type { LiveSatelliteSnapshot } from '../utils/satelliteOrbits'
@@ -28,6 +29,8 @@ interface SidePanelProps {
   tleSourceSummary: string | null
   orbitsError: string | null
   liveFires: LiveFiresInfo
+  pinnedDetails: ReactNode
+  legend: ReactNode
 }
 
 export function SidePanel({
@@ -45,6 +48,8 @@ export function SidePanel({
   tleSourceSummary,
   orbitsError,
   liveFires,
+  pinnedDetails,
+  legend,
 }: SidePanelProps) {
   return (
     <aside className="side-panel wrapper-surface" aria-label="Fire activity details">
@@ -60,7 +65,7 @@ export function SidePanel({
         />
       </div>
 
-      <LiveFiresSection info={liveFires} />
+      {pinnedDetails}
 
       <div className="panel-details-group">
         <SatelliteDetails
@@ -80,7 +85,11 @@ export function SidePanel({
         />
       </div>
 
-      <AttributionFooter connectionState={connectionState} />
+      <div className="panel-bottom">
+        <LiveFiresSection info={liveFires} />
+        {legend}
+        <AttributionFooter connectionState={connectionState} />
+      </div>
     </aside>
   )
 }

@@ -34,7 +34,6 @@ function SatelliteSwatch({ color, glyph }: { color: string; glyph: string }) {
   )
 }
 
-// The map's legend as a row below the panels (outside the map, so it never covers map content).
 export function MapLegend({
   viewport,
   showSwaths,
@@ -55,7 +54,7 @@ export function MapLegend({
         : '~1.5 h'
 
   return (
-    <section className="legend-bar wrapper-surface" data-testid="map-legend" aria-labelledby="legend-heading">
+    <section className="panel-legend" data-testid="map-legend" aria-labelledby="legend-heading">
       <h2 id="legend-heading" className="legend-heading">
         Map legend
         {hasLiveFires && reducedMotion ? ' · reduced motion' : ''}
