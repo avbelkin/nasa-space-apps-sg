@@ -75,6 +75,7 @@ test('serializeUrlHash and parseUrlHash round-trip core controls and extensible 
     selectedMonth: 2,
     showOrbits: false,
     showClouds: false,
+    showNightLights: false,
     showFires: false,
     extraParams: {
       aoi: 'sea-1',
@@ -85,7 +86,7 @@ test('serializeUrlHash and parseUrlHash round-trip core controls and extensible 
   const hash = serializeUrlHash(input)
   assert.equal(
     hash,
-    '#z=6.45&lat=1.3521&lng=103.8198&mode=sensors&sensor=viirs&proj=mercator&month=3&orbits=0&clouds=0&fires=0&aoi=sea-1&hotspots=on',
+    '#z=6.45&lat=1.3521&lng=103.8198&mode=sensors&sensor=viirs&proj=mercator&month=3&orbits=0&clouds=0&lights=0&fires=0&aoi=sea-1&hotspots=on',
   )
 
   const parsed = parseUrlHash(hash)
@@ -417,4 +418,30 @@ test('fires sits in the same registry: on by default and absent, fires=0 when of
     TODAY,
   )
   assert.equal(restored.state.showFires, false)
+})
+
+test('lights sits in the same registry: on by default and absent, lights=0 when off', () => {
+  assert.equal(DEFAULT_URL_HASH_STATE.showNightLights, true)
+  assert.doesNotMatch(serializeUrlHash(DEFAULT_URL_HASH_STATE), /lights=/)
+
+  const off: UrlHashState = {
+    ...DEFAULT_URL_HASH_STATE,
+    showNightLights: false,
+    selectedRegionId: 'mediterranean',
+  }
+  const hash = serializeUrlHash(off)
+  assert.match(hash, /&orbits=1&clouds=1&lights=0&region=mediterranean$/)
+  assert.deepEqual(parseUrlHash(hash, DEFAULT_URL_HASH_STATE), off)
+
+  assert.equal(parseUrlHash('#lights=0')?.showNightLights, false)
+  assert.equal(parseUrlHash('#lights=off')?.showNightLights, false)
+  assert.equal(parseUrlHash('#lights=1')?.showNightLights, true)
+  assert.equal(parseUrlHash('#z=3&lights=0')?.extraParams, undefined)
+  assert.equal(parseUrlHash('#z=3&lights=maybe')?.showNightLights, true)
+
+  const restored = resolveInitialUrlHashState(
+    createMockBrowserTarget('', serializeStoredState(off)).target,
+    TODAY,
+  )
+  assert.equal(restored.state.showNightLights, false)
 })

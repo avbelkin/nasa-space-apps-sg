@@ -68,6 +68,9 @@ function App() {
   const [showOrbits, setShowOrbits] = useState<boolean>(initialResolution.state.showOrbits)
   const [showClouds, setShowClouds] = useState<boolean>(initialResolution.state.showClouds)
   const [cloudRefreshNonce, setCloudRefreshNonce] = useState<number>(0)
+  const [showNightLights, setShowNightLights] = useState<boolean>(
+    initialResolution.state.showNightLights,
+  )
   const [showFires, setShowFires] = useState<boolean>(initialResolution.state.showFires)
   const [pulsePaused, setPulsePaused] = useState<boolean>(false)
   const [reducedMotion, setReducedMotion] = useState<boolean>(false)
@@ -123,6 +126,7 @@ function App() {
       selectedMonth,
       showOrbits,
       showClouds,
+      showNightLights,
       showFires,
       ...(selectedRegionId ? { selectedRegionId } : {}),
       extraParams,
@@ -135,6 +139,7 @@ function App() {
     selectedMonth,
     showOrbits,
     showClouds,
+    showNightLights,
     showFires,
     selectedRegionId,
     extraParams,
@@ -155,6 +160,7 @@ function App() {
       setSelectedMonth(parsed.selectedMonth)
       setShowOrbits(parsed.showOrbits)
       setShowClouds(parsed.showClouds)
+      setShowNightLights(parsed.showNightLights)
       setShowFires(parsed.showFires)
       setSelectedRegionId(parsed.selectedRegionId ?? null)
       setExtraParams(parsed.extraParams)
@@ -412,6 +418,8 @@ function App() {
         showClouds={showClouds}
         onShowCloudsChange={setShowClouds}
         cloudRefreshNonce={cloudRefreshNonce}
+        showNightLights={showNightLights}
+        onShowNightLightsChange={setShowNightLights}
         orbitalState={orbitalState}
         satelliteHudSection={satelliteHudSection}
         showOrbits={showOrbits}

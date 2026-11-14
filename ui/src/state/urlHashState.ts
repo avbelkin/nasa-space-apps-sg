@@ -29,6 +29,8 @@ export interface UrlHashState extends MapViewportState {
   selectedMonth: number
   showOrbits: boolean
   showClouds: boolean
+  // Night-hemisphere VIIRS Black Marble blending; the hash carries only the off state (lights=0)
+  showNightLights: boolean
   // Live NASA FIRMS fire spots; the hash carries only the off state (fires=0)
   showFires: boolean
   // Absent when no region is selected
@@ -55,6 +57,7 @@ export function createDefaultUrlHashState(now: Date = new Date()): UrlHashState 
     selectedMonth: now.getMonth(),
     showOrbits: true,
     showClouds: true,
+    showNightLights: true,
     showFires: true,
   }
 }
@@ -225,6 +228,18 @@ const HASH_FEATURE_CODECS: readonly HashFeatureCodec[] = [
     },
   },
   {
+    key: 'lights',
+    serialize: (state) => (state.showNightLights ? null : '0'),
+    parse: (raw, draft) => {
+      const parsed = parseBooleanHashFlag(raw)
+      if (parsed === null) {
+        return false
+      }
+      draft.showNightLights = parsed
+      return true
+    },
+  },
+  {
     key: 'fires',
     serialize: (state) => (state.showFires ? null : '0'),
     parse: (raw, draft) => {
@@ -306,6 +321,7 @@ function cloneFallbackState(fallback: UrlHashState): UrlHashState {
     selectedMonth: fallback.selectedMonth,
     showOrbits: fallback.showOrbits,
     showClouds: fallback.showClouds,
+    showNightLights: fallback.showNightLights,
     showFires: fallback.showFires,
     ...(fallback.selectedRegionId ? { selectedRegionId: fallback.selectedRegionId } : {}),
     ...(fallback.extraParams ? { extraParams: { ...fallback.extraParams } } : {}),
