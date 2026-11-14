@@ -184,6 +184,37 @@ public sealed class SatelliteSwathAndTrackingTests
         });
     }
 
+    [Fact]
+    public async Task SatelliteOrbitService_DefaultWindowCoversProcessingLagPlusReadyTail()
+    {
+        Assert.Equal(180, SatelliteOrbitService.DefaultPastMinutes);
+        Assert.Equal(90, SatelliteOrbitService.DefaultFutureMinutes);
+        Assert.Equal(360, SatelliteOrbitService.MaxPastMinutes);
+
+        using var memoryCache = new MemoryCache(new MemoryCacheOptions());
+        var downloader = new CelesTrakTleDownloader(
+            new FailingHttpClientFactory(),
+            memoryCache,
+            NullLogger<CelesTrakTleDownloader>.Instance);
+        var service = new SatelliteOrbitService(downloader);
+
+        var response = await service.GetOrbitsAsync();
+
+        Assert.Equal(
+            (SatelliteOrbitService.DefaultPastMinutes + SatelliteOrbitService.DefaultFutureMinutes) * 60_000L,
+            response.WindowEndUnixMs - response.WindowStartUnixMs);
+
+        Assert.All(response.Satellites, sat =>
+        {
+            var nowMs = sat.CurrentPosition.TimestampUnixMs;
+            var cutoffMs = nowMs - sat.TypicalIngestionLagMinutes * 60_000L;
+
+            Assert.Contains(sat.Track, pt => pt.TimestampUnixMs <= cutoffMs - 55 * 60_000L);
+            Assert.Contains(sat.Track, pt => pt.TimestampUnixMs > cutoffMs && pt.TimestampUnixMs < nowMs);
+            Assert.Contains(sat.Track, pt => pt.TimestampUnixMs > nowMs);
+        });
+    }
+
     private sealed class FailingHttpClientFactory : IHttpClientFactory
     {
         public HttpClient CreateClient(string name) =>

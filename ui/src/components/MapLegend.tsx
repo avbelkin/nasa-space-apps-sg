@@ -58,6 +58,13 @@ export function MapLegend({
   rainSummaryLabel,
   reducedMotion,
 }: MapLegendProps) {
+  const orbitLagLabel =
+    showModisOrbits && showViirsOrbits
+      ? '~1.5\u20132 h'
+      : showModisOrbits
+        ? '~2 h'
+        : '~1.5 h'
+
   return (
     <section className="legend-bar wrapper-surface" data-testid="map-legend" aria-labelledby="legend-heading">
       <h2 id="legend-heading" className="legend-heading">
@@ -148,7 +155,9 @@ export function MapLegend({
           </li>
         )}
         {(showModisOrbits || showViirsOrbits) && (
-          <li className="legend-note">Tracks: solid past, dashed next 90 min</li>
+          <li className="legend-note">
+            Tracks: solid ready, dashed in processing ({orbitLagLabel}), dotted next 90 min
+          </li>
         )}
         {showUserLocation && (
           <li>

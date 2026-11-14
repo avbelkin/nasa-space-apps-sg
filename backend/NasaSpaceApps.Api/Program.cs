@@ -263,9 +263,9 @@ app.MapGet("/api/satellites/orbits", async (
     }
 
     var response = await orbitService.GetOrbitsAsync(
-        pastMinutes ?? 45,
-        futureMinutes ?? 90,
-        stepSeconds ?? 30,
+        pastMinutes ?? SatelliteOrbitService.DefaultPastMinutes,
+        futureMinutes ?? SatelliteOrbitService.DefaultFutureMinutes,
+        stepSeconds ?? SatelliteOrbitService.DefaultStepSeconds,
         lat ?? 0.0,
         lng ?? 0.0,
         cancellationToken);

@@ -55,18 +55,24 @@ public sealed record SatelliteOrbitsResponse(
 
 public sealed class SatelliteOrbitService(CelesTrakTleDownloader tleDownloader)
 {
+    public const int DefaultPastMinutes = 180;
+    public const int DefaultFutureMinutes = 90;
+    public const int DefaultStepSeconds = 30;
+    public const int MinPastMinutes = 5;
+    public const int MaxPastMinutes = 360;
+
     private const double DefaultNadirAlongTrackKm = 180.0;
     private const double DefaultWideAlongTrackKm = 280.0;
 
     public async Task<SatelliteOrbitsResponse> GetOrbitsAsync(
-        int pastMinutes = 45,
-        int futureMinutes = 90,
-        int stepSeconds = 30,
+        int pastMinutes = DefaultPastMinutes,
+        int futureMinutes = DefaultFutureMinutes,
+        int stepSeconds = DefaultStepSeconds,
         double targetLat = 0.0,
         double targetLng = 0.0,
         CancellationToken cancellationToken = default)
     {
-        var clampedPastMinutes = Math.Clamp(pastMinutes, 5, 180);
+        var clampedPastMinutes = Math.Clamp(pastMinutes, MinPastMinutes, MaxPastMinutes);
         var clampedFutureMinutes = Math.Clamp(futureMinutes, 15, 360);
         var clampedStepSeconds = Math.Clamp(stepSeconds, 10, 120);
 
