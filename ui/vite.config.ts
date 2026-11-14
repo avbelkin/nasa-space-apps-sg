@@ -6,6 +6,9 @@ export default defineConfig(({ mode }) => {
   return {
     base: env.VITE_BASE_PATH || '/',
     plugins: [react()],
+    build: {
+      chunkSizeWarningLimit: 1400,
+    },
     server: {
       port: 5173,
       proxy: {

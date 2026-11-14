@@ -1,115 +1,530 @@
-.app-shell {
-  max-width: 60rem;
-  margin-inline: auto;
-  padding: 2rem 1.25rem 3rem;
+/* Outer Controls Wrapper: wraps topbar, timeline, and side inspector around the map stage */
+.app-frame {
   display: grid;
-  gap: 2rem;
+  inline-size: 100%;
+  min-block-size: 100dvh;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(56dvh, 1fr) auto auto;
+  grid-template-areas:
+    "topbar"
+    "mapstage"
+    "timeline"
+    "sidepanel";
+  gap: 0.75rem;
+  padding: 0.75rem;
 }
 
-.app-header {
-  display: grid;
-  gap: 0.5rem;
-  border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 1.25rem;
+@media (min-width: 60rem) {
+  .app-frame {
+    block-size: 100dvh;
+    grid-template-columns: minmax(0, 1fr) minmax(19rem, 23rem);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "topbar   topbar"
+      "mapstage sidepanel"
+      "timeline sidepanel";
+  }
 }
 
-.app-header h1 {
-  margin: 0;
-  font-size: clamp(1.75rem, 3vw, 2.25rem);
-  line-height: 1.2;
-}
-
-.app-subtitle {
-  margin: 0;
-  color: var(--text-muted);
-}
-
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
-  gap: 1.25rem;
-}
-
-.status-card {
+.wrapper-surface {
   background-color: var(--surface-card);
   border: 1px solid var(--border-subtle);
   border-radius: 0.75rem;
-  padding: 1.5rem;
+}
+
+/* Outer Top Bar */
+.top-bar {
+  grid-area: topbar;
+  padding: 0.75rem 1rem;
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: safe center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
 }
 
-.status-card h2 {
-  margin: 0;
-  font-size: 1.2rem;
-}
-
-.meta-list {
-  margin: 0;
+.brand-group {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.15rem;
+  min-inline-size: 0;
 }
 
-.meta-row {
-  display: grid;
-  gap: 0.2rem;
+.brand-group h1 {
+  margin: 0;
+  font-size: clamp(1.05rem, 0.9rem + 0.6vw, 1.4rem);
+  line-height: 1.2;
 }
 
-.meta-row dt {
+.brand-subtitle {
+  margin: 0;
   font-size: 0.85rem;
-  font-weight: 600;
   color: var(--text-muted);
 }
 
-.meta-row dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.card-actions {
-  margin-top: auto;
-  padding-top: 0.5rem;
+.mode-switch {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  flex-wrap: wrap;
+  flex-wrap: balance;
+  gap: 0.4rem;
 }
 
-.primary-button {
+.pill-button {
+  appearance: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  background-color: var(--surface-subtle);
+  color: var(--text-primary);
+}
+
+.pill-button[aria-pressed='true'] {
+  background-color: var(--accent);
+  color: var(--accent-text);
+  border-color: transparent;
+}
+
+.pill-button:focus-visible,
+.hud-btn:focus-visible,
+.month-btn:focus-visible,
+.region-card-btn:focus-visible,
+.api-check-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.api-health-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: safe center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.api-status-badge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--surface-subtle);
+  font-weight: 600;
+}
+
+.api-check-btn {
   appearance: none;
   border: 1px solid transparent;
   border-radius: 0.5rem;
-  padding: 0.6rem 1rem;
+  padding: 0.4rem 0.75rem;
   font: inherit;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   background-color: var(--accent);
   color: var(--accent-text);
 }
 
-.primary-button:disabled {
+.api-check-btn:disabled {
   opacity: 0.65;
   cursor: wait;
 }
 
-.primary-button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+/* Inner Map CSS Grid Container: holds MapLibre canvas + over-map HUD grid areas */
+.map-stage {
+  grid-area: mapstage;
+  container: mapstage / inline-size;
+  display: grid;
+  min-block-size: 56dvh;
+  min-inline-size: 0;
+  grid-template-columns: 0.75rem auto minmax(0, 1fr) auto 0.75rem;
+  grid-template-rows: 0.75rem auto minmax(0, 1fr) auto 0.75rem;
+  grid-template-areas:
+    ". .                . .              ."
+    ". hud-top-start    . hud-top-end    ."
+    ". .                . .              ."
+    ". hud-bottom-start . hud-bottom-end ."
+    ". .                . .              .";
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-subtle);
+  background-color: #060b16;
+  overflow: clip;
 }
 
-.error-note {
+@media (min-width: 60rem) {
+  .map-stage {
+    min-block-size: 0;
+  }
+}
+
+.map-canvas {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  min-block-size: 0;
+  min-inline-size: 0;
+  z-index: 1;
+}
+
+.map-canvas canvas {
+  display: block;
+}
+
+.map-fallback-banner {
+  grid-column: 2 / -2;
+  grid-row: 3;
+  place-self: center;
+  z-index: 2;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background-color: rgb(15 23 42 / 0.88);
+  color: #f8fafc;
+  border: 1px solid rgb(148 163 184 / 0.45);
+  max-inline-size: 32rem;
+}
+
+.map-fallback-banner p {
   margin: 0;
+}
+
+/* Over-map HUD clusters always render on a dark translucent surface over the dark Earth basemap */
+.map-hud {
+  z-index: 2;
+  color-scheme: dark;
+  background-color: rgb(9 15 29 / 0.84);
+  color: #f8fafc;
+  border: 1px solid rgb(148 163 184 / 0.35);
+  border-radius: 0.65rem;
+  padding: 0.5rem 0.65rem;
+  backdrop-filter: blur(8px);
+}
+
+.map-hud-top-start {
+  grid-area: hud-top-start;
+  align-self: start;
+  justify-self: start;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.map-hud-top-end {
+  grid-area: hud-top-end;
+  align-self: start;
+  justify-self: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.map-hud-bottom-start {
+  grid-area: hud-bottom-start;
+  align-self: end;
+  justify-self: start;
+  display: grid;
+  gap: 0.4rem;
+}
+
+@container mapstage (inline-size < 36rem) {
+  .map-stage {
+    grid-template-columns: 0.5rem minmax(0, 1fr) 0.5rem;
+    grid-template-rows: 0.5rem auto auto minmax(0, 1fr) auto 0.5rem;
+    grid-template-areas:
+      ". .                ."
+      ". hud-top-start    ."
+      ". hud-top-end      ."
+      ". .                ."
+      ". hud-bottom-start ."
+      ". .                .";
+  }
+
+  .map-hud-top-end {
+    justify-self: start;
+  }
+}
+
+.hud-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+}
+
+.hud-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.hud-btn {
+  appearance: none;
+  border: 1px solid rgb(148 163 184 / 0.4);
+  border-radius: 0.45rem;
+  padding: 0.3rem 0.6rem;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  background-color: rgb(30 41 59 / 0.85);
+  color: #f8fafc;
+}
+
+.hud-btn[aria-pressed='true'] {
+  background-color: #2563eb;
+  border-color: #93c5fd;
+  color: #ffffff;
+}
+
+.hud-legend-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem 0.9rem;
+}
+
+.hud-coords {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: #cbd5e1;
+}
+
+.hud-legend-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.85rem;
+  font-size: 0.78rem;
+}
+
+.hud-legend-list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.legend-glyph {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.legend-glyph-anomaly {
+  color: #fb923c;
+}
+
+.legend-glyph-typical {
+  color: #facc15;
+}
+
+.legend-glyph-below {
+  color: #38bdf8;
+}
+
+/* Outer Bottom Seasonal / Calendar Timeline Scrubber */
+.timeline-bar {
+  grid-area: timeline;
+  padding: 0.75rem 1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.timeline-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.timeline-header h2 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.timeline-status {
+  font-size: 0.82rem;
+  font-weight: 600;
   color: var(--text-muted);
+}
+
+.month-track {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(3.1rem, 1fr));
+  gap: 0.35rem;
+}
+
+.month-btn {
+  appearance: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.25rem;
+  font: inherit;
+  cursor: pointer;
+  background-color: var(--surface-subtle);
+  color: var(--text-primary);
+  display: grid;
+  gap: 0.25rem;
+  justify-items: center;
+}
+
+.month-btn[aria-pressed='true'] {
+  background-color: var(--accent);
+  color: var(--accent-text);
+  border-color: transparent;
+}
+
+.month-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.month-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  block-size: 1.4rem;
+}
+
+.month-bar {
+  inline-size: 0.35rem;
+  border-radius: 2px 2px 0 0;
+}
+
+.month-bar-typical {
+  background-color: currentColor;
+  opacity: 0.45;
+}
+
+.month-bar-current {
+  background-color: currentColor;
+}
+
+/* Outer Side Panel Inspector */
+.side-panel {
+  grid-area: sidepanel;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-block-size: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.panel-section {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.panel-section h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.panel-section h3 {
+  margin: 0;
   font-size: 0.9rem;
 }
 
-.app-footer {
-  border-top: 1px solid var(--border-subtle);
-  padding-top: 1rem;
+.panel-note {
+  margin: 0;
+  font-size: 0.88rem;
   color: var(--text-muted);
-  font-size: 0.9rem;
 }
 
-.app-footer p {
+.baseline-compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.metric-tile {
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.5rem;
+  background-color: var(--surface-subtle);
+  display: grid;
+  gap: 0.15rem;
+}
+
+.metric-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.metric-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.region-list {
   margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.region-card-btn {
+  inline-size: 100%;
+  text-align: start;
+  appearance: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.55rem;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+  cursor: pointer;
+  background-color: var(--surface-bg);
+  color: var(--text-primary);
+  display: grid;
+  gap: 0.25rem;
+}
+
+.region-card-btn[aria-pressed='true'] {
+  border-color: var(--accent);
+}
+
+.region-card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.region-delta {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+}
+
+.region-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.meta-list {
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.meta-row {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.meta-row dt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.meta-row dd {
+  margin: 0;
+  font-size: 0.83rem;
+  overflow-wrap: anywhere;
 }
