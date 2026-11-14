@@ -51,6 +51,7 @@ import {
   summarizeFireSpotsForSensor,
   type FirmsLiveSpotsResponse,
 } from './utils/fireSpots'
+import { buildSatelliteOverpassIndex } from './utils/satelliteOverpassTimeline'
 
 const FIRES_REFRESH_INTERVAL_MS = 15 * 60 * 1000
 const FOCUS_ZOOM = 3.6
@@ -387,6 +388,12 @@ function App() {
     [orbitsPayload, sensorFilter, nowUnixMs, showOrbits],
   )
 
+  const overpassBucketMs = Math.floor(nowUnixMs / 300_000) * 300_000
+  const overpassIndex = useMemo(
+    () => buildSatelliteOverpassIndex(orbitsPayload?.satellites, overpassBucketMs),
+    [orbitsPayload, overpassBucketMs],
+  )
+
   const hudElapsedMinutes = computeSatelliteHudElapsedMinutes(
     orbitsPayload?.generatedAtUtc,
     nowUnixMs,
@@ -499,6 +506,7 @@ function App() {
         showNightLights={showNightLights}
         onShowNightLightsChange={setShowNightLights}
         orbitalState={orbitalState}
+        overpassIndex={overpassIndex}
         satelliteHudSection={satelliteHudSection}
         showOrbits={showOrbits}
         onShowOrbitsChange={(next) => {

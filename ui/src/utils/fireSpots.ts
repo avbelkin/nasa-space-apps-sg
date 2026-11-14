@@ -3,10 +3,14 @@ import type { SensorFilter, ViewMode } from '../data/stubSeasonalData.ts'
 import {
   buildFireDetectionsTimeline,
   compareMatchedFireSpots,
-  formatBrowserLocalHhMm,
   normalizeFullSatelliteLabel,
   type FireDetectionsTimeline,
+  type NegativePassInput,
 } from './fireTimeline.ts'
+import {
+  evaluateSpotNegativePasses,
+  type SatelliteOverpassIndex,
+} from './satelliteOverpassTimeline.ts'
 
 export { compareMatchedFireSpots }
 
@@ -144,7 +148,10 @@ export interface FormattedFireSpotsTooltip {
 
 export interface FormatFireSpotsTooltipOptions {
   viewMode?: ViewMode
+  sensorFilter?: SensorFilter
   timeZone?: string
+  overpassIndex?: SatelliteOverpassIndex | null
+  negativePasses?: readonly NegativePassInput[]
 }
 
 interface SourceMetaEntry {
@@ -565,16 +572,6 @@ export function summarizeFireSpotsForSensor(
   }
 }
 
-function formatRelativeAge(timestampMs: number, nowMs: number): string {
-  const diffMs = Math.max(0, nowMs - timestampMs)
-  const diffMinutes = Math.round(diffMs / 60_000)
-  if (diffMinutes < 60) {
-    return `${diffMinutes}m ago`
-  }
-  const diffHours = Math.floor(diffMinutes / 60)
-  return `${diffHours}h ago`
-}
-
 function deduplicateSpotMatches(spots: readonly FireSpotTooltipInput[]): FireSpotTooltipInput[] {
   const seen = new Set<string>()
   const unique: FireSpotTooltipInput[] = []
@@ -603,54 +600,30 @@ export function formatFireSpotsTooltip(
     return null
   }
 
-  if (uniqueSpots.length === 1) {
-    const spot = uniqueSpots[0]
-    const parts: string[] = []
-    if (Number.isFinite(spot.timestamp) && spot.timestamp > 0) {
-      parts.push(
-        `${formatBrowserLocalHhMm(spot.timestamp, options.timeZone)} (${formatRelativeAge(spot.timestamp, nowMs)})`,
-      )
-    }
-    const roundedFrp = Math.round((Number(spot.frp) || 0) * 10) / 10
-    parts.push(`${roundedFrp} MW`)
-
-    const satLabel = spot.satellite
-      ? normalizeFullSatelliteLabel(spot.satellite, spot.source, spot.instrument)
-      : ''
-    const sourceLabel =
-      satLabel && !spot.source.toUpperCase().includes(satLabel.toUpperCase())
-        ? `${spot.source} (${satLabel})`
-        : spot.source || satLabel
-    if (sourceLabel) {
-      parts.push(sourceLabel)
-    }
-
-    if (typeof spot.brightnessK === 'number' && Number.isFinite(spot.brightnessK) && spot.brightnessK > 0) {
-      const celsius = Math.round(spot.brightnessK - 273.15)
-      parts.push(`${spot.brightnessK.toFixed(1)} K (${celsius}\u00b0C)`)
-    }
-
-    if (typeof spot.confidence === 'number' && Number.isFinite(spot.confidence)) {
-      parts.push(`Conf ${Math.round(spot.confidence)}%`)
-    }
-
-    return {
-      mode: 'individual',
-      header: 'NASA FIRMS Active Spot',
-      lines: [parts.join(' \u00b7 ')],
-      count: 1,
-    }
-  }
+  const sensorFilter = options.sensorFilter ?? 'harmonized'
+  const negativePasses =
+    options.negativePasses ??
+    (options.overpassIndex
+      ? evaluateSpotNegativePasses(options.overpassIndex, uniqueSpots, {
+          nowMs,
+          sensorFilter,
+        })
+      : undefined)
 
   const timeline = buildFireDetectionsTimeline(uniqueSpots, {
     nowMs,
     viewMode: options.viewMode ?? 'anomaly',
+    sensorFilter,
     timeZone: options.timeZone,
+    negativePasses,
   })
 
   return {
     mode: 'timeline',
-    header: `${uniqueSpots.length} Grouped Fire Detections`,
+    header:
+      uniqueSpots.length === 1
+        ? '1 Fire Detection'
+        : `${uniqueSpots.length} Grouped Fire Detections`,
     lines: [timeline.accessibleSummary],
     count: uniqueSpots.length,
     timeline,

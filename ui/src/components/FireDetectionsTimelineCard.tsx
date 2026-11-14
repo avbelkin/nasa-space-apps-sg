@@ -10,7 +10,7 @@ export function FireDetectionsTimelineCard({ timeline }: FireDetectionsTimelineC
   const clipBaseId = useId()
   const dayClipId = `${clipBaseId}-day`
   const nightClipId = `${clipBaseId}-night`
-  const { sun } = timeline
+  const { sun, processingCutoff } = timeline
 
   const sunEvents: Array<{ kind: 'sunrise' | 'sunset'; ms: number; label: string }> = []
   if (sun.sunriseMs !== null && sun.sunriseLabel !== null) {
@@ -47,14 +47,21 @@ export function FireDetectionsTimelineCard({ timeline }: FireDetectionsTimelineC
           )}
         </div>
         <span className="fire-timeline-peak">
-          Peak {timeline.peakFrpMw.toLocaleString('en-US')} MW (
-          {timeline.totalFrpMw.toLocaleString('en-US')} MW total)
+          {timeline.singleSpotDetail ??
+            `Peak ${timeline.peakFrpMw.toLocaleString('en-US')} MW (${timeline.totalFrpMw.toLocaleString('en-US')} MW total)`}
         </span>
       </div>
 
       <div className="fire-timeline-scroll">
         <div className="fire-timeline-frame">
           <div className="fire-timeline-plot" aria-hidden="true">
+            {processingCutoff.widthPct > 0 && (
+              <div
+                className="fire-timeline-cutoff-zone"
+                style={{ '--cutoff-width': `${processingCutoff.widthPct}%` } as CSSProperties}
+                title={`NRT processing cutoff (${processingCutoff.shortLabel})`}
+              />
+            )}
             <svg
               className="fire-timeline-sun-svg"
               viewBox={`0 0 ${sun.viewBoxWidth} ${sun.viewBoxHeight}`}
@@ -106,44 +113,57 @@ export function FireDetectionsTimelineCard({ timeline }: FireDetectionsTimelineC
                 if (!slot) {
                   return null
                 }
-                if (slot.kind === 'non-detection') {
-                  return (
-                    <div
-                      key={`slot-${slot.slotIndex}`}
-                      className="fire-timeline-slot fire-timeline-slot-negative"
-                      style={{ gridColumn: slot.slotIndex + 1, gridRow: 1 }}
-                      title={`${slot.localTimeLabel} · ${slot.satellite} overpass (no detection)`}
-                    >
-                      <span
-                        className="fire-timeline-negative-tick"
-                        style={{ '--sat-color': slot.color } as CSSProperties}
-                      />
-                      <span className="fire-timeline-sat fire-timeline-sat-negative">
-                        {slot.shortSatellite}
-                      </span>
-                    </div>
-                  )
-                }
+                const satClassName =
+                  slot.kind === 'non-detection'
+                    ? 'fire-timeline-sat fire-timeline-sat-negative'
+                    : slot.kind === 'pending'
+                      ? 'fire-timeline-sat fire-timeline-sat-pending'
+                      : 'fire-timeline-sat'
 
-                const mergedLabel = slot.mergedCount > 1 ? ` · ${slot.mergedCount} spots` : ''
                 return (
                   <div
                     key={`slot-${slot.slotIndex}`}
                     className="fire-timeline-slot"
+                    data-slot-kind={slot.kind}
                     style={{ gridColumn: slot.slotIndex + 1, gridRow: 1 }}
-                    title={`${slot.localTimeLabel} · ${slot.satellite} · ${slot.frpMw} MW · Conf ${Math.round(slot.confidence)}%${mergedLabel}`}
+                    title={slot.tooltipTitle}
                   >
-                    <span
-                      className="fire-timeline-bar"
-                      style={
-                        {
-                          '--bar-height': `${slot.heightPct}%`,
-                          '--bar-color': slot.color,
-                          '--bar-opacity': String(slot.opacity),
-                        } as CSSProperties
-                      }
-                    />
-                    <span className="fire-timeline-sat">{slot.shortSatellite}</span>
+                    <div className="fire-timeline-slot-subbars">
+                      {slot.subBars.map((sub, subIdx) => {
+                        if (sub.kind === 'detection') {
+                          return (
+                            <span
+                              key={`${slot.slotIndex}-${sub.satellite}-${subIdx}`}
+                              className="fire-timeline-bar"
+                              style={
+                                {
+                                  '--bar-height': `${sub.heightPct}%`,
+                                  '--bar-color': sub.color,
+                                  '--bar-opacity': String(sub.opacity),
+                                } as CSSProperties
+                              }
+                            />
+                          )
+                        }
+                        if (sub.kind === 'pending') {
+                          return (
+                            <span
+                              key={`${slot.slotIndex}-${sub.satellite}-${subIdx}`}
+                              className="fire-timeline-bar-pending"
+                              style={{ '--sat-color': sub.color } as CSSProperties}
+                            />
+                          )
+                        }
+                        return (
+                          <span
+                            key={`${slot.slotIndex}-${sub.satellite}-${subIdx}`}
+                            className="fire-timeline-bar-negative"
+                            style={{ '--sat-color': sub.color } as CSSProperties}
+                          />
+                        )
+                      })}
+                    </div>
+                    <span className={satClassName}>{slot.label}</span>
                   </div>
                 )
               })}
@@ -157,10 +177,44 @@ export function FireDetectionsTimelineCard({ timeline }: FireDetectionsTimelineC
               </span>
             ))}
           </div>
+
+          <div className="fire-timeline-legend" aria-hidden="true">
+            <span className="fire-timeline-legend-item">
+              <span className="fire-timeline-swatch fire-timeline-swatch-negative" />
+              <span>Pass, no fire ({processingCutoff.nonDetectionCount})</span>
+            </span>
+            <span className="fire-timeline-legend-item">
+              <span className="fire-timeline-swatch fire-timeline-swatch-cutoff" />
+              <span>
+                Processing ({processingCutoff.shortLabel}
+                {processingCutoff.pendingCount > 0 ? `, ${processingCutoff.pendingCount} pending` : ''})
+              </span>
+            </span>
+          </div>
         </div>
       </div>
 
-      <p className="visually-hidden">{timeline.accessibleSummary}</p>
+      <table className="visually-hidden">
+        <caption>{timeline.accessibleSummary}</caption>
+        <thead>
+          <tr>
+            <th scope="col">Time</th>
+            <th scope="col">Satellite</th>
+            <th scope="col">Status</th>
+            <th scope="col">Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {timeline.accessibleRows.map((row, index) => (
+            <tr key={`${index}-${row.timeLabel}-${row.satellite}`}>
+              <td>{row.timeLabel}</td>
+              <td>{row.satellite}</td>
+              <td>{row.status}</td>
+              <td>{row.detail}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

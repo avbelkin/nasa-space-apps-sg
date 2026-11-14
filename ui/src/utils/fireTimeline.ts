@@ -1,5 +1,5 @@
 import { DEFAULT_SATELLITE_COLOR, SATELLITE_COLORS } from '../data/dataPalette.ts'
-import type { ViewMode } from '../data/stubSeasonalData.ts'
+import type { SensorFilter, ViewMode } from '../data/stubSeasonalData.ts'
 import type { FireInstrument, FireSpotTooltipInput } from './fireSpots.ts'
 import { computeSubsolarPoint } from './nightLightsShader.ts'
 
@@ -373,11 +373,27 @@ export function computeTimelineConfidenceOpacity(confidence?: number): number {
   )
 }
 
-export interface PositiveTimelineDetection {
+function formatLagDurationLabel(lagMinutes: number): string {
+  const hours = Math.round((lagMinutes / 60) * 10) / 10
+  return `~${hours}h`
+}
+
+function getProcessingCutoffConfig(sensorFilter: SensorFilter): {
+  lagMinutes: number
+  shortLabel: string
+} {
+  switch (sensorFilter) {
+    case 'viirs':
+      return { lagMinutes: 90, shortLabel: '~1.5h lag' }
+    case 'modis':
+      return { lagMinutes: 120, shortLabel: '~2h lag' }
+    default:
+      return { lagMinutes: 120, shortLabel: '~1.5\u20132h lag' }
+  }
+}
+
+export interface PositiveTimelineSubBar {
   kind: 'detection'
-  slotIndex: number
-  slotStartMs: number
-  slotEndMs: number
   timestampMs: number
   localTimeLabel: string
   frpMw: number
@@ -392,11 +408,8 @@ export interface PositiveTimelineDetection {
   mergedCount: number
 }
 
-export interface NegativeTimelinePass {
-  kind: 'non-detection'
-  slotIndex: number
-  slotStartMs: number
-  slotEndMs: number
+export interface NegativeTimelineSubBar {
+  kind: 'non-detection' | 'pending'
   timestampMs: number
   localTimeLabel: string
   satellite: string
@@ -404,6 +417,51 @@ export interface NegativeTimelinePass {
   color: string
   instrument: FireInstrument
   isNadir?: boolean
+  distanceKm?: number
+  ingestionLagMinutes?: number
+}
+
+export type TimelineSubBar = PositiveTimelineSubBar | NegativeTimelineSubBar
+
+export interface PositiveTimelineDetection {
+  kind: 'detection'
+  slotIndex: number
+  slotStartMs: number
+  slotEndMs: number
+  timestampMs: number
+  localTimeLabel: string
+  frpMw: number
+  heightPct: number
+  confidence: number
+  opacity: number
+  color: string
+  satellite: string
+  shortSatellite: string
+  label: string
+  tooltipTitle: string
+  instrument: FireInstrument
+  source: string
+  mergedCount: number
+  subBars: TimelineSubBar[]
+}
+
+export interface NegativeTimelinePass {
+  kind: 'non-detection' | 'pending'
+  slotIndex: number
+  slotStartMs: number
+  slotEndMs: number
+  timestampMs: number
+  localTimeLabel: string
+  satellite: string
+  shortSatellite: string
+  label: string
+  tooltipTitle: string
+  color: string
+  instrument: FireInstrument
+  isNadir?: boolean
+  distanceKm?: number
+  ingestionLagMinutes?: number
+  subBars: TimelineSubBar[]
 }
 
 export type TimelineSlotObservation = PositiveTimelineDetection | NegativeTimelinePass
@@ -413,6 +471,28 @@ export interface NegativePassInput {
   satellite: string
   instrument: FireInstrument
   isNadir?: boolean
+  distanceKm?: number
+  ingestionLagMinutes?: number
+  status?: 'non-detection' | 'pending'
+}
+
+export interface TimelineProcessingCutoff {
+  sensorFilter: SensorFilter
+  lagMinutes: number
+  cutoffStartMs: number
+  cutoffEndMs: number
+  startPct: number
+  widthPct: number
+  shortLabel: string
+  nonDetectionCount: number
+  pendingCount: number
+}
+
+export interface TimelineAccessibleRow {
+  timeLabel: string
+  satellite: string
+  status: string
+  detail: string
 }
 
 export interface TimelineAxisTick {
@@ -428,17 +508,51 @@ export interface FireDetectionsTimeline {
   detectionCount: number
   totalFrpMw: number
   peakFrpMw: number
+  singleSpotDetail: string | null
+  processingCutoff: TimelineProcessingCutoff
   sun: PlaceSunTimeline
   slots: Array<TimelineSlotObservation | null>
   axisTicks: TimelineAxisTick[]
+  accessibleRows: TimelineAccessibleRow[]
   accessibleSummary: string
 }
 
 export interface BuildFireTimelineOptions {
   nowMs?: number
   viewMode?: ViewMode
+  sensorFilter?: SensorFilter
   timeZone?: string
   negativePasses?: readonly NegativePassInput[]
+}
+
+function compareNegativePasses(first: NegativeTimelineSubBar, second: NegativeTimelineSubBar): number {
+  const firstNadirRank = first.isNadir ? 0 : 1
+  const secondNadirRank = second.isNadir ? 0 : 1
+  const firstDist =
+    typeof first.distanceKm === 'number' && Number.isFinite(first.distanceKm)
+      ? first.distanceKm
+      : firstNadirRank * 1000
+  const secondDist =
+    typeof second.distanceKm === 'number' && Number.isFinite(second.distanceKm)
+      ? second.distanceKm
+      : secondNadirRank * 1000
+  if (firstDist !== secondDist) {
+    return firstDist - secondDist
+  }
+  return second.timestampMs - first.timestampMs
+}
+
+function formatSubBarTooltipTitle(sub: TimelineSubBar, fallbackLagMinutes: number): string {
+  if (sub.kind === 'detection') {
+    const mergedLabel = sub.mergedCount > 1 ? ` \u00b7 ${sub.mergedCount} spots` : ''
+    return `${sub.localTimeLabel} \u00b7 ${sub.satellite} \u00b7 ${sub.frpMw} MW \u00b7 Conf ${Math.round(sub.confidence)}%${mergedLabel}`
+  }
+  if (sub.kind === 'pending') {
+    const lagLabel = formatLagDurationLabel(sub.ingestionLagMinutes ?? fallbackLagMinutes)
+    return `${sub.localTimeLabel} \u00b7 ${sub.satellite} overpass (in processing, ${lagLabel} lag)`
+  }
+  const nadirNote = sub.isNadir ? ', near nadir' : ''
+  return `${sub.localTimeLabel} \u00b7 ${sub.satellite} overpass (no detection${nadirNote})`
 }
 
 export function buildFireDetectionsTimeline(
@@ -446,6 +560,7 @@ export function buildFireDetectionsTimeline(
   options: BuildFireTimelineOptions = {},
 ): FireDetectionsTimeline {
   const nowMs = Number.isFinite(options.nowMs) ? options.nowMs! : Date.now()
+  const sensorFilter = options.sensorFilter ?? 'harmonized'
   const timeZone = options.timeZone
 
   let maxSpotTs = -Infinity
@@ -481,14 +596,14 @@ export function buildFireDetectionsTimeline(
     timeZone,
   )
 
-  interface SlotCandidate {
+  interface PositiveSatCandidate {
     winner: FireSpotTooltipInput
     mergedCount: number
   }
 
-  const slotCandidates: Array<SlotCandidate | null> = Array.from(
+  const positiveBySlot = Array.from(
     { length: TIMELINE_SLOT_COUNT },
-    () => null,
+    () => new Map<string, PositiveSatCandidate>(),
   )
 
   for (const spot of spots) {
@@ -500,21 +615,24 @@ export function buildFireDetectionsTimeline(
     }
     const rawIdx = Math.floor((spot.timestamp - windowStartMs) / TIMELINE_SLOT_MS)
     const slotIndex = clamp(rawIdx, 0, TIMELINE_SLOT_COUNT - 1)
-    const existing = slotCandidates[slotIndex]
+    const instrument: FireInstrument = spot.instrument === 'modis' ? 'modis' : 'viirs'
+    const satName = normalizeFullSatelliteLabel(spot.satellite, spot.source, instrument)
+    const slotMap = positiveBySlot[slotIndex]
+    const existing = slotMap.get(satName)
     if (!existing) {
-      slotCandidates[slotIndex] = { winner: spot, mergedCount: 1 }
+      slotMap.set(satName, { winner: spot, mergedCount: 1 })
     } else {
       const winner = compareMatchedFireSpots(spot, existing.winner) < 0 ? spot : existing.winner
-      slotCandidates[slotIndex] = {
+      slotMap.set(satName, {
         winner,
         mergedCount: existing.mergedCount + 1,
-      }
+      })
     }
   }
 
   let peakSlotFrpMw = 0
-  for (const candidate of slotCandidates) {
-    if (candidate) {
+  for (const slotMap of positiveBySlot) {
+    for (const candidate of slotMap.values()) {
       const frp = Number.isFinite(candidate.winner.frp) ? Math.max(0, candidate.winner.frp) : 0
       if (frp > peakSlotFrpMw) {
         peakSlotFrpMw = frp
@@ -522,52 +640,60 @@ export function buildFireDetectionsTimeline(
     }
   }
 
-  const scaleCeilingMw = Math.max(peakSlotFrpMw, 1)
-  const slots: Array<TimelineSlotObservation | null> = slotCandidates.map((candidate, slotIndex) => {
-    const slotStartMs = windowStartMs + slotIndex * TIMELINE_SLOT_MS
-    const slotEndMs = slotStartMs + TIMELINE_SLOT_MS
+  const positiveSubBarsBySlot: Array<Map<string, PositiveTimelineSubBar>> = positiveBySlot.map(
+    (slotMap) => {
+      const built = new Map<string, PositiveTimelineSubBar>()
+      for (const [satName, candidate] of slotMap) {
+        const { winner, mergedCount } = candidate
+        const instrument: FireInstrument = winner.instrument === 'modis' ? 'modis' : 'viirs'
+        const frpMw =
+          Math.round((Number.isFinite(winner.frp) ? Math.max(0, winner.frp) : 0) * 10) / 10
+        const scaleCeilingMw = Math.max(peakSlotFrpMw, 1)
+        const heightPct =
+          peakSlotFrpMw > 0
+            ? Math.round(
+                (MIN_TIMELINE_BAR_HEIGHT_PCT +
+                  (100 - MIN_TIMELINE_BAR_HEIGHT_PCT) * clamp(frpMw / scaleCeilingMw, 0, 1)) *
+                  10,
+              ) / 10
+            : MIN_TIMELINE_BAR_HEIGHT_PCT
+        const confidence =
+          typeof winner.confidence === 'number' && Number.isFinite(winner.confidence)
+            ? clamp(Math.round(winner.confidence), 0, 100)
+            : 50
+        const satellite = normalizeFullSatelliteLabel(winner.satellite, winner.source, instrument)
+        const shortSatellite = normalizeShortSatelliteLabel(
+          winner.satellite,
+          winner.source,
+          instrument,
+        )
 
-    if (!candidate) {
-      return null
-    }
+        built.set(satName, {
+          kind: 'detection',
+          timestampMs: winner.timestamp,
+          localTimeLabel: formatBrowserLocalHhMm(winner.timestamp, timeZone),
+          frpMw,
+          heightPct,
+          confidence,
+          opacity: computeTimelineConfidenceOpacity(confidence),
+          color: resolveSatellitePaletteColor(winner.satellite, winner.source, instrument),
+          satellite,
+          shortSatellite,
+          instrument,
+          source: winner.source,
+          mergedCount,
+        })
+      }
+      return built
+    },
+  )
 
-    const { winner, mergedCount } = candidate
-    const instrument: FireInstrument = winner.instrument === 'modis' ? 'modis' : 'viirs'
-    const frpMw = Math.round((Number.isFinite(winner.frp) ? Math.max(0, winner.frp) : 0) * 10) / 10
-    const heightPct =
-      peakSlotFrpMw > 0
-        ? Math.round(
-            (MIN_TIMELINE_BAR_HEIGHT_PCT +
-              (100 - MIN_TIMELINE_BAR_HEIGHT_PCT) * clamp(frpMw / scaleCeilingMw, 0, 1)) *
-              10,
-          ) / 10
-        : MIN_TIMELINE_BAR_HEIGHT_PCT
-    const confidence =
-      typeof winner.confidence === 'number' && Number.isFinite(winner.confidence)
-        ? clamp(Math.round(winner.confidence), 0, 100)
-        : 50
-    const satellite = normalizeFullSatelliteLabel(winner.satellite, winner.source, instrument)
-    const shortSatellite = normalizeShortSatelliteLabel(winner.satellite, winner.source, instrument)
+  const negativeSubBarsBySlot: Array<Map<string, NegativeTimelineSubBar>> = Array.from(
+    { length: TIMELINE_SLOT_COUNT },
+    () => new Map<string, NegativeTimelineSubBar>(),
+  )
 
-    return {
-      kind: 'detection',
-      slotIndex,
-      slotStartMs,
-      slotEndMs,
-      timestampMs: winner.timestamp,
-      localTimeLabel: formatBrowserLocalHhMm(winner.timestamp, timeZone),
-      frpMw,
-      heightPct,
-      confidence,
-      opacity: computeTimelineConfidenceOpacity(confidence),
-      color: resolveSatellitePaletteColor(winner.satellite, winner.source, instrument),
-      satellite,
-      shortSatellite,
-      instrument,
-      source: winner.source,
-      mergedCount,
-    }
-  })
+  const cutoffConfig = getProcessingCutoffConfig(sensorFilter)
 
   if (options.negativePasses) {
     for (const pass of options.negativePasses) {
@@ -583,21 +709,20 @@ export function buildFireDetectionsTimeline(
         0,
         TIMELINE_SLOT_COUNT - 1,
       )
-      const existing = slots[slotIndex]
-      if (existing?.kind === 'detection') {
-        continue
-      }
-      if (existing?.kind === 'non-detection' && existing.timestampMs >= pass.timestampMs) {
-        continue
-      }
-      const slotStartMs = windowStartMs + slotIndex * TIMELINE_SLOT_MS
       const satellite = normalizeFullSatelliteLabel(pass.satellite, undefined, pass.instrument)
-      const shortSatellite = normalizeShortSatelliteLabel(pass.satellite, undefined, pass.instrument)
-      slots[slotIndex] = {
-        kind: 'non-detection',
-        slotIndex,
-        slotStartMs,
-        slotEndMs: slotStartMs + TIMELINE_SLOT_MS,
+      if (positiveSubBarsBySlot[slotIndex].has(satellite)) {
+        continue
+      }
+
+      const shortSatellite = normalizeShortSatelliteLabel(
+        pass.satellite,
+        undefined,
+        pass.instrument,
+      )
+      const kind: NegativeTimelineSubBar['kind'] =
+        pass.status === 'pending' ? 'pending' : 'non-detection'
+      const candidateSubBar: NegativeTimelineSubBar = {
+        kind,
         timestampMs: pass.timestampMs,
         localTimeLabel: formatBrowserLocalHhMm(pass.timestampMs, timeZone),
         satellite,
@@ -605,8 +730,153 @@ export function buildFireDetectionsTimeline(
         color: resolveSatellitePaletteColor(pass.satellite, undefined, pass.instrument),
         instrument: pass.instrument,
         isNadir: pass.isNadir,
+        distanceKm: pass.distanceKm,
+        ingestionLagMinutes: pass.ingestionLagMinutes,
+      }
+
+      const existing = negativeSubBarsBySlot[slotIndex].get(satellite)
+      if (!existing || compareNegativePasses(candidateSubBar, existing) < 0) {
+        negativeSubBarsBySlot[slotIndex].set(satellite, candidateSubBar)
       }
     }
+  }
+
+  let nonDetectionCount = 0
+  let pendingCount = 0
+  const accessibleRows: TimelineAccessibleRow[] = []
+
+  const slots: Array<TimelineSlotObservation | null> = Array.from(
+    { length: TIMELINE_SLOT_COUNT },
+    (_, slotIndex) => {
+      const slotStartMs = windowStartMs + slotIndex * TIMELINE_SLOT_MS
+      const slotEndMs = slotStartMs + TIMELINE_SLOT_MS
+      const posSubs = [...positiveSubBarsBySlot[slotIndex].values()]
+      const negSubs = [...negativeSubBarsBySlot[slotIndex].values()]
+      const subBars: TimelineSubBar[] = [...posSubs, ...negSubs].sort(
+        (a, b) => a.timestampMs - b.timestampMs,
+      )
+      if (subBars.length === 0) {
+        return null
+      }
+
+      for (const sub of subBars) {
+        if (sub.kind === 'detection') {
+          accessibleRows.push({
+            timeLabel: sub.localTimeLabel,
+            satellite: sub.satellite,
+            status: 'Detected',
+            detail: `${sub.frpMw} MW, Conf ${Math.round(sub.confidence)}%${
+              sub.mergedCount > 1 ? `, ${sub.mergedCount} spots` : ''
+            }`,
+          })
+        } else if (sub.kind === 'non-detection') {
+          nonDetectionCount += 1
+          accessibleRows.push({
+            timeLabel: sub.localTimeLabel,
+            satellite: sub.satellite,
+            status: 'No detection',
+            detail: sub.isNadir ? 'Near-nadir swath overpass' : 'Wide-swath overpass',
+          })
+        } else {
+          pendingCount += 1
+          const lagStr = formatLagDurationLabel(sub.ingestionLagMinutes ?? cutoffConfig.lagMinutes)
+          accessibleRows.push({
+            timeLabel: sub.localTimeLabel,
+            satellite: sub.satellite,
+            status: 'In processing',
+            detail: `Overpass within ${lagStr} NRT lag`,
+          })
+        }
+      }
+
+      const tooltipTitle = subBars
+        .map((sub) => formatSubBarTooltipTitle(sub, cutoffConfig.lagMinutes))
+        .join(' / ')
+
+      if (posSubs.length > 0) {
+        let winner = posSubs[0]
+        for (let i = 1; i < posSubs.length; i++) {
+          const cand = posSubs[i]
+          if (
+            cand.frpMw > winner.frpMw ||
+            (cand.frpMw === winner.frpMw && cand.timestampMs > winner.timestampMs)
+          ) {
+            winner = cand
+          }
+        }
+        const label =
+          subBars.length > 1 ? `${winner.shortSatellite} +${subBars.length - 1}` : winner.shortSatellite
+        return {
+          kind: 'detection',
+          slotIndex,
+          slotStartMs,
+          slotEndMs,
+          timestampMs: winner.timestampMs,
+          localTimeLabel: winner.localTimeLabel,
+          frpMw: winner.frpMw,
+          heightPct: winner.heightPct,
+          confidence: winner.confidence,
+          opacity: winner.opacity,
+          color: winner.color,
+          satellite: winner.satellite,
+          shortSatellite: winner.shortSatellite,
+          label,
+          tooltipTitle,
+          instrument: winner.instrument,
+          source: winner.source,
+          mergedCount: winner.mergedCount,
+          subBars,
+        }
+      }
+
+      const confirmedNegs = negSubs.filter((sub) => sub.kind === 'non-detection')
+      const pool = confirmedNegs.length > 0 ? confirmedNegs : negSubs
+      let winner = pool[0]
+      for (let i = 1; i < pool.length; i++) {
+        if (compareNegativePasses(pool[i], winner) < 0) {
+          winner = pool[i]
+        }
+      }
+      const label =
+        subBars.length > 1 ? `${winner.shortSatellite} +${subBars.length - 1}` : winner.shortSatellite
+      return {
+        kind: winner.kind,
+        slotIndex,
+        slotStartMs,
+        slotEndMs,
+        timestampMs: winner.timestampMs,
+        localTimeLabel: winner.localTimeLabel,
+        satellite: winner.satellite,
+        shortSatellite: winner.shortSatellite,
+        label,
+        tooltipTitle,
+        color: winner.color,
+        instrument: winner.instrument,
+        isNadir: winner.isNadir,
+        distanceKm: winner.distanceKm,
+        ingestionLagMinutes: winner.ingestionLagMinutes,
+        subBars,
+      }
+    },
+  )
+
+  const totalSpanMs = Math.max(TIMELINE_SLOT_MS, windowEndMs - windowStartMs)
+  const cutoffEndMs = clamp(nowMs, windowStartMs, windowEndMs)
+  const cutoffStartMs = clamp(
+    nowMs - cutoffConfig.lagMinutes * 60_000,
+    windowStartMs,
+    cutoffEndMs,
+  )
+  const processingCutoff: TimelineProcessingCutoff = {
+    sensorFilter,
+    lagMinutes: cutoffConfig.lagMinutes,
+    cutoffStartMs,
+    cutoffEndMs,
+    startPct: Number((((cutoffStartMs - windowStartMs) / totalSpanMs) * 100).toFixed(2)),
+    widthPct: Number((((cutoffEndMs - cutoffStartMs) / totalSpanMs) * 100).toFixed(2)),
+    shortLabel: cutoffConfig.shortLabel,
+    nonDetectionCount,
+    pendingCount,
   }
 
   const axisTicks: TimelineAxisTick[] = [
@@ -639,9 +909,30 @@ export function buildFireDetectionsTimeline(
 
   const roundedTotalFrp = Math.round(totalFrp * 10) / 10
   const roundedPeakFrp = Math.round(peakFrp * 10) / 10
+
+  let singleSpotDetail: string | null = null
+  if (spots.length === 1) {
+    const spot = spots[0]
+    const detailParts = [`${roundedPeakFrp} MW`]
+    if (
+      typeof spot.brightnessK === 'number' &&
+      Number.isFinite(spot.brightnessK) &&
+      spot.brightnessK > 0
+    ) {
+      const celsius = Math.round(spot.brightnessK - 273.15)
+      detailParts.push(`${spot.brightnessK.toFixed(1)} K (${celsius}\u00b0C)`)
+    }
+    if (typeof spot.confidence === 'number' && Number.isFinite(spot.confidence)) {
+      detailParts.push(`Conf ${Math.round(spot.confidence)}%`)
+    }
+    singleSpotDetail = detailParts.join(' \u00b7 ')
+  }
+
   const timeRangeStr =
     Number.isFinite(minSpotTs) && Number.isFinite(maxSpotTs)
-      ? `${formatBrowserLocalHhMm(minSpotTs, timeZone)}–${formatBrowserLocalHhMm(maxSpotTs, timeZone)} local`
+      ? minSpotTs === maxSpotTs
+        ? `${formatBrowserLocalHhMm(minSpotTs, timeZone)} local`
+        : `${formatBrowserLocalHhMm(minSpotTs, timeZone)}\u2013${formatBrowserLocalHhMm(maxSpotTs, timeZone)} local`
       : 'last 24h local'
   const sunSummaryStr =
     sun.polarState === 'polar-day'
@@ -655,10 +946,22 @@ export function buildFireDetectionsTimeline(
             .filter(Boolean)
             .join(', ')
   const satSummary = satellitesSet.size > 0 ? [...satellitesSet].join(', ') : ''
+  const detectionCountStr =
+    spots.length === 1
+      ? `1 detection (${timeRangeStr})`
+      : `${spots.length} detections (${timeRangeStr})`
+  const negativeSummaryStr =
+    nonDetectionCount > 0
+      ? `${nonDetectionCount} negative pass${nonDetectionCount === 1 ? '' : 'es'}`
+      : null
+  const pendingSummaryStr =
+    pendingCount > 0 ? `${pendingCount} pass${pendingCount === 1 ? '' : 'es'} in processing` : null
 
   const summaryParts = [
-    `${spots.length} detections (${timeRangeStr})`,
+    detectionCountStr,
     `${roundedTotalFrp.toLocaleString('en-US')} MW total (peak ${roundedPeakFrp.toLocaleString('en-US')} MW)`,
+    negativeSummaryStr,
+    pendingSummaryStr,
     satSummary,
     sunSummaryStr,
   ].filter(Boolean)
@@ -670,9 +973,12 @@ export function buildFireDetectionsTimeline(
     detectionCount: spots.length,
     totalFrpMw: roundedTotalFrp,
     peakFrpMw: roundedPeakFrp,
+    singleSpotDetail,
+    processingCutoff,
     sun,
     slots,
     axisTicks,
-    accessibleSummary: summaryParts.join(' · '),
+    accessibleRows,
+    accessibleSummary: summaryParts.join(' \u00b7 '),
   }
 }

@@ -638,19 +638,12 @@
 
 .fire-timeline-meta {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.15rem 0.5rem;
-  overflow: clip;
   font-variant-numeric: tabular-nums;
   color: #e2e8f0;
-}
-
-@container mapstage (inline-size < 30rem) {
-  .fire-timeline-meta {
-    flex-wrap: wrap;
-  }
 }
 
 .fire-timeline-sun-events {
@@ -702,12 +695,29 @@
   overflow: clip;
 }
 
+.fire-timeline-cutoff-zone {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  inline-size: var(--cutoff-width, 8.33%);
+  pointer-events: none;
+  z-index: 0;
+  border-inline-start: 1px dashed rgb(251 191 36 / 0.55);
+  background: repeating-linear-gradient(
+    45deg,
+    rgb(251 191 36 / 0.1) 0 3px,
+    rgb(15 23 42 / 0.22) 0 7px
+  );
+}
+
 .fire-timeline-sun-svg {
   grid-column: 1;
   grid-row: 1;
   inline-size: 100%;
   block-size: 100%;
   display: block;
+  position: relative;
+  z-index: 1;
   pointer-events: none;
 }
 
@@ -741,7 +751,7 @@
   block-size: 0.5rem;
   border-radius: 50%;
   pointer-events: none;
-  z-index: 2;
+  z-index: 3;
   forced-color-adjust: none;
 }
 
@@ -766,7 +776,7 @@
   align-items: end;
   block-size: 100%;
   padding-inline: 0.125rem;
-  z-index: 1;
+  z-index: 2;
 }
 
 .fire-timeline-slot {
@@ -777,11 +787,21 @@
   min-inline-size: 0;
 }
 
-.fire-timeline-bar {
+.fire-timeline-slot-subbars {
   grid-column: 1;
   grid-row: 1;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  column-gap: 1px;
+  align-items: end;
+  inline-size: 100%;
+  block-size: 100%;
+  min-inline-size: 0;
+}
+
+.fire-timeline-bar {
   align-self: end;
-  justify-self: stretch;
   display: block;
   inline-size: 100%;
   block-size: var(--bar-height, 20%);
@@ -794,18 +814,31 @@
   forced-color-adjust: none;
 }
 
-.fire-timeline-negative-tick {
-  grid-column: 1;
-  grid-row: 1;
-  align-self: end;
-  justify-self: stretch;
+.fire-timeline-bar-negative {
+  align-self: stretch;
   display: block;
   inline-size: 100%;
-  block-size: 0.2rem;
-  border-radius: 0.1rem 0.1rem 0 0;
-  border-block-start: 1.5px dashed var(--sat-color, rgb(148 163 184 / 0.85));
-  background-color: color-mix(in srgb, var(--sat-color, #94a3b8) 20%, transparent);
-  forced-color-adjust: none;
+  block-size: 100%;
+  border-radius: 0.16rem 0.16rem 0 0;
+  border-block-start: 2px solid var(--sat-color, #94a3b8);
+  outline: 1px solid rgb(148 163 184 / 0.24);
+  outline-offset: -1px;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgb(148 163 184 / 0.28) 0 4px,
+    rgb(30 41 59 / 0.48) 0 8px
+  );
+}
+
+.fire-timeline-bar-pending {
+  align-self: stretch;
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  border-radius: 0.16rem 0.16rem 0 0;
+  background-color: rgb(251 191 36 / 0.08);
+  border: 1px dashed rgb(251 191 36 / 0.45);
+  border-block-start: 2px dotted var(--sat-color, #fde68a);
 }
 
 .fire-timeline-sat {
@@ -836,6 +869,11 @@
   font-weight: 600;
 }
 
+.fire-timeline-sat-pending {
+  color: #fde68a;
+  font-weight: 600;
+}
+
 .fire-timeline-axis {
   display: flex;
   align-items: baseline;
@@ -849,6 +887,50 @@
   color: #cbd5e1;
 }
 
+.fire-timeline-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.75rem;
+  padding-block-start: 0.2rem;
+  padding-inline: 0.125rem;
+  font-size: 0.6875rem;
+  line-height: 1.15;
+  color: #cbd5e1;
+}
+
+.fire-timeline-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.fire-timeline-swatch {
+  display: inline-block;
+  inline-size: 0.7rem;
+  block-size: 0.7rem;
+  border-radius: 0.15rem;
+}
+
+.fire-timeline-swatch-negative {
+  border: 1px solid rgb(148 163 184 / 0.45);
+  background: repeating-linear-gradient(
+    -45deg,
+    rgb(148 163 184 / 0.38) 0 2px,
+    rgb(30 41 59 / 0.6) 0 4px
+  );
+}
+
+.fire-timeline-swatch-cutoff {
+  border: 1px dashed rgb(251 191 36 / 0.6);
+  background: repeating-linear-gradient(
+    45deg,
+    rgb(251 191 36 / 0.16) 0 2px,
+    rgb(15 23 42 / 0.4) 0 4px
+  );
+}
+
 @media (forced-colors: active) {
   .fire-timeline-horizon,
   .fire-timeline-sun-day,
@@ -856,8 +938,23 @@
     stroke: CanvasText;
   }
 
+  .fire-timeline-cutoff-zone {
+    background: none;
+    border-inline-start: 2px dashed GrayText;
+  }
+
   .fire-timeline-bar {
-    border: 1px solid CanvasText;
+    border: 1px solid Highlight;
+  }
+
+  .fire-timeline-bar-negative {
+    background: Canvas;
+    border: 1px dashed GrayText;
+  }
+
+  .fire-timeline-bar-pending {
+    background: Canvas;
+    border: 1px dotted GrayText;
   }
 
   .fire-timeline-sat {

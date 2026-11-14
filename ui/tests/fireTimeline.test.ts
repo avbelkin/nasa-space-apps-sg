@@ -16,6 +16,13 @@ import {
   TIMELINE_SLOT_COUNT,
   TIMELINE_SLOT_MS,
 } from '../src/utils/fireTimeline.ts'
+import {
+  buildSatelliteOverpassIndex,
+  evaluateSpotNegativePasses,
+  FIRMS_SATELLITE_FLEET_DEFAULTS,
+  parseSatelliteTle,
+  propagateSatelliteGeodetic,
+} from '../src/utils/satelliteOverpassTimeline.ts'
 
 describe('place-relative sun curve with browser-local time drift', () => {
   it('places California sunrise in Singapore browser evening and sunset in Singapore morning', () => {
@@ -79,9 +86,9 @@ describe('place-relative sun curve with browser-local time drift', () => {
 describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
   const nowMs = Date.UTC(2026, 6, 15, 12, 0, 0)
 
-  it('buckets into 24 1h slots, keeps strongest FRP per slot, and encodes confidence and satellite names', () => {
+  it('buckets into 24 1h slots, splits multiple satellites side-by-side with +1 labels, and merges same-satellite spots', () => {
     const spots: FireSpotTooltipInput[] = [
-      // Slot 20 (-4h to -3h): two detections -> 92 MW Terra wins over 18 MW NOAA-20
+      // Slot 20 (-4h to -3h): two different satellites -> side-by-side half-width sub-bars, Terra wins label
       {
         lng: 103.85,
         lat: 1.35,
@@ -98,6 +105,27 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
         timestamp: nowMs - 3.5 * TIMELINE_SLOT_MS,
         frp: 92,
         confidence: 95,
+        instrument: 'modis',
+        source: 'MODIS 1km',
+        satellite: 'T',
+      },
+      // Slot 19 (-5h to -4h): two Terra pixels in same hour -> merge into 1 sub-bar (label stays "Terra")
+      {
+        lng: 103.85,
+        lat: 1.35,
+        timestamp: nowMs - 4.7 * TIMELINE_SLOT_MS,
+        frp: 20,
+        confidence: 70,
+        instrument: 'modis',
+        source: 'MODIS 1km',
+        satellite: 'T',
+      },
+      {
+        lng: 103.851,
+        lat: 1.351,
+        timestamp: nowMs - 4.3 * TIMELINE_SLOT_MS,
+        frp: 46,
+        confidence: 85,
         instrument: 'modis',
         source: 'MODIS 1km',
         satellite: 'T',
@@ -123,16 +151,26 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
 
     assert.equal(timeline.slots.length, TIMELINE_SLOT_COUNT)
     assert.equal(timeline.axisTicks.length, 5)
-    assert.equal(timeline.detectionCount, 3)
+    assert.equal(timeline.detectionCount, 5)
     assert.equal(timeline.peakFrpMw, 92)
-    assert.equal(timeline.totalFrpMw, 133)
+    assert.equal(timeline.totalFrpMw, 199)
+
+    const slot19 = timeline.slots[19]
+    assert.ok(slot19 && slot19.kind === 'detection')
+    assert.equal(slot19.frpMw, 46)
+    assert.equal(slot19.mergedCount, 2)
+    assert.equal(slot19.subBars.length, 1)
+    assert.equal(slot19.label, 'Terra')
 
     const slot20 = timeline.slots[20]
     assert.ok(slot20 && slot20.kind === 'detection')
     assert.equal(slot20.frpMw, 92)
-    assert.equal(slot20.mergedCount, 2)
     assert.equal(slot20.satellite, 'Terra')
     assert.equal(slot20.shortSatellite, 'Terra')
+    assert.equal(slot20.label, 'Terra +1')
+    assert.equal(slot20.subBars.length, 2)
+    assert.equal(slot20.subBars[0].shortSatellite, 'NOAA-20')
+    assert.equal(slot20.subBars[1].shortSatellite, 'Terra')
     assert.equal(slot20.heightPct, 100)
     assert.equal(slot20.opacity, computeTimelineConfidenceOpacity(95))
     assert.equal(slot20.localTimeLabel, '16:30')
@@ -140,6 +178,7 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
     const slot22 = timeline.slots[22]
     assert.ok(slot22 && slot22.kind === 'detection')
     assert.equal(slot22.shortSatellite, 'SNPP')
+    assert.equal(slot22.label, 'SNPP')
     assert.ok(slot22.heightPct > MIN_TIMELINE_BAR_HEIGHT_PCT && slot22.heightPct < 100)
     assert.ok(slot22.opacity < slot20.opacity)
     assert.ok(slot22.opacity >= MIN_TIMELINE_CONFIDENCE_OPACITY)
@@ -167,7 +206,7 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
     assert.equal(sensorSlot22.color, DEFAULT_SATELLITE_COLOR)
   })
 
-  it('accepts Stage-2 negative satellite passes only in empty hour slots', () => {
+  it('places negative/pending passes side-by-side in 1h slots, configures processing cutoff, and builds accessible rows', () => {
     const spots: FireSpotTooltipInput[] = [
       {
         lng: 103.85,
@@ -184,27 +223,170 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
     const timeline = buildFireDetectionsTimeline(spots, {
       nowMs,
       timeZone: 'UTC',
+      sensorFilter: 'harmonized',
       negativePasses: [
-        // Same slot as positive detection (slot 21): positive keeps precedence
-        { timestampMs: nowMs - 2.2 * TIMELINE_SLOT_MS, satellite: 'A', instrument: 'modis', isNadir: true },
-        // Empty slot (slot 15): populates as non-detection pass
-        { timestampMs: nowMs - 8.5 * TIMELINE_SLOT_MS, satellite: 'N20', instrument: 'viirs', isNadir: false },
+        // Same slot as positive NOAA-21 detection (slot 21): shares half-width with Aqua negative pass
+        {
+          timestampMs: nowMs - 2.2 * TIMELINE_SLOT_MS,
+          satellite: 'A',
+          instrument: 'modis',
+          isNadir: true,
+          distanceKm: 40,
+        },
+        // Same-satellite duplicate negative in slot 21 must not override positive NOAA-21
+        {
+          timestampMs: nowMs - 2.4 * TIMELINE_SLOT_MS,
+          satellite: '2',
+          instrument: 'viirs',
+          isNadir: true,
+        },
+        // Empty slot (slot 15): two distinct negative passes (NOAA-20 wide vs Aqua nadir)
+        {
+          timestampMs: nowMs - 8.7 * TIMELINE_SLOT_MS,
+          satellite: 'N20',
+          instrument: 'viirs',
+          isNadir: false,
+          distanceKm: 650,
+        },
+        {
+          timestampMs: nowMs - 8.4 * TIMELINE_SLOT_MS,
+          satellite: 'A',
+          instrument: 'modis',
+          isNadir: true,
+          distanceKm: 55,
+        },
+        // Processing-cutoff pending pass (slot 23): within ingestion lag
+        {
+          timestampMs: nowMs - 0.5 * TIMELINE_SLOT_MS,
+          satellite: 'N20',
+          instrument: 'viirs',
+          isNadir: true,
+          ingestionLagMinutes: 90,
+          status: 'pending',
+        },
       ],
     })
 
     const slot21 = timeline.slots[21]
     assert.ok(slot21 && slot21.kind === 'detection')
     assert.equal(slot21.shortSatellite, 'NOAA-21')
+    assert.equal(slot21.label, 'NOAA-21 +1')
+    assert.equal(slot21.subBars.length, 2)
+    assert.equal(slot21.subBars[0].kind, 'detection')
+    assert.equal(slot21.subBars[1].kind, 'non-detection')
+    assert.equal(slot21.subBars[1].shortSatellite, 'Aqua')
     assert.equal(slot21.color, SATELLITE_COLORS['noaa-21'])
 
     const slot15 = timeline.slots[15]
     assert.ok(slot15 && slot15.kind === 'non-detection')
-    assert.equal(slot15.shortSatellite, 'NOAA-20')
-    assert.equal(slot15.color, SATELLITE_COLORS['noaa-20'])
-    assert.equal(slot15.isNadir, false)
+    assert.equal(slot15.shortSatellite, 'Aqua')
+    assert.equal(slot15.label, 'Aqua +1')
+    assert.equal(slot15.subBars.length, 2)
+    assert.equal(slot15.subBars[0].shortSatellite, 'NOAA-20')
+    assert.equal(slot15.subBars[1].shortSatellite, 'Aqua')
+    assert.equal(slot15.isNadir, true)
+
+    const slot23 = timeline.slots[23]
+    assert.ok(slot23 && slot23.kind === 'pending')
+    assert.equal(slot23.label, 'NOAA-20')
+
+    assert.equal(timeline.processingCutoff.lagMinutes, 120)
+    assert.equal(timeline.processingCutoff.widthPct, 8.33)
+    assert.equal(timeline.processingCutoff.nonDetectionCount, 3)
+    assert.equal(timeline.processingCutoff.pendingCount, 1)
+    assert.equal(timeline.accessibleRows.length, 5)
+    assert.match(timeline.accessibleSummary, /3 negative passes/)
+    assert.match(timeline.accessibleSummary, /1 pass in processing/)
+
+    const viirsCutoff = buildFireDetectionsTimeline(spots, { nowMs, sensorFilter: 'viirs' }).processingCutoff
+    assert.equal(viirsCutoff.lagMinutes, 90)
+    assert.equal(viirsCutoff.widthPct, 6.25)
+    assert.equal(viirsCutoff.shortLabel, '~1.5h lag')
   })
 
-  it('enforces >= 1rem minimum bar width and clip overflow (no scrollbars) in App.css', () => {
+  it('propagates 24h J2 tracks, caches spatial cells, filters sensors, and suppresses ±25m positive passes across slot boundaries', () => {
+    const noaa20 = FIRMS_SATELLITE_FLEET_DEFAULTS.find((s) => s.noradId === 43013)!
+    const parsedTle = parseSatelliteTle(noaa20.name, noaa20.defaultTleLine1, noaa20.defaultTleLine2)
+    assert.ok(parsedTle)
+
+    // Evaluate right around NOAA-20's own TLE epoch so its nadir crossing occurs at an exact known place/time
+    const epochMs = parsedTle.epochMs
+    const evalNowMs = epochMs + 3 * 3_600_000
+    const subsatelliteAtEpoch = propagateSatelliteGeodetic(parsedTle, epochMs)
+
+    const index = buildSatelliteOverpassIndex(undefined, evalNowMs)
+    const rawOverpasses = index.evaluateAtLatLng(subsatelliteAtEpoch.latDeg, subsatelliteAtEpoch.lngDeg)
+    const noaa20EpochPass = rawOverpasses.find(
+      (p) => p.noradId === 43013 && Math.abs(p.timestampMs - epochMs) <= 60_000,
+    )
+    assert.ok(noaa20EpochPass, 'expected NOAA-20 swath pass near TLE epoch subsatellite point')
+    assert.ok(noaa20EpochPass.distanceKm < 25)
+    assert.equal(noaa20EpochPass.isNadir, true)
+
+    // Two points within the same 0.05° spatial cell hit identical cached overpasses
+    const cachedA = index.evaluateAtLatLng(subsatelliteAtEpoch.latDeg + 0.004, subsatelliteAtEpoch.lngDeg - 0.004)
+    const cachedB = index.evaluateAtLatLng(subsatelliteAtEpoch.latDeg + 0.005, subsatelliteAtEpoch.lngDeg - 0.005)
+    assert.equal(cachedA, cachedB)
+
+    // Positive detection within ±25m of NOAA-20's pass (even if straddling an hour boundary) suppresses that negative pass
+    const positiveMatchNearEpoch: FireSpotTooltipInput[] = [
+      {
+        lng: subsatelliteAtEpoch.lngDeg,
+        lat: subsatelliteAtEpoch.latDeg,
+        timestamp: noaa20EpochPass.timestampMs + 20 * 60_000,
+        frp: 65,
+        confidence: 90,
+        instrument: 'viirs',
+        source: 'VIIRS 375m / NOAA-20',
+        satellite: 'NOAA-20',
+      },
+    ]
+
+    const negativesAll = evaluateSpotNegativePasses(index, positiveMatchNearEpoch, {
+      nowMs: evalNowMs,
+      sensorFilter: 'harmonized',
+    })
+    assert.equal(
+      negativesAll.some(
+        (n) => n.satellite === 'NOAA-20' && Math.abs(n.timestampMs - noaa20EpochPass.timestampMs) <= 60_000,
+      ),
+      false,
+    )
+    assert.ok(negativesAll.some((n) => n.status === 'non-detection'))
+
+    const negativesModis = evaluateSpotNegativePasses(index, positiveMatchNearEpoch, {
+      nowMs: evalNowMs,
+      sensorFilter: 'modis',
+    })
+    assert.ok(negativesModis.every((n) => n.instrument === 'modis'))
+
+    // Pending pass detection right inside ingestion lag
+    const pendingNowMs = epochMs + 20 * 60_000
+    const pendingIndex = buildSatelliteOverpassIndex(undefined, pendingNowMs)
+    const distantSpot: FireSpotTooltipInput[] = [
+      {
+        lng: subsatelliteAtEpoch.lngDeg,
+        lat: subsatelliteAtEpoch.latDeg,
+        timestamp: epochMs - 8 * 3_600_000,
+        frp: 30,
+        confidence: 80,
+        instrument: 'modis',
+        source: 'MODIS 1km',
+        satellite: 'Terra',
+      },
+    ]
+    const pendingResults = evaluateSpotNegativePasses(pendingIndex, distantSpot, {
+      nowMs: pendingNowMs,
+      sensorFilter: 'viirs',
+    })
+    const recentNoaa20 = pendingResults.find(
+      (n) => n.satellite === 'NOAA-20' && Math.abs(n.timestampMs - epochMs) <= 60_000,
+    )
+    assert.ok(recentNoaa20)
+    assert.equal(recentNoaa20.status, 'pending')
+  })
+
+  it('enforces >= 1rem minimum bar width, clip overflow, negative stripes, cutoff overlay, and forced-colors borders in App.css', () => {
     const appCss = fs.readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
     const barsMatch = appCss.match(/\.fire-timeline-bars\s*\{([^}]*)\}/)
     assert.ok(barsMatch, 'expected .fire-timeline-bars CSS rule')
@@ -214,5 +396,21 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
     assert.ok(scrollMatch, 'expected .fire-timeline-scroll CSS rule')
     assert.match(scrollMatch[1], /overflow:\s*clip\s*;/)
     assert.doesNotMatch(scrollMatch[1], /overflow(-[xy])?:\s*(auto|scroll)\b/)
+
+    const negMatch = appCss.match(/\.fire-timeline-bar-negative\s*\{([^}]*)\}/)
+    assert.ok(negMatch, 'expected .fire-timeline-bar-negative CSS rule')
+    assert.match(negMatch[1], /repeating-linear-gradient\(\s*-45deg\b/)
+
+    const subbarsMatch = appCss.match(/\.fire-timeline-slot-subbars\s*\{([^}]*)\}/)
+    assert.ok(subbarsMatch, 'expected .fire-timeline-slot-subbars CSS rule')
+    assert.match(subbarsMatch[1], /grid-auto-flow:\s*column\s*;/)
+
+    const cutoffMatch = appCss.match(/\.fire-timeline-cutoff-zone\s*\{([^}]*)\}/)
+    assert.ok(cutoffMatch, 'expected .fire-timeline-cutoff-zone CSS rule')
+    assert.match(cutoffMatch[1], /inset-inline-end:\s*0\s*;/)
+    assert.match(cutoffMatch[1], /var\(--cutoff-width/)
+
+    assert.match(appCss, /@media\s*\(forced-colors:\s*active\)[\s\S]*\.fire-timeline-bar-negative/)
+    assert.match(appCss, /@media\s*\(forced-colors:\s*active\)[\s\S]*\.fire-timeline-cutoff-zone/)
   })
 })

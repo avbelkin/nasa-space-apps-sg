@@ -90,9 +90,9 @@ import {
   type FireSpotFeatureProperties,
   type FireSpotTooltipInput,
   type FirmsLiveSpotsResponse,
-  type FormattedFireSpotsTooltip,
   type PhaseCohort,
 } from '../utils/fireSpots'
+import type { SatelliteOverpassIndex } from '../utils/satelliteOverpassTimeline'
 import {
   buildFireSpotLayers,
   buildFireSpotsCoreFilter,
@@ -144,6 +144,7 @@ interface EarthMapStageProps {
   showNightLights: boolean
   onShowNightLightsChange: (next: boolean) => void
   orbitalState: LiveOrbitalState
+  overpassIndex?: SatelliteOverpassIndex | null
   satelliteHudSection: SatelliteHudSection | null
   showOrbits: boolean
   onShowOrbitsChange: (next: boolean) => void
@@ -404,7 +405,8 @@ function createSpacecraftIconSvg(): SVGSVGElement {
 }
 
 interface SpotTooltipCardState {
-  tooltip: FormattedFireSpotsTooltip
+  inputs: readonly FireSpotTooltipInput[]
+  nowMs: number
   anchorLngLat: [number, number]
   sensorFilter: SensorFilter
 }
@@ -478,7 +480,6 @@ function querySpotTooltipAtPoint(
   map: MapLibreMap,
   point: { x: number; y: number },
   sensorFilter: SensorFilter,
-  viewMode: ViewMode,
   builtFireSpots: BuiltFireSpotsData,
 ): SpotTooltipCardState | null {
   if (map.getZoom() < MIN_FIRE_SPOT_ZOOM || !map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
@@ -514,8 +515,7 @@ function querySpotTooltipAtPoint(
     sensorFilter,
   )
   const inputs = expanded.length > 0 ? [...expanded, ...fallbackInputs] : fallbackInputs
-  const tooltip = formatFireSpotsTooltip(inputs, Date.now(), { viewMode })
-  if (!tooltip) {
+  if (inputs.length === 0) {
     return null
   }
 
@@ -526,7 +526,7 @@ function querySpotTooltipAtPoint(
       ? [topSpot.lng!, topSpot.lat!]
       : [0, 0]
 
-  return { tooltip, anchorLngLat, sensorFilter }
+  return { inputs, nowMs: Date.now(), anchorLngLat, sensorFilter }
 }
 
 function createBaseStyle(
@@ -816,6 +816,7 @@ export function EarthMapStage({
   showNightLights,
   onShowNightLightsChange,
   orbitalState,
+  overpassIndex = null,
   satelliteHudSection,
   showOrbits,
   onShowOrbitsChange,
@@ -905,6 +906,16 @@ export function EarthMapStage({
       : null
   const activeSpotCard = visiblePinnedSpotCard ?? visibleHoverSpotCard
   const isPinned = visiblePinnedSpotCard !== null
+  const activeSpotTooltip = useMemo(() => {
+    if (!activeSpotCard) {
+      return null
+    }
+    return formatFireSpotsTooltip(activeSpotCard.inputs, activeSpotCard.nowMs, {
+      viewMode,
+      sensorFilter,
+      overpassIndex,
+    })
+  }, [activeSpotCard, viewMode, sensorFilter, overpassIndex])
   const focusSpotGeoJson = useMemo(
     () =>
       buildFireSpotFocusGeoJson(visiblePinnedSpotCard ? visiblePinnedSpotCard.anchorLngLat : null),
@@ -1261,7 +1272,6 @@ export function EarthMapStage({
           map,
           event.point,
           latestSensorFilterRef.current,
-          latestViewModeRef.current,
           latestBuiltFireSpotsRef.current,
         )
         map.getCanvas().style.cursor = hit ? 'pointer' : ''
@@ -1281,7 +1291,6 @@ export function EarthMapStage({
           map,
           event.point,
           latestSensorFilterRef.current,
-          latestViewModeRef.current,
           latestBuiltFireSpotsRef.current,
         )
         if (hit) {
@@ -1809,9 +1818,9 @@ export function EarthMapStage({
 
       {/* Bottom of the map: fire spot card (start) and satellite pass card (end), one row that
           wraps when both do not fit, kept above MapLibre's attribution */}
-      {((showFires && activeSpotCard) || satelliteHudSection) && (
+      {((showFires && activeSpotCard && activeSpotTooltip) || satelliteHudSection) && (
         <div className="map-hud-bottom">
-          {showFires && activeSpotCard && (
+          {showFires && activeSpotCard && activeSpotTooltip && (
             <div
               className="map-hud fire-tooltip-card"
               data-pinned={isPinned ? 'true' : 'false'}
@@ -1820,7 +1829,7 @@ export function EarthMapStage({
             >
               <div className="fire-tooltip-header">
                 <div className="fire-tooltip-title-group">
-                  <span className="fire-tooltip-title">{activeSpotCard.tooltip.header}</span>
+                  <span className="fire-tooltip-title">{activeSpotTooltip.header}</span>
                   <span className="fire-tooltip-coords">
                     Lat {activeSpotCard.anchorLngLat[1].toFixed(3)}&deg;, Lon{' '}
                     {activeSpotCard.anchorLngLat[0].toFixed(3)}&deg;
@@ -1838,11 +1847,11 @@ export function EarthMapStage({
                   </button>
                 )}
               </div>
-              {activeSpotCard.tooltip.mode === 'timeline' && activeSpotCard.tooltip.timeline ? (
-                <FireDetectionsTimelineCard timeline={activeSpotCard.tooltip.timeline} />
+              {activeSpotTooltip.mode === 'timeline' && activeSpotTooltip.timeline ? (
+                <FireDetectionsTimelineCard timeline={activeSpotTooltip.timeline} />
               ) : (
                 <ul className="fire-tooltip-list" role="list">
-                  {activeSpotCard.tooltip.lines.map((line, index) => (
+                  {activeSpotTooltip.lines.map((line, index) => (
                     <li key={`${index}-${line}`}>{line}</li>
                   ))}
                 </ul>

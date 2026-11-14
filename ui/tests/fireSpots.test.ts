@@ -167,7 +167,7 @@ describe('fire spot tooltips and hit sorting', () => {
     assert.equal(sorted[2].source, 'VIIRS 375m / NOAA-20')
   })
 
-  it('formats 1 spot individually in local browser time and deduplicates tile-boundary duplicates', () => {
+  it('formats 1 spot as a 24h timeline with single-spot telemetry and deduplicates tile-boundary duplicates', () => {
     assert.equal(formatFireSpotsTooltip([], nowMs), null)
 
     const single = formatFireSpotsTooltip(
@@ -179,6 +179,7 @@ describe('fire spot tooltips and hit sorting', () => {
           frp: 84.3,
           brightnessK: 340.15,
           confidence: 92,
+          instrument: 'modis',
           source: 'MODIS 1km',
           satellite: 'Aqua',
         },
@@ -189,26 +190,32 @@ describe('fire spot tooltips and hit sorting', () => {
           frp: 84.3,
           brightnessK: 340.15,
           confidence: 92,
+          instrument: 'modis',
           source: 'MODIS 1km',
           satellite: 'Aqua',
         },
       ],
       nowMs,
-      { timeZone: 'Asia/Singapore' },
+      { timeZone: 'Asia/Singapore', sensorFilter: 'modis' },
     )
 
     assert.ok(single)
-    assert.equal(single.mode, 'individual')
+    assert.equal(single.mode, 'timeline')
     assert.equal(single.count, 1)
-    assert.equal(single.timeline, undefined)
-    assert.equal(single.header, 'NASA FIRMS Active Spot')
+    assert.equal(single.header, '1 Fire Detection')
+    assert.ok(single.timeline)
+    assert.equal(single.timeline.detectionCount, 1)
+    assert.ok(single.timeline.singleSpotDetail)
+    assert.match(single.timeline.singleSpotDetail, /84\.3 MW/)
+    assert.match(single.timeline.singleSpotDetail, /340\.1 K \(67°C\)|340\.2 K \(67°C\)/)
+    assert.match(single.timeline.singleSpotDetail, /Conf 92%/)
+    assert.equal(single.timeline.processingCutoff.sensorFilter, 'modis')
+    assert.equal(single.timeline.processingCutoff.lagMinutes, 120)
     assert.equal(single.lines.length, 1)
-    assert.match(single.lines[0], /19:30 \(30m ago\)/)
+    assert.match(single.lines[0], /1 detection \(19:30 local\)/)
     assert.doesNotMatch(single.lines[0], /\bUTC\b/)
-    assert.match(single.lines[0], /84\.3 MW/)
-    assert.match(single.lines[0], /MODIS 1km \(Aqua\)/)
-    assert.match(single.lines[0], /340\.1 K \(67°C\)|340\.2 K \(67°C\)/)
-    assert.match(single.lines[0], /Conf 92%/)
+    assert.match(single.lines[0], /84\.3 MW total/)
+    assert.match(single.lines[0], /Aqua/)
   })
 
   it('formats 2+ spots as a 24h grouped timeline with sun context and accessible summary', () => {
