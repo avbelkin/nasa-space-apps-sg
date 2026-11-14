@@ -78,8 +78,8 @@ export const RAIN_DOT_RAINBOW_STOPS = [
 ] as const
 
 export const RAIN_DOT_WHITE_COLOR = '#f8fafc'
-// Experimental bright azure dot fill (#38bdf8) for high contrast over dark basemaps, distinct from #1e40af below-typical.
-export const RAIN_DOT_SOLID_COLOR = '#38bdf8'
+// Experimental pure-azure dot fill (#4d96ff) for high contrast over dark basemaps and clean blue separation over green terrain, distinct from #1e40af below-typical.
+export const RAIN_DOT_SOLID_COLOR = '#4d96ff'
 
 // Exposes the palette to CSS consumers (legend glyphs, satellite badges) as custom properties,
 // so stylesheets never repeat a hex value. Applied once on the app root.

@@ -398,7 +398,7 @@ test('normalizeRainCoveringTiles locks source tiles to z=3 and WebGL2 shaders ma
   assert.match(fragmentSource, /^#version 300 es/)
   assert.match(fragmentSource, /sampleCubicBSpline/)
   assert.match(fragmentSource, /evaluateZoomOctaveDots/)
-  assert.match(fragmentSource, /vec3\(0\.220,\s*0\.741,\s*0\.973\)/)
+  assert.match(fragmentSource, /vec3\(0\.302,\s*0\.588,\s*1\.000\)/)
   assert.match(fragmentSource, /0\.3000/)
   assert.doesNotMatch(fragmentSource, /evaluateRainbowDotColor/)
   assert.match(fragmentSource, /evaluateExperimentalCloudBackdrop/)

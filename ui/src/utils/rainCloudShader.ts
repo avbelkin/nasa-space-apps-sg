@@ -29,7 +29,7 @@ export const RAIN_FADE_END_ZOOM = 14.5
 export type RainDotColorMode = 'solid' | 'rainbow' | 'white'
 // Experimental dot color mode and intensity cutoff (subject to tuning).
 export const RAIN_DOT_COLOR_MODE: RainDotColorMode = 'solid'
-export const RAIN_DOT_SOLID_RGB: readonly [number, number, number] = [0.22, 0.741, 0.973]
+export const RAIN_DOT_SOLID_RGB: readonly [number, number, number] = [0.302, 0.588, 1.0]
 export const RAIN_DOT_INTENSITY_CUTOFF = 0.3
 export const RAIN_DOT_FULL_OPACITY_INTENSITY = 0.72
 export const ENABLE_RAIN_CLOUD_BACKDROP = true
