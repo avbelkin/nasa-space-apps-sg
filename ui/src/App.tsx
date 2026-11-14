@@ -467,6 +467,7 @@ function App() {
         orbitalState={orbitalState}
         pinnedFireSelection={pinnedFireSelection}
         onPinFireSelection={setPinnedFireSelection}
+        overpassIndex={overpassIndex}
         satelliteHudSection={satelliteHudSection}
         showOrbits={showOrbits}
         onShowOrbitsChange={(next) => {

@@ -517,6 +517,53 @@
   }
 }
 
+.fire-hover-tooltip {
+  grid-area: hud-bottom-end;
+  align-self: end;
+  justify-self: start;
+  inline-size: min(28.75rem, 100%);
+  min-inline-size: 0;
+  display: grid;
+  gap: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  font-size: var(--fs-12);
+  pointer-events: none;
+  --text-primary: #f8fafc;
+  --text-muted: #cbd5e1;
+}
+
+.fire-hover-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem 0.625rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.fire-hover-tooltip > p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.fire-hover-tooltip .fire-timeline-scroll {
+  overflow: clip;
+}
+
+.fire-hover-tooltip .fire-timeline-frame {
+  min-inline-size: 0;
+}
+
+.fire-hover-tooltip .fire-timeline-bars {
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+}
+
+/* Keep the tooltip above the pass card when the two cannot fit side by side. */
+@container mapstage (inline-size < 55rem) {
+  .map-stage:has(.map-hud-bottom) .fire-hover-tooltip {
+    grid-row-end: -2;
+    align-self: start;
+  }
+}
+
 .pinned-fire-details {
   display: grid;
   gap: 0.5rem;

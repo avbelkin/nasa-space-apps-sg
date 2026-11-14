@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { SensorFilter } from '../data/mapTypes'
 import { formatFireSpotsTooltip, type FireSpotTooltipInput } from '../utils/fireSpots'
 import type { SatelliteOverpassIndex } from '../utils/satelliteOverpassTimeline'
-import { FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
+import { FireDetectionPowerSummary, FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
 import { CloseIcon } from './icons'
 
 export interface PinnedFireSelection {
@@ -31,8 +31,6 @@ export function PinnedFireDetails({ selection, overpassIndex, onUnpin }: PinnedF
   }
 
   const { timeline } = details
-  const summary = timeline.singleSpotDetail ??
-    `Peak ${timeline.peakFrpMw.toLocaleString('en-US')} MW (${timeline.totalFrpMw.toLocaleString('en-US')} MW total)`
 
   return (
     <section className="pinned-fire-details wrapper-surface" aria-labelledby="pinned-fire-heading">
@@ -49,7 +47,7 @@ export function PinnedFireDetails({ selection, overpassIndex, onUnpin }: PinnedF
                 {selection.anchorLngLat[0].toFixed(3)}&deg;
               </span>
             )}
-            <span>{summary}</span>
+            <FireDetectionPowerSummary timeline={timeline} />
           </p>
         </div>
         <button type="button" className="secondary-btn pinned-fire-unpin" onClick={onUnpin}>

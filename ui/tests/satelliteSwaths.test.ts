@@ -380,7 +380,7 @@ test('satellite passes stay at the bottom of the map and the side panel groups d
   assert.match(hud, /align-self:\s*end;/)
   assert.match(mapStage, /attributionControl:\s*false/)
   assert.match(mapStage, /className="map-hud-bottom">\s*<SatelliteHud/)
-  assert.doesNotMatch(mapStage, /<FireDetectionsTimelineCard|<PinnedFireDetails/)
+  assert.doesNotMatch(mapStage, /<PinnedFireDetails/)
   assert.match(panel, /<SegmentedControl[\s\S]*?\/>\s*<\/div>\s*\{pinnedDetails\}/)
   assert.match(panel, /className="panel-bottom">\s*<LiveFiresSection[^>]*\/>\s*\{legend\}\s*<AttributionFooter/)
   assert.match(appCss, /\.panel-bottom\s*\{[^}]*margin-block-start:\s*auto;/)

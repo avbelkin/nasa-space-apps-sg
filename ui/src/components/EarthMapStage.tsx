@@ -83,6 +83,7 @@ import {
   buildFireSpotsGeoJson,
   compareMatchedFireSpots,
   expandHoveredFireSpots,
+  formatFireSpotsTooltip,
   MIN_FIRE_SPOT_ZOOM,
   type BuiltFireSpotsData,
   type FireSpotFeatureProperties,
@@ -90,6 +91,7 @@ import {
   type FirmsLiveSpotsResponse,
   type PhaseCohort,
 } from '../utils/fireSpots'
+import type { SatelliteOverpassIndex } from '../utils/satelliteOverpassTimeline'
 import {
   buildFireSpotLayers,
   buildFireSpotsCoreFilter,
@@ -101,6 +103,7 @@ import {
   type FireSpotsAnimationController,
 } from '../utils/fireSpotsAnimation'
 import { ChevronLeftIcon, ChevronRightIcon } from './icons'
+import { FireDetectionPowerSummary, FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
 import { MapControls } from './MapControls'
 import type { PinnedFireSelection } from './PinnedFireDetails'
 import { SatelliteHud } from './SatelliteHud'
@@ -146,6 +149,7 @@ interface EarthMapStageProps {
   orbitalState: LiveOrbitalState
   pinnedFireSelection: PinnedFireSelection | null
   onPinFireSelection: (selection: PinnedFireSelection | null) => void
+  overpassIndex: SatelliteOverpassIndex
   satelliteHudSection: SatelliteHudSection | null
   showOrbits: boolean
   onShowOrbitsChange: (next: boolean) => void
@@ -548,7 +552,7 @@ function createBaseStyle(
           'circle-radius': 14,
           'circle-color': FIRE_SPOT_COLORS.focusRing,
           'circle-opacity': ['step', ['zoom'], 0, 1, 0.12],
-          'circle-stroke-width': 2,
+          'circle-stroke-width': 3,
           'circle-stroke-color': FIRE_SPOT_COLORS.focusRing,
           'circle-stroke-opacity': ['step', ['zoom'], 0, 1, 1],
         },
@@ -650,6 +654,7 @@ export function EarthMapStage({
   orbitalState,
   pinnedFireSelection,
   onPinFireSelection,
+  overpassIndex,
   satelliteHudSection,
   showOrbits,
   onShowOrbitsChange,
@@ -720,6 +725,21 @@ export function EarthMapStage({
   )
 
   const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion)
+  const [hover, setHover] = useState<{
+    selection: PinnedFireSelection
+    data: BuiltFireSpotsData
+  } | null>(null)
+  const visibleHover =
+    showFires && hover?.data === builtFireSpots && hover.selection.sensorFilter === sensorFilter
+      ? hover.selection
+      : null
+  const hoverDetails = useMemo(
+    () => visibleHover && formatFireSpotsTooltip(visibleHover.inputs, visibleHover.nowMs, {
+      sensorFilter: visibleHover.sensorFilter,
+      overpassIndex,
+    }),
+    [visibleHover, overpassIndex],
+  )
   const focusSpotGeoJson = useMemo(
     () => buildFireSpotFocusGeoJson(pinnedFireSelection?.anchorLngLat ?? null),
     [pinnedFireSelection],
@@ -748,6 +768,13 @@ export function EarthMapStage({
     focusSpotGeoJson,
     sensorFilter,
   ])
+
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (map) {
+      map.getCanvas().style.cursor = ''
+    }
+  }, [builtFireSpots, sensorFilter, showFires])
 
   useEffect(() => {
     const map = mapInstanceRef.current
@@ -1014,6 +1041,7 @@ export function EarthMapStage({
       const canvas = map.getCanvas()
       const handleCanvasMouseLeave = () => {
         canvas.style.cursor = ''
+        setHover(null)
       }
       canvas.addEventListener('mouseleave', handleCanvasMouseLeave)
       firePointerCleanupRef.current = () => {
@@ -1034,6 +1062,7 @@ export function EarthMapStage({
           latestBuiltFireSpotsRef.current,
         )
         map.getCanvas().style.cursor = hit ? 'pointer' : ''
+        setHover(hit ? { selection: hit, data: latestBuiltFireSpotsRef.current } : null)
       })
 
       map.on('click', (event) => {
@@ -1048,11 +1077,12 @@ export function EarthMapStage({
         )
         if (hit) {
           userInteractedRef.current = true
+          onPinFireSelectionRef.current(hit)
         }
-        onPinFireSelectionRef.current(hit)
       })
 
       map.on('movestart', (event: MapMovementEvent) => {
+        handleCanvasMouseLeave()
         if (event.originalEvent) {
           userInteractedRef.current = true
         }
@@ -1557,7 +1587,12 @@ export function EarthMapStage({
         showNightLights={showNightLights}
         onShowNightLightsChange={onShowNightLightsChange}
         showFires={showFires}
-        onShowFiresChange={onShowFiresChange}
+        onShowFiresChange={(next) => {
+          if (!next) {
+            setHover(null)
+          }
+          onShowFiresChange(next)
+        }}
         showPulseToggle={hasLiveFires && showFires && !reducedMotion}
         pulsePaused={pulsePaused}
         onPulsePausedChange={onPulsePausedChange}
@@ -1618,6 +1653,23 @@ export function EarthMapStage({
       {satelliteHudSection && (
         <div className="map-hud-bottom">
           <SatelliteHud section={satelliteHudSection} defaultOpen={isStageWide} />
+        </div>
+      )}
+
+      {visibleHover && hoverDetails?.timeline && (
+        <div className="map-hud fire-hover-tooltip" role="tooltip">
+          <div className="fire-hover-summary">
+            <strong>{hoverDetails.header}</strong>
+            {visibleHover.anchorLngLat && (
+              <span>
+                Lat {visibleHover.anchorLngLat[1].toFixed(3)}&deg;, lon{' '}
+                {visibleHover.anchorLngLat[0].toFixed(3)}&deg;
+              </span>
+            )}
+            <FireDetectionPowerSummary timeline={hoverDetails.timeline} />
+          </div>
+          <FireDetectionsTimelineCard timeline={hoverDetails.timeline} interactive={false} />
+          <p>Click spot to pin details</p>
         </div>
       )}
 

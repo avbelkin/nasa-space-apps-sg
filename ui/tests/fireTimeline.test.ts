@@ -417,15 +417,15 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
     assert.match(plotMatch[1], /--timeline-night-bg:\s*#000000\s*;/)
     assert.match(plotMatch[1], /background-image:\s*linear-gradient\([\s\S]*var\(--horizon-y,\s*52%\)/)
 
-    const barsMatch = appCss.match(/\.fire-timeline-bars\s*\{([^}]*)\}/)
+    const barsMatch = appCss.match(/^\.fire-timeline-bars\s*\{([^}]*)\}/m)
     assert.ok(barsMatch, 'expected .fire-timeline-bars CSS rule')
     assert.match(barsMatch[1], /grid-template-columns:\s*repeat\(24,\s*minmax\(1rem,\s*1fr\)\)\s*;/)
 
-    const scrollMatch = appCss.match(/\.fire-timeline-scroll\s*\{([^}]*)\}/)
+    const scrollMatch = appCss.match(/^\.fire-timeline-scroll\s*\{([^}]*)\}/m)
     assert.ok(scrollMatch, 'expected .fire-timeline-scroll CSS rule')
     assert.match(scrollMatch[1], /overflow-x:\s*auto\s*;/)
     assert.doesNotMatch(scrollMatch[1], /overflow-y:\s*(auto|scroll)\b/)
-    const frameMatch = appCss.match(/\.fire-timeline-frame\s*\{([^}]*)\}/)
+    const frameMatch = appCss.match(/^\.fire-timeline-frame\s*\{([^}]*)\}/m)
     assert.ok(frameMatch, 'expected a chart frame with room for all 24 hourly slots')
     assert.match(frameMatch[1], /min-inline-size:\s*26rem\s*;/)
 

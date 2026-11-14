@@ -4,9 +4,19 @@ import { SunriseIcon, SunsetIcon } from './icons'
 
 interface FireDetectionsTimelineCardProps {
   timeline: FireDetectionsTimeline
+  interactive?: boolean
 }
 
-export function FireDetectionsTimelineCard({ timeline }: FireDetectionsTimelineCardProps) {
+export function FireDetectionPowerSummary({ timeline }: FireDetectionsTimelineCardProps) {
+  return (
+    <span>
+      {timeline.singleSpotDetail ??
+        `Peak ${timeline.peakFrpMw.toLocaleString('en-US')} MW (${timeline.totalFrpMw.toLocaleString('en-US')} MW total)`}
+    </span>
+  )
+}
+
+export function FireDetectionsTimelineCard({ timeline, interactive = true }: FireDetectionsTimelineCardProps) {
   const clipBaseId = useId()
   const dayClipId = `${clipBaseId}-day`
   const nightClipId = `${clipBaseId}-night`
@@ -49,7 +59,12 @@ export function FireDetectionsTimelineCard({ timeline }: FireDetectionsTimelineC
         </div>
       </div>
 
-      <div className="fire-timeline-scroll" role="region" aria-label="24-hour detection chart" tabIndex={0}>
+      <div
+        className="fire-timeline-scroll"
+        role={interactive ? 'region' : undefined}
+        aria-label={interactive ? '24-hour detection chart' : undefined}
+        tabIndex={interactive ? 0 : undefined}
+      >
         <div className="fire-timeline-frame">
           <div
             className="fire-timeline-plot"
