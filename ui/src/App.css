@@ -378,17 +378,34 @@
 /* Satellite overpass freshness card: bottom-end, beside the control column (so the two never
    stack into a short map) and always just above MapLibre's attribution control
    (--attribution-clearance is its measured height, set by EarthMapStage) */
-.map-hud-bottom-end {
+/* Bottom row of the map: the fire spot card at the start and the satellite pass card at the end,
+   beside the control column and just above MapLibre's attribution (--attribution-clearance is its
+   measured height, set by EarthMapStage). When both do not fit, the row wraps and the pass card
+   moves above the fire card. The row itself lets the map take the pointer. */
+.map-hud-bottom {
   grid-area: hud-bottom-end;
   align-self: end;
-  justify-self: end;
+  display: flex;
+  flex-wrap: wrap-reverse;
+  align-items: flex-end;
+  gap: 0.375rem 0.5rem;
   min-inline-size: 0;
   margin-inline-end: 0.5rem;
   margin-block-end: var(--attribution-clearance, 2.25rem);
+  pointer-events: none;
+}
+
+.map-hud-bottom > * {
+  pointer-events: auto;
+}
+
+.map-hud-bottom-end {
+  margin-inline-start: auto;
+  min-inline-size: 0;
   font-size: var(--fs-12);
   line-height: 1.25;
   font-variant-numeric: tabular-nums;
-  max-inline-size: min(22rem, calc(100% - 1rem));
+  max-inline-size: min(22rem, 100%);
 }
 
 /* The header is the card's toggle: one HUD button tall when folded */
@@ -508,10 +525,72 @@
     grid-column: span 2;
     flex-direction: row;
   }
+}
 
+@container mapstage (inline-size < 36rem) {
   .map-hud-bottom-end {
-    justify-self: start;
+    margin-inline-start: 0;
   }
+
+  .fire-tooltip-card {
+    flex-basis: 100%;
+  }
+}
+
+/* Live fire spot details on hover (or pinned by a click); the team's card in the HUD tokens */
+.fire-tooltip-card {
+  display: grid;
+  gap: 0.375rem;
+  padding: 0.45rem 0.6rem;
+  max-inline-size: min(24rem, 100%);
+  font-size: var(--fs-12);
+  line-height: 1.35;
+}
+
+.fire-tooltip-card[data-pinned='false'] {
+  pointer-events: none;
+}
+
+.fire-tooltip-card[data-pinned='true'] {
+  border-color: color-mix(in srgb, var(--data-above) 55%, transparent);
+}
+
+.fire-tooltip-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.fire-tooltip-title-group {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.fire-tooltip-title {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+}
+
+.fire-tooltip-coords {
+  font-variant-numeric: tabular-nums;
+  color: #cbd5e1;
+}
+
+.fire-tooltip-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.25rem;
+  color: #f8fafc;
+}
+
+.fire-tooltip-hint {
+  margin: 0;
+  color: #94a3b8;
 }
 
 /* Legend row below the map and the panels (outside the map stage). One inline flow: heading,
@@ -557,6 +636,15 @@
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
   white-space: nowrap;
+}
+
+.legend-fire-dot {
+  display: block;
+  inline-size: 0.625rem;
+  block-size: 0.625rem;
+  border-radius: 50%;
+  border: 1px solid rgb(15 23 42 / 0.65);
+  forced-color-adjust: none;
 }
 
 .legend-sat-swatch {

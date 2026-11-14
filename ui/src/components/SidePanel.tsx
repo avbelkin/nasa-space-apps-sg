@@ -9,6 +9,7 @@ import type { ApiStatusResponse, ConnectionState } from '../state/apiStatus'
 import type { LiveSatelliteSnapshot } from '../utils/satelliteOrbits'
 import { AttributionFooter } from './panel/AttributionFooter'
 import { DiagnosticsDetails } from './panel/DiagnosticsDetails'
+import { LiveFiresSection, type LiveFiresInfo } from './panel/LiveFiresSection'
 import { PanelSummary } from './panel/PanelSummary'
 import { RegionList } from './panel/RegionList'
 import { SatelliteDetails, type SatelliteFeedState } from './panel/SatelliteDetails'
@@ -42,6 +43,8 @@ interface SidePanelProps {
   onCheckApi: () => void
   tleSourceSummary: string | null
   orbitsError: string | null
+  liveFires: LiveFiresInfo
+  liveFiresConfigured: boolean
 }
 
 export function SidePanel({
@@ -64,6 +67,8 @@ export function SidePanel({
   onCheckApi,
   tleSourceSummary,
   orbitsError,
+  liveFires,
+  liveFiresConfigured,
 }: SidePanelProps) {
   const scopeRef = useRef<HTMLDListElement | null>(null)
   const regionRowRefs = useRef(new Map<string, HTMLButtonElement>())
@@ -126,6 +131,8 @@ export function SidePanel({
         rowRefs={regionRowRefs}
       />
 
+      <LiveFiresSection info={liveFires} />
+
       <div className="panel-details-group">
         <SatelliteDetails
           feedState={satelliteFeedState}
@@ -144,7 +151,10 @@ export function SidePanel({
         />
       </div>
 
-      <AttributionFooter connectionState={connectionState} />
+      <AttributionFooter
+        connectionState={connectionState}
+        liveFiresConfigured={liveFiresConfigured}
+      />
     </aside>
   )
 }

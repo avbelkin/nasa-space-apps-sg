@@ -42,6 +42,20 @@ export const SWATH_COLORS = {
   wide: '#f49a74',
 } as const
 
+// Live NASA FIRMS fire spots (the team's colors): a warm ramp by Fire Radiative Power, or one hue
+// per instrument in the 'sensors' view mode. While live spots are shown, the sample status marks
+// are hidden, so the warm ramp never sits next to the 'above typical' orange on the map.
+export const FIRE_SPOT_COLORS = {
+  frpLow: '#fbbf24',
+  frpMid: '#ff9100',
+  frpHigh: '#ff1744',
+  modis: '#22d3ee',
+  viirs: '#fb923c',
+  otherInstrument: '#f59e0b',
+  stroke: 'rgba(15, 23, 42, 0.65)',
+  focusRing: '#ffffff',
+} as const
+
 export const USER_LOCATION_COLORS = {
   fill: '#ffffff',
   ring: '#0f172a',

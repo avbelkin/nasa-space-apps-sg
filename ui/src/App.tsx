@@ -41,8 +41,14 @@ import {
   type LiveSatelliteSnapshot,
   type SatelliteOrbitsResponse,
 } from './utils/satelliteOrbits'
+import {
+  fetchLiveFireSpots,
+  summarizeFireSpotsForSensor,
+  type FirmsLiveSpotsResponse,
+} from './utils/fireSpots'
 
 const ORBITS_REFRESH_INTERVAL_MS = 20 * 60 * 1000
+const FIRES_REFRESH_INTERVAL_MS = 15 * 60 * 1000
 const FOCUS_ZOOM = 3.6
 
 function App() {
@@ -62,6 +68,9 @@ function App() {
   const [showOrbits, setShowOrbits] = useState<boolean>(initialResolution.state.showOrbits)
   const [showClouds, setShowClouds] = useState<boolean>(initialResolution.state.showClouds)
   const [cloudRefreshNonce, setCloudRefreshNonce] = useState<number>(0)
+  const [showFires, setShowFires] = useState<boolean>(initialResolution.state.showFires)
+  const [pulsePaused, setPulsePaused] = useState<boolean>(false)
+  const [reducedMotion, setReducedMotion] = useState<boolean>(false)
   const [viewport, setViewport] = useState<MapViewportState>(() => ({
     zoom: initialResolution.state.zoom,
     lat: initialResolution.state.lat,
@@ -101,6 +110,10 @@ function App() {
     viewportRef.current = { lat: viewport.lat, lng: viewport.lng }
   }, [viewport])
 
+  const [fireSpotsPayload, setFireSpotsPayload] = useState<FirmsLiveSpotsResponse | null>(null)
+  const [fireSpotsLoading, setFireSpotsLoading] = useState<boolean>(!isProdUnconfigured)
+  const [fireSpotsError, setFireSpotsError] = useState<string | null>(null)
+
   useEffect(() => {
     lastSyncedHashRef.current = syncUrlHashAndStorage({
       ...viewport,
@@ -110,6 +123,7 @@ function App() {
       selectedMonth,
       showOrbits,
       showClouds,
+      showFires,
       ...(selectedRegionId ? { selectedRegionId } : {}),
       extraParams,
     })
@@ -121,6 +135,7 @@ function App() {
     selectedMonth,
     showOrbits,
     showClouds,
+    showFires,
     selectedRegionId,
     extraParams,
   ])
@@ -140,6 +155,7 @@ function App() {
       setSelectedMonth(parsed.selectedMonth)
       setShowOrbits(parsed.showOrbits)
       setShowClouds(parsed.showClouds)
+      setShowFires(parsed.showFires)
       setSelectedRegionId(parsed.selectedRegionId ?? null)
       setExtraParams(parsed.extraParams)
       setViewport({
@@ -184,6 +200,17 @@ function App() {
     setOrbitsError(error instanceof Error ? error.message : 'Orbit feed unavailable')
   }
 
+  const applyFiresSuccess = (data: FirmsLiveSpotsResponse) => {
+    setFireSpotsPayload(data)
+    setFireSpotsError(null)
+    setFireSpotsLoading(false)
+  }
+
+  const applyFiresFailure = (error: unknown) => {
+    setFireSpotsError(error instanceof Error ? error.message : 'NASA FIRMS feed unavailable')
+    setFireSpotsLoading(false)
+  }
+
   const handleCheckBackend = () => {
     if (isProdUnconfigured) {
       setConnectionState('unconfigured')
@@ -195,11 +222,14 @@ function App() {
     setErrorMessage(null)
     setOrbitsError(null)
     setCloudRefreshNonce((value) => value + 1)
+    setFireSpotsError(null)
+    setFireSpotsLoading(true)
     void fetchApiStatus().then(applySuccess, applyFailure)
     void fetchSatelliteOrbits(apiBaseUrl, undefined, viewportRef.current).then(
       applyOrbitsSuccess,
       applyOrbitsFailure,
     )
+    void fetchLiveFireSpots(apiBaseUrl).then(applyFiresSuccess, applyFiresFailure)
   }
 
   useEffect(() => {
@@ -235,11 +265,29 @@ function App() {
       )
     }
 
+    const refreshFires = () => {
+      void fetchLiveFireSpots(apiBaseUrl, controller.signal).then(
+        (data) => {
+          if (!controller.signal.aborted) {
+            applyFiresSuccess(data)
+          }
+        },
+        (error: unknown) => {
+          if (!controller.signal.aborted) {
+            applyFiresFailure(error)
+          }
+        },
+      )
+    }
+
     refreshOrbits()
-    const refreshTimer = window.setInterval(refreshOrbits, ORBITS_REFRESH_INTERVAL_MS)
+    refreshFires()
+    const orbitsTimer = window.setInterval(refreshOrbits, ORBITS_REFRESH_INTERVAL_MS)
+    const firesTimer = window.setInterval(refreshFires, FIRES_REFRESH_INTERVAL_MS)
 
     return () => {
-      window.clearInterval(refreshTimer)
+      window.clearInterval(orbitsTimer)
+      window.clearInterval(firesTimer)
       controller.abort()
     }
   }, [])
@@ -322,6 +370,11 @@ function App() {
           ? 'empty'
           : 'ready'
 
+  const fireSummary = useMemo(
+    () => summarizeFireSpotsForSensor(fireSpotsPayload, sensorFilter),
+    [fireSpotsPayload, sensorFilter],
+  )
+
   const tleSourceSummary = useMemo(() => {
     if (!orbitsPayload || orbitsPayload.satellites.length === 0) {
       return null
@@ -336,15 +389,17 @@ function App() {
         <h1>Earth Fire Calendar</h1>
         <p className="brand-subtitle">See where fire activity is above or below typical</p>
         <p className="sample-badge top-bar-badge">
-          Sample data
+          {/* Fire spots are live NASA FIRMS detections; the regional index is not, yet */}
+          Sample index
           <span className="visually-hidden">
-            : illustrative values until live NASA FIRMS data is connected
+            : the regional fire activity index and the month strip use illustrative values
           </span>
         </p>
       </header>
 
       <EarthMapStage
         selectedMonth={selectedMonth}
+        viewMode={viewMode}
         sensorFilter={sensorFilter}
         projectionMode={projectionMode}
         onProjectionModeChange={setProjectionMode}
@@ -371,6 +426,13 @@ function App() {
         selectedRegionId={selectedRegionId}
         onSelectRegion={handleSelectRegionOnMap}
         onGeolocationStateChange={setGeolocationState}
+        onReducedMotionChange={setReducedMotion}
+        fireSpotsPayload={fireSpotsPayload}
+        liveFiresConfigured={!isProdUnconfigured}
+        showFires={showFires}
+        onShowFiresChange={setShowFires}
+        pulsePaused={pulsePaused}
+        onPulsePausedChange={setPulsePaused}
       />
 
       <MonthStrip
@@ -399,6 +461,21 @@ function App() {
         onCheckApi={handleCheckBackend}
         tleSourceSummary={tleSourceSummary}
         orbitsError={orbitsError}
+        liveFires={{
+          state: isProdUnconfigured
+            ? 'unconfigured'
+            : fireSpotsError && !fireSpotsPayload
+              ? 'unavailable'
+              : fireSpotsLoading && !fireSpotsPayload
+                ? 'loading'
+                : fireSpotsPayload
+                  ? 'ready'
+                  : 'loading',
+          payload: fireSpotsPayload,
+          summary: fireSummary,
+          refreshFailed: fireSpotsPayload !== null && fireSpotsError !== null,
+        }}
+        liveFiresConfigured={!isProdUnconfigured}
       />
 
       <MapLegend
@@ -408,6 +485,10 @@ function App() {
         showModisOrbits={hasOrbitSnapshots && sensorFilter !== 'viirs'}
         showViirsOrbits={hasOrbitSnapshots && sensorFilter !== 'modis'}
         showUserLocation={geolocationState.hasUserLocation}
+        hasLiveFires={fireSpotsPayload !== null}
+        showFires={showFires}
+        viewMode={viewMode}
+        reducedMotion={reducedMotion}
       />
     </div>
   )

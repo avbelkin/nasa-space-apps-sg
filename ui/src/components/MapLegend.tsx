@@ -1,5 +1,5 @@
-import { SATELLITE_COLORS, USER_LOCATION_COLORS } from '../data/dataPalette'
-import { MONTH_LABELS } from '../data/stubSeasonalData'
+import { FIRE_SPOT_COLORS, SATELLITE_COLORS, USER_LOCATION_COLORS } from '../data/dataPalette'
+import { MONTH_LABELS, type ViewMode } from '../data/stubSeasonalData'
 import { STATUS_TEXT } from '../data/statusDisplay'
 import { STATUS_CATEGORIES } from '../data/statusMarks'
 import type { MapViewportState } from '../state/urlHashState'
@@ -15,6 +15,15 @@ interface MapLegendProps {
   showModisOrbits: boolean
   showViirsOrbits: boolean
   showUserLocation: boolean
+  // Live NASA FIRMS spots replace the sample status marks on the map while they are loaded
+  hasLiveFires: boolean
+  showFires: boolean
+  viewMode: ViewMode
+  reducedMotion: boolean
+}
+
+function FireDot({ color }: { color: string }) {
+  return <span className="legend-fire-dot" style={{ backgroundColor: color }} />
 }
 
 function SatelliteSwatch({ color, glyph }: { color: string; glyph: string }) {
@@ -34,21 +43,66 @@ export function MapLegend({
   showModisOrbits,
   showViirsOrbits,
   showUserLocation,
+  hasLiveFires,
+  showFires,
+  viewMode,
+  reducedMotion,
 }: MapLegendProps) {
   return (
     <section className="legend-bar wrapper-surface" data-testid="map-legend" aria-labelledby="legend-heading">
       <h2 id="legend-heading" className="legend-heading">
         {MONTH_LABELS[selectedMonth]} &middot; fire activity
+        {hasLiveFires && reducedMotion ? ' · reduced motion' : ''}
       </h2>
       <ul className="legend-list" role="list">
-        {STATUS_CATEGORIES.map((category) => (
-          <li key={category}>
-            <span className="legend-glyph" aria-hidden="true">
-              <StatusMark category={category} radius={LEGEND_MARK_RADIUS} />
-            </span>
-            <span>{STATUS_TEXT[category]}</span>
-          </li>
-        ))}
+        {!hasLiveFires ? (
+          STATUS_CATEGORIES.map((category) => (
+            <li key={category}>
+              <span className="legend-glyph" aria-hidden="true">
+                <StatusMark category={category} radius={LEGEND_MARK_RADIUS} />
+              </span>
+              <span>{STATUS_TEXT[category]}</span>
+            </li>
+          ))
+        ) : !showFires ? (
+          <li className="legend-note">Fire spots hidden (flame button on the map shows them)</li>
+        ) : viewMode === 'sensors' ? (
+          <>
+            <li>
+              <span className="legend-glyph" aria-hidden="true">
+                <FireDot color={FIRE_SPOT_COLORS.modis} />
+              </span>
+              <span>MODIS 1 km spot (Terra / Aqua)</span>
+            </li>
+            <li>
+              <span className="legend-glyph" aria-hidden="true">
+                <FireDot color={FIRE_SPOT_COLORS.viirs} />
+              </span>
+              <span>VIIRS 375 m spot (NOAA-20 / 21)</span>
+            </li>
+          </>
+        ) : (
+          <>
+            <li>
+              <span className="legend-glyph" aria-hidden="true">
+                <FireDot color={FIRE_SPOT_COLORS.frpHigh} />
+              </span>
+              <span>Active spot &middot; high FRP (&ge;100 MW)</span>
+            </li>
+            <li>
+              <span className="legend-glyph" aria-hidden="true">
+                <FireDot color={FIRE_SPOT_COLORS.frpMid} />
+              </span>
+              <span>Active spot &middot; moderate FRP (~20 MW)</span>
+            </li>
+            <li>
+              <span className="legend-glyph" aria-hidden="true">
+                <FireDot color={FIRE_SPOT_COLORS.frpLow} />
+              </span>
+              <span>Active spot &middot; low FRP (&lt;20 MW)</span>
+            </li>
+          </>
+        )}
         {showSwaths && (
           <>
             <li>

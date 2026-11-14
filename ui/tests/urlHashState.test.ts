@@ -75,6 +75,7 @@ test('serializeUrlHash and parseUrlHash round-trip core controls and extensible 
     selectedMonth: 2,
     showOrbits: false,
     showClouds: false,
+    showFires: false,
     extraParams: {
       aoi: 'sea-1',
       hotspots: 'on',
@@ -84,7 +85,7 @@ test('serializeUrlHash and parseUrlHash round-trip core controls and extensible 
   const hash = serializeUrlHash(input)
   assert.equal(
     hash,
-    '#z=6.45&lat=1.3521&lng=103.8198&mode=sensors&sensor=viirs&proj=mercator&month=3&orbits=0&clouds=0&aoi=sea-1&hotspots=on',
+    '#z=6.45&lat=1.3521&lng=103.8198&mode=sensors&sensor=viirs&proj=mercator&month=3&orbits=0&clouds=0&fires=0&aoi=sea-1&hotspots=on',
   )
 
   const parsed = parseUrlHash(hash)
@@ -393,4 +394,27 @@ test('region and clouds share one registry and round-trip together', () => {
   assert.match(hash, /&orbits=1&clouds=0&region=boreal-canada$/)
   assert.deepEqual(parseUrlHash(hash, DEFAULT_URL_HASH_STATE), state)
   assert.equal(parseUrlHash('#clouds=maybe&region=boreal-canada')?.showClouds, true)
+})
+
+test('fires sits in the same registry: on by default and absent, fires=0 when off', () => {
+  assert.equal(DEFAULT_URL_HASH_STATE.showFires, true)
+  assert.doesNotMatch(serializeUrlHash(DEFAULT_URL_HASH_STATE), /fires=/)
+
+  const off: UrlHashState = { ...DEFAULT_URL_HASH_STATE, showFires: false, selectedRegionId: 'mediterranean' }
+  const hash = serializeUrlHash(off)
+  assert.match(hash, /&orbits=1&clouds=1&fires=0&region=mediterranean$/)
+  assert.deepEqual(parseUrlHash(hash, DEFAULT_URL_HASH_STATE), off)
+
+  // The team's links: fires=0 turns them off, fires=1 or no key keeps them on; never an extra param
+  assert.equal(parseUrlHash('#fires=0')?.showFires, false)
+  assert.equal(parseUrlHash('#fires=1')?.showFires, true)
+  assert.equal(parseUrlHash('#z=3&fires=0')?.extraParams, undefined)
+  assert.equal(parseUrlHash('#z=3&fires=maybe')?.showFires, true)
+
+  // Restored from storage like orbits and clouds
+  const restored = resolveInitialUrlHashState(
+    createMockBrowserTarget('', serializeStoredState(off)).target,
+    TODAY,
+  )
+  assert.equal(restored.state.showFires, false)
 })

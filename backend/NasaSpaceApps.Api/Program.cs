@@ -1,5 +1,6 @@
 using System.Net;
 using System.Runtime.InteropServices;
+using Microsoft.AspNetCore.ResponseCompression;
 using NasaSpaceApps.Api.Clouds;
 using NasaSpaceApps.Api.Firms;
 using NasaSpaceApps.Api.NasaOpenApi;
@@ -25,6 +26,11 @@ var cloudOptions = ExtremumCloudOptions.FromConfiguration(builder.Configuration)
 
 builder.Services.AddOpenApi();
 builder.Services.AddMemoryCache();
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(["application/geo+json"]);
+});
 builder.Services.AddSingleton(firmsOptions);
 builder.Services.AddSingleton(nasaOpenApiOptions);
 builder.Services.AddSingleton(cloudOptions);
@@ -42,7 +48,7 @@ builder.Services.AddHttpClient("CelesTrak", client =>
 builder.Services.AddHttpClient("Firms", client =>
 {
     client.BaseAddress = new Uri("https://firms.modaps.eosdis.nasa.gov/");
-    client.Timeout = TimeSpan.FromSeconds(25);
+    client.Timeout = TimeSpan.FromSeconds(60);
     client.DefaultRequestHeaders.UserAgent.ParseAdd(
         "NasaSpaceApps-EarthFireCalendar/1.0 (+https://github.com/avbelkin/nasa-space-apps-sg)");
 }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
@@ -107,6 +113,7 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 app.UseCors();
+app.UseResponseCompression();
 
 if (app.Environment.IsDevelopment())
 {
@@ -208,43 +215,32 @@ app.MapGet("/api/nasa/wildfires", async (
     }
 });
 
-app.MapGet("/api/hotspots", async (
+app.MapGet("/api/hotspots", (
     string? bbox,
     int? days,
     string? sensor,
     FirmsOptions firms,
     FirmsClient firmsClient,
     CancellationToken cancellationToken) =>
-{
-    if (!firms.IsConfigured)
-    {
-        return Results.Json(
-            new { error = "FIRMS_MAP_KEY is not configured on this backend instance." },
-            statusCode: StatusCodes.Status503ServiceUnavailable);
-    }
+    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetAreaHotspotsAsync(bbox, days, sensor, cancellationToken)));
 
-    try
-    {
-        var response = await firmsClient.GetAreaHotspotsAsync(bbox, days, sensor, cancellationToken);
-        return Results.Ok(response);
-    }
-    catch (ArgumentException ex)
-    {
-        return Results.BadRequest(new { error = ex.Message });
-    }
-    catch (InvalidOperationException ex)
-    {
-        return Results.Json(
-            new { error = firms.Redact(ex.Message) },
-            statusCode: StatusCodes.Status502BadGateway);
-    }
-    catch (HttpRequestException ex)
-    {
-        return Results.Json(
-            new { error = $"Failed to query NASA FIRMS: {firms.Redact(ex.Message)}" },
-            statusCode: StatusCodes.Status502BadGateway);
-    }
-});
+app.MapGet("/api/fires/spots", (
+    string? sensor,
+    int? hours,
+    string? bbox,
+    FirmsOptions firms,
+    FirmsClient firmsClient,
+    CancellationToken cancellationToken) =>
+    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetLiveSpotsAsync(sensor, hours, bbox, cancellationToken)));
+
+app.MapGet("/api/fires/spots.geojson", (
+    string? sensor,
+    int? hours,
+    string? bbox,
+    FirmsOptions firms,
+    FirmsClient firmsClient,
+    CancellationToken cancellationToken) =>
+    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetLiveSpotsGeoJsonAsync(sensor, hours, bbox, cancellationToken)));
 
 app.MapGet("/api/satellites/orbits", async (
     int? pastMinutes,
@@ -316,5 +312,37 @@ app.MapGet("/api/weather/satellite/{z:int}/{x:int}/{y:int}.png", async (
 });
 
 app.Run();
+
+static async Task<IResult> ExecuteFirmsQueryAsync<T>(FirmsOptions firms, Func<Task<T>> queryAsync)
+{
+    if (!firms.IsConfigured)
+    {
+        return Results.Json(
+            new { error = "FIRMS_MAP_KEY is not configured on this backend instance." },
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    try
+    {
+        var response = await queryAsync();
+        return Results.Ok(response);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Json(
+            new { error = firms.Redact(ex.Message) },
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+    catch (HttpRequestException ex)
+    {
+        return Results.Json(
+            new { error = $"Failed to query NASA FIRMS: {firms.Redact(ex.Message)}" },
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+}
 
 public partial class Program;

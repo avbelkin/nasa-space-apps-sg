@@ -3,18 +3,24 @@ import { ChevronDownIcon } from '../icons'
 
 interface AttributionFooterProps {
   connectionState: ConnectionState
+  // With a data service, fire spots are live NASA FIRMS detections; the regional index stays sample
+  liveFiresConfigured: boolean
 }
 
 const EXTERNAL = { target: '_blank', rel: 'noopener noreferrer' } as const
 
 // One always-visible credit line plus the full text on demand, with a small API indicator.
-export function AttributionFooter({ connectionState }: AttributionFooterProps) {
+export function AttributionFooter({ connectionState, liveFiresConfigured }: AttributionFooterProps) {
   return (
     <footer className="panel-footer">
       <p className="attribution-line">
-        Data: <a href="https://firms.modaps.eosdis.nasa.gov/" {...EXTERNAL}>NASA FIRMS</a> (sample
-        values) &middot; <a href="https://celestrak.org/" {...EXTERNAL}>CelesTrak</a> &middot;
-        clouds <a href="https://layers.extremum.org" {...EXTERNAL}>Extremum</a> &middot; basemap <a href="https://s2maps.eu" {...EXTERNAL}>EOX</a> / Copernicus Sentinel-2. Not
+        Data: <a href="https://firms.modaps.eosdis.nasa.gov/" {...EXTERNAL}>NASA FIRMS</a>{' '}
+        {liveFiresConfigured
+          ? '(live fire spots; the regional index is sample values)'
+          : '(sample values)'}{' '}
+        &middot; <a href="https://celestrak.org/" {...EXTERNAL}>CelesTrak</a> &middot;
+        clouds <a href="https://layers.extremum.org" {...EXTERNAL}>Extremum</a> &middot; night lights{' '}
+        <a href="https://earthdata.nasa.gov/gibs" {...EXTERNAL}>NASA GIBS</a> &middot; basemap <a href="https://s2maps.eu" {...EXTERNAL}>EOX</a> / Copernicus Sentinel-2. Not
         affiliated with NASA.
       </p>
 
@@ -34,8 +40,10 @@ export function AttributionFooter({ connectionState }: AttributionFooterProps) {
                   <a href="https://firms.modaps.eosdis.nasa.gov/" {...EXTERNAL}>
                     NASA FIRMS
                   </a>
-                  . The fire activity values shown here are sample values until FIRMS data is
-                  connected.
+                  .{' '}
+                  {liveFiresConfigured
+                    ? 'The fire spots on the map are live detections of the last 24 hours; the regional fire activity index, its map marks and the month strip remain sample values.'
+                    : 'The fire activity values shown here are sample values until FIRMS data is connected.'}
                 </dd>
               </div>
               <div className="meta-row">
@@ -56,6 +64,17 @@ export function AttributionFooter({ connectionState }: AttributionFooterProps) {
                     layers.extremum.org
                   </a>
                   .
+                </dd>
+              </div>
+              <div className="meta-row">
+                <dt>Night lights</dt>
+                <dd>
+                  Gap-filled BRDF-corrected Day/Night Band radiance (NOAA-20 / JPSS-1 VIIRS Black
+                  Marble) from{' '}
+                  <a href="https://earthdata.nasa.gov/gibs" {...EXTERNAL}>
+                    NASA GIBS / Earthdata
+                  </a>
+                  , shown on the night side at low zoom.
                 </dd>
               </div>
               <div className="meta-row">
