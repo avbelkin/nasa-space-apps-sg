@@ -172,8 +172,8 @@ export const NADIR_SWATH_COLOR = SWATH_COLORS.nadir
 export const NADIR_SWATH_FILL_OPACITY = 0.14
 export const NADIR_SWATH_STROKE_OPACITY = 0.32
 export const WIDE_SWATH_COLOR = SWATH_COLORS.wide
-export const WIDE_SWATH_FILL_OPACITY = 0.035
-export const WIDE_SWATH_STROKE_OPACITY = 0.12
+export const WIDE_SWATH_FILL_OPACITY = 0.0875
+export const WIDE_SWATH_STROKE_OPACITY = 0.32
 export const WIDE_SWATH_DASH_ARRAY: [number, number] = [4, 6]
 
 const MAX_HUD_FRESHNESS_ITEMS = 3

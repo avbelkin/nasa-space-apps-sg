@@ -1052,14 +1052,14 @@
   inline-size: 0.875rem;
   block-size: 0.625rem;
   border-radius: 0.125rem;
-  border: 1.5px solid color-mix(in srgb, var(--data-swath-nadir) 55%, var(--text-primary));
-  background-color: color-mix(in srgb, var(--data-swath-nadir) 35%, transparent);
+  border: 1.5px solid color-mix(in oklab, var(--data-swath-nadir) 55%, var(--text-primary));
+  background-color: color-mix(in oklab, var(--data-swath-nadir) 35%, transparent);
 }
 
 .legend-glyph-swath-wide {
   border-style: dashed;
-  border-color: color-mix(in srgb, var(--data-swath-wide) 55%, var(--text-primary));
-  background-color: color-mix(in srgb, var(--data-swath-wide) 22%, transparent);
+  border-color: color-mix(in oklab, var(--data-swath-wide) 55%, var(--text-primary));
+  background-color: color-mix(in oklab, var(--data-swath-wide) 28.5%, transparent);
 }
 
 .legend-glyph-rain {

@@ -39,7 +39,7 @@ export const DEFAULT_SATELLITE_COLOR = '#fde047'
 // pale and drawn at low opacity, unlike the opaque, outlined status marks.
 export const SWATH_COLORS = {
   nadir: '#92b4de',
-  wide: '#f49a74',
+  wide: '#ffc078',
 } as const
 
 // Live NASA FIRMS fire spots: one high-saturation true red (zero blue channel so blurred pulses
