@@ -6,9 +6,14 @@ This repository implements the [Harmonization of MODIS and VIIRS Hot Spots](./RE
 
 ### 1. Frontend (`ui/` — Pure React + TypeScript + Vite on GitHub Pages)
 
-- **AOI Explorer & Map Selector**: Interactive map view allowing users to draw/select an Area of Interest (bounding box, coordinates, or regional presets) and choose historical time windows.
-- **Burning Activity Calendar**: Calendar heatmap and seasonal timeline comparing current-year fire activity against a harmonized multi-decade baseline (2000–present), built with accessible, colorblind-safe color ramps and clear numeric summaries.
-- **Sensor Transparency View**: Side-by-side breakdown showing raw MODIS detections, raw VIIRS detections, and the harmonized index so researchers and responders can inspect how the 2012+ transition is normalized.
+- **Earth-First Mapping Engine (`maplibre-gl`)**: Keyless **MapLibre GL JS** canvas supporting both 3D `globe` and 2D `mercator` projections to visualize active-fire hotspots, typical seasonal activity bands, and current calendar anomaly departures directly on Earth.
+- **Two-Tier CSS Grid Layout**:
+  - **Outer Controls Wrapper (`.app-frame`)**: CSS Grid page shell wrapping perimeter controls *around* the map:
+    - `topbar` (`<header>`) — Application title, view mode switcher (`Anomaly vs. Typical`, `Seasonal Dynamics`, `Sensor Harmonization`), and Cloud Run backend API health badge/trigger.
+    - `timeline` (`<section>`) — Bottom seasonal/calendar scrubber (`Jan`–`Dec`) displaying the typical historical curve alongside current activity and anomaly classification badges.
+    - `sidepanel` (`<aside>`) — Regional seasonal-fit vs. anomaly inspector, harmonization notes, and deployment diagnostics.
+  - **Inner Map CSS Grid Container (`.map-stage`)**: Dedicated CSS Grid stage holding the full-bleed MapLibre canvas across all tracks (`grid-column: 1 / -1; grid-row: 1 / -1`) alongside named overlay grid areas (`hud-top-start`, `hud-top-end`, `hud-bottom-start`) for floating controls positioned *over* the map without brittle pixel offsets, keeping unobstructed map tracks directly interactive.
+- **Sensor Transparency & Accessible Visuals**: Toggle between Harmonized, MODIS (1 km), and VIIRS (375 m) layers with explicit text labels and symbols alongside accessible color ramps so researchers and responders never rely on color alone.
 
 ### 2. Backend (`backend/` — ASP.NET Core `.NET 10` Container on Google Cloud Run)
 
@@ -20,6 +25,6 @@ This repository implements the [Harmonization of MODIS and VIIRS Hot Spots](./RE
 - **Planned REST API Endpoints**:
   - `GET /health` — Cloud Run readiness/liveness probe (implemented stub).
   - `GET /api/status` — Service metadata and environment diagnostics (implemented stub).
-  - `GET /api/aoi/calendar` *(planned)* — Harmonized daily/weekly burning calendar series and historical percentile baselines for an AOI.
-  - `GET /api/aoi/timeseries` *(planned)* — Raw MODIS vs. raw VIIRS vs. harmonized yearly/seasonal comparison series.
-  - `GET /api/aoi/hotspots` *(planned)* — Filtered spatial hotspot points/grid cells for map rendering within a selected date window.
+  - `GET /api/anomalies/summary` *(planned)* — Regional & AOI current situation summary compared against historical calendar baselines (`fitsTypical`, `anomalyScore`, `zScore`, percentile).
+  - `GET /api/seasonal/profile` *(planned)* — Harmonized multi-decade monthly/pentad climatology vs. current-year trajectory for the bottom seasonal scrubber and side inspector.
+  - `GET /api/hotspots` *(planned)* — Spatial GeoJSON/vector hotspot clusters and harmonized grid cells for MapLibre rendering within a selected date window and sensor filter.

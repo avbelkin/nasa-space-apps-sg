@@ -20,7 +20,13 @@ Because raw hotspot counts and pixel sizes are incompatible across instruments, 
 
 ## Application Purpose
 
-Build an interactive web application that harmonizes MODIS and VIIRS active-fire hotspot records into a consistent **Burning Activity Calendar** and Area-of-Interest (AOI) analytics dashboard, giving users a bias-corrected view of when, where, and how intensely burning occurs across multi-decade records.
+Build an **Earth-first** interactive web application (powered by **MapLibre GL JS**) that harmonizes MODIS and VIIRS active-fire hotspot records into seasonal burning dynamics and live anomaly layers. Rather than presenting a standalone calendar-first grid, our application keeps **Earth** as the primary canvas and overlays how the **current situation fits or departs from typical calendar baselines** across multi-decade records.
+
+## How We Address the Challenge: Earth-First Seasonal & Anomaly Intelligence
+
+- **Earth-First, Not Calendar-First**: The interactive Earth map (`globe` / `mercator` via MapLibre) is the center of exploration; temporal and calendar controls drive and contextualize the geospatial view rather than replacing it with a static table or matrix.
+- **Seasonal Dynamics + Current Anomaly Fit/Deviation**: Users scrub across the climatological burning cycle (harmonized 2000–present MODIS + VIIRS baseline) side-by-side with the **current/selected situation**, immediately distinguishing *expected seasonal burning* ("fits typical calendar window") from *calendar anomalies* (unusually early/late season onset, out-of-season ignitions, or above-norm intensity spikes).
+- **Spatial + Perimeter Interaction Model**: Outer wrapper controls surround the map for mode selection, seasonal/calendar timeline scrubbing, and regional anomaly inspection, while tactical layer, projection, and legend HUD controls sit directly over the map inside the map's own CSS Grid container.
 
 ## Target Users
 
@@ -31,10 +37,10 @@ Build an interactive web application that harmonizes MODIS and VIIRS active-fire
 
 ## Key Functional Goals
 
-1. **Interactive AOI Selection**: Let users explore via an interactive map (draw a custom bounding box/polygon, pick preset regions, or enter latitude/longitude coordinates) and select historical date ranges.
+1. **Earth-First AOI & Spatial Exploration**: Interactive MapLibre globe/map allowing users to inspect global or regional fire regimes, draw/select an Area of Interest (AOI), and toggle between harmonized, MODIS (1 km), and VIIRS (375 m) views.
 2. **Sensor Harmonization Pipeline**: Normalize MODIS (1 km) and VIIRS (375 m) hotspot detections onto a consistent spatiotemporal representation—accounting for pixel geometry (`scan` × `track`), multi-pass overlap/deduplication, confidence filtering, and cross-calibrated intensity metrics (e.g., Fire Radiative Power [`FRP`] or gridded burned-cell indices).
-3. **Unified Burning Activity Calendar**: Visualize multi-year seasonal burning rhythms, peak fire windows, and year-over-year baselines without sensor-transition artifacts.
-4. **Anomaly Detection & Decision Support**: Highlight anomalous burning episodes and unexpected seasonal shifts using accessible color ramps and focused, clutter-free metrics.
+3. **Seasonal & Calendar Baseline Comparison**: Drive the Earth map with a seasonal/calendar timeline scrubber showing typical historical activity alongside current conditions so users can see whether ongoing activity fits expected seasonal windows.
+4. **Anomaly Detection & Decision Support**: Highlight positive/negative calendar departures, out-of-season thermal activity, and extreme intensity episodes using accessible color ramps, clear text badges, and focused metrics.
 
 ## Primary Data Sources
 

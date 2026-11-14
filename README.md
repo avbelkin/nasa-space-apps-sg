@@ -2,14 +2,14 @@
 
 ## Project Purpose
 
-Built for the **2026 NASA Space Apps Challenge — [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/?tab=details)**. The application harmonizes global satellite active-fire hotspot records across **MODIS** (~1 km resolution, 2000–present) and **VIIRS** (375 m resolution, 2012–present) into a unified **Burning Activity Calendar** and interactive Area-of-Interest (AOI) explorer so emergency responders, land managers, and scientists can compare multi-decade fire baselines and detect anomalies without sensor-transition artifacts.
+Built for the **2026 NASA Space Apps Challenge — [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/?tab=details)**. Rather than a calendar-first grid, our **Earth-first** visualization uses **MapLibre GL JS** to display seasonal burning dynamics alongside the current situation—showing where fire activity fits typical calendar patterns and where calendar anomalies emerge across harmonized **MODIS** (~1 km, 2000–present) and **VIIRS** (375 m, 2012–present) records.
 
-- [doc/README.md](doc/README.md) — Challenge background, objectives, target users, and NASA FIRMS data sources.
-- [doc/architecture-and-harmonization.md](doc/architecture-and-harmonization.md) — UI/backend split and harmonization pipeline design notes.
+- [doc/README.md](doc/README.md) — Challenge background, Earth-first seasonal & anomaly approach, target users, and NASA FIRMS data sources.
+- [doc/architecture-and-harmonization.md](doc/architecture-and-harmonization.md) — MapLibre two-tier CSS Grid layout, UI/backend split, and harmonization pipeline design notes.
 
 ## Stack
 
-- **`ui/`** — Pure React + TypeScript + Vite static SPA published to **GitHub Pages**.
+- **`ui/`** — Pure React + TypeScript + Vite + **MapLibre GL JS** (`maplibre-gl`) static SPA published to **GitHub Pages**, using an outer CSS Grid wrapper around a nested CSS Grid map stage with over-map controls.
 - **`backend/`** — ASP.NET Core (`.NET 10`) Minimal API containerized for **Google Cloud Run**.
 
 ## Team Git Workflow
