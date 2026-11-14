@@ -42,6 +42,7 @@ dotnet run --project backend/NasaSpaceApps.Api
 Endpoints:
 - `GET /health`
 - `GET /api/status`
+- `GET /api/satellites/orbits` — Cached CelesTrak TLE orbits & sensor swath parameters for MODIS (`Terra`, `Aqua`) and VIIRS (`NOAA-20`, `NOAA-21`)
 
 ### 2. Frontend (`http://localhost:5173`)
 

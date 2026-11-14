@@ -23,6 +23,7 @@ export interface UrlHashState extends MapViewportState {
   sensorFilter: SensorFilter
   projectionMode: ProjectionMode
   selectedMonth: number
+  showOrbits: boolean
   extraParams?: Record<string, string>
 }
 
@@ -41,6 +42,7 @@ export const DEFAULT_URL_HASH_STATE: UrlHashState = {
   sensorFilter: 'harmonized',
   projectionMode: 'globe',
   selectedMonth: 8,
+  showOrbits: true,
 }
 
 const VALID_VIEW_MODES: readonly ViewMode[] = ['anomaly', 'seasonal', 'sensors']
@@ -171,6 +173,22 @@ const HASH_FEATURE_CODECS: readonly HashFeatureCodec[] = [
       return true
     },
   },
+  {
+    key: 'orbits',
+    serialize: (state) => (state.showOrbits ? '1' : '0'),
+    parse: (raw, draft) => {
+      const normalized = raw.trim().toLowerCase()
+      if (normalized === '1' || normalized === 'true' || normalized === 'on') {
+        draft.showOrbits = true
+        return true
+      }
+      if (normalized === '0' || normalized === 'false' || normalized === 'off') {
+        draft.showOrbits = false
+        return true
+      }
+      return false
+    },
+  },
 ]
 
 const RESERVED_CORE_KEYS = new Set<string>([
@@ -225,6 +243,7 @@ function cloneFallbackState(fallback: UrlHashState): UrlHashState {
     sensorFilter: fallback.sensorFilter,
     projectionMode: fallback.projectionMode,
     selectedMonth: fallback.selectedMonth,
+    showOrbits: fallback.showOrbits,
     ...(fallback.extraParams ? { extraParams: { ...fallback.extraParams } } : {}),
   }
 }

@@ -15,6 +15,12 @@ import {
   syncUrlHashAndStorage,
   type MapViewportState,
 } from './state/urlHashState'
+import {
+  computeLiveOrbitalState,
+  fetchSatelliteOrbits,
+  type LiveSatelliteSnapshot,
+  type SatelliteOrbitsResponse,
+} from './utils/satelliteOrbits'
 
 interface ApiStatusResponse {
   service: string
@@ -30,6 +36,7 @@ const rawApiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) 
 const apiBaseUrl = rawApiBaseUrl.trim().replace(/\/$/, '')
 const statusEndpoint = apiBaseUrl ? `${apiBaseUrl}/api/status` : '/api/status'
 const isProdUnconfigured = import.meta.env.PROD && !apiBaseUrl
+const ORBITS_REFRESH_INTERVAL_MS = 20 * 60 * 1000
 
 const STATUS_LABELS: Record<ConnectionState, string> = {
   checking: 'Checking...',
@@ -49,6 +56,11 @@ async function fetchApiStatus(signal?: AbortSignal): Promise<ApiStatusResponse> 
   return (await response.json()) as ApiStatusResponse
 }
 
+function formatDeg(value: number, posHemisphere: string, negHemisphere: string): string {
+  const hemisphere = value >= 0 ? posHemisphere : negHemisphere
+  return `${Math.abs(value).toFixed(2)}\u00b0${hemisphere}`
+}
+
 function App() {
   const [initialResolution] = useState(resolveInitialUrlHashState)
   const [viewMode, setViewMode] = useState<ViewMode>(initialResolution.state.viewMode)
@@ -61,6 +73,7 @@ function App() {
   const [selectedMonth, setSelectedMonth] = useState<number>(
     initialResolution.state.selectedMonth,
   )
+  const [showOrbits, setShowOrbits] = useState<boolean>(initialResolution.state.showOrbits)
   const [viewport, setViewport] = useState<MapViewportState>(() => ({
     zoom: initialResolution.state.zoom,
     lat: initialResolution.state.lat,
@@ -70,6 +83,7 @@ function App() {
     initialResolution.state.extraParams,
   )
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
+  const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null)
   const [cameraFocusRequest, setCameraFocusRequest] = useState<CameraFocusRequest | null>(null)
   const focusRequestSeqRef = useRef(0)
   const lastSyncedHashRef = useRef('')
@@ -81,6 +95,10 @@ function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [lastChecked, setLastChecked] = useState<string>('Never')
 
+  const [orbitsPayload, setOrbitsPayload] = useState<SatelliteOrbitsResponse | null>(null)
+  const [orbitsError, setOrbitsError] = useState<string | null>(null)
+  const [nowUnixMs, setNowUnixMs] = useState<number>(() => Date.now())
+
   useEffect(() => {
     lastSyncedHashRef.current = syncUrlHashAndStorage({
       ...viewport,
@@ -88,9 +106,10 @@ function App() {
       sensorFilter,
       projectionMode,
       selectedMonth,
+      showOrbits,
       extraParams,
     })
-  }, [viewport, viewMode, sensorFilter, projectionMode, selectedMonth, extraParams])
+  }, [viewport, viewMode, sensorFilter, projectionMode, selectedMonth, showOrbits, extraParams])
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -105,6 +124,7 @@ function App() {
       setSensorFilter(parsed.sensorFilter)
       setProjectionMode(parsed.projectionMode)
       setSelectedMonth(parsed.selectedMonth)
+      setShowOrbits(parsed.showOrbits)
       setExtraParams(parsed.extraParams)
       setViewport({
         zoom: parsed.zoom,
@@ -138,6 +158,16 @@ function App() {
     setErrorMessage(error instanceof Error ? error.message : 'Request failed')
   }
 
+  const applyOrbitsSuccess = (data: SatelliteOrbitsResponse) => {
+    setOrbitsPayload(data)
+    setOrbitsError(null)
+    setNowUnixMs(Date.now())
+  }
+
+  const applyOrbitsFailure = (error: unknown) => {
+    setOrbitsError(error instanceof Error ? error.message : 'Orbit feed unavailable')
+  }
+
   const handleCheckBackend = () => {
     if (isProdUnconfigured) {
       setConnectionState('unconfigured')
@@ -147,7 +177,9 @@ function App() {
     }
     setConnectionState('checking')
     setErrorMessage(null)
+    setOrbitsError(null)
     void fetchApiStatus().then(applySuccess, applyFailure)
+    void fetchSatelliteOrbits(apiBaseUrl).then(applyOrbitsSuccess, applyOrbitsFailure)
   }
 
   useEffect(() => {
@@ -167,8 +199,51 @@ function App() {
         }
       },
     )
-    return () => controller.abort()
+
+    const refreshOrbits = () => {
+      void fetchSatelliteOrbits(apiBaseUrl, controller.signal).then(
+        (data) => {
+          if (!controller.signal.aborted) {
+            applyOrbitsSuccess(data)
+          }
+        },
+        (error: unknown) => {
+          if (!controller.signal.aborted) {
+            applyOrbitsFailure(error)
+          }
+        },
+      )
+    }
+
+    refreshOrbits()
+    const refreshTimer = window.setInterval(refreshOrbits, ORBITS_REFRESH_INTERVAL_MS)
+
+    return () => {
+      window.clearInterval(refreshTimer)
+      controller.abort()
+    }
   }, [])
+
+  useEffect(() => {
+    if (!orbitsPayload || !showOrbits) {
+      return
+    }
+    const timer = window.setInterval(() => {
+      setNowUnixMs(Date.now())
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [orbitsPayload, showOrbits])
+
+  const orbitalState = useMemo(
+    () =>
+      computeLiveOrbitalState(
+        orbitsPayload?.satellites ?? [],
+        sensorFilter,
+        nowUnixMs,
+        showOrbits,
+      ),
+    [orbitsPayload, sensorFilter, nowUnixMs, showOrbits],
+  )
 
   const monthProfile = MONTHLY_PROFILE[selectedMonth]
   const evaluatedRegions = useMemo(
@@ -176,6 +251,27 @@ function App() {
     [selectedMonth, sensorFilter],
   )
   const monthDelta = monthProfile.currentIndex - monthProfile.typicalIndex
+
+  const handleSelectSatellite = (satellite: LiveSatelliteSnapshot) => {
+    setSelectedSatelliteId(satellite.id)
+    setShowOrbits(true)
+    setNowUnixMs(Date.now())
+    setCameraFocusRequest({
+      lng: satellite.lng,
+      lat: satellite.lat,
+      zoom: 3.6,
+      animate: true,
+      requestId: ++focusRequestSeqRef.current,
+    })
+  }
+
+  const tleSourceSummary = useMemo(() => {
+    if (!orbitsPayload || orbitsPayload.satellites.length === 0) {
+      return null
+    }
+    const sources = new Set(orbitsPayload.satellites.map((sat) => sat.tleSource))
+    return [...sources].join(', ')
+  }, [orbitsPayload])
 
   return (
     <div className="app-frame">
@@ -241,6 +337,16 @@ function App() {
         cameraFocusRequest={cameraFocusRequest}
         autoLocateOnMount={initialResolution.source === 'default'}
         geolocationMaxZoom={DEFAULT_GEOLOCATION_MAX_ZOOM}
+        orbitalState={orbitalState}
+        showOrbits={showOrbits}
+        onShowOrbitsChange={(next) => {
+          setShowOrbits(next)
+          if (next) {
+            setNowUnixMs(Date.now())
+          }
+        }}
+        selectedSatelliteId={selectedSatelliteId}
+        onSelectSatellite={handleSelectSatellite}
       />
 
       <section className="timeline-bar wrapper-surface" aria-labelledby="timeline-heading">
@@ -297,9 +403,62 @@ function App() {
           </p>
         </section>
 
+        <section className="panel-section" aria-labelledby="orbits-heading">
+          <h3 id="orbits-heading">Live Satellite Orbits (MODIS &amp; VIIRS)</h3>
+          {isProdUnconfigured ? (
+            <p className="panel-note">
+              Backend URL not configured (<code>VITE_API_BASE_URL</code>). Connect the Cloud Run API or run the local backend to stream live MODIS &amp; VIIRS orbits.
+            </p>
+          ) : orbitsError && !orbitsPayload ? (
+            <p className="panel-note">
+              Orbit feed unavailable ({orbitsError}). Start the backend API and click <strong>Check API</strong>.
+            </p>
+          ) : orbitalState.snapshots.length === 0 ? (
+            <p className="panel-note">Fetching CelesTrak orbital window (&minus;45m to +90m)...</p>
+          ) : (
+            <>
+              <p className="panel-note">
+                1s client interpolation over CelesTrak window (TLE: <code>{tleSourceSummary}</code>). Click a spacecraft to center Earth.
+              </p>
+              <ul className="satellite-list" role="list">
+                {orbitalState.snapshots.map((sat) => (
+                  <li key={sat.id}>
+                    <button
+                      type="button"
+                      className="satellite-card-btn"
+                      aria-pressed={selectedSatelliteId === sat.id}
+                      onClick={() => handleSelectSatellite(sat)}
+                    >
+                      <span className="satellite-card-top">
+                        <span className="satellite-name">
+                          <span
+                            className="satellite-swatch"
+                            style={{ backgroundColor: sat.color }}
+                            aria-hidden="true"
+                          >
+                            {sat.glyph}
+                          </span>
+                          <span>{sat.name}</span>
+                        </span>
+                        <span className="satellite-sensor-tag">{sat.instrumentLabel}</span>
+                      </span>
+                      <span className="satellite-coords">
+                        {formatDeg(sat.lat, 'N', 'S')}, {formatDeg(sat.lng, 'E', 'W')} &middot; {sat.altitudeKm.toFixed(0)} km &middot; {sat.groundSpeedKmS.toFixed(2)} km/s
+                      </span>
+                      <span className="region-meta">
+                        {sat.crossingNote} &middot; Swath {sat.wideSwathKm.toLocaleString()} km &middot; Lag ~{sat.typicalIngestionLagMinutes}m
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+
         <section className="panel-section" aria-labelledby="regions-heading">
           <h3 id="regions-heading">Regional Regimes ({monthProfile.label})</h3>
-          <ul className="region-list">
+          <ul className="region-list" role="list">
             {evaluatedRegions.map((regime) => (
               <li key={regime.id}>
                 <button

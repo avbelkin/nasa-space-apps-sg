@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { FeatureCollection, Point } from 'geojson'
-import { LngLat, LngLatBounds, Map as MapLibreMap } from 'maplibre-gl'
+import type { FeatureCollection, MultiLineString, Point, Polygon } from 'geojson'
+import { LngLat, LngLatBounds, Map as MapLibreMap, Marker } from 'maplibre-gl'
 import type { ErrorEvent, GeoJSONSource, MapMovementEvent, StyleSpecification } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import {
@@ -20,6 +20,7 @@ import {
   normalizeLng,
   type MapViewportState,
 } from '../state/urlHashState'
+import type { LiveOrbitalState, LiveSatelliteSnapshot } from '../utils/satelliteOrbits'
 
 export interface CameraFocusRequest {
   lng: number
@@ -41,7 +42,21 @@ interface EarthMapStageProps {
   cameraFocusRequest: CameraFocusRequest | null
   autoLocateOnMount: boolean
   geolocationMaxZoom?: number
+  orbitalState: LiveOrbitalState
+  showOrbits: boolean
+  onShowOrbitsChange: (next: boolean) => void
+  selectedSatelliteId: string | null
+  onSelectSatellite: (satellite: LiveSatelliteSnapshot) => void
 }
+
+interface SatelliteMarkerEntry {
+  marker: Marker
+  button: HTMLButtonElement
+  iconSvg: SVGSVGElement
+  labelSpan: HTMLSpanElement
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg'
 
 const VIEW_MODE_LABELS: Record<ViewMode, string> = {
   anomaly: 'Anomaly vs. Typical Calendar',
@@ -101,9 +116,48 @@ function buildUserLocationGeoJson(coords: [number, number] | null): FeatureColle
   }
 }
 
+function createSpacecraftIconSvg(): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg')
+  svg.setAttribute('viewBox', '0 0 18 18')
+  svg.setAttribute('width', '15')
+  svg.setAttribute('height', '15')
+  svg.setAttribute('aria-hidden', 'true')
+  svg.classList.add('sat-marker-icon')
+
+  const makeRect = (
+    x: string,
+    y: string,
+    width: string,
+    height: string,
+    className: string,
+    rx?: string,
+  ) => {
+    const rect = document.createElementNS(SVG_NS, 'rect')
+    rect.setAttribute('x', x)
+    rect.setAttribute('y', y)
+    rect.setAttribute('width', width)
+    rect.setAttribute('height', height)
+    if (rx) {
+      rect.setAttribute('rx', rx)
+    }
+    rect.classList.add(className)
+    return rect
+  }
+
+  // Solar arrays (left & right wings) + center bus + sensor crossbar
+  svg.append(
+    makeRect('0', '7', '6.5', '4', 'sat-svg-wing', '0.5'),
+    makeRect('11.5', '7', '6.5', '4', 'sat-svg-wing', '0.5'),
+    makeRect('7.8', '3.5', '2.4', '11', 'sat-svg-body', '0.6'),
+    makeRect('6.5', '8', '5', '1.8', 'sat-svg-body'),
+  )
+  return svg
+}
+
 function createBaseStyle(
   projection: ProjectionMode,
-  initialData: FeatureCollection<Point>,
+  initialFireData: FeatureCollection<Point>,
+  initialOrbitalState: LiveOrbitalState,
   initialUserData: FeatureCollection<Point>,
 ): StyleSpecification {
   return {
@@ -120,9 +174,25 @@ function createBaseStyle(
         attribution:
           'Sentinel-2 cloudless — <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer">s2maps.eu</a> by <a href="https://eox.at" target="_blank" rel="noopener noreferrer">EOX IT Services GmbH</a> (Contains modified Copernicus Sentinel data 2025)',
       },
+      'satellite-swaths': {
+        type: 'geojson',
+        data: initialOrbitalState.swathsGeoJson,
+      },
+      'satellite-tracks-past': {
+        type: 'geojson',
+        data: initialOrbitalState.pastTracksGeoJson,
+      },
+      'satellite-tracks-future': {
+        type: 'geojson',
+        data: initialOrbitalState.futureTracksGeoJson,
+      },
+      'satellite-positions': {
+        type: 'geojson',
+        data: initialOrbitalState.positionsGeoJson,
+      },
       'fire-anomalies': {
         type: 'geojson',
-        data: initialData,
+        data: initialFireData,
       },
       'user-geolocation': {
         type: 'geojson',
@@ -134,6 +204,81 @@ function createBaseStyle(
         id: 'basemap-layer',
         type: 'raster',
         source: 'eox-s2cloudless',
+      },
+      {
+        id: 'satellite-swaths-fill',
+        type: 'fill',
+        source: 'satellite-swaths',
+        paint: {
+          'fill-color': ['get', 'color'],
+          'fill-opacity': ['match', ['get', 'swathRole'], 'nadir', 0.14, 0.045],
+        },
+      },
+      {
+        id: 'satellite-swaths-wide-outline',
+        type: 'line',
+        source: 'satellite-swaths',
+        filter: ['==', ['get', 'swathRole'], 'wide'],
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 1,
+          'line-opacity': 0.28,
+          'line-dasharray': [3, 4],
+        },
+      },
+      {
+        id: 'satellite-swaths-nadir-outline',
+        type: 'line',
+        source: 'satellite-swaths',
+        filter: ['==', ['get', 'swathRole'], 'nadir'],
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 1.1,
+          'line-opacity': 0.45,
+        },
+      },
+      {
+        id: 'satellite-tracks-past-line',
+        type: 'line',
+        source: 'satellite-tracks-past',
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 2,
+          'line-opacity': 0.55,
+        },
+      },
+      {
+        id: 'satellite-tracks-future-line',
+        type: 'line',
+        source: 'satellite-tracks-future',
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 2.2,
+          'line-opacity': 0.9,
+          'line-dasharray': [2, 2],
+        },
+      },
+      {
+        id: 'satellite-positions-halo',
+        type: 'circle',
+        source: 'satellite-positions',
+        paint: {
+          'circle-radius': 9,
+          'circle-color': ['get', 'color'],
+          'circle-opacity': 0.28,
+          'circle-blur': 0.4,
+        },
+      },
+      {
+        id: 'satellite-positions-core',
+        type: 'circle',
+        source: 'satellite-positions',
+        paint: {
+          'circle-radius': 4,
+          'circle-color': ['get', 'color'],
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': '#f8fafc',
+        },
       },
       {
         id: 'fire-anomaly-halo',
@@ -180,7 +325,7 @@ function createBaseStyle(
         source: 'user-geolocation',
         paint: {
           'circle-radius': 14,
-          'circle-color': '#22d3ee',
+          'circle-color': '#3b82f6',
           'circle-opacity': 0.28,
         },
       },
@@ -190,13 +335,31 @@ function createBaseStyle(
         source: 'user-geolocation',
         paint: {
           'circle-radius': 6,
-          'circle-color': '#22d3ee',
+          'circle-color': '#60a5fa',
           'circle-stroke-width': 2,
           'circle-stroke-color': '#ffffff',
         },
       },
     ],
   }
+}
+
+function setGeoJsonSourceData(
+  map: MapLibreMap,
+  sourceId: string,
+  data: FeatureCollection<Point | MultiLineString | Polygon>,
+): void {
+  const source = map.getSource(sourceId) as GeoJSONSource | undefined
+  if (source) {
+    source.setData(data)
+  }
+}
+
+function syncOrbitalSources(map: MapLibreMap, state: LiveOrbitalState): void {
+  setGeoJsonSourceData(map, 'satellite-swaths', state.swathsGeoJson)
+  setGeoJsonSourceData(map, 'satellite-tracks-past', state.pastTracksGeoJson)
+  setGeoJsonSourceData(map, 'satellite-tracks-future', state.futureTracksGeoJson)
+  setGeoJsonSourceData(map, 'satellite-positions', state.positionsGeoJson)
 }
 
 export function EarthMapStage({
@@ -211,9 +374,15 @@ export function EarthMapStage({
   cameraFocusRequest,
   autoLocateOnMount,
   geolocationMaxZoom = DEFAULT_GEOLOCATION_MAX_ZOOM,
+  orbitalState,
+  showOrbits,
+  onShowOrbitsChange,
+  selectedSatelliteId,
+  onSelectSatellite,
 }: EarthMapStageProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<MapLibreMap | null>(null)
+  const satMarkersRef = useRef<Map<string, SatelliteMarkerEntry>>(new Map())
   const initialViewportRef = useRef<MapViewportState>(initialViewport)
   const latestOnViewportChangeRef = useRef(onViewportChange)
   const userInteractedRef = useRef(false)
@@ -241,6 +410,10 @@ export function EarthMapStage({
   const latestGeoJsonRef = useRef(geoJson)
   const latestUserGeoJsonRef = useRef(userLocationGeoJson)
   const latestProjectionRef = useRef(projectionMode)
+  const latestOrbitalStateRef = useRef(orbitalState)
+  const latestShowOrbitsRef = useRef(showOrbits)
+  const latestSelectedSatIdRef = useRef(selectedSatelliteId)
+  const onSelectSatelliteRef = useRef(onSelectSatellite)
 
   useEffect(() => {
     latestOnViewportChangeRef.current = onViewportChange
@@ -252,6 +425,78 @@ export function EarthMapStage({
       isMountedRef.current = false
     }
   }, [])
+
+  const syncSatelliteMarkers = (
+    map: MapLibreMap,
+    snapshots: readonly LiveSatelliteSnapshot[],
+    orbitsVisible: boolean,
+    activeSatId: string | null,
+  ) => {
+    const entries = satMarkersRef.current
+
+    if (!orbitsVisible || snapshots.length === 0) {
+      for (const entry of entries.values()) {
+        entry.marker.remove()
+      }
+      entries.clear()
+      return
+    }
+
+    const activeIds = new Set(snapshots.map((sat) => sat.id))
+    for (const [id, entry] of entries) {
+      if (!activeIds.has(id)) {
+        entry.marker.remove()
+        entries.delete(id)
+      }
+    }
+
+    for (const sat of snapshots) {
+      let entry = entries.get(sat.id)
+      if (!entry) {
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.className = 'sat-marker-badge'
+        button.dataset.satId = sat.id
+
+        const iconSvg = createSpacecraftIconSvg()
+        const labelSpan = document.createElement('span')
+        labelSpan.className = 'sat-marker-label'
+
+        button.append(iconSvg, labelSpan)
+        button.addEventListener('click', (event) => {
+          event.stopPropagation()
+          userInteractedRef.current = true
+          const current = latestOrbitalStateRef.current.snapshots.find((item) => item.id === sat.id)
+          if (current) {
+            onSelectSatelliteRef.current(current)
+          }
+        })
+
+        const marker = new Marker({
+          element: button,
+          anchor: 'left',
+          offset: [10, 0],
+          subpixelPositioning: true,
+          opacityWhenCovered: '0.12',
+        })
+          .setLngLat([sat.lng, sat.lat])
+          .addTo(map)
+
+        entry = { marker, button, iconSvg, labelSpan }
+        entries.set(sat.id, entry)
+      }
+
+      entry.marker.setLngLat([sat.lng, sat.lat])
+      entry.button.style.setProperty('--sat-color', sat.color)
+      entry.button.setAttribute('aria-pressed', activeSatId === sat.id ? 'true' : 'false')
+      entry.button.setAttribute(
+        'aria-label',
+        `Focus ${sat.name} (${sat.instrumentLabel}) at ${sat.lat.toFixed(1)} degrees latitude, ${sat.lng.toFixed(1)} degrees longitude`,
+      )
+      entry.iconSvg.style.transform = `rotate(${sat.headingDeg.toFixed(1)}deg)`
+      entry.labelSpan.textContent = `${sat.glyph} ${sat.shortBadge}`
+    }
+  }
 
   useEffect(() => {
     const container = mapContainerRef.current
@@ -269,6 +514,7 @@ export function EarthMapStage({
         style: createBaseStyle(
           latestProjectionRef.current,
           latestGeoJsonRef.current,
+          latestOrbitalStateRef.current,
           latestUserGeoJsonRef.current,
         ),
         center: [normalizeLng(startViewport.lng), clampLat(startViewport.lat)],
@@ -284,15 +530,16 @@ export function EarthMapStage({
         if (!map) {
           return
         }
-        const fireSource = map.getSource('fire-anomalies') as GeoJSONSource | undefined
-        if (fireSource) {
-          fireSource.setData(latestGeoJsonRef.current)
-        }
-        const userSource = map.getSource('user-geolocation') as GeoJSONSource | undefined
-        if (userSource) {
-          userSource.setData(latestUserGeoJsonRef.current)
-        }
+        setGeoJsonSourceData(map, 'fire-anomalies', latestGeoJsonRef.current)
+        syncOrbitalSources(map, latestOrbitalStateRef.current)
+        setGeoJsonSourceData(map, 'user-geolocation', latestUserGeoJsonRef.current)
         map.setProjection({ type: latestProjectionRef.current })
+        syncSatelliteMarkers(
+          map,
+          latestOrbitalStateRef.current.snapshots,
+          latestShowOrbitsRef.current,
+          latestSelectedSatIdRef.current,
+        )
       })
 
       map.on('movestart', (event: MapMovementEvent) => {
@@ -331,7 +578,12 @@ export function EarthMapStage({
       queueMicrotask(() => setMapError(message))
     }
 
+    const markerMap = satMarkersRef.current
     return () => {
+      for (const entry of markerMap.values()) {
+        entry.marker.remove()
+      }
+      markerMap.clear()
       resizeObserver?.disconnect()
       map?.remove()
       mapInstanceRef.current = null
@@ -344,10 +596,7 @@ export function EarthMapStage({
     if (!map || !map.isStyleLoaded()) {
       return
     }
-    const source = map.getSource('fire-anomalies') as GeoJSONSource | undefined
-    if (source) {
-      source.setData(geoJson)
-    }
+    setGeoJsonSourceData(map, 'fire-anomalies', geoJson)
   }, [geoJson])
 
   useEffect(() => {
@@ -356,11 +605,24 @@ export function EarthMapStage({
     if (!map || !map.isStyleLoaded()) {
       return
     }
-    const source = map.getSource('user-geolocation') as GeoJSONSource | undefined
-    if (source) {
-      source.setData(userLocationGeoJson)
-    }
+    setGeoJsonSourceData(map, 'user-geolocation', userLocationGeoJson)
   }, [userLocationGeoJson])
+
+  useEffect(() => {
+    latestOrbitalStateRef.current = orbitalState
+    latestShowOrbitsRef.current = showOrbits
+    latestSelectedSatIdRef.current = selectedSatelliteId
+    onSelectSatelliteRef.current = onSelectSatellite
+
+    const map = mapInstanceRef.current
+    if (!map) {
+      return
+    }
+    if (map.isStyleLoaded()) {
+      syncOrbitalSources(map, orbitalState)
+    }
+    syncSatelliteMarkers(map, orbitalState.snapshots, showOrbits, selectedSatelliteId)
+  }, [orbitalState, showOrbits, selectedSatelliteId, onSelectSatellite])
 
   useEffect(() => {
     latestProjectionRef.current = projectionMode
@@ -570,8 +832,16 @@ export function EarthMapStage({
       <div
         className="map-hud map-hud-top-end"
         role="group"
-        aria-label="Map projection, location, and zoom controls"
+        aria-label="Map projection, orbits, location, and zoom controls"
       >
+        <button
+          type="button"
+          className="hud-btn"
+          aria-pressed={showOrbits}
+          onClick={() => onShowOrbitsChange(!showOrbits)}
+        >
+          Orbits
+        </button>
         <button
           type="button"
           className="hud-btn"
@@ -601,14 +871,14 @@ export function EarthMapStage({
         </button>
       </div>
 
-      <div className="map-hud map-hud-bottom-start" aria-label="Map anomaly legend and coordinates">
+      <div className="map-hud map-hud-bottom-start" aria-label="Map anomaly and orbit legend">
         <div className="hud-legend-header">
           <span className="hud-kicker">{MONTH_LABELS[selectedMonth]} &middot; {VIEW_MODE_LABELS[viewMode]}</span>
           <span className="hud-coords">
             Lat {viewport.lat.toFixed(2)}&deg;, Lon {viewport.lng.toFixed(2)}&deg; &middot; z{viewport.zoom}
           </span>
         </div>
-        <ul className="hud-legend-list">
+        <ul className="hud-legend-list" role="list">
           <li>
             <span className="legend-glyph legend-glyph-anomaly" aria-hidden="true">&#9650;</span>
             <span>Positive Anomaly (above typical)</span>
@@ -621,6 +891,18 @@ export function EarthMapStage({
             <span className="legend-glyph legend-glyph-below" aria-hidden="true">&#9660;</span>
             <span>Below Typical</span>
           </li>
+          {showOrbits && orbitalState.snapshots.length > 0 && sensorFilter !== 'viirs' && (
+            <li>
+              <span className="legend-glyph legend-glyph-modis" aria-hidden="true">&#9670;</span>
+              <span>MODIS Orbits (Terra, Aqua &middot; 2,330 km swath)</span>
+            </li>
+          )}
+          {showOrbits && orbitalState.snapshots.length > 0 && sensorFilter !== 'modis' && (
+            <li>
+              <span className="legend-glyph legend-glyph-viirs" aria-hidden="true">&#9679;</span>
+              <span>VIIRS Orbits (NOAA-20, NOAA-21 &middot; Solid past / Dashed +90m)</span>
+            </li>
+          )}
           {userLocation && (
             <li>
               <span className="legend-glyph legend-glyph-user" aria-hidden="true">&#9673;</span>
