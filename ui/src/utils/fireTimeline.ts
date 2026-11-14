@@ -12,13 +12,15 @@ export const MIN_TIMELINE_CONFIDENCE_OPACITY = 0.32
 
 const DEG_TO_RAD = Math.PI / 180
 const RAD_TO_DEG = 180 / Math.PI
-const SUN_SAMPLE_STEPS = 96
+const SUN_SAMPLE_STEPS = 144
 const SUN_BOUNDARY_MARGIN_MS = 15 * 60_000
 const SUN_VIEWBOX_WIDTH = 240
 const SUN_VIEWBOX_HEIGHT = 100
 const SUN_HORIZON_Y = 52
 const SUN_HALF_SPAN_Y = 40
 const SUN_MIN_EFFECTIVE_ALT_RANGE_DEG = 25
+const SUNRISE_SUNSET_ALTITUDE_SIN = Math.sin(SUNRISE_SUNSET_ALTITUDE_DEG * DEG_TO_RAD)
+const SUN_MIN_EFFECTIVE_ALT_SIN_RANGE = Math.sin(SUN_MIN_EFFECTIVE_ALT_RANGE_DEG * DEG_TO_RAD)
 const PAST_WINDOW_GRACE_MS = 30 * 60_000
 
 const localTimeFormatterCache = new Map<string, Intl.DateTimeFormat>()
@@ -172,17 +174,20 @@ export function computeClusterCentroid(spots: readonly FireSpotTooltipInput[]): 
   return [meanLng, meanLat]
 }
 
-export function computeSolarAltitudeDeg(unixMs: number, latDeg: number, lngDeg: number): number {
+export function computeSolarAltitudeSin(unixMs: number, latDeg: number, lngDeg: number): number {
   const subsolar = computeSubsolarPoint(unixMs)
   const latRad = clamp(latDeg, -90, 90) * DEG_TO_RAD
   const lonRad = lngDeg * DEG_TO_RAD
-  const sinAlt = clamp(
+  return clamp(
     Math.sin(latRad) * Math.sin(subsolar.latRad) +
       Math.cos(latRad) * Math.cos(subsolar.latRad) * Math.cos(lonRad - subsolar.lonRad),
     -1,
     1,
   )
-  return Math.asin(sinAlt) * RAD_TO_DEG
+}
+
+export function computeSolarAltitudeDeg(unixMs: number, latDeg: number, lngDeg: number): number {
+  return Math.asin(computeSolarAltitudeSin(unixMs, latDeg, lngDeg)) * RAD_TO_DEG
 }
 
 function refineCrossingTimestampMs(
@@ -234,7 +239,7 @@ export function computePlaceSunTimeline(
 ): PlaceSunTimeline {
   const safeSpanMs = Math.max(TIMELINE_SLOT_MS, windowEndMs - windowStartMs)
   const evalEffectiveAlt = (ms: number) =>
-    computeSolarAltitudeDeg(ms, latDeg, lngDeg) - SUNRISE_SUNSET_ALTITUDE_DEG
+    computeSolarAltitudeSin(ms, latDeg, lngDeg) - SUNRISE_SUNSET_ALTITUDE_SIN
 
   const sampleEffectiveAlts: number[] = []
   let maxAbsEffectiveAlt = 0
@@ -300,7 +305,7 @@ export function computePlaceSunTimeline(
           : 'normal'
       : 'normal'
 
-  const denom = Math.max(SUN_MIN_EFFECTIVE_ALT_RANGE_DEG, maxAbsEffectiveAlt)
+  const denom = Math.max(SUN_MIN_EFFECTIVE_ALT_SIN_RANGE, maxAbsEffectiveAlt)
   const mapY = (effectiveAlt: number) =>
     clamp(SUN_HORIZON_Y - (effectiveAlt / denom) * SUN_HALF_SPAN_Y, 6, 96)
 

@@ -81,6 +81,42 @@ describe('place-relative sun curve with browser-local time drift', () => {
     assert.ok(Math.abs(Math.abs(lng) - 180) < 0.5, `expected near ±180°, got ${lng}`)
     assert.ok(Math.abs(lat - 55.1) < 1e-6)
   })
+
+  it('renders a smoothly rounded cosine crest rather than a triangle cusp when the sun passes near or through the zenith', () => {
+    const windowEndMs = Date.UTC(2026, 10, 15, 18, 0, 0)
+    const windowStartMs = windowEndMs - 24 * TIMELINE_SLOT_MS
+
+    for (const latDeg of [-14.422, -18.4]) {
+      const sun = computePlaceSunTimeline(latDeg, 126.853, windowStartMs, windowEndMs, 'Australia/Darwin')
+      const pts = Array.from(sun.pathD.matchAll(/[ML](-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g), (m) => [
+        Number(m[1]),
+        Number(m[2]),
+      ])
+      assert.equal(pts.length, 145)
+
+      let idxNoon = 0
+      for (let i = 1; i < pts.length; i++) {
+        if (pts[i][1] < pts[idxNoon][1]) {
+          idxNoon = i
+        }
+      }
+      assert.ok(idxNoon > 18 && idxNoon < pts.length - 19, `unexpected noon index ${idxNoon}`)
+
+      const dropFirstHour = pts[idxNoon + 6][1] - pts[idxNoon][1]
+      const dropThirdHour = pts[idxNoon + 18][1] - pts[idxNoon + 12][1]
+      assert.ok(dropThirdHour > 0)
+      assert.ok(
+        dropFirstHour < 0.35 * dropThirdHour,
+        `expected cosine crest at lat ${latDeg}, got 1h drop ${dropFirstHour.toFixed(2)} vs 3rd-hour drop ${dropThirdHour.toFixed(2)}`,
+      )
+
+      assert.ok(sun.sunriseMs !== null && sun.sunsetMs !== null)
+      const sunriseAlt = computeSolarAltitudeDeg(sun.sunriseMs, latDeg, 126.853)
+      const sunsetAlt = computeSolarAltitudeDeg(sun.sunsetMs, latDeg, 126.853)
+      assert.ok(Math.abs(sunriseAlt - SUNRISE_SUNSET_ALTITUDE_DEG) < 0.1)
+      assert.ok(Math.abs(sunsetAlt - SUNRISE_SUNSET_ALTITUDE_DEG) < 0.1)
+    }
+  })
 })
 
 describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
