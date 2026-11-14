@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { FeatureCollection, MultiLineString, Point, Polygon } from 'geojson'
 import { LngLat, LngLatBounds, Map as MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl'
 import type {
@@ -13,11 +13,9 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { MARK_STROKE_COLOR, STATUS_COLORS, USER_LOCATION_COLORS } from '../data/dataPalette'
 import {
   buildStubGeoJson,
-  MONTH_LABELS,
   type ProjectionMode,
   type SensorFilter,
   type StatusCategory,
-  type ViewMode,
 } from '../data/stubSeasonalData'
 import {
   clampGeolocationTargetZoom,
@@ -30,7 +28,8 @@ import {
   type MapViewportState,
 } from '../state/urlHashState'
 import type { LiveOrbitalState, LiveSatelliteSnapshot } from '../utils/satelliteOrbits'
-import { SegmentedControl, type SegmentedOption } from './SegmentedControl'
+import { MapControls } from './MapControls'
+import { MapLegend } from './MapLegend'
 
 // MapLibre v6 is ESM-only: when bundled it resolves its worker next to the chunk via
 // import.meta.url, a file Vite never emits. Point it at a Vite-emitted worker asset instead.
@@ -46,9 +45,7 @@ export interface CameraFocusRequest {
 
 interface EarthMapStageProps {
   selectedMonth: number
-  viewMode: ViewMode
   sensorFilter: SensorFilter
-  onSensorFilterChange: (next: SensorFilter) => void
   projectionMode: ProjectionMode
   onProjectionModeChange: (next: ProjectionMode) => void
   initialViewport: MapViewportState
@@ -72,22 +69,9 @@ interface SatelliteMarkerEntry {
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
-const VIEW_MODE_LABELS: Record<ViewMode, string> = {
-  anomaly: 'Anomaly vs. Typical Calendar',
-  seasonal: 'Seasonal Climatology Dynamic',
-  sensors: 'MODIS 1km vs. VIIRS 375m Coverage',
-}
-
-const SENSOR_FILTER_OPTIONS: readonly SegmentedOption<SensorFilter>[] = [
-  { value: 'harmonized', label: 'Harmonized' },
-  { value: 'modis', label: 'MODIS 1km' },
-  { value: 'viirs', label: 'VIIRS 375m' },
-]
-
-const PROJECTION_OPTIONS: readonly SegmentedOption<ProjectionMode>[] = [
-  { value: 'mercator', label: '2D', ariaLabel: '2D map' },
-  { value: 'globe', label: '3D', ariaLabel: '3D globe' },
-]
+// The legend starts open only on a map at least this wide (in rem), matching the CSS breakpoint.
+const WIDE_STAGE_MIN_REM = 36
+const GEO_STATUS_TIMEOUT_MS = 8000
 
 // MapLibre match expression: statusCategory -> palette color (below-typical is the fallback)
 const STATUS_COLOR_EXPRESSION = [
@@ -384,9 +368,7 @@ function syncOrbitalSources(map: MapLibreMap, state: LiveOrbitalState): void {
 
 export function EarthMapStage({
   selectedMonth,
-  viewMode,
   sensorFilter,
-  onSensorFilterChange,
   projectionMode,
   onProjectionModeChange,
   initialViewport,
@@ -400,6 +382,7 @@ export function EarthMapStage({
   selectedSatelliteId,
   onSelectSatellite,
 }: EarthMapStageProps) {
+  const stageRef = useRef<HTMLElement | null>(null)
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<MapLibreMap | null>(null)
   const satMarkersRef = useRef<Map<string, SatelliteMarkerEntry>>(new Map())
@@ -412,6 +395,7 @@ export function EarthMapStage({
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
   const [isLocating, setIsLocating] = useState(false)
   const [geoErrorMessage, setGeoErrorMessage] = useState<string | null>(null)
+  const [isStageWide, setIsStageWide] = useState(true)
   const [viewport, setViewport] = useState<MapViewportState>(() => ({
     lng: normalizeLng(initialViewport.lng),
     lat: clampLat(initialViewport.lat),
@@ -438,6 +422,29 @@ export function EarthMapStage({
   useEffect(() => {
     latestOnViewportChangeRef.current = onViewportChange
   }, [onViewportChange])
+
+  useLayoutEffect(() => {
+    const stage = stageRef.current
+    if (!stage) {
+      return
+    }
+    const update = () => {
+      const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+      setIsStageWide(stage.getBoundingClientRect().width >= WIDE_STAGE_MIN_REM * rootFontSize)
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(stage)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!geoErrorMessage) {
+      return
+    }
+    const timer = window.setTimeout(() => setGeoErrorMessage(null), GEO_STATUS_TIMEOUT_MS)
+    return () => window.clearTimeout(timer)
+  }, [geoErrorMessage])
 
   useEffect(() => {
     isMountedRef.current = true
@@ -543,10 +550,10 @@ export function EarthMapStage({
         maxTileCacheZoomLevels: 8,
         attributionControl: {
           compact: true,
-          customAttribution: [
-            'Fire/sensor reference: <a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener noreferrer">NASA FIRMS</a> (NASA EOS MODIS, NOAA/NASA VIIRS; illustrative baseline)',
-            'Orbits: <a href="https://celestrak.org/" target="_blank" rel="noopener noreferrer">CelesTrak</a>',
-          ],
+          // Kept short so the EOX/Copernicus basemap credit stays readable on small maps;
+          // the side panel carries the full attribution.
+          customAttribution:
+            '<a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener noreferrer">NASA FIRMS</a> (sample data) &middot; <a href="https://celestrak.org/" target="_blank" rel="noopener noreferrer">CelesTrak</a>',
         },
       })
 
@@ -831,8 +838,32 @@ export function EarthMapStage({
     })
   }
 
+  const hasOrbitSnapshots = showOrbits && orbitalState.snapshots.length > 0
+
+  // HUD before the canvas in DOM order, so Tab reaches the map controls before MapLibre's own.
   return (
-    <main className="map-stage" aria-label="Interactive Earth fire and seasonal anomaly map">
+    <main ref={stageRef} className="map-stage" aria-label="Fire activity map">
+      <MapLegend
+        selectedMonth={selectedMonth}
+        defaultOpen={isStageWide}
+        showModisOrbits={hasOrbitSnapshots && sensorFilter !== 'viirs'}
+        showViirsOrbits={hasOrbitSnapshots && sensorFilter !== 'modis'}
+        showUserLocation={userLocation !== null}
+      />
+
+      <MapControls
+        onZoomIn={() => handleZoom(1)}
+        onZoomOut={() => handleZoom(-1)}
+        onLocate={() => triggerGeolocation(false)}
+        isLocating={isLocating}
+        geoErrorMessage={geoErrorMessage}
+        onResetView={handleResetView}
+        projectionMode={projectionMode}
+        onProjectionModeChange={onProjectionModeChange}
+        showOrbits={showOrbits}
+        onShowOrbitsChange={onShowOrbitsChange}
+      />
+
       <div ref={mapContainerRef} className="map-canvas" />
 
       {mapError && (
@@ -840,107 +871,6 @@ export function EarthMapStage({
           <p>Map layers unavailable here ({mapError}).</p>
         </div>
       )}
-
-      <div className="map-hud map-hud-top-start">
-        <span className="hud-kicker" aria-hidden="true">Sensor Feed</span>
-        <SegmentedControl
-          label="Sensor layer filter"
-          options={SENSOR_FILTER_OPTIONS}
-          value={sensorFilter}
-          onChange={onSensorFilterChange}
-          className="segmented-stack-narrow"
-        />
-      </div>
-
-      <div
-        className="map-hud map-hud-top-end"
-        role="group"
-        aria-label="Map projection, orbits, location, and zoom controls"
-      >
-        <button
-          type="button"
-          className="hud-btn"
-          aria-pressed={showOrbits}
-          onClick={() => onShowOrbitsChange(!showOrbits)}
-        >
-          Orbits
-        </button>
-        <SegmentedControl
-          label="Map projection"
-          options={PROJECTION_OPTIONS}
-          value={projectionMode}
-          onChange={onProjectionModeChange}
-        />
-        <button
-          type="button"
-          className="hud-btn"
-          onClick={() => triggerGeolocation(false)}
-          disabled={isLocating}
-        >
-          {isLocating ? 'Locating…' : 'My Location'}
-        </button>
-        <button type="button" className="hud-btn" aria-label="Zoom in" onClick={() => handleZoom(1)}>
-          +
-        </button>
-        <button type="button" className="hud-btn" aria-label="Zoom out" onClick={() => handleZoom(-1)}>
-          &minus;
-        </button>
-        <button type="button" className="hud-btn" onClick={handleResetView}>
-          Reset Earth
-        </button>
-      </div>
-
-      <div className="map-hud map-hud-bottom-start" aria-label="Map anomaly and orbit legend">
-        <div className="hud-legend-header">
-          <span className="hud-kicker">{MONTH_LABELS[selectedMonth]} &middot; {VIEW_MODE_LABELS[viewMode]}</span>
-          <span className="hud-coords">
-            Lat {viewport.lat.toFixed(2)}&deg;, Lon {viewport.lng.toFixed(2)}&deg; &middot; z{viewport.zoom}
-          </span>
-        </div>
-        <ul className="hud-legend-list" role="list">
-          <li>
-            <span className="legend-glyph legend-glyph-anomaly" aria-hidden="true">&#9650;</span>
-            <span>Positive Anomaly (above typical)</span>
-          </li>
-          <li>
-            <span className="legend-glyph legend-glyph-typical" aria-hidden="true">&#9679;</span>
-            <span>Fits Typical Season</span>
-          </li>
-          <li>
-            <span className="legend-glyph legend-glyph-below" aria-hidden="true">&#9660;</span>
-            <span>Below Typical</span>
-          </li>
-          {showOrbits && orbitalState.snapshots.length > 0 && sensorFilter !== 'viirs' && (
-            <li>
-              <span className="legend-glyph" aria-hidden="true">
-                <span className="legend-glyph-terra">&#9670;</span>
-                <span className="legend-glyph-aqua">&#9670;</span>
-              </span>
-              <span>MODIS Orbits (Terra, Aqua &middot; 2,330 km swath)</span>
-            </li>
-          )}
-          {showOrbits && orbitalState.snapshots.length > 0 && sensorFilter !== 'modis' && (
-            <li>
-              <span className="legend-glyph" aria-hidden="true">
-                <span className="legend-glyph-noaa-20">&#9679;</span>
-                <span className="legend-glyph-noaa-21">&#9679;</span>
-              </span>
-              <span>VIIRS Orbits (NOAA-20, NOAA-21 &middot; Solid past / Dashed +90m)</span>
-            </li>
-          )}
-          {userLocation && (
-            <li>
-              <span className="legend-glyph legend-glyph-user" aria-hidden="true">&#9673;</span>
-              <span>Your Location</span>
-            </li>
-          )}
-        </ul>
-        {geoErrorMessage && (
-          <p className="hud-geo-status" role="status">
-            {geoErrorMessage}
-          </p>
-        )}
-      </div>
     </main>
   )
 }

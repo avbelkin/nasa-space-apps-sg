@@ -28,6 +28,9 @@
   --delta-up-dark: #fdba74;
   --delta-down-light: #1e40af;
   --delta-down-dark: #93c5fd;
+  /* API indicator dot only; never a data color */
+  --status-ok-light: #15803d;
+  --status-ok-dark: #4ade80;
 
   --surface-bg: var(--surface-bg-light);
   --surface-card: var(--surface-card-light);
@@ -40,6 +43,7 @@
   --code-bg: var(--code-bg-light);
   --delta-up: var(--delta-up-light);
   --delta-down: var(--delta-down-light);
+  --status-ok: var(--status-ok-light);
 
   @media (prefers-color-scheme: dark) {
     --surface-bg: var(--surface-bg-dark);
@@ -53,6 +57,7 @@
     --code-bg: var(--code-bg-dark);
     --delta-up: var(--delta-up-dark);
     --delta-down: var(--delta-down-dark);
+    --status-ok: var(--status-ok-dark);
   }
 
   @supports (color: light-dark(white, black)) {
@@ -67,6 +72,7 @@
     --code-bg: light-dark(var(--code-bg-light), var(--code-bg-dark));
     --delta-up: light-dark(var(--delta-up-light), var(--delta-up-dark));
     --delta-down: light-dark(var(--delta-down-light), var(--delta-down-dark));
+    --status-ok: light-dark(var(--status-ok-light), var(--status-ok-dark));
   }
 
   color-scheme: light dark;
@@ -96,4 +102,17 @@ code {
   padding: 0.1rem 0.35rem;
   border-radius: 0.25rem;
   overflow-wrap: anywhere;
+}
+
+/* Text for assistive technology only */
+.visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }

@@ -1,15 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { EarthMapStage, type CameraFocusRequest } from './components/EarthMapStage'
+import { MonthStrip } from './components/MonthStrip'
+import type { SatelliteFeedState } from './components/panel/SatelliteDetails'
+import { SidePanel } from './components/SidePanel'
 import { DATA_PALETTE_CSS_VARIABLES } from './data/dataPalette'
 import {
   evaluateRegionsForMonth,
   MONTHLY_PROFILE,
   type ProjectionMode,
+  type RegionalEvaluatedRegime,
   type SensorFilter,
-  type StatusCategory,
   type ViewMode,
 } from './data/stubSeasonalData'
+import {
+  apiBaseUrl,
+  fetchApiStatus,
+  isProdUnconfigured,
+  type ApiStatusResponse,
+  type ConnectionState,
+} from './state/apiStatus'
 import {
   DEFAULT_GEOLOCATION_MAX_ZOOM,
   parseUrlHash,
@@ -24,54 +34,12 @@ import {
   type SatelliteOrbitsResponse,
 } from './utils/satelliteOrbits'
 
-interface ApiStatusResponse {
-  service: string
-  status: string
-  environment: string
-  framework: string
-  timestampUtc: string
-}
-
-type ConnectionState = 'checking' | 'connected' | 'unreachable' | 'unconfigured'
-
-const rawApiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
-const apiBaseUrl = rawApiBaseUrl.trim().replace(/\/$/, '')
-const statusEndpoint = apiBaseUrl ? `${apiBaseUrl}/api/status` : '/api/status'
-const isProdUnconfigured = import.meta.env.PROD && !apiBaseUrl
 const ORBITS_REFRESH_INTERVAL_MS = 20 * 60 * 1000
-
-const STATUS_LABELS: Record<ConnectionState, string> = {
-  checking: 'Checking...',
-  connected: 'Connected',
-  unreachable: 'Unreachable',
-  unconfigured: 'Not Configured',
-}
-
-async function fetchApiStatus(signal?: AbortSignal): Promise<ApiStatusResponse> {
-  const response = await fetch(statusEndpoint, {
-    headers: { Accept: 'application/json' },
-    signal,
-  })
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} ${response.statusText}`)
-  }
-  return (await response.json()) as ApiStatusResponse
-}
-
-// Delta text color follows the same status category as the map mark; the arrow carries direction.
-const REGION_DELTA_CLASS: Record<StatusCategory, string> = {
-  'anomaly-high': 'region-delta region-delta-above',
-  'fits-typical': 'region-delta',
-  'below-typical': 'region-delta region-delta-below',
-}
-
-function formatDeg(value: number, posHemisphere: string, negHemisphere: string): string {
-  const hemisphere = value >= 0 ? posHemisphere : negHemisphere
-  return `${Math.abs(value).toFixed(2)}\u00b0${hemisphere}`
-}
+const FOCUS_ZOOM = 3.6
 
 function App() {
   const [initialResolution] = useState(resolveInitialUrlHashState)
+  // No UI for the view mode any more; kept so the `mode` key in old links still round-trips.
   const [viewMode, setViewMode] = useState<ViewMode>(initialResolution.state.viewMode)
   const [sensorFilter, setSensorFilter] = useState<SensorFilter>(
     initialResolution.state.sensorFilter,
@@ -259,7 +227,6 @@ function App() {
     () => evaluateRegionsForMonth(selectedMonth, sensorFilter),
     [selectedMonth, sensorFilter],
   )
-  const monthDelta = monthProfile.currentIndex - monthProfile.typicalIndex
 
   const handleSelectSatellite = (satellite: LiveSatelliteSnapshot) => {
     setSelectedSatelliteId(satellite.id)
@@ -268,11 +235,29 @@ function App() {
     setCameraFocusRequest({
       lng: satellite.lng,
       lat: satellite.lat,
-      zoom: 3.6,
+      zoom: FOCUS_ZOOM,
       animate: true,
       requestId: ++focusRequestSeqRef.current,
     })
   }
+
+  const handleSelectRegion = (region: RegionalEvaluatedRegime) => {
+    setSelectedRegionId(region.id)
+    setCameraFocusRequest({
+      lng: region.coordinates[0],
+      lat: region.coordinates[1],
+      zoom: FOCUS_ZOOM,
+      animate: true,
+      requestId: ++focusRequestSeqRef.current,
+    })
+  }
+
+  const satelliteFeedState: SatelliteFeedState =
+    isProdUnconfigured || (orbitsError && !orbitsPayload)
+      ? 'unavailable'
+      : orbitalState.snapshots.length === 0
+        ? 'loading'
+        : 'ready'
 
   const tleSourceSummary = useMemo(() => {
     if (!orbitsPayload || orbitsPayload.satellites.length === 0) {
@@ -285,60 +270,13 @@ function App() {
   return (
     <div className="app-frame" style={DATA_PALETTE_CSS_VARIABLES}>
       <header className="top-bar wrapper-surface">
-        <div className="brand-group">
-          <h1>Earth Fire Calendar</h1>
-          <p className="brand-subtitle">
-            Earth-first MODIS &amp; VIIRS harmonization: seasonal dynamics vs. current calendar anomalies
-          </p>
-        </div>
-
-        <nav className="mode-switch" aria-label="Earth analysis view mode">
-          <button
-            type="button"
-            className="pill-button"
-            aria-pressed={viewMode === 'anomaly'}
-            onClick={() => setViewMode('anomaly')}
-          >
-            Anomaly vs. Typical
-          </button>
-          <button
-            type="button"
-            className="pill-button"
-            aria-pressed={viewMode === 'seasonal'}
-            onClick={() => setViewMode('seasonal')}
-          >
-            Seasonal Dynamics
-          </button>
-          <button
-            type="button"
-            className="pill-button"
-            aria-pressed={viewMode === 'sensors'}
-            onClick={() => setViewMode('sensors')}
-          >
-            Sensor Harmonization
-          </button>
-        </nav>
-
-        <div className="api-health-inline">
-          <span className="api-status-badge" aria-live="polite">
-            API: {STATUS_LABELS[connectionState]}
-          </span>
-          <button
-            type="button"
-            className="api-check-btn"
-            onClick={handleCheckBackend}
-            disabled={connectionState === 'checking'}
-          >
-            Check API
-          </button>
-        </div>
+        <h1>Earth Fire Calendar</h1>
+        <p className="brand-subtitle">See where fire activity is above or below typical</p>
       </header>
 
       <EarthMapStage
         selectedMonth={selectedMonth}
-        viewMode={viewMode}
         sensorFilter={sensorFilter}
-        onSensorFilterChange={setSensorFilter}
         projectionMode={projectionMode}
         onProjectionModeChange={setProjectionMode}
         initialViewport={initialResolution.state}
@@ -358,241 +296,29 @@ function App() {
         onSelectSatellite={handleSelectSatellite}
       />
 
-      <section className="timeline-bar wrapper-surface" aria-labelledby="timeline-heading">
-        <div className="timeline-header">
-          <h2 id="timeline-heading">Seasonal &amp; Calendar Context ({monthProfile.label})</h2>
-          <span className="timeline-status">
-            {monthProfile.classification} ({monthDelta >= 0 ? `+${monthDelta}` : monthDelta} vs. typical baseline)
-          </span>
-        </div>
+      <MonthStrip selectedMonth={selectedMonth} onSelectMonth={setSelectedMonth} />
 
-        <div className="month-track" role="group" aria-label="Select month on seasonal calendar">
-          {MONTHLY_PROFILE.map((point) => (
-            <button
-              key={point.label}
-              type="button"
-              className="month-btn"
-              aria-pressed={selectedMonth === point.monthIndex}
-              onClick={() => setSelectedMonth(point.monthIndex)}
-            >
-              <span className="month-label">{point.label}</span>
-              <span className="month-bars" aria-hidden="true">
-                <span
-                  className="month-bar month-bar-typical"
-                  style={{ blockSize: `${Math.max(20, point.typicalIndex)}%` }}
-                />
-                <span
-                  className="month-bar month-bar-current"
-                  style={{ blockSize: `${Math.max(20, point.currentIndex)}%` }}
-                />
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <aside className="side-panel wrapper-surface" aria-labelledby="inspector-heading">
-        <section className="panel-section">
-          <h2 id="inspector-heading">Current Fit vs. Typical Calendar</h2>
-          <p className="panel-note">{monthProfile.summary}</p>
-          <div className="baseline-compare">
-            <div className="metric-tile">
-              <span className="metric-label">Typical Baseline</span>
-              <span className="metric-value">{monthProfile.typicalIndex}</span>
-            </div>
-            <div className="metric-tile">
-              <span className="metric-label">Current Situation</span>
-              <span className="metric-value">
-                {monthProfile.currentIndex} ({monthDelta >= 0 ? `+${monthDelta}` : monthDelta})
-              </span>
-            </div>
-          </div>
-          <p className="panel-note">
-            Illustrative stub harmonizer data across <code>{sensorFilter}</code> mode; select a region below to focus Earth.
-          </p>
-        </section>
-
-        <section className="panel-section" aria-labelledby="orbits-heading">
-          <h3 id="orbits-heading">Live Satellite Orbits (MODIS &amp; VIIRS)</h3>
-          {isProdUnconfigured ? (
-            <p className="panel-note">
-              Backend URL not configured (<code>VITE_API_BASE_URL</code>). Connect the Cloud Run API or run the local backend to stream live MODIS &amp; VIIRS orbits.
-            </p>
-          ) : orbitsError && !orbitsPayload ? (
-            <p className="panel-note">
-              Orbit feed unavailable ({orbitsError}). Start the backend API and click <strong>Check API</strong>.
-            </p>
-          ) : orbitalState.snapshots.length === 0 ? (
-            <p className="panel-note">Fetching CelesTrak orbital window (&minus;45m to +90m)...</p>
-          ) : (
-            <>
-              <p className="panel-note">
-                1s client interpolation over CelesTrak window (TLE: <code>{tleSourceSummary}</code>). Click a spacecraft to center Earth.
-              </p>
-              <ul className="satellite-list" role="list">
-                {orbitalState.snapshots.map((sat) => (
-                  <li key={sat.id}>
-                    <button
-                      type="button"
-                      className="satellite-card-btn"
-                      aria-pressed={selectedSatelliteId === sat.id}
-                      onClick={() => handleSelectSatellite(sat)}
-                    >
-                      <span className="satellite-card-top">
-                        <span className="satellite-name">
-                          <span
-                            className="satellite-swatch"
-                            style={{ backgroundColor: sat.color }}
-                            aria-hidden="true"
-                          >
-                            {sat.glyph}
-                          </span>
-                          <span>{sat.name}</span>
-                        </span>
-                        <span className="satellite-sensor-tag">{sat.instrumentLabel}</span>
-                      </span>
-                      <span className="satellite-coords">
-                        {formatDeg(sat.lat, 'N', 'S')}, {formatDeg(sat.lng, 'E', 'W')} &middot; {sat.altitudeKm.toFixed(0)} km &middot; {sat.groundSpeedKmS.toFixed(2)} km/s
-                      </span>
-                      <span className="region-meta">
-                        {sat.crossingNote} &middot; Swath {sat.wideSwathKm.toLocaleString()} km &middot; Lag ~{sat.typicalIngestionLagMinutes}m
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </section>
-
-        <section className="panel-section" aria-labelledby="regions-heading">
-          <h3 id="regions-heading">Regional Regimes ({monthProfile.label})</h3>
-          <ul className="region-list" role="list">
-            {evaluatedRegions.map((regime) => (
-              <li key={regime.id}>
-                <button
-                  type="button"
-                  className="region-card-btn"
-                  aria-pressed={selectedRegionId === regime.id}
-                  onClick={() => {
-                    setSelectedRegionId(regime.id)
-                    setCameraFocusRequest({
-                      lng: regime.coordinates[0],
-                      lat: regime.coordinates[1],
-                      zoom: 3.6,
-                      animate: true,
-                      requestId: ++focusRequestSeqRef.current,
-                    })
-                  }}
-                >
-                  <span className="region-card-top">
-                    <span>{regime.region}</span>
-                    <span className={REGION_DELTA_CLASS[regime.statusCategory]}>
-                      {regime.delta !== 0 && (
-                        <span className="region-delta-arrow" aria-hidden="true">
-                          {regime.delta > 0 ? '\u25b2' : '\u25bc'}
-                        </span>
-                      )}
-                      {regime.delta >= 0 ? `+${regime.delta}` : regime.delta}
-                    </span>
-                  </span>
-                  <span className="region-meta">
-                    {regime.statusLabel} &middot; Current {regime.effectiveCurrent} vs. Typical {regime.effectiveTypical}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="panel-section" aria-labelledby="runtime-heading">
-          <h3 id="runtime-heading">Backend &amp; Deployment</h3>
-          <dl className="meta-list">
-            <div className="meta-row">
-              <dt>Mode / Base Path</dt>
-              <dd>
-                <code>{import.meta.env.MODE}</code> &middot; <code>{import.meta.env.BASE_URL}</code>
-              </dd>
-            </div>
-            <div className="meta-row">
-              <dt>API Endpoint</dt>
-              <dd>
-                <code>{apiBaseUrl ? statusEndpoint : 'Relative proxy (/api/status)'}</code>
-              </dd>
-            </div>
-            <div className="meta-row">
-              <dt>Backend Status</dt>
-              <dd>
-                {STATUS_LABELS[connectionState]}
-                {isProdUnconfigured ? ' — set VITE_API_BASE_URL repository variable' : ''}
-              </dd>
-            </div>
-            <div className="meta-row">
-              <dt>Runtime</dt>
-              <dd>
-                {payload ? (
-                  <>
-                    <code>{payload.service}</code> ({payload.environment} &middot; {payload.framework})
-                  </>
-                ) : (
-                  errorMessage ?? 'Unavailable'
-                )}
-              </dd>
-            </div>
-            <div className="meta-row">
-              <dt>Last Checked</dt>
-              <dd>{lastChecked}</dd>
-            </div>
-          </dl>
-        </section>
-
-        <footer className="panel-section panel-attribution">
-          <h3>Data Sources &amp; Attribution</h3>
-          <dl className="meta-list">
-            <div className="meta-row">
-              <dt>Active-Fire &amp; Sensor Reference</dt>
-              <dd>
-                MODIS (NASA EOS Terra &amp; Aqua) and VIIRS (NOAA/NASA JPSS) swath parameters and target hotspot schema via{' '}
-                <a
-                  href="https://firms.modaps.eosdis.nasa.gov/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  NASA FIRMS
-                </a>{' '}
-                (seasonal anomaly values shown are illustrative baselines pending live FIRMS feed integration).
-              </dd>
-            </div>
-            <div className="meta-row">
-              <dt>Orbital Ephemerides</dt>
-              <dd>
-                NORAD GP / TLE orbital elements from{' '}
-                <a href="https://celestrak.org/" target="_blank" rel="noopener noreferrer">
-                  CelesTrak
-                </a>
-                .
-              </dd>
-            </div>
-            <div className="meta-row">
-              <dt>Earth Basemap</dt>
-              <dd>
-                Sentinel-2 cloudless via{' '}
-                <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer">
-                  s2maps.eu
-                </a>{' '}
-                by{' '}
-                <a href="https://eox.at" target="_blank" rel="noopener noreferrer">
-                  EOX IT Services GmbH
-                </a>{' '}
-                (contains modified Copernicus Sentinel data 2025).
-              </dd>
-            </div>
-          </dl>
-          <p className="panel-note">
-            Independent project built for the 2026 NASA Space Apps Challenge. Not affiliated with, endorsed by, or an official product of NASA.
-          </p>
-        </footer>
-      </aside>
+      <SidePanel
+        selectedMonth={selectedMonth}
+        monthProfile={monthProfile}
+        sensorFilter={sensorFilter}
+        onSensorFilterChange={setSensorFilter}
+        regions={evaluatedRegions}
+        selectedRegionId={selectedRegionId}
+        onSelectRegion={handleSelectRegion}
+        onClearRegion={() => setSelectedRegionId(null)}
+        satelliteFeedState={satelliteFeedState}
+        satellites={orbitalState.snapshots}
+        selectedSatelliteId={selectedSatelliteId}
+        onSelectSatellite={handleSelectSatellite}
+        connectionState={connectionState}
+        apiPayload={payload}
+        apiErrorMessage={errorMessage}
+        lastChecked={lastChecked}
+        onCheckApi={handleCheckBackend}
+        tleSourceSummary={tleSourceSummary}
+        orbitsError={orbitsError}
+      />
     </div>
   )
 }

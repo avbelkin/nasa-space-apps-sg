@@ -4,7 +4,8 @@
   inline-size: 100%;
   min-block-size: 100dvh;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(56dvh, 1fr) auto auto;
+  /* Small screens: the map leaves room for the timeline header and month strip on the first screen */
+  grid-template-rows: auto minmax(44dvh, 1fr) auto auto;
   grid-template-areas:
     "topbar"
     "mapstage"
@@ -32,24 +33,17 @@
   border-radius: 0.75rem;
 }
 
-/* Outer Top Bar */
+/* Outer Top Bar: title and one line on what the page answers */
 .top-bar {
   grid-area: topbar;
-  padding: 0.75rem 1rem;
+  padding: 0.625rem 1rem;
   display: flex;
   flex-wrap: wrap;
-  align-items: safe center;
-  justify-content: space-between;
-  gap: 0.75rem 1.25rem;
+  align-items: baseline;
+  gap: 0.125rem 1rem;
 }
 
-.brand-group {
-  display: grid;
-  gap: 0.15rem;
-  min-inline-size: 0;
-}
-
-.brand-group h1 {
+.top-bar h1 {
   margin: 0;
   font-size: var(--fs-20);
   line-height: 1.2;
@@ -58,75 +52,34 @@
 .brand-subtitle {
   margin: 0;
   font-size: var(--fs-14);
+  line-height: 1.35;
   color: var(--text-muted);
 }
 
-.mode-switch {
-  display: flex;
-  flex-wrap: wrap;
-  flex-wrap: balance;
-  gap: 0.4rem;
-}
-
-.pill-button {
-  --tap-bg: var(--surface-subtle);
-  appearance: none;
-  border: 1px solid var(--border-subtle);
-  border-radius: 999px;
-  min-block-size: 2rem;
-  padding: 0.4rem 0.8rem;
-  font: inherit;
-  font-size: var(--fs-14);
-  font-weight: 600;
-  cursor: pointer;
-  background-color: var(--tap-bg);
-  color: var(--text-primary);
-}
-
-/* Accent fill means "selected" and nothing else */
-.pill-button[aria-pressed='true'] {
-  --tap-bg: var(--accent);
-  color: var(--accent-text);
-  border-color: transparent;
-}
-
-.pill-button:focus-visible,
 .hud-btn:focus-visible,
 .segmented-option:focus-visible,
 .month-btn:focus-visible,
-.region-card-btn:focus-visible,
-.satellite-card-btn:focus-visible,
+.region-row:focus-visible,
+.satellite-row:focus-visible,
 .sat-marker-badge:focus-visible,
-.api-check-btn:focus-visible,
+.secondary-btn:focus-visible,
+.icon-btn:focus-visible,
+.map-legend-summary:focus-visible,
+.panel-details-summary:focus-visible,
 .side-panel a:focus-visible {
   outline: 2px solid var(--focus-ring, var(--accent));
   outline-offset: 2px;
 }
 
-.api-health-inline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: safe center;
-  gap: 0.5rem;
-  font-size: var(--fs-14);
-}
-
-.api-status-badge {
-  padding: 0.25rem 0.6rem;
-  border-radius: 999px;
-  border: 1px solid var(--border-subtle);
-  background-color: var(--surface-subtle);
-  font-weight: 600;
-}
-
 /* Secondary (outlined) action: the accent fill is reserved for the selected state */
-.api-check-btn {
+.secondary-btn {
   --tap-bg: transparent;
   appearance: none;
+  justify-self: start;
   border: 1px solid var(--border-subtle);
   border-radius: 0.5rem;
   min-block-size: 2rem;
-  padding: 0.4rem 0.75rem;
+  padding: 0.3rem 0.75rem;
   font: inherit;
   font-size: var(--fs-14);
   font-weight: 600;
@@ -135,29 +88,53 @@
   color: var(--text-primary);
 }
 
-.api-check-btn:disabled {
+.secondary-btn[aria-disabled='true'] {
   opacity: 0.65;
   cursor: wait;
 }
 
-/* Inner Map CSS Grid Container: holds MapLibre canvas + over-map HUD grid areas */
+/* Small square icon button inside the panel (clear selection) */
+.icon-btn {
+  --tap-bg: transparent;
+  appearance: none;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.375rem;
+  font: inherit;
+  cursor: pointer;
+  background-color: var(--tap-bg);
+  color: var(--text-primary);
+}
+
+.icon {
+  display: block;
+  inline-size: 1rem;
+  block-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* Inner Map CSS Grid Container: MapLibre canvas under two HUD corners; the bottom row is left
+   to MapLibre's attribution control */
 .map-stage {
   /* Focus ring over the map stays neutral: on the map, blue means "below typical" only */
   --focus-ring: #f8fafc;
   grid-area: mapstage;
   container: mapstage / inline-size;
   display: grid;
-  min-block-size: 56dvh;
+  min-block-size: 44dvh;
   min-inline-size: 0;
-  grid-template-columns: 0.75rem auto minmax(0, 1fr) auto 0.75rem;
-  grid-template-rows: 0.75rem auto minmax(0, 1fr) auto 0.75rem;
+  grid-template-columns: 0.5rem minmax(0, 1fr) auto 0.5rem;
+  grid-template-rows: 0.5rem auto minmax(0, 1fr) 0.5rem;
   grid-template-areas:
-    ". .                . .              ."
-    ". hud-top-start    . hud-top-end    ."
-    ". .                . .              ."
-    ". hud-bottom-start . hud-bottom-end ."
-    ". .                . .              .";
-  gap: 0.5rem;
+    ". .             .           ."
+    ". hud-top-start hud-top-end ."
+    ". .             .           ."
+    ". .             .           .";
   border-radius: 0.75rem;
   border: 1px solid var(--border-subtle);
   background-color: #060b16;
@@ -246,99 +223,71 @@
   margin: 0;
 }
 
-/* Over-map HUD clusters always render on a dark translucent surface over the dark Earth basemap */
-.map-hud {
+/* Over-map HUD always renders on a dark translucent surface over the dark Earth basemap */
+.map-hud,
+.map-controls {
+  /* Every HUD control sits on one 32 px grid (2.5rem under a coarse pointer) */
+  --hud-btn-size: 2rem;
+  --hud-surface: rgb(9 15 29 / 0.86);
+  --hud-border: rgb(148 163 184 / 0.45);
   --hud-selected-bg: #f8fafc;
   --hud-selected-text: #0f172a;
   z-index: 2;
   color-scheme: dark;
-  background-color: rgb(9 15 29 / 0.84);
   color: #f8fafc;
-  border: 1px solid rgb(148 163 184 / 0.35);
+}
+
+.map-hud {
+  background-color: var(--hud-surface);
+  border: 1px solid var(--hud-border);
   border-radius: 0.65rem;
-  padding: 0.5rem 0.65rem;
   backdrop-filter: blur(8px);
 }
 
-.map-hud-top-start {
-  grid-area: hud-top-start;
-  align-self: start;
-  justify-self: start;
-  display: grid;
-  gap: 0.35rem;
-}
-
-.map-hud-top-end {
+/* Top-end column of icon buttons; every control is its own surface, the gaps show the map */
+.map-controls {
   grid-area: hud-top-end;
   align-self: start;
   justify-self: end;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.map-hud-bottom-start {
-  grid-area: hud-bottom-start;
-  align-self: end;
-  justify-self: start;
   display: grid;
-  gap: 0.4rem;
+  grid-template-columns: var(--hud-btn-size);
+  gap: 0.375rem;
 }
 
-@container mapstage (inline-size < 36rem) {
-  .map-stage {
-    grid-template-columns: 0.5rem minmax(0, 1fr) 0.5rem;
-    grid-template-rows: 0.5rem auto auto minmax(0, 1fr) auto 0.5rem;
-    grid-template-areas:
-      ". .                ."
-      ". hud-top-start    ."
-      ". hud-top-end      ."
-      ". .                ."
-      ". hud-bottom-start ."
-      ". .                .";
-  }
-
-  .map-hud-top-end {
-    justify-self: start;
-  }
-
-  .map-hud .segmented-option {
-    padding-inline: 0.5rem;
-  }
-
-  /* A long joined control cannot share a row with the other HUD cluster: stack its segments */
-  .map-hud .segmented-stack-narrow {
-    flex-direction: column;
-  }
-}
-
-.hud-kicker {
-  font-size: var(--fs-12);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #cbd5e1;
+.map-controls-locate {
+  position: relative;
+  display: grid;
 }
 
 .hud-btn {
-  --tap-bg: rgb(30 41 59 / 0.85);
+  --tap-bg: var(--hud-surface);
   appearance: none;
-  border: 1px solid rgb(148 163 184 / 0.4);
+  border: 1px solid var(--hud-border);
   border-radius: 0.45rem;
-  min-inline-size: 1.85rem;
-  min-block-size: 1.85rem;
-  padding: 0.3rem 0.6rem;
   font: inherit;
   font-size: var(--fs-14);
   font-weight: 600;
   cursor: pointer;
   background-color: var(--tap-bg);
   color: #f8fafc;
+  backdrop-filter: blur(8px);
 }
 
-.hud-btn:disabled {
-  opacity: 0.65;
-  cursor: wait;
+.hud-icon-btn {
+  display: grid;
+  place-items: center;
+  inline-size: var(--hud-btn-size);
+  block-size: var(--hud-btn-size);
+  padding: 0;
+}
+
+.hud-icon-btn .icon {
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+}
+
+.hud-btn[aria-disabled='true'] {
+  cursor: progress;
 }
 
 /* Neutral light fill instead of blue: on the map, blue means "below typical" only */
@@ -348,17 +297,100 @@
   color: var(--hud-selected-text);
 }
 
-.hud-legend-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.4rem 0.9rem;
+@media (prefers-reduced-motion: no-preference) {
+  .icon-pulse {
+    animation: icon-pulse 0.8s ease-in-out infinite alternate;
+  }
 }
 
-.hud-coords {
+@keyframes icon-pulse {
+  to {
+    opacity: 0.35;
+  }
+}
+
+/* Geolocation feedback sits beside the location button, outside the column's width */
+.hud-geo-status-region {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: calc(100% + 0.375rem);
+}
+
+.hud-geo-status {
+  margin: 0;
+  inline-size: max-content;
+  max-inline-size: 13rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--hud-border);
+  border-radius: 0.45rem;
+  background-color: var(--hud-surface);
+  font-size: var(--fs-14);
+  color: #fde68a;
+}
+
+.map-controls .segmented {
+  --seg-track: var(--hud-surface);
+  --seg-border: var(--hud-border);
+  --seg-text: #f8fafc;
+  --seg-selected-bg: var(--hud-selected-bg);
+  --seg-selected-text: var(--hud-selected-text);
+  flex-direction: column;
+  inline-size: 100%;
+  backdrop-filter: blur(8px);
+}
+
+/* Track padding and border included, the segment is a whole number of buttons tall */
+.map-controls .segmented-option {
+  flex: 1 1 0;
+  min-block-size: calc(var(--hud-btn-size) - 6px);
+  padding-inline: 0;
+}
+
+/* Collapsible legend in the top-start corner */
+.map-legend {
+  grid-area: hud-top-start;
+  align-self: start;
+  justify-self: start;
+  margin-inline-end: 0.5rem;
+  max-inline-size: 16rem;
+}
+
+.map-legend-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  /* Collapsed, the legend (with its border) is exactly one button tall */
+  min-block-size: calc(var(--hud-btn-size) - 2px);
+  padding: 0.2rem 0.55rem;
+  border-radius: 0.6rem;
+  font-size: var(--fs-14);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.map-legend-summary::-webkit-details-marker,
+.panel-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.map-legend[open] .map-legend-chevron,
+.panel-details[open] > .panel-details-summary .panel-details-chevron {
+  rotate: 180deg;
+}
+
+.map-legend-body {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0 0.65rem 0.55rem;
+}
+
+.hud-kicker {
+  margin: 0;
   font-size: var(--fs-12);
-  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: #cbd5e1;
 }
 
@@ -366,22 +398,27 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 0.85rem;
+  display: grid;
+  gap: 0.2rem;
   font-size: var(--fs-14);
 }
 
 .hud-legend-list li {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
+}
+
+.hud-legend-list .hud-legend-note {
+  color: #cbd5e1;
 }
 
 /* Glyph colors come from ui/src/data/dataPalette.ts via --data-* custom properties */
 .legend-glyph {
   display: inline-flex;
+  justify-content: center;
   gap: 0.1rem;
+  min-inline-size: 1rem;
   font-size: var(--fs-14);
   line-height: 1;
 }
@@ -426,18 +463,31 @@
   color: var(--data-user-fill);
 }
 
-.hud-geo-status {
-  margin: 0;
-  font-size: var(--fs-14);
-  color: #fde68a;
+/* A narrow map folds the control column into two, so it stays clear of the attribution line */
+@container mapstage (inline-size < 36rem) {
+  .map-controls {
+    grid-template-columns: repeat(2, var(--hud-btn-size));
+    gap: 0.25rem;
+  }
+
+  .map-controls .segmented {
+    grid-column: span 2;
+    flex-direction: row;
+  }
+
+  /* The odd one out (orbits) keeps to the outer edge */
+  .map-controls > :last-child {
+    grid-column: 2;
+  }
 }
 
 /* Outer Bottom Seasonal / Calendar Timeline Scrubber */
 .timeline-bar {
   grid-area: timeline;
+  container: timeline / inline-size;
   padding: 0.75rem 1rem;
   display: grid;
-  gap: 0.65rem;
+  gap: 0.6rem;
 }
 
 .timeline-header {
@@ -445,7 +495,7 @@
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.25rem 0.5rem;
 }
 
 .timeline-header h2 {
@@ -459,15 +509,23 @@
   color: var(--text-muted);
 }
 
+/* A year reads as one sequence: 12 columns, or 6 x 2 on a narrow strip, never a ragged wrap */
 .month-track {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(3.1rem, 1fr));
-  gap: 0.35rem;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+
+@container timeline (inline-size < 32rem) {
+  .month-track {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 }
 
 .month-btn {
   --tap-bg: var(--surface-subtle);
   appearance: none;
+  min-inline-size: 0;
   border: 1px solid var(--border-subtle);
   border-radius: 0.5rem;
   padding: 0.35rem 0.25rem;
@@ -512,13 +570,13 @@
   background-color: currentColor;
 }
 
-/* Outer Side Panel Inspector */
+/* Outer Side Panel Inspector: selection, summary and regions first, secondary blocks collapsed */
 .side-panel {
   grid-area: sidepanel;
-  padding: 1rem;
+  padding: 0.875rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
   min-block-size: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -527,18 +585,103 @@
 
 .panel-section {
   display: grid;
-  gap: 0.6rem;
+  gap: 0.5rem;
 }
 
-.panel-section h2,
-.panel-section h3 {
+.panel-section h2 {
   margin: 0;
   font-size: var(--fs-16);
+  line-height: 1.3;
 }
 
 .panel-note {
   margin: 0;
   font-size: var(--fs-14);
+  color: var(--text-muted);
+}
+
+/* Scope readout: the future slot for area and date inputs */
+.scope-row {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1.25rem;
+  font-size: var(--fs-14);
+}
+
+.scope-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-inline-size: 0;
+  min-block-size: 1.75rem;
+}
+
+.scope-item dt {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.scope-item dd {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-inline-size: 0;
+  font-weight: 700;
+}
+
+.sensor-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+}
+
+.sensor-row-label {
+  font-size: var(--fs-14);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* Stub data is always marked as such (AGENTS.md) */
+.sample-badge {
+  flex-shrink: 0;
+  padding: 0.05rem 0.5rem;
+  border: 1px dashed var(--text-muted);
+  border-radius: 999px;
+  font-size: var(--fs-12);
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.status-line {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: var(--fs-14);
+  font-weight: 600;
+}
+
+/* Panel text tones per status category: theme tokens with >= 4.5:1, the glyph carries direction */
+.tone-up {
+  color: var(--delta-up);
+}
+
+.tone-down {
+  color: var(--delta-down);
+}
+
+.tone-neutral {
   color: var(--text-muted);
 }
 
@@ -549,22 +692,68 @@
 }
 
 .metric-tile {
-  padding: 0.6rem 0.7rem;
+  padding: 0.5rem 0.7rem;
   border-radius: 0.5rem;
   background-color: var(--surface-subtle);
   display: grid;
-  gap: 0.15rem;
+  gap: 0.1rem;
 }
 
-.metric-label {
+.metric-label,
+.metric-unit {
   font-size: var(--fs-12);
   color: var(--text-muted);
 }
 
+.metric-unit {
+  margin: 0;
+}
+
 .metric-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.5rem;
   font-size: var(--fs-20);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+.metric-delta,
+.region-delta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  flex-shrink: 0;
+  font-size: var(--fs-14);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-delta.tone-neutral,
+.region-delta.tone-neutral {
+  color: var(--text-primary);
+}
+
+.summary-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.2rem 0.75rem;
+  font-size: var(--fs-14);
+}
+
+.summary-facts div {
+  display: contents;
+}
+
+.summary-facts dt {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.summary-facts dd {
+  margin: 0;
 }
 
 .satellite-list,
@@ -573,39 +762,55 @@
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 0.5rem;
-}
-
-.satellite-card-btn,
-.region-card-btn {
-  --tap-bg: var(--surface-bg);
-  inline-size: 100%;
-  text-align: start;
-  appearance: none;
-  border: 1px solid var(--border-subtle);
-  border-radius: 0.55rem;
-  padding: 0.65rem 0.75rem;
-  font: inherit;
-  cursor: pointer;
-  background-color: var(--tap-bg);
-  color: var(--text-primary);
-  display: grid;
   gap: 0.25rem;
 }
 
-.satellite-card-btn[aria-pressed='true'],
-.region-card-btn[aria-pressed='true'] {
+.region-row,
+.satellite-row {
+  --tap-bg: var(--surface-bg);
+  inline-size: 100%;
+  appearance: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  font: inherit;
+  font-size: var(--fs-14);
+  text-align: start;
+  cursor: pointer;
+  background-color: var(--tap-bg);
+  color: var(--text-primary);
+}
+
+.region-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-block-size: 2.5rem;
+  padding: 0.3rem 0.75rem;
+  font-weight: 600;
+}
+
+.region-row-name {
+  min-inline-size: 0;
+}
+
+.satellite-row {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.4rem 0.75rem;
+}
+
+.region-row[aria-pressed='true'],
+.satellite-row[aria-pressed='true'] {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
-.satellite-card-top,
-.region-card-top {
+.satellite-row-top {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  font-size: var(--fs-14);
   font-weight: 700;
 }
 
@@ -634,32 +839,58 @@
 }
 
 .satellite-coords {
-  font-size: var(--fs-14);
-  font-weight: 600;
   font-variant-numeric: tabular-nums;
-}
-
-.region-delta {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.25rem;
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-  font-size: var(--fs-14);
-}
-
-/* Same category as the map mark, in a text-safe tone; the arrow carries the direction */
-.region-delta-above {
-  color: var(--delta-up);
-}
-
-.region-delta-below {
-  color: var(--delta-down);
-}
-
-.region-meta {
-  font-size: var(--fs-14);
   color: var(--text-muted);
+}
+
+/* Collapsed secondary blocks */
+.panel-details-group {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.panel-details {
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+}
+
+.panel-details-summary {
+  --tap-bg: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-block-size: 2.25rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: var(--fs-14);
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+  background-color: var(--tap-bg);
+}
+
+.panel-details-body {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.25rem 0.75rem 0.75rem;
+}
+
+.panel-details-quiet {
+  border: 0;
+}
+
+.panel-details-quiet > .panel-details-summary {
+  inline-size: fit-content;
+  min-block-size: 2rem;
+  padding-inline: 0.25rem;
+  margin-inline-start: -0.25rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.panel-details-quiet > .panel-details-body {
+  padding-inline: 0;
 }
 
 .meta-list {
@@ -685,9 +916,53 @@
   overflow-wrap: anywhere;
 }
 
-.panel-attribution {
+.panel-footer {
+  margin-block-start: auto;
+  display: grid;
+  gap: 0.25rem;
+  padding-block-start: 0.75rem;
   border-block-start: 1px solid var(--border-subtle);
-  padding-block-start: 1rem;
+}
+
+.attribution-line {
+  margin: 0;
+  font-size: var(--fs-14);
+  color: var(--text-muted);
+}
+
+.footer-meta {
+  position: relative;
+}
+
+/* Sits on the "Sources and credits" row; the details body below spans the full width */
+.api-indicator {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  block-size: 2rem;
+  font-size: var(--fs-12);
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.api-dot {
+  inline-size: 0.55rem;
+  block-size: 0.55rem;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+}
+
+.api-indicator[data-state='connected'] .api-dot {
+  border-color: var(--status-ok);
+  background-color: var(--status-ok);
+}
+
+.api-indicator[data-state='checking'] .api-dot {
+  border-style: dotted;
 }
 
 .side-panel a {
@@ -695,7 +970,7 @@
   text-underline-offset: 0.15em;
 }
 
-/* Joined control for one-of-many choices; themed panel colors by default, dark HUD variant below */
+/* Joined control for one-of-many choices; themed panel colors by default, dark HUD variant above */
 .segmented {
   --seg-track: var(--surface-subtle);
   --seg-border: var(--border-subtle);
@@ -710,14 +985,6 @@
   border: 1px solid var(--seg-border);
   border-radius: 0.5rem;
   background-color: var(--seg-track);
-}
-
-.map-hud .segmented {
-  --seg-track: rgb(15 23 42 / 0.6);
-  --seg-border: rgb(148 163 184 / 0.4);
-  --seg-text: #f8fafc;
-  --seg-selected-bg: var(--hud-selected-bg);
-  --seg-selected-text: var(--hud-selected-text);
 }
 
 /* Segments may shrink to their longest word (flex automatic minimum) rather than overflow;
@@ -754,26 +1021,31 @@
 
 /* Hover and press feedback: tint the control's own background toward its text color */
 @media (hover: hover) {
-  .pill-button:hover,
-  .api-check-btn:not(:disabled):hover,
-  .hud-btn:not(:disabled):hover,
+  .secondary-btn:not([aria-disabled='true']):hover,
+  .icon-btn:hover,
+  .hud-btn:not([aria-disabled='true']):hover,
   .segmented-option[aria-checked='false']:hover,
   .month-btn:hover,
-  .region-card-btn:hover,
-  .satellite-card-btn:hover,
+  .region-row:hover,
+  .satellite-row:hover,
+  .panel-details-summary:hover,
   .sat-marker-badge:hover {
     background-color: color-mix(in srgb, var(--tap-bg), currentColor 10%);
   }
 
-  .pill-button:not([aria-pressed='true']):hover,
-  .api-check-btn:not(:disabled):hover,
+  .map-legend-summary:hover {
+    background-color: color-mix(in srgb, transparent, currentColor 10%);
+  }
+
+  .secondary-btn:not([aria-disabled='true']):hover,
+  .icon-btn:hover,
   .month-btn:not([aria-pressed='true']):hover,
-  .region-card-btn:not([aria-pressed='true']):hover,
-  .satellite-card-btn:not([aria-pressed='true']):hover {
+  .region-row:not([aria-pressed='true']):hover,
+  .satellite-row:not([aria-pressed='true']):hover {
     border-color: var(--text-muted);
   }
 
-  .hud-btn:not(:disabled, [aria-pressed='true']):hover {
+  .hud-btn:not([aria-disabled='true'], [aria-pressed='true']):hover {
     border-color: rgb(203 213 225 / 0.75);
   }
 
@@ -782,13 +1054,14 @@
   }
 }
 
-.pill-button:active,
-.api-check-btn:not(:disabled):active,
-.hud-btn:not(:disabled):active,
+.secondary-btn:not([aria-disabled='true']):active,
+.icon-btn:active,
+.hud-btn:not([aria-disabled='true']):active,
 .segmented-option[aria-checked='false']:active,
 .month-btn:active,
-.region-card-btn:active,
-.satellite-card-btn:active,
+.region-row:active,
+.satellite-row:active,
+.panel-details-summary:active,
 .sat-marker-badge:active {
   background-color: color-mix(in srgb, var(--tap-bg), currentColor 18%);
 }
@@ -798,13 +1071,15 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .pill-button,
-  .api-check-btn,
+  .secondary-btn,
+  .icon-btn,
   .hud-btn,
   .segmented-option,
   .month-btn,
-  .region-card-btn,
-  .satellite-card-btn,
+  .region-row,
+  .satellite-row,
+  .panel-details-summary,
+  .map-legend-summary,
   .sat-marker-badge,
   .side-panel a {
     transition:
@@ -813,26 +1088,47 @@
       color 120ms ease-out,
       text-decoration-thickness 120ms ease-out;
   }
+
+  .map-legend-chevron,
+  .panel-details-chevron {
+    transition: rotate 120ms ease-out;
+  }
 }
 
 @media (pointer: coarse) {
-  .pill-button,
-  .api-check-btn,
-  .hud-btn {
+  .map-hud,
+  .map-controls {
+    --hud-btn-size: 2.5rem;
+  }
+
+  .secondary-btn,
+  .icon-btn {
     min-inline-size: 2.5rem;
     min-block-size: 2.5rem;
   }
 
+  .icon-btn {
+    inline-size: 2.5rem;
+    block-size: 2.5rem;
+  }
+
+  .panel-details-summary {
+    min-block-size: 2.75rem;
+  }
+
   /* Width from padding (a "2D" segment is >= 2.5rem) so labels keep their content minimum */
-  .segmented-option,
-  .map-hud .segmented-option {
+  .segmented-option {
     min-block-size: 2.5rem;
     padding-inline: 0.8rem;
+  }
+
+  .map-controls .segmented-option {
+    min-block-size: 2.5rem;
+    padding-inline: 0;
   }
 }
 
 @media (forced-colors: active) {
-  .pill-button[aria-pressed='true'],
   .hud-btn[aria-pressed='true'],
   .segmented-option[aria-checked='true'],
   .month-btn[aria-pressed='true'],
@@ -848,8 +1144,13 @@
     border-color: ButtonBorder;
   }
 
-  .satellite-card-btn[aria-pressed='true'],
-  .region-card-btn[aria-pressed='true'] {
+  .satellite-row[aria-pressed='true'],
+  .region-row[aria-pressed='true'] {
     outline: 2px solid Highlight;
+  }
+
+  .sample-badge,
+  .api-dot {
+    border-color: CanvasText;
   }
 }
