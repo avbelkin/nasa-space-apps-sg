@@ -52,6 +52,11 @@
     --code-bg: light-dark(var(--code-bg-light), var(--code-bg-dark));
   }
 
+  --in-oklab: ;
+  @supports (background: linear-gradient(in oklab, white, black)) {
+    --in-oklab: in oklab;
+  }
+
   color-scheme: light dark;
   accent-color: var(--accent);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

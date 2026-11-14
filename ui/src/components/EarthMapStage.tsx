@@ -38,6 +38,15 @@ import {
   type SatelliteCloudLayerController,
 } from '../utils/satelliteCloudLayer'
 import {
+  createGlobeHaloLayer,
+  GLOBE_HALO_LAYER_ID,
+  type GlobeHaloLayerController,
+} from '../utils/globeHaloLayer'
+import {
+  createSpaceStarfieldController,
+  type SpaceStarfieldController,
+} from '../utils/spaceStarfield'
+import {
   NADIR_SWATH_COLOR,
   NADIR_SWATH_FILL_OPACITY,
   NADIR_SWATH_STROKE_OPACITY,
@@ -618,10 +627,13 @@ export function EarthMapStage({
   onPulsePausedChange,
 }: EarthMapStageProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
+  const spaceCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const starfieldControllerRef = useRef<SpaceStarfieldController | null>(null)
   const mapInstanceRef = useRef<MapLibreMap | null>(null)
   const styleReadyRef = useRef(false)
   const nightLightsLayerRef = useRef<NightLightsLayerController | null>(null)
   const cloudLayerRef = useRef<SatelliteCloudLayerController | null>(null)
+  const globeHaloLayerRef = useRef<GlobeHaloLayerController | null>(null)
   const satMarkersRef = useRef<Map<string, SatelliteMarkerEntry>>(new Map())
   const initialViewportRef = useRef<MapViewportState>(initialViewport)
   const latestOnViewportChangeRef = useRef(onViewportChange)
@@ -907,6 +919,27 @@ export function EarthMapStage({
   }
 
   useEffect(() => {
+    const canvas = spaceCanvasRef.current
+    if (!canvas) {
+      return
+    }
+    const controller = createSpaceStarfieldController({
+      canvas,
+      initialPose: {
+        lngDeg: initialViewportRef.current.lng,
+        latDeg: initialViewportRef.current.lat,
+        bearingDeg: 0,
+        pitchDeg: 0,
+      },
+    })
+    starfieldControllerRef.current = controller
+    return () => {
+      controller.dispose()
+      starfieldControllerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
     const container = mapContainerRef.current
     if (!container) {
       return
@@ -1002,6 +1035,12 @@ export function EarthMapStage({
           // Insert directly below satellite swaths/tracks so spacecraft & swaths stay above clouds.
           map.addLayer(cloudLayer, 'satellite-swaths-wide-fill')
         }
+        if (!map.getLayer(GLOBE_HALO_LAYER_ID)) {
+          const globeHaloLayer = createGlobeHaloLayer()
+          globeHaloLayerRef.current = globeHaloLayer
+          // Render atmospheric limb glow above clouds/surface and below satellite swaths/tracks.
+          map.addLayer(globeHaloLayer, 'satellite-swaths-wide-fill')
+        }
         setGeoJsonSourceData(map, 'fire-anomalies', latestGeoJsonRef.current)
         syncOrbitalSources(map, latestOrbitalStateRef.current)
         setGeoJsonSourceData(map, 'user-geolocation', latestUserGeoJsonRef.current)
@@ -1077,6 +1116,19 @@ export function EarthMapStage({
         latestOnViewportChangeRef.current(nextViewport)
       })
 
+      map.on('render', () => {
+        if (!map) {
+          return
+        }
+        const center = map.getCenter()
+        starfieldControllerRef.current?.updateCamera({
+          lngDeg: center.lng,
+          latDeg: center.lat,
+          bearingDeg: map.getBearing(),
+          pitchDeg: map.getPitch(),
+        })
+      })
+
       map.on('error', (event: ErrorEvent) => {
         const message = event.error instanceof Error ? event.error.message : null
         if (message && /webgl/i.test(message)) {
@@ -1108,6 +1160,7 @@ export function EarthMapStage({
       map?.remove()
       nightLightsLayerRef.current = null
       cloudLayerRef.current = null
+      globeHaloLayerRef.current = null
       mapInstanceRef.current = null
     }
   }, [])
@@ -1332,6 +1385,7 @@ export function EarthMapStage({
 
   return (
     <main className="map-stage" aria-label="Interactive Earth fire and seasonal anomaly map">
+      <canvas ref={spaceCanvasRef} className="space-backdrop-canvas" aria-hidden="true" />
       <div ref={mapContainerRef} className="map-canvas" />
 
       {mapError && (

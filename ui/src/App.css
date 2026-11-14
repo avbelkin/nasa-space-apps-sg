@@ -155,7 +155,14 @@
   gap: 0.5rem;
   border-radius: 0.75rem;
   border: 1px solid var(--border-subtle);
-  background-color: #060b16;
+  background: radial-gradient(
+      circle at 50% 54% var(--in-oklab),
+      #091631 0%,
+      #040918 58%,
+      #020510 100%
+    )
+    #020510;
+  box-shadow: inset 0 0 0 1px rgb(125 211 252 / 0.12);
   overflow: clip;
 }
 
@@ -163,6 +170,18 @@
   .map-stage {
     min-block-size: 0;
   }
+}
+
+.space-backdrop-canvas {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  inline-size: 100%;
+  block-size: 100%;
+  min-block-size: 0;
+  min-inline-size: 0;
+  display: block;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .map-canvas {
@@ -918,5 +937,9 @@
   .satellite-card-btn[aria-pressed='true'],
   .region-card-btn[aria-pressed='true'] {
     outline: 2px solid Highlight;
+  }
+
+  .space-backdrop-canvas {
+    display: none;
   }
 }
