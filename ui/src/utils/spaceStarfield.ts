@@ -33,6 +33,7 @@ export interface CelestialCameraPose {
   bearingDeg: number
   pitchDeg: number
   rollDeg?: number
+  zoom?: number
   fovDeg?: number
   unixMs?: number
   isGlobe?: boolean
@@ -87,17 +88,10 @@ const PINPRICK_ALPHA_BANDS: readonly number[] = [0.22, 0.44, 0.68]
 
 // MapLibre default vertical FOV: 2 * atan(1 / 3) rad ~= 36.87 deg.
 export const DEFAULT_VERTICAL_FOV_DEG = (2 * Math.atan(1 / 3)) / DEG_TO_RAD
-
-const STATIC_REDUCED_MOTION_POSE: Required<CelestialCameraPose> = {
-  lngDeg: 15,
-  latDeg: 15,
-  bearingDeg: 0,
-  pitchDeg: 0,
-  rollDeg: 0,
-  fovDeg: DEFAULT_VERTICAL_FOV_DEG,
-  unixMs: J2000_UNIX_MS,
-  isGlobe: true,
-}
+export const SKYBOX_WIDE_FOV_DEG = 64
+export const SKYBOX_NARROW_FOV_DEG = 40
+export const SKYBOX_FOV_MIN_ZOOM = 0.5
+export const SKYBOX_FOV_MAX_ZOOM = 6.5
 
 // 5 spectral color palettes from hot O/B blue-white to cool K/M warm amber.
 const STAR_PALETTES: readonly StarPaletteSpec[] = [
@@ -238,6 +232,27 @@ function computeFocalPx(widthCss: number, heightCss: number, fovDeg: number): nu
   const tanHalfFov = Math.tan(clampedFov * 0.5 * DEG_TO_RAD)
   const refHeight = heightCss > 0 ? heightCss : widthCss
   return (refHeight * 0.5) / Math.max(tanHalfFov, 1e-4)
+}
+
+/**
+ * Computes a smooth vertical FOV for the celestial skybox from map zoom so panning
+ * rotates stars proportionally while zooming shifts them radially toward or away from the viewport.
+ */
+export function computeSkyboxFovDeg(
+  zoom?: number,
+  baseFovDeg: number = DEFAULT_VERTICAL_FOV_DEG,
+): number {
+  const safeZoom = zoom !== undefined && Number.isFinite(zoom) ? zoom : 1.65
+  const t = clamp(
+    (safeZoom - SKYBOX_FOV_MIN_ZOOM) / (SKYBOX_FOV_MAX_ZOOM - SKYBOX_FOV_MIN_ZOOM),
+    0,
+    1,
+  )
+  const eased = t * t * (3 - 2 * t)
+  const rawFovDeg = SKYBOX_WIDE_FOV_DEG + (SKYBOX_NARROW_FOV_DEG - SKYBOX_WIDE_FOV_DEG) * eased
+  const safeBaseFov =
+    Number.isFinite(baseFovDeg) && baseFovDeg > 0 ? baseFovDeg : DEFAULT_VERTICAL_FOV_DEG
+  return clamp(rawFovDeg * (safeBaseFov / DEFAULT_VERTICAL_FOV_DEG), 10, 100)
 }
 
 /**
@@ -698,6 +713,13 @@ export function createSpaceStarfieldController({
   let lastRenderKey = ''
   let pendingRafId: number | null = null
 
+  // Persistent flat buffers ([x, y, r, ...] and [starIndex, x, y, ...]) to avoid per-frame allocations.
+  const pinprickBuckets: number[][][] = Array.from(
+    { length: STAR_PALETTES.length },
+    () => Array.from({ length: PINPRICK_ALPHA_BANDS.length }, () => []),
+  )
+  const spriteStars: number[] = []
+
   const motionQuery =
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
       ? window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -713,7 +735,7 @@ export function createSpaceStarfieldController({
     const q = (v: number) => Math.round(v * 10000)
     const isGlobeFlag = pose.isGlobe === false ? 0 : 1
     const siderealBucket = Math.floor((pose.unixMs ?? J2000_UNIX_MS) / SIDEREAL_BUCKET_MS)
-    return `${widthCss}x${heightCss}@${dpr}:${isGlobeFlag}:${siderealBucket}:${q(pose.lngDeg)},${q(pose.latDeg)},${q(pose.bearingDeg)},${q(pose.pitchDeg)},${q(pose.rollDeg ?? 0)},${q(pose.fovDeg ?? DEFAULT_VERTICAL_FOV_DEG)}`
+    return `${widthCss}x${heightCss}@${dpr}:${isGlobeFlag}:${siderealBucket}:${q(pose.lngDeg)},${q(pose.latDeg)},${q(pose.bearingDeg)},${q(pose.pitchDeg)},${q(pose.rollDeg ?? 0)},${q(pose.zoom ?? 1.65)},${q(pose.fovDeg ?? DEFAULT_VERTICAL_FOV_DEG)}`
   }
 
   const drawFrame = (force = false) => {
@@ -735,9 +757,9 @@ export function createSpaceStarfieldController({
       typeof window !== 'undefined' && window.devicePixelRatio > 0
         ? Math.min(window.devicePixelRatio, 2)
         : 1
-    const useStaticPose = reducedMotion || currentPose.isGlobe === false
-    const activePose: CelestialCameraPose = useStaticPose
-      ? STATIC_REDUCED_MOTION_POSE
+    // Keep camera tracking live on pan/rotate/zoom even under reduced motion; only freeze idle sidereal drift.
+    const activePose: CelestialCameraPose = reducedMotion
+      ? { ...currentPose, unixMs: J2000_UNIX_MS }
       : currentPose
 
     const renderKey = buildPoseKey(activePose, widthCss, heightCss, dpr)
@@ -770,8 +792,11 @@ export function createSpaceStarfieldController({
     ctx.fillStyle = bgGrad
     ctx.fillRect(0, 0, widthCss, heightCss)
 
-    const fovDeg = activePose.fovDeg ?? DEFAULT_VERTICAL_FOV_DEG
-    const focalPx = computeFocalPx(widthCss, heightCss, fovDeg)
+    const skyboxFovDeg = computeSkyboxFovDeg(
+      activePose.zoom,
+      activePose.fovDeg ?? DEFAULT_VERTICAL_FOV_DEG,
+    )
+    const focalPx = computeFocalPx(widthCss, heightCss, skyboxFovDeg)
     const basis = computeCelestialCameraBasis(activePose)
 
     // 1. Subtle diffuse 3D Milky Way star-cloud band
@@ -783,7 +808,7 @@ export function createSpaceStarfieldController({
           basis,
           widthCss,
           heightCss,
-          fovDeg,
+          skyboxFovDeg,
           Math.max(CULL_MARGIN_PX, radiusPx),
         )
         if (!projected) {
@@ -805,30 +830,52 @@ export function createSpaceStarfieldController({
     }
 
     // 2. Partition projected stars into 15 batched pinprick buckets (5 palettes x 3 alpha bands) + sprites
-    const pinprickBuckets: Array<Array<Array<{ x: number; y: number; r: number }>>> = Array.from(
-      { length: STAR_PALETTES.length },
-      () => Array.from({ length: PINPRICK_ALPHA_BANDS.length }, () => []),
-    )
-    const spriteStars: Array<{
-      star: StarCatalogEntry
-      x: number
-      y: number
-    }> = []
+    for (let pIdx = 0; pIdx < STAR_PALETTES.length; pIdx++) {
+      for (let bIdx = 0; bIdx < PINPRICK_ALPHA_BANDS.length; bIdx++) {
+        pinprickBuckets[pIdx][bIdx].length = 0
+      }
+    }
+    spriteStars.length = 0
 
-    for (const star of catalog) {
-      const projected = projectStarToViewport(star, basis, widthCss, heightCss, fovDeg)
-      if (!projected) {
+    const halfW = widthCss * 0.5
+    const halfH = heightCss * 0.5
+    const halfDiag = Math.hypot(halfW + CULL_MARGIN_PX, halfH + CULL_MARGIN_PX)
+    const minDepth = 1 / Math.hypot(1, halfDiag / focalPx)
+    const minX = -CULL_MARGIN_PX
+    const maxX = widthCss + CULL_MARGIN_PX
+    const minY = -CULL_MARGIN_PX
+    const maxY = heightCss + CULL_MARGIN_PX
+
+    const fx = basis.forward.x
+    const fy = basis.forward.y
+    const fz = basis.forward.z
+    const rx = basis.right.x
+    const ry = basis.right.y
+    const rz = basis.right.z
+    const ux = basis.up.x
+    const uy = basis.up.y
+    const uz = basis.up.z
+
+    for (let idx = 0; idx < catalog.length; idx++) {
+      const star = catalog[idx]
+      const depth = fx * star.x + fy * star.y + fz * star.z
+      if (depth <= minDepth) {
+        continue
+      }
+      const invDepth = focalPx / depth
+      const x = halfW + (rx * star.x + ry * star.y + rz * star.z) * invDepth
+      if (x < minX || x > maxX) {
+        continue
+      }
+      const y = halfH - (ux * star.x + uy * star.y + uz * star.z) * invDepth
+      if (y < minY || y > maxY) {
         continue
       }
       if (star.tier === 'pinprick') {
         const bandIdx = star.alpha < 0.34 ? 0 : star.alpha < 0.58 ? 1 : 2
-        pinprickBuckets[star.paletteIndex][bandIdx].push({
-          x: projected.x,
-          y: projected.y,
-          r: star.radiusPx,
-        })
+        pinprickBuckets[star.paletteIndex][bandIdx].push(x, y, star.radiusPx)
       } else {
-        spriteStars.push({ star, x: projected.x, y: projected.y })
+        spriteStars.push(idx, x, y)
       }
     }
 
@@ -841,17 +888,22 @@ export function createSpaceStarfieldController({
         }
         ctx.globalAlpha = PINPRICK_ALPHA_BANDS[bIdx]
         ctx.beginPath()
-        for (const dot of bucket) {
-          ctx.moveTo(dot.x + dot.r, dot.y)
-          ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2)
+        for (let k = 0; k < bucket.length; k += 3) {
+          const x = bucket[k]
+          const y = bucket[k + 1]
+          const r = bucket[k + 2]
+          ctx.moveTo(x + r, y)
+          ctx.arc(x, y, r, 0, Math.PI * 2)
         }
         ctx.fill()
       }
     }
 
     if (spriteSheet) {
-      for (const item of spriteStars) {
-        const { star, x, y } = item
+      for (let k = 0; k < spriteStars.length; k += 3) {
+        const star = catalog[spriteStars[k]]
+        const x = spriteStars[k + 1]
+        const y = spriteStars[k + 2]
         const row = star.tier === 'hero' ? 1 : 0
         const sx = star.paletteIndex * SPRITE_CELL_PX
         const sy = row * SPRITE_CELL_PX
@@ -870,8 +922,10 @@ export function createSpaceStarfieldController({
         )
       }
     } else {
-      for (const item of spriteStars) {
-        const { star, x, y } = item
+      for (let k = 0; k < spriteStars.length; k += 3) {
+        const star = catalog[spriteStars[k]]
+        const x = spriteStars[k + 1]
+        const y = spriteStars[k + 2]
         ctx.globalAlpha = star.alpha
         ctx.fillStyle = STAR_PALETTES[star.paletteIndex].core
         ctx.beginPath()

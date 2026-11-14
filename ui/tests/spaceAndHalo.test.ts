@@ -16,11 +16,17 @@ import {
 import {
   computeCelestialCameraBasis,
   computeGmstRad,
+  computeSkyboxFovDeg,
   createMilkyWayCatalog,
+  createSpaceStarfieldController,
   createStarCatalog,
   equatorialDegToUnitVec,
   galacticDegToEquatorialUnitVec,
   projectStarToViewport,
+  SKYBOX_FOV_MAX_ZOOM,
+  SKYBOX_FOV_MIN_ZOOM,
+  SKYBOX_NARROW_FOV_DEG,
+  SKYBOX_WIDE_FOV_DEG,
 } from '../src/utils/spaceStarfield.ts'
 
 function makePerspectiveMatrix(
@@ -325,6 +331,214 @@ describe('brightStarCatalog & spaceStarfield astronomical 3D skybox', () => {
     }
     assert.equal(projectStarToViewport(behind, basis, 1280, 720), null)
     assert.equal(projectStarToViewport(basis.forward, basis, 0, 720), null)
+  })
+
+  it('moves projected stars proportionally across and in/out of the viewport on map rotation', () => {
+    const fov = 60
+    const basis0 = computeCelestialCameraBasis({
+      lngDeg: 0,
+      latDeg: 0,
+      bearingDeg: 0,
+      pitchDeg: 0,
+      unixMs: 1700000000000,
+    })
+
+    const starAtEastDeg = (deg: number) => {
+      const rad = (deg * Math.PI) / 180
+      return {
+        x: basis0.forward.x * Math.cos(rad) + basis0.right.x * Math.sin(rad),
+        y: basis0.forward.y * Math.cos(rad) + basis0.right.y * Math.sin(rad),
+        z: basis0.forward.z * Math.cos(rad) + basis0.right.z * Math.sin(rad),
+      }
+    }
+
+    const star0 = starAtEastDeg(0)
+    const starRightEdge = starAtEastDeg(42)
+    const starBeyondLeft = starAtEastDeg(-54)
+
+    const p0 = projectStarToViewport(star0, basis0, 1280, 720, fov)
+    const pRight0 = projectStarToViewport(starRightEdge, basis0, 1280, 720, fov)
+    assert.ok(p0 !== null && pRight0 !== null)
+    assert.ok(pRight0.x > 1180)
+    assert.equal(projectStarToViewport(starBeyondLeft, basis0, 1280, 720, fov), null)
+
+    const basisEast6 = computeCelestialCameraBasis({
+      lngDeg: 6,
+      latDeg: 0,
+      bearingDeg: 0,
+      pitchDeg: 0,
+      unixMs: 1700000000000,
+    })
+    const basisEast12 = computeCelestialCameraBasis({
+      lngDeg: 12,
+      latDeg: 0,
+      bearingDeg: 0,
+      pitchDeg: 0,
+      unixMs: 1700000000000,
+    })
+
+    const p6 = projectStarToViewport(star0, basisEast6, 1280, 720, fov)
+    const p12 = projectStarToViewport(star0, basisEast12, 1280, 720, fov)
+    assert.ok(p6 !== null && p12 !== null)
+
+    const shift6 = p6.x - p0.x
+    const shift12 = p12.x - p0.x
+    assert.ok(shift6 > 40)
+    // Tangent projection over small angles yields ~2x pixel shift for 2x rotation angle
+    assert.ok(Math.abs(shift12 / shift6 - 2) < 0.08)
+
+    // Orbiting camera 15 deg East turns view leftward around globe, so the right-edge
+    // star exits the viewport while the beyond-left star enters from the left.
+    const basisEast15 = computeCelestialCameraBasis({
+      lngDeg: 15,
+      latDeg: 0,
+      bearingDeg: 0,
+      pitchDeg: 0,
+      unixMs: 1700000000000,
+    })
+    assert.equal(projectStarToViewport(starRightEdge, basisEast15, 1280, 720, fov), null)
+    const enteredLeft = projectStarToViewport(starBeyondLeft, basisEast15, 1280, 720, fov)
+    assert.ok(enteredLeft !== null && enteredLeft.x > 0 && enteredLeft.x < 640)
+  })
+
+  it('shifts stars proportionally toward and away from the viewport center on zoom changes', () => {
+    assert.equal(computeSkyboxFovDeg(0), SKYBOX_WIDE_FOV_DEG)
+    assert.equal(computeSkyboxFovDeg(SKYBOX_FOV_MIN_ZOOM), SKYBOX_WIDE_FOV_DEG)
+    assert.equal(computeSkyboxFovDeg(SKYBOX_FOV_MAX_ZOOM), SKYBOX_NARROW_FOV_DEG)
+    assert.equal(computeSkyboxFovDeg(9), SKYBOX_NARROW_FOV_DEG)
+
+    const fovZ1 = computeSkyboxFovDeg(1.0)
+    const fovZ3 = computeSkyboxFovDeg(3.0)
+    const fovZ55 = computeSkyboxFovDeg(5.5)
+    assert.ok(fovZ1 > fovZ3 && fovZ3 > fovZ55)
+
+    const basis = computeCelestialCameraBasis({
+      lngDeg: 25,
+      latDeg: 15,
+      bearingDeg: 0,
+      pitchDeg: 10,
+      unixMs: 1700000000000,
+    })
+    const offAxisRad = (14 * Math.PI) / 180
+    const offCenterStar = {
+      x: basis.forward.x * Math.cos(offAxisRad) + basis.right.x * Math.sin(offAxisRad),
+      y: basis.forward.y * Math.cos(offAxisRad) + basis.right.y * Math.sin(offAxisRad),
+      z: basis.forward.z * Math.cos(offAxisRad) + basis.right.z * Math.sin(offAxisRad),
+    }
+
+    const projZ1 = projectStarToViewport(offCenterStar, basis, 1280, 720, fovZ1)
+    const projZ3 = projectStarToViewport(offCenterStar, basis, 1280, 720, fovZ3)
+    const projZ55 = projectStarToViewport(offCenterStar, basis, 1280, 720, fovZ55)
+    assert.ok(projZ1 !== null && projZ3 !== null && projZ55 !== null)
+
+    const radialDist = (pt: { x: number; y: number }) => Math.hypot(pt.x - 640, pt.y - 360)
+    assert.ok(radialDist(projZ55) > radialDist(projZ3))
+    assert.ok(radialDist(projZ3) > radialDist(projZ1))
+  })
+
+  it('continues updating star positions on pan, rotate, and zoom when reduced-motion is enabled', () => {
+    let fillRectCount = 0
+    const fakeCtx = {
+      fillStyle: '',
+      globalAlpha: 1,
+      setTransform() {},
+      createRadialGradient() {
+        return { addColorStop() {} }
+      },
+      fillRect() {
+        fillRectCount += 1
+      },
+      beginPath() {},
+      moveTo() {},
+      arc() {},
+      fill() {},
+      drawImage() {},
+    }
+    const fakeCanvas = {
+      width: 0,
+      height: 0,
+      clientWidth: 800,
+      clientHeight: 600,
+      getBoundingClientRect: () => ({ width: 800, height: 600 }),
+      getContext: () => fakeCtx,
+      addEventListener() {},
+      removeEventListener() {},
+    }
+
+    const prevWindow = (globalThis as { window?: unknown }).window
+    ;(globalThis as { window?: unknown }).window = {
+      devicePixelRatio: 1,
+      matchMedia: () => ({
+        matches: true,
+        addEventListener() {},
+        removeEventListener() {},
+      }),
+    }
+
+    const controller = createSpaceStarfieldController({
+      canvas: fakeCanvas as unknown as HTMLCanvasElement,
+      initialPose: {
+        lngDeg: 10,
+        latDeg: 10,
+        bearingDeg: 0,
+        pitchDeg: 0,
+        zoom: 1.65,
+        unixMs: 1700000000000,
+      },
+    })
+
+    try {
+      assert.equal(fillRectCount, 1)
+
+      // Idle timestamp tick under reduced-motion stays stationary (no autonomous drift)
+      controller.updateCamera({
+        lngDeg: 10,
+        latDeg: 10,
+        bearingDeg: 0,
+        pitchDeg: 0,
+        zoom: 1.65,
+        unixMs: 1700000060000,
+      })
+      assert.equal(fillRectCount, 1)
+
+      // Pan/rotate and zoom always move stars proportionally even when reduced-motion is active
+      controller.updateCamera({
+        lngDeg: 28,
+        latDeg: 10,
+        bearingDeg: 0,
+        pitchDeg: 0,
+        zoom: 1.65,
+        unixMs: 1700000060000,
+      })
+      assert.equal(fillRectCount, 2)
+
+      controller.updateCamera({
+        lngDeg: 28,
+        latDeg: 24,
+        bearingDeg: 15,
+        pitchDeg: 20,
+        zoom: 1.65,
+        unixMs: 1700000060000,
+      })
+      assert.equal(fillRectCount, 3)
+
+      controller.updateCamera({
+        lngDeg: 28,
+        latDeg: 24,
+        bearingDeg: 15,
+        pitchDeg: 20,
+        zoom: 3.2,
+        unixMs: 1700000060000,
+      })
+      assert.equal(fillRectCount, 4)
+    } finally {
+      controller.dispose()
+      if (prevWindow === undefined) {
+        delete (globalThis as { window?: unknown }).window
+      } else {
+        ;(globalThis as { window?: unknown }).window = prevWindow
+      }
+    }
   })
 })
 
