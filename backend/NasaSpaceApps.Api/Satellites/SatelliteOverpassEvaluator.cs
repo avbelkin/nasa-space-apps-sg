@@ -34,7 +34,7 @@ public static class SatelliteOverpassEvaluator
         DateTime nowUtc)
     {
         var utc = DateTime.SpecifyKind(nowUtc, DateTimeKind.Utc);
-        var entries = new List<SatelliteHudFreshnessEntry>(catalog.Count * 2);
+        var entries = new List<SatelliteHudFreshnessEntry>(catalog.Count);
 
         foreach (var meta in catalog)
         {
@@ -49,13 +49,17 @@ public static class SatelliteOverpassEvaluator
                 tle = fallback;
             }
 
-            entries.AddRange(EvaluateSatelliteFreshness(meta, tle, targetLat, targetLon, utc));
+            var entry = EvaluateSatelliteFreshness(meta, tle, targetLat, targetLon, utc);
+            if (entry is not null)
+            {
+                entries.Add(entry);
+            }
         }
 
         return entries.OrderBy(e => e.MinutesSincePass).ToList();
     }
 
-    private static IReadOnlyList<SatelliteHudFreshnessEntry> EvaluateSatelliteFreshness(
+    private static SatelliteHudFreshnessEntry? EvaluateSatelliteFreshness(
         SatelliteMetadata meta,
         SatelliteTle tle,
         double targetLat,
@@ -66,22 +70,22 @@ public static class SatelliteOverpassEvaluator
         var nadirHalfWidthKm = meta.NadirSwathKm * 0.5;
         var latThresholdDeg = (maxSwathHalfWidthKm / KmPerDegreeLatitude) + LatitudePrefilterMarginDegrees;
 
+        var inLatestPass = false;
         DateTime? latestPassTime = null;
         var latestDistanceKm = double.MaxValue;
-        DateTime? readyPassTime = null;
-        var readyDistanceKm = double.MaxValue;
         DateTime? closestFallbackTime = null;
         var closestFallbackDistanceKm = double.MaxValue;
-        DateTime? closestReadyFallbackTime = null;
-        var closestReadyFallbackDistanceKm = double.MaxValue;
-
-        var readyCutoffUtc = nowUtc.Subtract(TimeSpan.FromMinutes(meta.TypicalIngestionLagMinutes));
 
         for (var t = nowUtc; t >= nowUtc.Subtract(OverpassLookbackWindow); t = t.Subtract(OverpassCoarseStep))
         {
             var state = SatelliteOrbitPropagator.Propagate(tle, t);
             if (Math.Abs(state.Latitude - targetLat) > latThresholdDeg)
             {
+                if (inLatestPass)
+                {
+                    break;
+                }
+
                 continue;
             }
 
@@ -92,31 +96,18 @@ public static class SatelliteOverpassEvaluator
                 closestFallbackTime = t;
             }
 
-            if (t <= readyCutoffUtc && distKm < closestReadyFallbackDistanceKm)
-            {
-                closestReadyFallbackDistanceKm = distKm;
-                closestReadyFallbackTime = t;
-            }
-
             if (distKm <= maxSwathHalfWidthKm)
             {
-                if (!latestPassTime.HasValue)
+                inLatestPass = true;
+                if (distKm < latestDistanceKm)
                 {
-                    latestPassTime = t;
                     latestDistanceKm = distKm;
-                    if (t <= readyCutoffUtc)
-                    {
-                        readyPassTime = t;
-                        readyDistanceKm = distKm;
-                        break;
-                    }
+                    latestPassTime = t;
                 }
-                else if (t <= readyCutoffUtc)
-                {
-                    readyPassTime = t;
-                    readyDistanceKm = distKm;
-                    break;
-                }
+            }
+            else if (inLatestPass)
+            {
+                break;
             }
         }
 
@@ -124,41 +115,68 @@ public static class SatelliteOverpassEvaluator
         {
             if (!closestFallbackTime.HasValue)
             {
-                return [];
+                return null;
             }
 
             latestPassTime = closestFallbackTime;
             latestDistanceKm = closestFallbackDistanceKm;
         }
 
-        if (!readyPassTime.HasValue && latestPassTime.Value > readyCutoffUtc && closestReadyFallbackTime.HasValue)
-        {
-            readyPassTime = closestReadyFallbackTime;
-            readyDistanceKm = closestReadyFallbackDistanceKm;
-        }
+        var stateNow = SatelliteOrbitPropagator.Propagate(tle, nowUtc);
+        var skipCurrentPass = CalculateGreatCircleKm(stateNow.Latitude, stateNow.Longitude, targetLat, targetLon) <= maxSwathHalfWidthKm;
 
-        int? nextPassMinutes = null;
+        var inNextPass = false;
+        DateTime? nextPassTime = null;
+        var nextPassDistanceKm = double.MaxValue;
+
         for (var t = nowUtc.Add(OverpassCoarseStep); t <= nowUtc.Add(OverpassLookaheadWindow); t = t.Add(OverpassCoarseStep))
         {
             var state = SatelliteOrbitPropagator.Propagate(tle, t);
             if (Math.Abs(state.Latitude - targetLat) > latThresholdDeg)
             {
+                skipCurrentPass = false;
+                if (inNextPass)
+                {
+                    break;
+                }
+
                 continue;
             }
 
             var distKm = CalculateGreatCircleKm(state.Latitude, state.Longitude, targetLat, targetLon);
+            if (skipCurrentPass)
+            {
+                if (distKm > maxSwathHalfWidthKm)
+                {
+                    skipCurrentPass = false;
+                }
+
+                continue;
+            }
+
             if (distKm <= maxSwathHalfWidthKm)
             {
-                nextPassMinutes = (int)Math.Max(1, Math.Round((t - nowUtc).TotalMinutes));
+                inNextPass = true;
+                if (distKm < nextPassDistanceKm)
+                {
+                    nextPassDistanceKm = distKm;
+                    nextPassTime = t;
+                }
+            }
+            else if (inNextPass)
+            {
                 break;
             }
         }
 
-        var results = new List<SatelliteHudFreshnessEntry>(2);
+        int? nextPassMinutes = nextPassTime.HasValue
+            ? (int)Math.Max(1, Math.Round((nextPassTime.Value - nowUtc).TotalMinutes))
+            : null;
+
         var latestMinutes = (int)Math.Max(0, Math.Round((nowUtc - latestPassTime.Value).TotalMinutes));
         var latestIsIngested = latestMinutes >= meta.TypicalIngestionLagMinutes;
 
-        results.Add(new SatelliteHudFreshnessEntry(
+        return new SatelliteHudFreshnessEntry(
             meta.NoradId,
             meta.Name,
             latestMinutes,
@@ -166,25 +184,7 @@ public static class SatelliteOverpassEvaluator
             latestIsIngested,
             latestDistanceKm <= nadirHalfWidthKm,
             nextPassMinutes,
-            meta.LayerVariantIds));
-
-        if (!latestIsIngested && readyPassTime.HasValue)
-        {
-            var readyMinutes = (int)Math.Max(
-                meta.TypicalIngestionLagMinutes,
-                Math.Round((nowUtc - readyPassTime.Value).TotalMinutes));
-            results.Add(new SatelliteHudFreshnessEntry(
-                meta.NoradId,
-                meta.Name,
-                readyMinutes,
-                meta.TypicalIngestionLagMinutes,
-                IsIngested: true,
-                readyDistanceKm <= nadirHalfWidthKm,
-                nextPassMinutes,
-                meta.LayerVariantIds));
-        }
-
-        return results;
+            meta.LayerVariantIds);
     }
 
     private static double CalculateGreatCircleKm(double lat1Deg, double lon1Deg, double lat2Deg, double lon2Deg)

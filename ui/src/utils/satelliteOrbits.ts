@@ -450,7 +450,17 @@ export function formatSatelliteHudSection(
     return null
   }
 
-  const sortedMatching = matching.slice().sort((a, b) => a.minutesSincePass - b.minutesSincePass)
+  const seenSatellites = new Set<string>()
+  const sortedMatching: SatelliteHudEntry[] = []
+  for (const entry of matching.slice().sort((a, b) => a.minutesSincePass - b.minutesSincePass)) {
+    const key = entry.noradId ? String(entry.noradId) : entry.name
+    if (seenSatellites.has(key)) {
+      continue
+    }
+    seenSatellites.add(key)
+    sortedMatching.push(entry)
+  }
+
   const candidates = sortedMatching.slice(0, MAX_HUD_FRESHNESS_ITEMS)
   if (candidates.length > 0 && candidates.every((c) => !c.isIngested)) {
     const firstReady = sortedMatching.find((c) => c.isIngested)
@@ -467,7 +477,7 @@ export function formatSatelliteHudSection(
     return null
   }
 
-  const upcoming = matching
+  const upcoming = sortedMatching
     .filter((entry) => typeof entry.nextPassMinutes === 'number' && Number.isFinite(entry.nextPassMinutes))
     .sort((a, b) => (a.nextPassMinutes ?? 0) - (b.nextPassMinutes ?? 0))[0]
 
@@ -484,7 +494,7 @@ export function formatSatelliteHudSection(
       : `lag ~${formatDurationBrief(entry.ingestionLagMinutes)}`
     const badge = entry.isIngested ? 'ready' : 'processing'
     return {
-      id: `sat-hud-${entry.noradId}-${entry.isIngested ? 'ready' : 'processing'}`,
+      id: `sat-hud-${entry.noradId}`,
       label: entry.name,
       value: passAgo,
       detail,
