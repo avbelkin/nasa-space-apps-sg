@@ -237,7 +237,7 @@ out vec3 v_sphereDir;
 #ifdef GLOBE
 out float v_depth;
 #endif
-const float PI = 3.14159265358979323846;
+const float NIGHT_LIGHTS_PI = 3.14159265358979323846;
 
 void main() {
   vec2 inTile = a_pos / 8192.0;
@@ -260,8 +260,8 @@ void main() {
     v_sphereDir = vec3(0.0, 0.0, -1.0);
   } else {
     vec2 merc = u_tileMercator.xy + inTile * u_tileMercator.z;
-    float lon = (merc.x * 2.0 - 1.0) * PI;
-    float lat = atan(sinh(PI * (1.0 - 2.0 * merc.y)));
+    float lon = (merc.x * 2.0 - 1.0) * NIGHT_LIGHTS_PI;
+    float lat = atan(sinh(NIGHT_LIGHTS_PI * (1.0 - 2.0 * merc.y)));
     float cosLat = cos(lat);
     v_sphereDir = vec3(cosLat * cos(lon), cosLat * sin(lon), sin(lat));
   }

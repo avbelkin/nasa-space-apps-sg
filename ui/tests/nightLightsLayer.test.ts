@@ -137,10 +137,13 @@ test('normalizeNightCoveringTiles and computeNightTileSubdivisionGranularity han
 
 test('generated GLSL shaders enforce solar terminator masking, pole mapping, ocean floor suppression, and premultiplied alpha', () => {
   const vertexSource = buildNightLightsVertexShaderSource({
-    vertexShaderPrelude: 'vec4 projectTile(vec2 p, vec2 r) { return vec4(p, 0.0, 1.0); }',
+    vertexShaderPrelude:
+      'const float PI = 3.141592653589793;\nvec4 projectTile(vec2 p, vec2 r) { return vec4(p, 0.0, 1.0); }',
     define: '#define GLOBE',
   })
   assert.match(vertexSource, /^#version 300 es/)
+  assert.equal((vertexSource.match(/\bconst float PI\b/g) ?? []).length, 1)
+  assert.match(vertexSource, /\bNIGHT_LIGHTS_PI\b/)
   assert.match(vertexSource, /uniform vec3 u_tileMercator;/)
   assert.match(vertexSource, /if \(a_pos\.y < -32767\.5\)/)
   assert.match(vertexSource, /if \(a_pos\.y > 32766\.5\)/)
