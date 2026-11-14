@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import type { ProjectionMode } from '../data/stubSeasonalData'
+import type { ProjectionMode } from '../data/mapTypes'
 import {
   CloudIcon,
   FlameIcon,

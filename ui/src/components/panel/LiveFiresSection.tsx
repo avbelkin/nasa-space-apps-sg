@@ -21,7 +21,7 @@ function formatUtcTimestamp(iso: string | null): string {
   return `${date.toISOString().slice(0, 16).replace('T', ' ')} UTC`
 }
 
-// Live NASA FIRMS detections of the last 24 hours (real data, unlike the regional index above).
+// Live NASA FIRMS detections of the last 24 hours.
 export function LiveFiresSection({ info }: { info: LiveFiresInfo }) {
   const { state, payload, summary, refreshFailed } = info
 
@@ -34,8 +34,7 @@ export function LiveFiresSection({ info }: { info: LiveFiresInfo }) {
         </p>
       ) : state === 'unavailable' ? (
         <p className="panel-note">
-          Live NASA FIRMS fire spots are unavailable right now. The map shows the sample regional
-          marks instead.
+          Live NASA FIRMS fire spots are unavailable right now.
         </p>
       ) : state === 'loading' || !payload ? (
         <p className="panel-note">
@@ -50,7 +49,9 @@ export function LiveFiresSection({ info }: { info: LiveFiresInfo }) {
             </div>
             <div className="metric-tile">
               <span className="metric-label">Peak FRP</span>
-              <span className="metric-value">{summary.maxFrpMw.toFixed(1)} MW</span>
+              <span className="metric-value">
+                {summary.totalCount > 0 ? `${summary.maxFrpMw.toFixed(1)} MW` : '—'}
+              </span>
             </div>
             <div className="metric-tile">
               <span className="metric-label">MODIS 1 km</span>

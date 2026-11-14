@@ -1,5 +1,5 @@
 import type { MapSourceDataEvent } from 'maplibre-gl'
-import type { SensorFilter } from '../data/stubSeasonalData.ts'
+import type { SensorFilter } from '../data/mapTypes.ts'
 import {
   computeLiveOrbitalState,
   SATELLITE_ANIMATION_INTERVAL_MS,
