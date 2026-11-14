@@ -8,7 +8,7 @@ import {
 export const URL_HASH_STORAGE_KEY = 'nasa_fire_calendar_url_hash'
 export const DEFAULT_CENTER: [number, number] = [108, 8]
 export const DEFAULT_ZOOM = 1.75
-export const DEFAULT_GEOLOCATION_MAX_ZOOM = 9
+export const DEFAULT_GEOLOCATION_MAX_ZOOM = 7
 export const MIN_ZOOM = 0
 export const MAX_ZOOM = 22
 
