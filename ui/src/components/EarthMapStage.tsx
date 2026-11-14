@@ -21,6 +21,7 @@ import {
 } from '../data/dataPalette'
 import {
   STATUS_CATEGORIES,
+  STATUS_MARK_REACH,
   STATUS_MARK_STYLES,
   statusMarkExtent,
   statusMarkPath,
@@ -135,8 +136,15 @@ const STATUS_MARK_LAYER: SymbolLayerSpecification = {
   },
 }
 
-// Clear of the triangles' corners (1.15 x radius) with a small gap
-const SELECTION_RING_RADIUS = ['+', ['*', ['get', 'radius'], 1.3], 5] as ExpressionSpecification
+// Inner edge of the selection ring, a few px clear of the mark's farthest point: the triangles'
+// corners plus their outline, which icon-size scales with the mark (radius / design radius).
+const SELECTION_RING_GAP_PX = 4
+const SELECTION_RING_RADIUS = [
+  '+',
+  ['*', ['get', 'radius'], STATUS_MARK_REACH.perRadius],
+  ['*', STATUS_MARK_REACH.outline, ['/', ['get', 'radius'], MARK_DESIGN_RADIUS_EXPRESSION]],
+  SELECTION_RING_GAP_PX,
+] as ExpressionSpecification
 
 function selectionFilter(regionId: string | null): FilterSpecification {
   return ['==', ['get', 'id'], regionId ?? '']
@@ -574,6 +582,11 @@ export function EarthMapStage({
     onSelectRegionRef.current = onSelectRegion
   }, [onSelectRegion])
 
+  // A new function on every App render: keep it out of the orbit sync effect's dependencies
+  useEffect(() => {
+    onSelectSatelliteRef.current = onSelectSatellite
+  }, [onSelectSatellite])
+
   useLayoutEffect(() => {
     const stage = stageRef.current
     if (!stage) {
@@ -710,22 +723,6 @@ export function EarthMapStage({
 
       mapInstanceRef.current = map
 
-      map.on('load', () => {
-        if (!map) {
-          return
-        }
-        setGeoJsonSourceData(map, 'fire-anomalies', latestGeoJsonRef.current)
-        syncOrbitalSources(map, latestOrbitalStateRef.current)
-        setGeoJsonSourceData(map, 'user-geolocation', latestUserGeoJsonRef.current)
-        map.setProjection({ type: latestProjectionRef.current })
-        syncSatelliteMarkers(
-          map,
-          latestOrbitalStateRef.current.snapshots,
-          latestShowOrbitsRef.current,
-          latestSelectedSatIdRef.current,
-        )
-      })
-
       map.on('moveend', () => {
         if (!map) {
           return
@@ -741,11 +738,23 @@ export function EarthMapStage({
       })
 
       let styleLoaded = false
+      // The style is parsed and its sources exist: re-apply whatever changed while it loaded,
+      // without waiting for 'load' (which also waits for every basemap tile).
       map.once('style.load', () => {
         styleLoaded = true
         if (!map) {
           return
         }
+        setGeoJsonSourceData(map, 'fire-anomalies', latestGeoJsonRef.current)
+        syncOrbitalSources(map, latestOrbitalStateRef.current)
+        setGeoJsonSourceData(map, 'user-geolocation', latestUserGeoJsonRef.current)
+        map.setProjection({ type: latestProjectionRef.current })
+        syncSatelliteMarkers(
+          map,
+          latestOrbitalStateRef.current.snapshots,
+          latestShowOrbitsRef.current,
+          latestSelectedSatIdRef.current,
+        )
         addStatusMarkImages(map)
         map.addLayer(STATUS_MARK_LAYER, 'user-geolocation-halo')
         for (const layerId of SELECTION_LAYER_IDS) {
@@ -769,10 +778,11 @@ export function EarthMapStage({
 
       map.on('error', (event: ErrorEvent & { sourceId?: string; tile?: unknown }) => {
         const message = event.error instanceof Error ? event.error.message : null
-        // Errors scoped to a source or tile (e.g. a single basemap tile 404/abort) are routine.
+        // Errors scoped to a source or tile (e.g. a basemap tile 404/abort) are routine, whatever
+        // their message says; worker and WebGL failures arrive unscoped.
         const isSourceScoped = event.sourceId !== undefined || event.tile !== undefined
         const isFatal =
-          (message !== null && /webgl|worker/i.test(message)) || (!isSourceScoped && !styleLoaded)
+          !isSourceScoped && ((message !== null && /webgl|worker/i.test(message)) || !styleLoaded)
         if (isFatal) {
           setMapError(message ?? 'Map style failed to load.')
         }
@@ -803,7 +813,7 @@ export function EarthMapStage({
     latestGeoJsonRef.current = geoJson
     const map = mapInstanceRef.current
     // Not gated on isStyleLoaded(), which stays false while tiles load (e.g. during a fly-to) and
-    // would drop the update; before the style is parsed the source is missing and 'load' syncs.
+    // would drop the update; before the style is parsed the source is missing and 'style.load' syncs.
     if (map) {
       setGeoJsonSourceData(map, 'fire-anomalies', geoJson)
     }
@@ -834,17 +844,17 @@ export function EarthMapStage({
     latestOrbitalStateRef.current = orbitalState
     latestShowOrbitsRef.current = showOrbits
     latestSelectedSatIdRef.current = selectedSatelliteId
-    onSelectSatelliteRef.current = onSelectSatellite
 
     const map = mapInstanceRef.current
     if (!map) {
       return
     }
     // Not gated on isStyleLoaded() for the same reason as the fire layer: it stays false while
-    // tiles load and would drop a second's position update; 'load' syncs if sources are missing.
+    // tiles load and would drop a second's position update; 'style.load' syncs if sources are
+    // missing.
     syncOrbitalSources(map, orbitalState)
     syncSatelliteMarkers(map, orbitalState.snapshots, showOrbits, selectedSatelliteId)
-  }, [orbitalState, showOrbits, selectedSatelliteId, onSelectSatellite])
+  }, [orbitalState, showOrbits, selectedSatelliteId])
 
   useEffect(() => {
     latestProjectionRef.current = projectionMode
@@ -854,7 +864,7 @@ export function EarthMapStage({
     }
     // Not gated on isStyleLoaded(): that also waits for every tile, so it stays false right after
     // a projection change and the next switch would be dropped. setProjection only needs the
-    // parsed style; before that it throws and the 'load' handler applies latestProjectionRef.
+    // parsed style; before that it throws and the 'style.load' handler applies latestProjectionRef.
     try {
       map.setProjection({ type: projectionMode })
     } catch {

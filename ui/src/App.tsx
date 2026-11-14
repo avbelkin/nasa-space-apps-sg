@@ -30,6 +30,7 @@ import {
 import {
   computeLiveOrbitalState,
   fetchSatelliteOrbits,
+  interpolateTrackAtTime,
   type LiveSatelliteSnapshot,
   type SatelliteOrbitsResponse,
 } from './utils/satelliteOrbits'
@@ -243,12 +244,17 @@ function App() {
   )
 
   const handleSelectSatellite = (satellite: LiveSatelliteSnapshot) => {
+    // The snapshot can be minutes old (positions only tick while orbits are shown): fly to where
+    // the satellite is now.
+    const now = Date.now()
+    const orbit = orbitsPayload?.satellites.find((sat) => sat.id === satellite.id)
+    const position = orbit ? interpolateTrackAtTime(orbit, now) : satellite
     setSelectedSatelliteId(satellite.id)
     setShowOrbits(true)
-    setNowUnixMs(Date.now())
+    setNowUnixMs(now)
     setCameraFocusRequest({
-      lng: satellite.lng,
-      lat: satellite.lat,
+      lng: position.lng,
+      lat: position.lat,
       zoom: FOCUS_ZOOM,
       animate: true,
       requestId: ++focusRequestSeqRef.current,
@@ -274,9 +280,11 @@ function App() {
   const satelliteFeedState: SatelliteFeedState =
     isProdUnconfigured || (orbitsError && !orbitsPayload)
       ? 'unavailable'
-      : orbitalState.snapshots.length === 0
+      : !orbitsPayload
         ? 'loading'
-        : 'ready'
+        : orbitalState.snapshots.length === 0
+          ? 'empty'
+          : 'ready'
 
   const tleSourceSummary = useMemo(() => {
     if (!orbitsPayload || orbitsPayload.satellites.length === 0) {

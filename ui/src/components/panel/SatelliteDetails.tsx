@@ -2,7 +2,8 @@ import { useState } from 'react'
 import type { LiveSatelliteSnapshot } from '../../utils/satelliteOrbits'
 import { ChevronDownIcon } from '../icons'
 
-export type SatelliteFeedState = 'unavailable' | 'loading' | 'ready'
+// 'empty': the feed loaded, but has no satellite for the current sensor filter
+export type SatelliteFeedState = 'unavailable' | 'loading' | 'empty' | 'ready'
 
 interface SatelliteDetailsProps {
   feedState: SatelliteFeedState
@@ -47,6 +48,8 @@ export function SatelliteDetails({
           <p className="panel-note">Satellite positions are unavailable right now.</p>
         ) : feedState === 'loading' ? (
           <p className="panel-note">Loading satellite positions…</p>
+        ) : feedState === 'empty' ? (
+          <p className="panel-note">No satellite positions for the selected sensor right now.</p>
         ) : (
           <>
             <p className="panel-note">

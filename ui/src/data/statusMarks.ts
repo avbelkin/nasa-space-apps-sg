@@ -83,3 +83,18 @@ export function statusMarkExtent(category: StatusCategory, radius: number): numb
   const widestStroke = Math.max(...STATUS_MARK_STYLES[category].strokes.map((s) => s.width))
   return shapeHalf + widestStroke / 2
 }
+
+// Farthest reach of any mark from its centre: a multiple of the radius (the triangles' corners)
+// plus half the widest outline. The map's selection ring stays clear of it.
+function shapeReachPerRadius(category: StatusCategory): number {
+  return category === 'fits-typical' ? 1 : Math.hypot(TRIANGLE_SIDE / 2, TRIANGLE_HEIGHT / 2)
+}
+
+export const STATUS_MARK_REACH = {
+  perRadius: Math.max(...STATUS_CATEGORIES.map(shapeReachPerRadius)),
+  outline: Math.max(
+    ...STATUS_CATEGORIES.flatMap((category) =>
+      STATUS_MARK_STYLES[category].strokes.map((stroke) => stroke.width / 2),
+    ),
+  ),
+} as const
