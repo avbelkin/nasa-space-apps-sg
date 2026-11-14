@@ -176,26 +176,21 @@
 }
 
 /* Live satellite badge rendered inside MapLibre Marker over the globe */
-.sat-marker-wrap {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-
 .sat-marker-badge {
+  --sat-color: #38bdf8;
   appearance: none;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  min-block-size: 1.5rem;
-  padding: 0.18rem 0.45rem 0.18rem 0.25rem;
+  min-block-size: 1.55rem;
+  padding: 0.2rem 0.5rem;
   border-radius: 999px;
-  border: 1px solid rgb(146 180 222 / 0.55);
-  background-color: rgb(9 15 29 / 0.86);
+  border: 1.5px solid var(--sat-color);
+  background-color: rgb(9 15 29 / 0.88);
   color: #f8fafc;
   font-family: inherit;
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1;
   white-space: nowrap;
@@ -215,39 +210,11 @@
 }
 
 .sat-svg-wing {
-  fill: #92b4de;
+  fill: var(--sat-color);
 }
 
 .sat-svg-body {
-  fill: #b0b0b0;
-}
-
-.sat-marker-tooltip {
-  position: absolute;
-  inset-block-end: calc(100% + 0.35rem);
-  inset-inline-start: 0;
-  z-index: 4;
-  padding: 0.28rem 0.5rem;
-  border-radius: 0.4rem;
-  border: 1px solid rgb(148 163 184 / 0.45);
-  background-color: rgb(9 15 29 / 0.94);
-  color: #f8fafc;
-  font-size: 0.72rem;
-  font-weight: 500;
-  line-height: 1.25;
-  white-space: nowrap;
-  box-shadow: 0 4px 12px rgb(2 6 23 / 0.45);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.12s ease-out;
-}
-
-.sat-marker-wrap[data-tooltip-open='true'] .sat-marker-tooltip,
-.sat-marker-wrap:hover .sat-marker-tooltip,
-.sat-marker-badge:focus-visible + .sat-marker-tooltip {
-  opacity: 1;
-  visibility: visible;
+  fill: #f8fafc;
 }
 
 .map-fallback-banner {
