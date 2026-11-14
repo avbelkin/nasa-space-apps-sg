@@ -6,7 +6,7 @@ import type {
   MapSourceDataEvent,
 } from 'maplibre-gl'
 import { FIRE_SPOT_COLORS } from '../data/dataPalette.ts'
-import type { SensorFilter } from '../data/stubSeasonalData.ts'
+import type { SensorFilter } from '../data/mapTypes.ts'
 import {
   ANIMATION_INTERVAL_MS,
   COHORT_PHASE_RADIANS,

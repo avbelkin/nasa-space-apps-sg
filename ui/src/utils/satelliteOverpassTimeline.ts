@@ -1,4 +1,4 @@
-import type { SensorFilter } from '../data/stubSeasonalData.ts'
+import type { SensorFilter } from '../data/mapTypes.ts'
 import type { FireInstrument, FireSpotTooltipInput } from './fireSpots.ts'
 import {
   computeClusterCentroid,

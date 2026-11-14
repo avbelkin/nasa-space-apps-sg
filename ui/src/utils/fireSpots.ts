@@ -1,5 +1,5 @@
 import type { Feature, FeatureCollection, Point } from 'geojson'
-import type { SensorFilter } from '../data/stubSeasonalData.ts'
+import type { SensorFilter } from '../data/mapTypes.ts'
 import {
   buildFireDetectionsTimeline,
   compareMatchedFireSpots,

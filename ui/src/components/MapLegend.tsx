@@ -6,24 +6,15 @@ import {
   SATELLITE_COLORS,
   USER_LOCATION_COLORS,
 } from '../data/dataPalette'
-import { MONTH_LABELS } from '../data/stubSeasonalData'
-import { STATUS_TEXT } from '../data/statusDisplay'
-import { STATUS_CATEGORIES } from '../data/statusMarks'
 import type { MapViewportState } from '../state/urlHashState'
 import { RAIN_DOT_COLOR_MODE, RAIN_FADE_IN_START_ZOOM } from '../utils/rainCloudShader'
-import { StatusMark } from './StatusMark'
-
-// Legend marks are drawn a little smaller than the smallest map mark (radius 8) to fit a text row.
-const LEGEND_MARK_RADIUS = 6
 
 interface MapLegendProps {
-  selectedMonth: number
   viewport: MapViewportState
   showSwaths: boolean
   showModisOrbits: boolean
   showViirsOrbits: boolean
   showUserLocation: boolean
-  // Live NASA FIRMS spots replace the sample status marks on the map while they are loaded
   hasLiveFires: boolean
   showFires: boolean
   showRain: boolean
@@ -44,9 +35,7 @@ function SatelliteSwatch({ color, glyph }: { color: string; glyph: string }) {
 }
 
 // The map's legend as a row below the panels (outside the map, so it never covers map content).
-// Status marks are the map's own shapes; satellite and swath keys come from the data palette.
 export function MapLegend({
-  selectedMonth,
   viewport,
   showSwaths,
   showModisOrbits,
@@ -68,20 +57,11 @@ export function MapLegend({
   return (
     <section className="legend-bar wrapper-surface" data-testid="map-legend" aria-labelledby="legend-heading">
       <h2 id="legend-heading" className="legend-heading">
-        {MONTH_LABELS[selectedMonth]} &middot; fire activity
+        Map legend
         {hasLiveFires && reducedMotion ? ' · reduced motion' : ''}
       </h2>
       <ul className="legend-list" role="list">
-        {!hasLiveFires ? (
-          STATUS_CATEGORIES.map((category) => (
-            <li key={category}>
-              <span className="legend-glyph" aria-hidden="true">
-                <StatusMark category={category} radius={LEGEND_MARK_RADIUS} />
-              </span>
-              <span>{STATUS_TEXT[category]}</span>
-            </li>
-          ))
-        ) : !showFires ? (
+        {hasLiveFires && (!showFires ? (
           <li className="legend-note">Fire spots hidden (flame button on the map shows them)</li>
         ) : (
           <li>
@@ -90,7 +70,7 @@ export function MapLegend({
             </span>
             <span>Active fire spots (24 h, size by FRP)</span>
           </li>
-        )}
+        ))}
         {showSwaths && (
           <>
             <li>

@@ -13,7 +13,6 @@ import {
   normalizeLng,
   parseUrlHash,
   resolveInitialUrlHashState,
-  serializeStoredState,
   serializeUrlHash,
   shouldMoveOnInitialLocate,
   SINGAPORE_CENTER,
@@ -23,9 +22,7 @@ import {
   type UrlHashState,
 } from '../src/state/urlHashState.ts'
 
-// Fixed "today" so the date-based defaults are deterministic: 14 November 2026, local time
-const TODAY = new Date(2026, 10, 14, 12)
-const DEFAULT_URL_HASH_STATE = createDefaultUrlHashState(TODAY)
+const DEFAULT_URL_HASH_STATE = createDefaultUrlHashState()
 
 function createMockBrowserTarget(
   initialHash = '',
@@ -77,7 +74,6 @@ test('serializeUrlHash and parseUrlHash round-trip core controls and extensible 
     lng: 103.8198,
     sensorFilter: 'viirs',
     projectionMode: 'mercator',
-    selectedMonth: 2,
     showOrbits: false,
     showClouds: false,
     showRain: true,
@@ -93,7 +89,7 @@ test('serializeUrlHash and parseUrlHash round-trip core controls and extensible 
   const hash = serializeUrlHash(input)
   assert.equal(
     hash,
-    '#z=6.45&lat=1.3521&lng=103.8198&sensor=viirs&proj=mercator&month=3&orbits=0&clouds=0&lights=0&fires=0&aoi=sea-1&hotspots=on',
+    '#z=6.45&lat=1.3521&lng=103.8198&sensor=viirs&proj=mercator&orbits=0&clouds=0&lights=0&fires=0&aoi=sea-1&hotspots=on',
   )
 
   const parsed = parseUrlHash(hash)
@@ -125,7 +121,7 @@ test('coordinate normalization rounds to 4 decimals and wraps longitudes into [-
   assert.equal(normalizeLng(103.819876), 103.8199)
 })
 
-test('parseUrlHash accepts partial hashes, month names, legacy positional hashes, and rejects non-state fragments', () => {
+test('parseUrlHash accepts partial hashes, legacy positional hashes, and rejects non-state fragments', () => {
   const partial = parseUrlHash('#z=9&lat=1.3521&lng=103.8198', DEFAULT_URL_HASH_STATE)
   assert.deepEqual(partial, {
     ...DEFAULT_URL_HASH_STATE,
@@ -134,9 +130,7 @@ test('parseUrlHash accepts partial hashes, month names, legacy positional hashes
     lng: 103.8198,
   })
 
-  const namedMonth = parseUrlHash('#month=Aug&lon=-60.1234')
-  assert.equal(namedMonth?.selectedMonth, 7)
-  assert.equal(namedMonth?.lng, -60.1234)
+  assert.equal(parseUrlHash('#lon=-60.1234')?.lng, -60.1234)
 
   const positional = parseUrlHash('#4.5/39.2611/53.0722')
   assert.equal(positional?.zoom, 4.5)
@@ -149,7 +143,7 @@ test('parseUrlHash accepts partial hashes, month names, legacy positional hashes
   assert.equal(parseUrlHash('#99/200/10'), null)
 })
 
-test('syncUrlHashAndStorage updates the URL hash and persists it without the month on every update', () => {
+test('syncUrlHashAndStorage updates the URL hash and persists the same state on every update', () => {
   const { target, storageMap, replaceCalls } = createMockBrowserTarget()
 
   const firstHash = syncUrlHashAndStorage(
@@ -163,8 +157,7 @@ test('syncUrlHashAndStorage updates the URL hash and persists it without the mon
   )
 
   assert.equal(target.location.hash, firstHash)
-  assert.match(firstHash, /&month=11&/)
-  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), firstHash.replace('&month=11', ''))
+  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), firstHash)
   assert.equal(replaceCalls.length, 1)
 
   const secondHash = syncUrlHashAndStorage(
@@ -180,7 +173,7 @@ test('syncUrlHashAndStorage updates the URL hash and persists it without the mon
 
   assert.notEqual(secondHash, firstHash)
   assert.equal(target.location.hash, secondHash)
-  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), secondHash.replace('&month=11', ''))
+  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), secondHash)
   assert.equal(replaceCalls.length, 2)
 
   // Calling sync again with identical hash still persists to localStorage without redundant replaceState.
@@ -195,7 +188,7 @@ test('syncUrlHashAndStorage updates the URL hash and persists it without the mon
     target,
   )
   assert.equal(repeatedHash, secondHash)
-  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), secondHash.replace('&month=11', ''))
+  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), secondHash)
   assert.equal(replaceCalls.length, 2)
 
   // Nothing is written under the old key
@@ -209,7 +202,6 @@ test('resolveInitialUrlHashState resolves hash > storage > default priority', ()
       '#z=7.25&lat=-8.5&lng=-60',
       '#z=4&lat=58.6&lng=-114.4',
     ).target,
-    TODAY,
   )
   assert.equal(fromHash.source, 'hash')
   assert.equal(fromHash.state.zoom, 7.25)
@@ -218,7 +210,6 @@ test('resolveInitialUrlHashState resolves hash > storage > default priority', ()
 
   const fromStorage = resolveInitialUrlHashState(
     createMockBrowserTarget('#inspector-heading', '#z=4&lat=58.6&lng=-114.4&sensor=viirs').target,
-    TODAY,
   )
   assert.equal(fromStorage.source, 'storage')
   assert.equal(fromStorage.state.zoom, 4)
@@ -228,7 +219,6 @@ test('resolveInitialUrlHashState resolves hash > storage > default priority', ()
 
   const fromDefault = resolveInitialUrlHashState(
     createMockBrowserTarget('', '#not-valid-state').target,
-    TODAY,
   )
   assert.equal(fromDefault.source, 'default')
   assert.deepEqual(fromDefault.state, DEFAULT_URL_HASH_STATE)
@@ -242,155 +232,43 @@ test('retired mode hash parameter is ignored and omitted instead of kept in extr
   assert.equal(parseUrlHash('#mode=anomaly'), null)
 })
 
-test('defaults follow the given date: current month, orbits and clouds on', () => {
-  assert.equal(DEFAULT_URL_HASH_STATE.selectedMonth, 10)
+test('defaults enable orbits and clouds', () => {
   assert.equal(DEFAULT_URL_HASH_STATE.showOrbits, true)
   assert.equal(DEFAULT_URL_HASH_STATE.showClouds, true)
-  assert.equal(createDefaultUrlHashState(new Date(2027, 0, 1, 12)).selectedMonth, 0)
-  assert.equal(createDefaultUrlHashState(new Date(2027, 11, 31, 12)).selectedMonth, 11)
-  assert.match(serializeUrlHash(DEFAULT_URL_HASH_STATE), /&month=11&orbits=1&clouds=1(&|$)/)
+  assert.match(serializeUrlHash(DEFAULT_URL_HASH_STATE), /&orbits=1&clouds=1(&|$)/)
 })
 
-test('the month comes from the hash or the date, never from storage; orbits and clouds restore from either', () => {
-  const fresh = resolveInitialUrlHashState(createMockBrowserTarget().target, TODAY)
-  assert.equal(fresh.source, 'default')
-  assert.equal(fresh.state.selectedMonth, 10)
-  assert.equal(fresh.state.showOrbits, true)
-  assert.equal(fresh.state.showClouds, true)
-
-  const fromHash = resolveInitialUrlHashState(
-    createMockBrowserTarget('#month=3&orbits=0&clouds=0', '#month=7&orbits=1&clouds=1').target,
-    TODAY,
-  )
-  assert.equal(fromHash.source, 'hash')
-  assert.equal(fromHash.state.selectedMonth, 2)
-  assert.equal(fromHash.state.showOrbits, false)
-  assert.equal(fromHash.state.showClouds, false)
-
-  // A stored month (written by an older build of this key's format) is ignored
-  const fromStorage = resolveInitialUrlHashState(
-    createMockBrowserTarget('', '#z=2&lat=0&lng=0&month=7&orbits=0&clouds=0').target,
-    TODAY,
-  )
-  assert.equal(fromStorage.source, 'storage')
-  assert.equal(fromStorage.state.selectedMonth, 10)
-  assert.equal(fromStorage.state.showOrbits, false)
-  assert.equal(fromStorage.state.showClouds, false)
-  assert.equal(fromStorage.state.zoom, 2)
-
-  // A returning visitor of an old build: its auto-written state under the old key is not read
-  const legacy = resolveInitialUrlHashState(
-    createMockBrowserTarget(
-      '',
-      '#z=4&lat=58.6&lng=-114.4&mode=anomaly&sensor=viirs&proj=mercator&month=9&orbits=0&clouds=0',
-      LEGACY_URL_HASH_STORAGE_KEY,
-    ).target,
-    TODAY,
-  )
-  assert.equal(legacy.source, 'default')
-  assert.deepEqual(legacy.state, DEFAULT_URL_HASH_STATE)
-
-  // What sync stores round-trips everything but the month
-  const stored = serializeStoredState({
+test('retired month and region are dropped from links and stored state', () => {
+  const oldHash = '#z=4&lat=10&lng=20&month=Aug&region=singapore&sensor=viirs&aoi=sea-1'
+  const expected: UrlHashState = {
     ...DEFAULT_URL_HASH_STATE,
-    selectedMonth: 2,
-    showOrbits: false,
-    showClouds: false,
-    sensorFilter: 'modis',
-    projectionMode: 'mercator',
-    selectedRegionId: 'amazon-arc',
-  })
-  assert.doesNotMatch(stored, /month=/)
-  const restored = resolveInitialUrlHashState(createMockBrowserTarget('', stored).target, TODAY)
-  assert.deepEqual(restored.state, {
-    ...DEFAULT_URL_HASH_STATE,
-    showOrbits: false,
-    showClouds: false,
-    sensorFilter: 'modis',
-    projectionMode: 'mercator',
-    selectedRegionId: 'amazon-arc',
-  })
+    zoom: 4,
+    lat: 10,
+    lng: 20,
+    sensorFilter: 'viirs',
+    extraParams: { aoi: 'sea-1' },
+  }
 
-  // A hash without a month (e.g. an old viewport-only link) gets today's month
-  const viewportOnly = resolveInitialUrlHashState(
-    createMockBrowserTarget('#4.5/39.2611/53.0722').target,
-    TODAY,
-  )
-  assert.equal(viewportOnly.source, 'hash')
-  assert.equal(viewportOnly.state.selectedMonth, 10)
-  assert.equal(viewportOnly.state.zoom, 4.5)
-})
-
-test('selected region round-trips through the hash and stays out of it when nothing is selected', () => {
-  const withRegion: UrlHashState = { ...DEFAULT_URL_HASH_STATE, selectedRegionId: 'amazon-arc' }
-  const hash = serializeUrlHash(withRegion)
-  assert.match(hash, /&region=amazon-arc(&|$)/)
-  assert.deepEqual(parseUrlHash(hash), withRegion)
-
-  const withoutRegion = serializeUrlHash(DEFAULT_URL_HASH_STATE)
-  assert.doesNotMatch(withoutRegion, /region=/)
-  const parsedWithout = parseUrlHash(withoutRegion)
-  assert.equal(parsedWithout?.selectedRegionId, undefined)
-  assert.equal(parsedWithout !== null && 'selectedRegionId' in parsedWithout, false)
-
-  // A region alone is a valid state hash; extra params survive next to it
-  assert.equal(parseUrlHash('#region=boreal-canada')?.selectedRegionId, 'boreal-canada')
-  const withExtra = parseUrlHash('#z=3&region=mediterranean&aoi=sea-1')
-  assert.equal(withExtra?.selectedRegionId, 'mediterranean')
-  assert.deepEqual(withExtra?.extraParams, { aoi: 'sea-1' })
-})
-
-test('unknown region ids are ignored, never selected and never kept as extra params', () => {
-  const parsed = parseUrlHash('#z=3&lat=10&lng=20&region=atlantis')
-  assert.ok(parsed)
-  assert.equal(parsed.selectedRegionId, undefined)
-  assert.equal(parsed.extraParams, undefined)
-  assert.equal(parsed.zoom, 3)
-  assert.doesNotMatch(serializeUrlHash(parsed), /region=/)
-
-  // Ids are matched exactly
-  assert.equal(parseUrlHash('#z=3&region=Amazon-Arc')?.selectedRegionId, undefined)
-  assert.equal(parseUrlHash('#region=atlantis'), null)
-
-  // The fallback's selection is replaced only by a valid id
-  const fallback: UrlHashState = { ...DEFAULT_URL_HASH_STATE, selectedRegionId: 'boreal-canada' }
-  assert.equal(parseUrlHash('#z=3&region=atlantis', fallback)?.selectedRegionId, 'boreal-canada')
-  assert.equal(parseUrlHash('#z=3&region=mediterranean', fallback)?.selectedRegionId, 'mediterranean')
-})
-
-test('selected region is restored on load from the hash and from storage, and written by sync', () => {
-  const fromHash = resolveInitialUrlHashState(
-    createMockBrowserTarget('#z=0.6&lat=0&lng=20&proj=mercator&region=northern-australia').target,
-    TODAY,
-  )
+  const fromHash = resolveInitialUrlHashState(createMockBrowserTarget(oldHash).target)
   assert.equal(fromHash.source, 'hash')
-  assert.equal(fromHash.state.selectedRegionId, 'northern-australia')
-  // The link's viewport is kept as is
-  assert.equal(fromHash.state.zoom, 0.6)
-  assert.equal(fromHash.state.lng, 20)
+  assert.deepEqual(fromHash.state, expected)
+  assert.equal(parseUrlHash('#month=7&region=singapore'), null)
 
-  const fromStorage = resolveInitialUrlHashState(
-    createMockBrowserTarget('', '#z=4&lat=58.6&lng=-114.4&region=boreal-canada').target,
-    TODAY,
-  )
+  const { target, storageMap } = createMockBrowserTarget('', oldHash)
+  const fromStorage = resolveInitialUrlHashState(target)
   assert.equal(fromStorage.source, 'storage')
-  assert.equal(fromStorage.state.selectedRegionId, 'boreal-canada')
+  assert.deepEqual(fromStorage.state, expected)
 
-  const { target, storageMap } = createMockBrowserTarget()
-  const selectedHash = syncUrlHashAndStorage(
-    { ...DEFAULT_URL_HASH_STATE, selectedRegionId: 'singapore' },
-    target,
-  )
-  assert.equal(target.location.hash, selectedHash)
-  assert.match(storageMap.get(URL_HASH_STORAGE_KEY) ?? '', /region=singapore/)
-  assert.equal(
-    parseUrlHash('#z=3&region=sea-equatorial', DEFAULT_URL_HASH_STATE)?.selectedRegionId,
-    'singapore',
-  )
+  const synced = syncUrlHashAndStorage(fromStorage.state, target)
+  assert.doesNotMatch(synced, /[&#](month|region)=/)
+  assert.equal(storageMap.get(URL_HASH_STORAGE_KEY), synced)
+})
 
-  syncUrlHashAndStorage({ ...DEFAULT_URL_HASH_STATE }, target)
-  assert.doesNotMatch(target.location.hash, /region=/)
-  assert.doesNotMatch(storageMap.get(URL_HASH_STORAGE_KEY) ?? '', /region=/)
+test('state from the retired storage key is ignored', () => {
+  const { target } = createMockBrowserTarget('', '#z=4&month=9', LEGACY_URL_HASH_STORAGE_KEY)
+  const restored = resolveInitialUrlHashState(target)
+  assert.equal(restored.source, 'default')
+  assert.deepEqual(restored.state, DEFAULT_URL_HASH_STATE)
 })
 
 test('clampGeolocationTargetZoom caps geolocation jump at default max zoom z7 while preserving coarser zooms', () => {
@@ -404,25 +282,13 @@ test('clampGeolocationTargetZoom caps geolocation jump at default max zoom z7 wh
   assert.equal(clampGeolocationTargetZoom(14, 11), 11)
 })
 
-test('region and clouds share one registry and round-trip together', () => {
-  const state: UrlHashState = {
-    ...DEFAULT_URL_HASH_STATE,
-    showClouds: false,
-    selectedRegionId: 'boreal-canada',
-  }
-  const hash = serializeUrlHash(state)
-  assert.match(hash, /&orbits=1&clouds=0&region=boreal-canada$/)
-  assert.deepEqual(parseUrlHash(hash, DEFAULT_URL_HASH_STATE), state)
-  assert.equal(parseUrlHash('#clouds=maybe&region=boreal-canada')?.showClouds, true)
-})
-
 test('fires sits in the same registry: on by default and absent, fires=0 when off', () => {
   assert.equal(DEFAULT_URL_HASH_STATE.showFires, true)
   assert.doesNotMatch(serializeUrlHash(DEFAULT_URL_HASH_STATE), /fires=/)
 
-  const off: UrlHashState = { ...DEFAULT_URL_HASH_STATE, showFires: false, selectedRegionId: 'mediterranean' }
+  const off: UrlHashState = { ...DEFAULT_URL_HASH_STATE, showFires: false }
   const hash = serializeUrlHash(off)
-  assert.match(hash, /&orbits=1&clouds=1&fires=0&region=mediterranean$/)
+  assert.match(hash, /&orbits=1&clouds=1&fires=0$/)
   assert.deepEqual(parseUrlHash(hash, DEFAULT_URL_HASH_STATE), off)
 
   // The team's links: fires=0 turns them off, fires=1 or no key keeps them on; never an extra param
@@ -433,8 +299,7 @@ test('fires sits in the same registry: on by default and absent, fires=0 when of
 
   // Restored from storage like orbits and clouds
   const restored = resolveInitialUrlHashState(
-    createMockBrowserTarget('', serializeStoredState(off)).target,
-    TODAY,
+    createMockBrowserTarget('', serializeUrlHash(off)).target,
   )
   assert.equal(restored.state.showFires, false)
 })
@@ -446,10 +311,9 @@ test('lights sits in the same registry: on by default and absent, lights=0 when 
   const off: UrlHashState = {
     ...DEFAULT_URL_HASH_STATE,
     showNightLights: false,
-    selectedRegionId: 'mediterranean',
   }
   const hash = serializeUrlHash(off)
-  assert.match(hash, /&orbits=1&clouds=1&lights=0&region=mediterranean$/)
+  assert.match(hash, /&orbits=1&clouds=1&lights=0$/)
   assert.deepEqual(parseUrlHash(hash, DEFAULT_URL_HASH_STATE), off)
 
   assert.equal(parseUrlHash('#lights=0')?.showNightLights, false)
@@ -459,8 +323,7 @@ test('lights sits in the same registry: on by default and absent, lights=0 when 
   assert.equal(parseUrlHash('#z=3&lights=maybe')?.showNightLights, true)
 
   const restored = resolveInitialUrlHashState(
-    createMockBrowserTarget('', serializeStoredState(off)).target,
-    TODAY,
+    createMockBrowserTarget('', serializeUrlHash(off)).target,
   )
   assert.equal(restored.state.showNightLights, false)
 })
@@ -487,8 +350,7 @@ test('rain and rainBack sit in the codec registry: omitted by default, preserved
   assert.equal(parseUrlHash('#z=3&rain=0&rainBack=240')?.extraParams, undefined)
 
   const restored = resolveInitialUrlHashState(
-    createMockBrowserTarget('', serializeStoredState(customized)).target,
-    TODAY,
+    createMockBrowserTarget('', serializeUrlHash(customized)).target,
   )
   assert.equal(restored.state.showRain, false)
   assert.equal(restored.state.rainBackMinutes, 240)

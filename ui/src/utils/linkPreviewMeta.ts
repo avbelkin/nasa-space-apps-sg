@@ -1,10 +1,10 @@
 export const LINK_PREVIEW_SITE_NAME = 'Earth Fire Calendar'
 
 export const LINK_PREVIEW_TITLE =
-  'Earth Fire Calendar — Harmonized MODIS & VIIRS Fire Anomalies'
+  'Earth Fire Calendar — MODIS & VIIRS Active Fires'
 
 export const LINK_PREVIEW_DESCRIPTION =
-  'Interactive 3D Earth globe harmonizing MODIS (1 km) and VIIRS (375 m) NASA FIRMS hotspot records to compare seasonal baselines against calendar anomalies.'
+  'Explore recent NASA FIRMS fire detections from MODIS and VIIRS and follow their satellite tracks on an interactive 3D globe.'
 
 export const LINK_PREVIEW_IMAGE_FILENAME = 'og-preview.png'
 export const LINK_PREVIEW_IMAGE_WIDTH = 1200
