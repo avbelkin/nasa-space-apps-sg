@@ -118,6 +118,13 @@ export interface LiveSatelliteSnapshot {
   shortBadge: string
 }
 
+export type OrbitalFeatureKind =
+  | 'wide-swath'
+  | 'nadir-swath'
+  | 'past-track'
+  | 'future-track'
+  | 'position'
+
 export interface LiveOrbitalState {
   snapshots: LiveSatelliteSnapshot[]
   wideSwathsGeoJson: FeatureCollection<Polygon>
@@ -125,6 +132,7 @@ export interface LiveOrbitalState {
   pastTracksGeoJson: FeatureCollection<MultiLineString>
   futureTracksGeoJson: FeatureCollection<MultiLineString>
   positionsGeoJson: FeatureCollection<Point>
+  combinedGeoJson: FeatureCollection<Point | MultiLineString | Polygon>
 }
 
 interface SatelliteVisualStyle {
@@ -146,7 +154,8 @@ const DEFAULT_SATELLITE_STYLE: SatelliteVisualStyle = {
   shortBadge: 'SAT',
 }
 
-export const SATELLITE_ANIMATION_INTERVAL_MS = 500
+export const SATELLITE_ANIMATION_FPS = 30
+export const SATELLITE_ANIMATION_INTERVAL_MS = 1000 / SATELLITE_ANIMATION_FPS
 export const SATELLITE_ORBITS_REFRESH_INTERVAL_MS = 60_000
 export const SATELLITE_ORBITS_IDLE_REFRESH_INTERVAL_MS = 20 * 60 * 1000
 export const SATELLITE_HUD_VIEWPORT_DEBOUNCE_MS = 350
@@ -221,6 +230,11 @@ function computeSphericalHeadingDeg(lat0: number, lng0: number, lat1: number, ln
   return (((Math.atan2(y, x) * RAD_TO_DEG) % 360) + 360) % 360
 }
 
+export function interpolateAngleDeg(startDeg: number, endDeg: number, t: number): number {
+  const delta = ((((endDeg - startDeg) % 360) + 540) % 360) - 180
+  return (((startDeg + delta * t) % 360) + 360) % 360
+}
+
 export function interpolateTrackAtTime(
   sat: SatelliteOrbit,
   targetUnixMs: number,
@@ -282,30 +296,76 @@ export function interpolateTrackAtTime(
   const p0 = track[low]
   const p1 = track[high]
   const span = p1.timestampUnixMs - p0.timestampUnixMs
-  const t = span > 0 ? (targetUnixMs - p0.timestampUnixMs) / span : 0
+  const t = span > 0 ? Math.max(0, Math.min(1, (targetUnixMs - p0.timestampUnixMs) / span)) : 0
 
-  let dLng = p1.lng - p0.lng
-  if (dLng > 180) {
-    dLng -= 360
-  } else if (dLng < -180) {
-    dLng += 360
+  const lat0Rad = p0.lat * DEG_TO_RAD
+  const lng0Rad = p0.lng * DEG_TO_RAD
+  const cosLat0 = Math.cos(lat0Rad)
+  const x0 = cosLat0 * Math.cos(lng0Rad)
+  const y0 = cosLat0 * Math.sin(lng0Rad)
+  const z0 = Math.sin(lat0Rad)
+
+  const lat1Rad = p1.lat * DEG_TO_RAD
+  const lng1Rad = p1.lng * DEG_TO_RAD
+  const cosLat1 = Math.cos(lat1Rad)
+  const x1 = cosLat1 * Math.cos(lng1Rad)
+  const y1 = cosLat1 * Math.sin(lng1Rad)
+  const z1 = Math.sin(lat1Rad)
+
+  const dot = Math.max(-1, Math.min(1, x0 * x1 + y0 * y1 + z0 * z1))
+  const omega = Math.acos(dot)
+  const sinOmega = Math.sin(omega)
+
+  let x: number
+  let y: number
+  let z: number
+  if (omega > 1e-6 && sinOmega > 1e-6) {
+    const w0 = Math.sin((1 - t) * omega) / sinOmega
+    const w1 = Math.sin(t * omega) / sinOmega
+    x = w0 * x0 + w1 * x1
+    y = w0 * y0 + w1 * y1
+    z = w0 * z0 + w1 * z1
+  } else {
+    x = (1 - t) * x0 + t * x1
+    y = (1 - t) * y0 + t * y1
+    z = (1 - t) * z0 + t * z1
   }
 
-  const lat = p0.lat + (p1.lat - p0.lat) * t
-  const lng = normalizeLng(p0.lng + dLng * t)
+  const norm = Math.hypot(x, y, z)
+  let lat: number
+  let lng: number
+  if (norm > 1e-12) {
+    const nx = x / norm
+    const ny = y / norm
+    const nz = Math.max(-1, Math.min(1, z / norm))
+    lat = Math.atan2(nz, Math.hypot(nx, ny)) * RAD_TO_DEG
+    lng = normalizeLng(Math.atan2(ny, nx) * RAD_TO_DEG)
+  } else {
+    let dLng = p1.lng - p0.lng
+    if (dLng > 180) {
+      dLng -= 360
+    } else if (dLng < -180) {
+      dLng += 360
+    }
+    lat = p0.lat + (p1.lat - p0.lat) * t
+    lng = normalizeLng(p0.lng + dLng * t)
+  }
+
   const altitudeKm = p0.altitudeKm + (p1.altitudeKm - p0.altitudeKm) * t
   const headingDeg =
-    Math.abs(p1.lat - p0.lat) > 1e-4 || Math.abs(dLng) > 1e-4
-      ? computeSphericalHeadingDeg(p0.lat, p0.lng, p1.lat, p1.lng)
-      : p0.headingDeg
+    Number.isFinite(p0.headingDeg) && Number.isFinite(p1.headingDeg)
+      ? interpolateAngleDeg(p0.headingDeg, p1.headingDeg, t)
+      : Math.abs(p1.lat - p0.lat) > 1e-4 || Math.abs(p1.lng - p0.lng) > 1e-4
+        ? computeSphericalHeadingDeg(p0.lat, p0.lng, p1.lat, p1.lng)
+        : p0.headingDeg
 
   return {
-    lat: Number(lat.toFixed(4)),
-    lng: Number(lng.toFixed(4)),
-    altitudeKm: Number(altitudeKm.toFixed(1)),
-    headingDeg: Number(headingDeg.toFixed(1)),
+    lat,
+    lng,
+    altitudeKm,
+    headingDeg,
     groundSpeedKmS: currentPosition.groundSpeedKmS,
-    isAscending: p1.lat >= p0.lat,
+    isAscending: Math.abs(p1.lat - p0.lat) > 1e-6 ? p1.lat >= p0.lat : p0.isAscending,
   }
 }
 
@@ -397,7 +457,7 @@ export function buildInstantaneousSwathPolygon(
       -ANTIMERIDIAN_CLAMP_DEG,
       Math.min(ANTIMERIDIAN_CLAMP_DEG, centerLon + deltaLon),
     )
-    return [Number(vLon.toFixed(4)), Number(vLat.toFixed(4))]
+    return [vLon, vLat]
   }
 
   const ring: number[][] = []
@@ -693,6 +753,7 @@ export function computeLiveOrbitalState(
       id: `${sat.id}-pos`,
       geometry: { type: 'Point', coordinates: [pos.lng, pos.lat] },
       properties: {
+        orbitalFeatureKind: 'position' satisfies OrbitalFeatureKind,
         id: sat.id,
         name: sat.name,
         instrument: sat.instrument,
@@ -720,7 +781,13 @@ export function computeLiveOrbitalState(
         type: 'Feature',
         id: `${sat.id}-past`,
         geometry: { type: 'MultiLineString', coordinates: pastSegments },
-        properties: { id: sat.id, name: sat.name, instrument: sat.instrument, color: style.color },
+        properties: {
+          orbitalFeatureKind: 'past-track' satisfies OrbitalFeatureKind,
+          id: sat.id,
+          name: sat.name,
+          instrument: sat.instrument,
+          color: style.color,
+        },
       })
     }
 
@@ -730,7 +797,13 @@ export function computeLiveOrbitalState(
         type: 'Feature',
         id: `${sat.id}-future`,
         geometry: { type: 'MultiLineString', coordinates: futureSegments },
-        properties: { id: sat.id, name: sat.name, instrument: sat.instrument, color: style.color },
+        properties: {
+          orbitalFeatureKind: 'future-track' satisfies OrbitalFeatureKind,
+          id: sat.id,
+          name: sat.name,
+          instrument: sat.instrument,
+          color: style.color,
+        },
       })
     }
 
@@ -747,6 +820,7 @@ export function computeLiveOrbitalState(
         id: `${sat.id}-swath-wide`,
         geometry: { type: 'Polygon', coordinates: [wideRing] },
         properties: {
+          orbitalFeatureKind: 'wide-swath' satisfies OrbitalFeatureKind,
           id: sat.id,
           name: sat.name,
           instrument: sat.instrument,
@@ -767,6 +841,7 @@ export function computeLiveOrbitalState(
       id: `${sat.id}-swath-nadir`,
       geometry: { type: 'Polygon', coordinates: [nadirRing] },
       properties: {
+        orbitalFeatureKind: 'nadir-swath' satisfies OrbitalFeatureKind,
         id: sat.id,
         name: sat.name,
         instrument: sat.instrument,
@@ -782,5 +857,15 @@ export function computeLiveOrbitalState(
     pastTracksGeoJson: { type: 'FeatureCollection', features: pastTrackFeatures },
     futureTracksGeoJson: { type: 'FeatureCollection', features: futureTrackFeatures },
     positionsGeoJson: { type: 'FeatureCollection', features: positionFeatures },
+    combinedGeoJson: {
+      type: 'FeatureCollection',
+      features: [
+        ...wideSwathFeatures,
+        ...nadirSwathFeatures,
+        ...pastTrackFeatures,
+        ...futureTrackFeatures,
+        ...positionFeatures,
+      ],
+    },
   }
 }

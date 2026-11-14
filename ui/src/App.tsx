@@ -38,11 +38,11 @@ import {
   formatSatelliteHudSection,
   hasSatelliteHudCenterMoved,
   interpolateTrackAtTime,
-  SATELLITE_ANIMATION_INTERVAL_MS,
   SATELLITE_HUD_VIEWPORT_DEBOUNCE_MS,
   SATELLITE_ORBITS_IDLE_REFRESH_INTERVAL_MS,
   SATELLITE_ORBITS_REFRESH_INTERVAL_MS,
   type LiveSatelliteSnapshot,
+  type SatelliteOrbit,
   type SatelliteOrbitsResponse,
 } from './utils/satelliteOrbits'
 import {
@@ -55,6 +55,7 @@ import { buildSatelliteOverpassIndex } from './utils/satelliteOverpassTimeline'
 
 const FIRES_REFRESH_INTERVAL_MS = 15 * 60 * 1000
 const FOCUS_ZOOM = 3.6
+const EMPTY_SATELLITES: readonly SatelliteOrbit[] = []
 
 function App() {
   const [todayMonth] = useState(() => new Date().getMonth())
@@ -378,24 +379,21 @@ function App() {
     if (!orbitsPayload || !showOrbits) {
       return
     }
+    const panelClockIntervalMs = selectedSatelliteId ? 1_000 : 15_000
     const timer = window.setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
         return
       }
       setNowUnixMs(Date.now())
-    }, SATELLITE_ANIMATION_INTERVAL_MS)
+    }, panelClockIntervalMs)
     return () => window.clearInterval(timer)
-  }, [orbitsPayload, showOrbits])
+  }, [orbitsPayload, showOrbits, selectedSatelliteId])
+
+  const satellites = orbitsPayload?.satellites ?? EMPTY_SATELLITES
 
   const orbitalState = useMemo(
-    () =>
-      computeLiveOrbitalState(
-        orbitsPayload?.satellites ?? [],
-        sensorFilter,
-        nowUnixMs,
-        showOrbits,
-      ),
-    [orbitsPayload, sensorFilter, nowUnixMs, showOrbits],
+    () => computeLiveOrbitalState(satellites, sensorFilter, nowUnixMs, showOrbits),
+    [satellites, sensorFilter, nowUnixMs, showOrbits],
   )
 
   const overpassBucketMs = Math.floor(nowUnixMs / 300_000) * 300_000
@@ -533,6 +531,7 @@ function App() {
         cloudRefreshNonce={cloudRefreshNonce}
         showNightLights={showNightLights}
         onShowNightLightsChange={setShowNightLights}
+        satellites={satellites}
         orbitalState={orbitalState}
         overpassIndex={overpassIndex}
         satelliteHudSection={satelliteHudSection}
