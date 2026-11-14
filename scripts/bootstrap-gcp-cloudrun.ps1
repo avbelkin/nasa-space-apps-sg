@@ -9,7 +9,7 @@ on a Google Cloud project linked to a Cloud Billing account (such as one carryin
 Google AI Ultra / Google Developer Program monthly credits).
 
 .PARAMETER ProjectId
-Target Google Cloud Project ID (e.g. nasa-space-apps-sg-2026).
+Target Google Cloud Project ID. Defaults to earth-fire-calendar-sg.
 
 .PARAMETER BillingAccountId
 Optional Cloud Billing Account ID (XXXXXX-XXXXXX-XXXXXX) holding your Google AI Ultra /
@@ -26,7 +26,7 @@ Artifact Registry, Cloud Run, and optional Cloud Storage region. Defaults to asi
 Artifact Registry Docker repository name. Defaults to cloud-run-source-deploy.
 
 .PARAMETER ServiceName
-Cloud Run service name. Defaults to nasa-space-apps-api.
+Cloud Run service name. Defaults to earth-fire-calendar-api.
 
 .PARAMETER DeployerServiceAccountName
 CI/CD service account name impersonated by GitHub Actions. Defaults to github-deployer.
@@ -36,10 +36,10 @@ Dedicated least-privilege runtime service account name for the Cloud Run service
 Defaults to nasa-api-runtime.
 
 .PARAMETER WorkloadPoolId
-Workload Identity Pool ID in global location. Defaults to github-actions-pool.
+Workload Identity Pool ID in global location. Defaults to github-pool.
 
 .PARAMETER WorkloadProviderId
-Workload Identity OIDC Provider ID. Defaults to github-actions-provider.
+Workload Identity OIDC Provider ID. Defaults to github-provider.
 
 .PARAMETER FirmsMapKey
 Optional NASA FIRMS API MAP_KEY value to upload as a new enabled version of secret firms-map-key.
@@ -58,23 +58,23 @@ Creates ProjectId if it does not already exist.
 Creates a regional Cloud Storage bucket (<ProjectId>-fire-harmonization) with uniform
 bucket-level access and grants objectViewer to the Cloud Run runtime service account.
 
-.PARAMETER MonthlyBudgetUsd
-Optional monthly Cloud Billing budget alert amount in USD (creates alerts at 50%, 80%, 100%).
+.PARAMETER MonthlyBudgetAmount
+Optional monthly Cloud Billing budget alert amount in the billing account's currency
+(creates alerts at 50%, 80%, 100%). Alias: MonthlyBudgetUsd.
 
 .PARAMETER SyncGitHubVars
 Pushes the computed GCP_* repository variables directly to GitHubRepo using the gh CLI.
 
 .EXAMPLE
-.\scripts\bootstrap-gcp-cloudrun.ps1 -ProjectId nasa-space-apps-sg-2026 -PromptForSecrets -MonthlyBudgetUsd 80 -SyncGitHubVars
+.\scripts\bootstrap-gcp-cloudrun.ps1 -PromptForSecrets -CreateStorageBucket -MonthlyBudgetAmount 100 -SyncGitHubVars
 
 .EXAMPLE
-.\scripts\bootstrap-gcp-cloudrun.ps1 -ProjectId nasa-space-apps-sg-2026 -BillingAccountId 012345-6789AB-CDEF01 -CreateProject -CreateStorageBucket -SyncGitHubVars
+.\scripts\bootstrap-gcp-cloudrun.ps1 -ProjectId earth-fire-calendar-sg -BillingAccountId 012345-6789AB-CDEF01 -CreateProject -CreateStorageBucket -SyncGitHubVars
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
-    [string]$ProjectId,
+    [string]$ProjectId = "earth-fire-calendar-sg",
 
     [string]$BillingAccountId = "",
 
@@ -84,15 +84,15 @@ param(
 
     [string]$ArtifactRepo = "cloud-run-source-deploy",
 
-    [string]$ServiceName = "nasa-space-apps-api",
+    [string]$ServiceName = "earth-fire-calendar-api",
 
     [string]$DeployerServiceAccountName = "github-deployer",
 
     [string]$RuntimeServiceAccountName = "nasa-api-runtime",
 
-    [string]$WorkloadPoolId = "github-actions-pool",
+    [string]$WorkloadPoolId = "github-pool",
 
-    [string]$WorkloadProviderId = "github-actions-provider",
+    [string]$WorkloadProviderId = "github-provider",
 
     [string]$FirmsMapKey = "",
 
@@ -104,8 +104,9 @@ param(
 
     [switch]$CreateStorageBucket,
 
+    [Alias("MonthlyBudgetUsd")]
     [ValidateRange(0, 1000000)]
-    [int]$MonthlyBudgetUsd = 0,
+    [int]$MonthlyBudgetAmount = 0,
 
     [switch]$SyncGitHubVars
 )
@@ -117,6 +118,53 @@ function Write-Step {
     param([string]$Message)
     Write-Host ""
     Write-Host "==> $Message" -ForegroundColor Cyan
+}
+
+function Resolve-CliExecutable {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CommandName,
+        [string[]]$FallbackPaths = @()
+    )
+
+    $existing = Get-Command $CommandName -ErrorAction SilentlyContinue
+    if ($null -ne $existing) {
+        return $existing.Source
+    }
+
+    $candidates = New-Object System.Collections.Generic.List[string]
+    foreach ($scope in @("User", "Machine")) {
+        $scopePath = [Environment]::GetEnvironmentVariable("Path", $scope)
+        if (-not [string]::IsNullOrWhiteSpace($scopePath)) {
+            foreach ($dir in ($scopePath -split ';')) {
+                $trimmedDir = $dir.Trim().Trim('"')
+                if (-not [string]::IsNullOrWhiteSpace($trimmedDir)) {
+                    foreach ($suffix in @(".exe", ".cmd", ".bat", "")) {
+                        $candidates.Add((Join-Path $trimmedDir "$CommandName$suffix"))
+                    }
+                }
+            }
+        }
+    }
+
+    foreach ($fallback in $FallbackPaths) {
+        if (-not [string]::IsNullOrWhiteSpace($fallback)) {
+            $candidates.Add($fallback)
+        }
+    }
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            $parentDir = Split-Path -Path $candidate -Parent
+            $currentEntries = ($env:PATH -split ';') | ForEach-Object { $_.Trim().TrimEnd('\').ToLowerInvariant() }
+            if ($currentEntries -notcontains $parentDir.TrimEnd('\').ToLowerInvariant()) {
+                $env:PATH = "$parentDir;$env:PATH"
+            }
+            return $candidate
+        }
+    }
+
+    return $null
 }
 
 function Invoke-NativeCli {
@@ -344,9 +392,16 @@ if ($GitHubRepo -notmatch '^[^/\s]+/[^/\s]+$') {
     throw "GitHubRepo '$GitHubRepo' must be in 'owner/repo' format."
 }
 
-if (-not (Get-Command gcloud -ErrorAction SilentlyContinue)) {
-    throw "Google Cloud CLI ('gcloud') was not found on PATH. Install it from https://cloud.google.com/sdk/docs/install and retry."
+$gcloudFallbacks = @(
+    "C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd",
+    "C:\Program Files\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd",
+    "$env:LOCALAPPDATA\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd"
+)
+$resolvedGcloud = Resolve-CliExecutable -CommandName "gcloud" -FallbackPaths $gcloudFallbacks
+if ([string]::IsNullOrWhiteSpace($resolvedGcloud)) {
+    throw "Google Cloud CLI ('gcloud') was not found on PATH or standard install directories. Install it from https://cloud.google.com/sdk/docs/install and retry."
 }
+Write-Host "    Using gcloud: $resolvedGcloud" -ForegroundColor DarkGray
 
 $activeAccount = Get-GcloudValue -Arguments @("auth", "list", "--filter=status:ACTIVE", "--format=value(account)", "--quiet")
 if ([string]::IsNullOrWhiteSpace($activeAccount)) {
@@ -412,7 +467,7 @@ $apisToEnable = @(
 if ($CreateStorageBucket) {
     $apisToEnable += "storage.googleapis.com"
 }
-if ($MonthlyBudgetUsd -gt 0) {
+if ($MonthlyBudgetAmount -gt 0) {
     $apisToEnable += "billingbudgets.googleapis.com"
 }
 
@@ -648,8 +703,8 @@ if ($CreateStorageBucket) {
 }
 
 # 8. Optional Cloud Billing monthly budget alert
-if ($MonthlyBudgetUsd -gt 0) {
-    Write-Step "Configuring Cloud Billing budget alert ($MonthlyBudgetUsd USD/month)"
+if ($MonthlyBudgetAmount -gt 0) {
+    Write-Step "Configuring Cloud Billing budget alert ($MonthlyBudgetAmount/month)"
     try {
         $billingAccountName = Get-GcloudValue -Arguments @(
             "billing", "projects", "describe", $ProjectId,
@@ -657,6 +712,14 @@ if ($MonthlyBudgetUsd -gt 0) {
             "--quiet"
         )
         $resolvedBillingAccountId = $billingAccountName -replace '^billingAccounts/', ''
+        $currencyCode = Get-GcloudValue -Arguments @(
+            "billing", "accounts", "describe", $resolvedBillingAccountId,
+            "--format=value(currencyCode)",
+            "--quiet"
+        )
+        if ([string]::IsNullOrWhiteSpace($currencyCode)) {
+            $currencyCode = "USD"
+        }
         $budgetDisplayName = "earth-fire-calendar-budget"
 
         $existingBudgetsRaw = Get-GcloudValue -Arguments @(
@@ -671,13 +734,13 @@ if ($MonthlyBudgetUsd -gt 0) {
             Write-Host "    Budget exists: $budgetDisplayName" -ForegroundColor DarkGray
         }
         else {
-            Write-Host "    Creating budget '$budgetDisplayName' ($MonthlyBudgetUsd USD, thresholds 50%/80%/100%)"
+            Write-Host "    Creating budget '$budgetDisplayName' ($MonthlyBudgetAmount $currencyCode, thresholds 50%/80%/100%)"
             $null = Invoke-Gcloud -Arguments @(
                 "billing", "budgets", "create",
                 "--billing-account=$resolvedBillingAccountId",
                 "--display-name=$budgetDisplayName",
                 "--filter-projects=projects/$ProjectId",
-                "--budget-amount=${MonthlyBudgetUsd}USD",
+                "--budget-amount=${MonthlyBudgetAmount}${currencyCode}",
                 "--threshold-rule=percent=0.5",
                 "--threshold-rule=percent=0.8",
                 "--threshold-rule=percent=1.0",
@@ -724,8 +787,13 @@ if ([string]::IsNullOrWhiteSpace($cloudRunSecretsSpec)) {
 
 if ($SyncGitHubVars) {
     Write-Step "Syncing repository variables to $GitHubRepo via GitHub CLI"
-    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-        throw "GitHub CLI ('gh') was not found on PATH. Install it from https://cli.github.com/ or set the variables above in GitHub Settings."
+    $ghFallbacks = @(
+        "C:\Program Files\GitHub CLI\gh.exe",
+        "C:\Program Files (x86)\GitHub CLI\gh.exe"
+    )
+    $resolvedGh = Resolve-CliExecutable -CommandName "gh" -FallbackPaths $ghFallbacks
+    if ([string]::IsNullOrWhiteSpace($resolvedGh)) {
+        throw "GitHub CLI ('gh') was not found on PATH or standard install directories. Install it from https://cli.github.com/ or set the variables above in GitHub Settings."
     }
 
     $null = Invoke-CheckedCli -Executable "gh" -Arguments @("auth", "status")
