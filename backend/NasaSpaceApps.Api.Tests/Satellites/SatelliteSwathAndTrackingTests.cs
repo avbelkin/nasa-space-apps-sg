@@ -188,7 +188,7 @@ public sealed class SatelliteSwathAndTrackingTests
     public async Task SatelliteOrbitService_DefaultWindowCoversProcessingLagPlusReadyTail()
     {
         Assert.Equal(180, SatelliteOrbitService.DefaultPastMinutes);
-        Assert.Equal(90, SatelliteOrbitService.DefaultFutureMinutes);
+        Assert.Equal(30, SatelliteOrbitService.DefaultFutureMinutes);
         Assert.Equal(360, SatelliteOrbitService.MaxPastMinutes);
 
         using var memoryCache = new MemoryCache(new MemoryCacheOptions());

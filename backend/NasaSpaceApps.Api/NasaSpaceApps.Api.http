@@ -10,7 +10,7 @@ Accept: application/json
 
 ###
 
-GET {{NasaSpaceApps.Api_HostAddress}}/api/satellites/orbits?pastMinutes=180&futureMinutes=90&stepSeconds=30
+GET {{NasaSpaceApps.Api_HostAddress}}/api/satellites/orbits?pastMinutes=180&futureMinutes=30&stepSeconds=30
 Accept: application/json
 
 ###

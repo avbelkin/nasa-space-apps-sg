@@ -156,7 +156,7 @@ export function MapLegend({
         )}
         {(showModisOrbits || showViirsOrbits) && (
           <li className="legend-note">
-            Tracks: solid ready, dashed in processing ({orbitLagLabel}), dotted next 90 min
+            Tracks: solid ready, dashed in processing ({orbitLagLabel})
           </li>
         )}
         {showUserLocation && (
