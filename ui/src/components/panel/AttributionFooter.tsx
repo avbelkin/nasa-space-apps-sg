@@ -10,6 +10,13 @@ const EXTERNAL = { target: '_blank', rel: 'noopener noreferrer' } as const
 export function AttributionFooter({ connectionState }: AttributionFooterProps) {
   return (
     <footer className="panel-footer">
+      <p className="attribution-line">
+        <a href="https://firms.modaps.eosdis.nasa.gov/" {...EXTERNAL}>NASA FIRMS</a> &middot;{' '}
+        <a href="https://earthdata.nasa.gov/gibs" {...EXTERNAL}>NASA GIBS</a> &middot;{' '}
+        <a href="https://celestrak.org/" {...EXTERNAL}>CelesTrak</a> &middot;{' '}
+        <a href="https://s2maps.eu" {...EXTERNAL}>EOX / Copernicus Sentinel-2</a> &middot;{' '}
+        <a href="https://layers.extremum.org" {...EXTERNAL}>Extremum</a>. Not affiliated with NASA.
+      </p>
       <div className="footer-meta">
         <details className="panel-details panel-details-quiet">
           <summary className="panel-details-summary">

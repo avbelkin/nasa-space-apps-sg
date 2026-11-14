@@ -1782,6 +1782,16 @@
   border-block-start: 1px solid var(--border-subtle);
 }
 
+.attribution-line {
+  margin: 0;
+  font-size: var(--fs-14);
+  color: var(--text-muted);
+}
+
+.panel-footer:has(.footer-meta > details[open]) > .attribution-line {
+  display: none;
+}
+
 /* "Sources and credits" and the API indicator share a row while both fit, and wrap otherwise */
 .footer-meta {
   display: flex;
