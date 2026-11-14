@@ -1,0 +1,24 @@
+# .NET
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+out/
+publish/
+
+# Node / Vite
+node_modules/
+dist/
+dist-ssr/
+*.local
+.env
+.env.*
+!.env.example
+
+# OS / IDE / Cloud credentials
+.DS_Store
+Thumbs.db
+*gcp-key*.json
+*service-account*.json
+.gcloud/
