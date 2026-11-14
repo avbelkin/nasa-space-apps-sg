@@ -1,9 +1,20 @@
 # NASA Space Apps SG
 
-Monorepo starter for the NASA Space Apps SG project:
+## Project Purpose
+
+Built for the **2026 NASA Space Apps Challenge — [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/?tab=details)**. The application harmonizes global satellite active-fire hotspot records across **MODIS** (~1 km resolution, 2000–present) and **VIIRS** (375 m resolution, 2012–present) into a unified **Burning Activity Calendar** and interactive Area-of-Interest (AOI) explorer so emergency responders, land managers, and scientists can compare multi-decade fire baselines and detect anomalies without sensor-transition artifacts.
+
+- [doc/README.md](doc/README.md) — Challenge background, objectives, target users, and NASA FIRMS data sources.
+- [doc/architecture-and-harmonization.md](doc/architecture-and-harmonization.md) — UI/backend split and harmonization pipeline design notes.
+
+## Stack
 
 - **`ui/`** — Pure React + TypeScript + Vite static SPA published to **GitHub Pages**.
 - **`backend/`** — ASP.NET Core (`.NET 10`) Minimal API containerized for **Google Cloud Run**.
+
+## Team Git Workflow
+
+- Commit and push intermediate milestones promptly to `origin/main` so all team members stay synced with the latest working changes (see [AGENTS.md](AGENTS.md)).
 
 ## Local Development
 
