@@ -1,6 +1,7 @@
 using System.Net;
 using System.Runtime.InteropServices;
 using NasaSpaceApps.Api.Firms;
+using NasaSpaceApps.Api.NasaOpenApi;
 using NasaSpaceApps.Api.Satellites;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,10 +19,12 @@ var allowedOrigins = builder.Configuration
     .ToArray() ?? [];
 
 var firmsOptions = FirmsOptions.FromConfiguration(builder.Configuration, builder.Environment);
+var nasaOpenApiOptions = NasaOpenApiOptions.FromConfiguration(builder.Configuration, builder.Environment);
 
 builder.Services.AddOpenApi();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton(firmsOptions);
+builder.Services.AddSingleton(nasaOpenApiOptions);
 builder.Services.AddHttpClient("CelesTrak", client =>
 {
     client.BaseAddress = new Uri("https://celestrak.org/");
@@ -42,9 +45,30 @@ builder.Services.AddHttpClient("Firms", client =>
 {
     AutomaticDecompression = DecompressionMethods.All,
 });
+builder.Services.AddHttpClient("NasaOpenApi", client =>
+{
+    client.BaseAddress = new Uri("https://api.nasa.gov/");
+    client.Timeout = TimeSpan.FromSeconds(20);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "NasaSpaceApps-EarthFireCalendar/1.0 (+https://github.com/avbelkin/nasa-space-apps-sg)");
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    AutomaticDecompression = DecompressionMethods.All,
+});
+builder.Services.AddHttpClient("NasaEonet", client =>
+{
+    client.BaseAddress = new Uri("https://eonet.gsfc.nasa.gov/");
+    client.Timeout = TimeSpan.FromSeconds(20);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "NasaSpaceApps-EarthFireCalendar/1.0 (+https://github.com/avbelkin/nasa-space-apps-sg)");
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    AutomaticDecompression = DecompressionMethods.All,
+});
 builder.Services.AddSingleton<CelesTrakTleDownloader>();
 builder.Services.AddSingleton<SatelliteOrbitService>();
 builder.Services.AddSingleton<FirmsClient>();
+builder.Services.AddSingleton<NasaOpenApiClient>();
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -79,7 +103,7 @@ app.MapGet("/health", () => Results.Ok(new
     timestampUtc = DateTimeOffset.UtcNow
 }));
 
-app.MapGet("/api/status", (IHostEnvironment env, FirmsOptions firms) => Results.Ok(new
+app.MapGet("/api/status", (IHostEnvironment env, FirmsOptions firms, NasaOpenApiOptions nasa) => Results.Ok(new
 {
     service = "NasaSpaceApps.Api",
     status = "ok",
@@ -88,13 +112,84 @@ app.MapGet("/api/status", (IHostEnvironment env, FirmsOptions firms) => Results.
     timestampUtc = DateTimeOffset.UtcNow,
     firmsConfigured = firms.IsConfigured,
     firmsKeyFormatValid = firms.IsKeyFormatValid,
-    firmsConfigSource = firms.ConfigSource
+    firmsConfigSource = firms.ConfigSource,
+    nasaApiConfigured = nasa.IsConfigured,
+    nasaApiKeyFormatValid = nasa.IsKeyFormatValid,
+    nasaApiConfigSource = nasa.ConfigSource
 }));
 
 app.MapGet("/api/firms/status", async (FirmsClient firmsClient, CancellationToken cancellationToken) =>
 {
     var status = await firmsClient.GetStatusAsync(cancellationToken);
     return Results.Ok(status);
+});
+
+app.MapGet("/api/nasa/status", async (NasaOpenApiClient nasaClient, CancellationToken cancellationToken) =>
+{
+    var status = await nasaClient.GetStatusAsync(cancellationToken);
+    return Results.Ok(status);
+});
+
+app.MapGet("/api/nasa/epic", async (
+    NasaOpenApiOptions nasa,
+    NasaOpenApiClient nasaClient,
+    CancellationToken cancellationToken) =>
+{
+    if (!nasa.IsConfigured)
+    {
+        return Results.Json(
+            new { error = "NASA_API_KEY is not configured on this backend instance." },
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    try
+    {
+        var response = await nasaClient.GetLatestEpicNaturalAsync(cancellationToken);
+        return Results.Ok(response);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Json(
+            new { error = nasa.Redact(ex.Message) },
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+    catch (HttpRequestException ex)
+    {
+        return Results.Json(
+            new { error = $"Failed to query NASA EPIC API: {nasa.Redact(ex.Message)}" },
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+});
+
+app.MapGet("/api/nasa/wildfires", async (
+    string? status,
+    int? days,
+    int? limit,
+    NasaOpenApiOptions nasa,
+    NasaOpenApiClient nasaClient,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var response = await nasaClient.GetWildfireEventsAsync(status, days, limit, cancellationToken);
+        return Results.Ok(response);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Json(
+            new { error = nasa.Redact(ex.Message) },
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+    catch (HttpRequestException ex)
+    {
+        return Results.Json(
+            new { error = $"Failed to query NASA EONET API: {nasa.Redact(ex.Message)}" },
+            statusCode: StatusCodes.Status502BadGateway);
+    }
 });
 
 app.MapGet("/api/hotspots", async (

@@ -74,7 +74,7 @@ If you prefer not to run the helper script:
 - **Runtime Identity (`nasa-api-runtime`)**:
   - Attached directly to the Cloud Run container (replacing the broad default Compute Engine `editor` account).
   - Holds only:
-    - `roles/secretmanager.secretAccessor` on `firms-map-key` and `gemini-api-key`
+    - `roles/secretmanager.secretAccessor` on `firms-map-key`, `nasa-api-key`, and `gemini-api-key`
     - `roles/storage.objectViewer` on `gs://<project>-fire-harmonization`
     - `roles/aiplatform.user` on the project (when bootstrapped with `-EnableVertexAi`)
 
@@ -86,14 +86,14 @@ Calling Gemini through **Vertex AI** allows Cloud Run containers running under `
 
 *(Any AI-generated regional summaries must retain factual NASA FIRMS / MODIS / VIIRS attribution and non-endorsement disclosures per [AGENTS.md](../AGENTS.md).)*
 
-### Adding `FIRMS_MAP_KEY` to Secret Manager Later
+### Adding `FIRMS_MAP_KEY` and `NASA_API_KEY` to Secret Manager Later
 
-When ready to wire live NASA FIRMS feeds into Cloud Run:
+When ready to wire live NASA FIRMS or `api.nasa.gov` feeds into Cloud Run:
 1. Run the bootstrap script with `-PromptForSecrets` and `-SyncGitHubVars`:
    ```powershell
    .\scripts\bootstrap-gcp-cloudrun.ps1 -PromptForSecrets -SyncGitHubVars
    ```
-2. This uploads an exact UTF-8 (no BOM/newline) secret version to `firms-map-key` and sets `GCP_CLOUDRUN_SECRETS=FIRMS_MAP_KEY=firms-map-key:latest` so `.github/workflows/deploy-backend.yml` injects `FIRMS_MAP_KEY` automatically on deploy.
+2. This uploads exact UTF-8 (no BOM/newline) secret versions (e.g., to `firms-map-key` and `nasa-api-key`) and sets `GCP_CLOUDRUN_SECRETS` (e.g., `FIRMS_MAP_KEY=firms-map-key:latest,NASA_API_KEY=nasa-api-key:latest`) so `.github/workflows/deploy-backend.yml` injects them automatically on deploy.
 
 ---
 
