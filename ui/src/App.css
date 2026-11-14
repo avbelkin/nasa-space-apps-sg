@@ -4,7 +4,7 @@
   inline-size: 100%;
   min-block-size: 100dvh;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(44dvh, 1fr) auto auto;
+  grid-template-rows: auto minmax(min-content, 1fr) auto auto;
   grid-template-areas:
     "topbar"
     "mapstage"
@@ -110,16 +110,33 @@
   flex-shrink: 0;
 }
 
+.map-column {
+  grid-area: mapstage;
+  display: grid;
+  grid-template-rows: minmax(44dvh, 1fr);
+  gap: 0.75rem;
+  min-inline-size: 0;
+}
+
+@media (min-width: 60rem) {
+  .map-column {
+    grid-template-rows: minmax(12rem, 1fr);
+  }
+
+  .app-frame:has(.pinned-fire-details) {
+    grid-template-rows: auto minmax(min-content, 1fr) auto;
+  }
+}
+
 /* Inner Map CSS Grid Container: MapLibre canvas under the control column (top-end) and the
    satellite pass card (bottom-end, lifted above MapLibre's attribution control) */
 .map-stage {
-  /* Focus ring over the map stays neutral: on the map, blue means "below typical" only */
+  /* Use a light focus ring against the map imagery. */
   --focus-ring: #f8fafc;
-  grid-area: mapstage;
   /* Size container: its height comes from the page grid, and a short map folds the controls */
   container: mapstage / size;
   display: grid;
-  min-block-size: 44dvh;
+  min-block-size: 0;
   min-inline-size: 0;
   grid-template-columns: 0.5rem minmax(0, 1fr) auto 0.5rem;
   grid-template-rows: 0.5rem auto minmax(0, 1fr) 0.5rem;
@@ -139,12 +156,6 @@
     #020510;
   box-shadow: inset 0 0 0 1px rgb(125 211 252 / 0.12);
   overflow: clip;
-}
-
-@media (min-width: 60rem) {
-  .map-stage {
-    min-block-size: 0;
-  }
 }
 
 .space-backdrop-canvas {
@@ -372,17 +383,12 @@
   rotate: 180deg;
 }
 
-/* Bottom row of the map: the fire spot card at the start and the satellite pass card at the end,
-   both bottom-aligned beside the control column and just above MapLibre's attribution
-   (--attribution-clearance is its measured height, set by EarthMapStage). When both do not fit on
-   one line, the fire card sits on the upper line so the satellite pass card never shifts. */
+/* Keep the satellite pass card above MapLibre's attribution. */
 .map-hud-bottom {
   grid-area: hud-bottom-end;
   align-self: end;
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.375rem 0.5rem;
+  justify-content: flex-end;
   min-inline-size: 0;
   margin-inline-end: 0.5rem;
   margin-block-end: var(--attribution-clearance, 2.25rem);
@@ -394,7 +400,6 @@
 }
 
 .map-hud-bottom-end {
-  margin-inline-start: auto;
   min-inline-size: 0;
   font-size: var(--fs-12);
   line-height: 1.25;
@@ -529,79 +534,54 @@
 }
 
 @container mapstage (inline-size < 36rem) {
-  .map-hud-bottom-end {
-    margin-inline-start: 0;
-  }
-
-  .fire-tooltip-card,
-  .fire-tooltip-card:has(.fire-timeline) {
-    flex: 1 1 100%;
-    inline-size: 100%;
-    max-inline-size: 100%;
+  .map-hud-bottom {
+    justify-content: flex-start;
   }
 }
 
-/* Live fire spot details on hover (or pinned by a click); the team's card in the HUD tokens */
-.fire-tooltip-card {
+.pinned-fire-details {
   display: grid;
-  gap: 0.375rem;
-  padding: 0.45rem 0.6rem;
-  max-inline-size: min(24rem, 100%);
-  font-size: var(--fs-12);
-  line-height: 1.35;
-}
-
-.fire-tooltip-card:has(.fire-timeline) {
-  flex: 0 0 auto;
-  inline-size: min(28.75rem, 100%);
-  max-inline-size: min(28.75rem, 100%);
+  gap: 0.5rem;
   min-inline-size: 0;
+  padding: 0.625rem 0.75rem;
+  font-size: var(--fs-12);
 }
 
-.fire-tooltip-card[data-pinned='false'] {
-  pointer-events: none;
-}
-
-.fire-tooltip-card[data-pinned='true'] {
-  border-color: color-mix(in srgb, var(--data-above) 55%, transparent);
-}
-
-.fire-tooltip-header {
+.pinned-fire-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem;
 }
 
-.fire-tooltip-title-group {
-  display: grid;
-  gap: 0.125rem;
+.pinned-fire-summary h2 {
+  margin: 0;
+  font-size: var(--fs-16);
 }
 
-.fire-tooltip-title {
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #cbd5e1;
-}
-
-.fire-tooltip-coords {
+.pinned-fire-summary p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem 0.75rem;
+  margin: 0.15rem 0 0;
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
-  color: #cbd5e1;
 }
 
-.fire-tooltip-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
+.pinned-fire-unpin {
+  display: inline-flex;
+  align-items: center;
   gap: 0.25rem;
-  color: #f8fafc;
 }
 
-.fire-tooltip-hint {
-  margin: 0;
-  color: #94a3b8;
+.pinned-fire-unpin .icon {
+  inline-size: 1rem;
+  block-size: 1rem;
+}
+
+.fire-timeline-scroll:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--accent));
+  outline-offset: 2px;
 }
 
 /* Grouped 24h fire detections timeline + place-relative solar horizon curve */
@@ -618,7 +598,7 @@
   justify-content: space-between;
   gap: 0.15rem 0.5rem;
   font-variant-numeric: tabular-nums;
-  color: #e2e8f0;
+  color: var(--text-muted);
 }
 
 .fire-timeline-sun-events {
@@ -634,28 +614,23 @@
   align-items: center;
   gap: 0.25rem;
   white-space: nowrap;
-  color: #f8fafc;
+  color: var(--text-primary);
 }
 
 .fire-timeline-sun-item .icon {
   inline-size: 0.9rem;
   block-size: 0.9rem;
-  color: #fde68a;
-}
-
-.fire-timeline-peak {
-  color: #cbd5e1;
-  white-space: nowrap;
+  color: var(--text-primary);
 }
 
 .fire-timeline-scroll {
   min-inline-size: 0;
-  overflow: clip;
+  overflow-x: auto;
 }
 
 .fire-timeline-frame {
   inline-size: 100%;
-  min-inline-size: 0;
+  min-inline-size: 26rem;
 }
 
 .fire-timeline-plot {
@@ -868,7 +843,7 @@
   font-size: 0.6875rem;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
-  color: #cbd5e1;
+  color: var(--text-muted);
 }
 
 .fire-timeline-legend {
@@ -880,7 +855,7 @@
   padding-inline: 0.125rem;
   font-size: 0.6875rem;
   line-height: 1.15;
-  color: #cbd5e1;
+  color: var(--text-muted);
 }
 
 .fire-timeline-legend-item {

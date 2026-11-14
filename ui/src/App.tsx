@@ -6,6 +6,7 @@ import {
   type GeolocationLegendState,
 } from './components/EarthMapStage'
 import { MapLegend } from './components/MapLegend'
+import { PinnedFireDetails, type PinnedFireSelection } from './components/PinnedFireDetails'
 import type { SatelliteFeedState } from './components/panel/SatelliteDetails'
 import { SidePanel } from './components/SidePanel'
 import { DATA_PALETTE_CSS_VARIABLES } from './data/dataPalette'
@@ -74,6 +75,8 @@ function App() {
     initialResolution.state.showNightLights,
   )
   const [showFires, setShowFires] = useState<boolean>(initialResolution.state.showFires)
+  const [pinnedFireSelection, setPinnedFireSelection] = useState<PinnedFireSelection | null>(null)
+  const mapColumnRef = useRef<HTMLDivElement | null>(null)
   const [pulsePaused, setPulsePaused] = useState<boolean>(false)
   const [reducedMotion, setReducedMotion] = useState<boolean>(false)
   const [viewport, setViewport] = useState<MapViewportState>(() => ({
@@ -168,6 +171,9 @@ function App() {
       setRainBackMinutes(parsed.rainBackMinutes)
       setShowNightLights(parsed.showNightLights)
       setShowFires(parsed.showFires)
+      setPinnedFireSelection((selection) =>
+        parsed.showFires && selection?.sensorFilter === parsed.sensorFilter ? selection : null,
+      )
       setExtraParams(parsed.extraParams)
       setViewport({
         zoom: parsed.zoom,
@@ -452,6 +458,28 @@ function App() {
     return `IMERG 30m · ${formatRainLookbackLabel(rainBackMinutes)}${utcHhMm ? ` · ${utcHhMm}` : ''}`
   }, [rainBackMinutes, rainMetadata.effectiveTimeIso])
 
+  const unpinFireSelection = useCallback(() => {
+    const mapColumn = mapColumnRef.current
+    if (mapColumn?.querySelector('.pinned-fire-details')?.contains(document.activeElement)) {
+      mapColumn.querySelector<HTMLCanvasElement>('.maplibregl-canvas')?.focus()
+    }
+    setPinnedFireSelection(null)
+  }, [])
+
+  useEffect(() => {
+    if (!pinnedFireSelection) {
+      return
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !event.defaultPrevented) {
+        event.preventDefault()
+        unpinFireSelection()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
+  }, [pinnedFireSelection, unpinFireSelection])
+
   return (
     <div className="app-frame" style={DATA_PALETTE_CSS_VARIABLES}>
       <header className="top-bar wrapper-surface">
@@ -459,54 +487,74 @@ function App() {
         <p className="brand-subtitle">Explore active fires detected by satellites</p>
       </header>
 
-      <EarthMapStage
-        sensorFilter={sensorFilter}
-        projectionMode={projectionMode}
-        onProjectionModeChange={setProjectionMode}
-        initialViewport={initialResolution.state}
-        onViewportChange={setViewport}
-        cameraFocusRequest={cameraFocusRequest}
-        autoLocateOnMount={initialResolution.source === 'default'}
-        geolocationMaxZoom={DEFAULT_GEOLOCATION_MAX_ZOOM}
-        apiBaseUrl={apiBaseUrl}
-        cloudsDisabled={isProdUnconfigured}
-        showClouds={showClouds}
-        onShowCloudsChange={setShowClouds}
-        showRain={showRain}
-        onShowRainChange={setShowRain}
-        rainBackMinutes={rainBackMinutes}
-        onRainBackMinutesChange={setRainBackMinutes}
-        rainMetadata={rainMetadata}
-        onRainMetadataChange={setRainMetadata}
-        cloudRefreshNonce={cloudRefreshNonce}
-        showNightLights={showNightLights}
-        onShowNightLightsChange={setShowNightLights}
-        satellites={satellites}
-        orbitalState={orbitalState}
-        overpassIndex={overpassIndex}
-        satelliteHudSection={satelliteHudSection}
-        showOrbits={showOrbits}
-        onShowOrbitsChange={(next) => {
-          setShowOrbits(next)
-          if (next) {
-            setNowUnixMs(Date.now())
-          }
-        }}
-        selectedSatelliteId={selectedSatelliteId}
-        onSelectSatellite={handleSelectSatellite}
-        onGeolocationStateChange={setGeolocationState}
-        onReducedMotionChange={setReducedMotion}
-        fireSpotsPayload={fireSpotsPayload}
-        liveFiresConfigured={!isProdUnconfigured}
-        showFires={showFires}
-        onShowFiresChange={setShowFires}
-        pulsePaused={pulsePaused}
-        onPulsePausedChange={setPulsePaused}
-      />
+      <div ref={mapColumnRef} className="map-column">
+        <EarthMapStage
+          sensorFilter={sensorFilter}
+          projectionMode={projectionMode}
+          onProjectionModeChange={setProjectionMode}
+          initialViewport={initialResolution.state}
+          onViewportChange={setViewport}
+          cameraFocusRequest={cameraFocusRequest}
+          autoLocateOnMount={initialResolution.source === 'default'}
+          geolocationMaxZoom={DEFAULT_GEOLOCATION_MAX_ZOOM}
+          apiBaseUrl={apiBaseUrl}
+          cloudsDisabled={isProdUnconfigured}
+          showClouds={showClouds}
+          onShowCloudsChange={setShowClouds}
+          showRain={showRain}
+          onShowRainChange={setShowRain}
+          rainBackMinutes={rainBackMinutes}
+          onRainBackMinutesChange={setRainBackMinutes}
+          rainMetadata={rainMetadata}
+          onRainMetadataChange={setRainMetadata}
+          cloudRefreshNonce={cloudRefreshNonce}
+          showNightLights={showNightLights}
+          onShowNightLightsChange={setShowNightLights}
+          satellites={satellites}
+          orbitalState={orbitalState}
+          pinnedFireSelection={pinnedFireSelection}
+          onPinFireSelection={setPinnedFireSelection}
+          satelliteHudSection={satelliteHudSection}
+          showOrbits={showOrbits}
+          onShowOrbitsChange={(next) => {
+            setShowOrbits(next)
+            if (next) {
+              setNowUnixMs(Date.now())
+            }
+          }}
+          selectedSatelliteId={selectedSatelliteId}
+          onSelectSatellite={handleSelectSatellite}
+          onGeolocationStateChange={setGeolocationState}
+          onReducedMotionChange={setReducedMotion}
+          fireSpotsPayload={fireSpotsPayload}
+          liveFiresConfigured={!isProdUnconfigured}
+          showFires={showFires}
+          onShowFiresChange={(next) => {
+            if (!next) {
+              setPinnedFireSelection(null)
+            }
+            setShowFires(next)
+          }}
+          pulsePaused={pulsePaused}
+          onPulsePausedChange={setPulsePaused}
+        />
+        {pinnedFireSelection && (
+          <PinnedFireDetails
+            selection={pinnedFireSelection}
+            overpassIndex={overpassIndex}
+            onUnpin={unpinFireSelection}
+          />
+        )}
+      </div>
 
       <SidePanel
         sensorFilter={sensorFilter}
-        onSensorFilterChange={setSensorFilter}
+        onSensorFilterChange={(next) => {
+          if (next !== sensorFilter) {
+            setPinnedFireSelection(null)
+          }
+          setSensorFilter(next)
+        }}
         satelliteFeedState={satelliteFeedState}
         satellites={orbitalState.snapshots}
         selectedSatelliteId={selectedSatelliteId}
