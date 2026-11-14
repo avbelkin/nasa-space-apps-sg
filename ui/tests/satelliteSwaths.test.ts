@@ -101,9 +101,11 @@ test('extremum swath styles and 30fps animation interval match', () => {
   assert.equal(NADIR_SWATH_COLOR, '#92b4de')
   assert.equal(NADIR_SWATH_FILL_OPACITY, 0.14)
   assert.equal(NADIR_SWATH_STROKE_OPACITY, 0.32)
-  assert.equal(WIDE_SWATH_COLOR, '#f49a74')
-  assert.equal(WIDE_SWATH_FILL_OPACITY, 0.035)
-  assert.equal(WIDE_SWATH_STROKE_OPACITY, 0.12)
+  assert.equal(WIDE_SWATH_COLOR, '#ffc078')
+  assert.equal(WIDE_SWATH_FILL_OPACITY, 0.0875)
+  assert.ok(Math.abs(WIDE_SWATH_FILL_OPACITY - (0.035 + NADIR_SWATH_FILL_OPACITY) / 2) < 1e-12)
+  assert.equal(WIDE_SWATH_STROKE_OPACITY, 0.32)
+  assert.equal(WIDE_SWATH_STROKE_OPACITY, NADIR_SWATH_STROKE_OPACITY)
   assert.deepEqual(WIDE_SWATH_DASH_ARRAY, [4, 6])
 })
 
@@ -780,6 +782,14 @@ test('EarthMapStage and MapLegend wire solid ready and dashed processing-lag tai
   const mapStageSource = fs.readFileSync(
     new URL('../src/components/EarthMapStage.tsx', import.meta.url),
     'utf8',
+  )
+  assert.match(
+    mapStageSource,
+    /id:\s*'satellite-swaths-wide-fill'[\s\S]*?'fill-color':\s*WIDE_SWATH_COLOR[\s\S]*?'fill-opacity':\s*WIDE_SWATH_FILL_OPACITY/,
+  )
+  assert.match(
+    mapStageSource,
+    /id:\s*'satellite-swaths-wide-outline'[\s\S]*?'line-color':\s*WIDE_SWATH_COLOR[\s\S]*?'line-opacity':\s*WIDE_SWATH_STROKE_OPACITY/,
   )
   assert.match(mapStageSource, /id:\s*'satellite-tracks-past-line'[\s\S]*?'past-track'/)
   assert.match(
