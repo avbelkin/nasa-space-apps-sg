@@ -840,9 +840,9 @@ export function EarthMapStage({
     if (!map) {
       return
     }
-    if (map.isStyleLoaded()) {
-      syncOrbitalSources(map, orbitalState)
-    }
+    // Not gated on isStyleLoaded() for the same reason as the fire layer: it stays false while
+    // tiles load and would drop a second's position update; 'load' syncs if sources are missing.
+    syncOrbitalSources(map, orbitalState)
     syncSatelliteMarkers(map, orbitalState.snapshots, showOrbits, selectedSatelliteId)
   }, [orbitalState, showOrbits, selectedSatelliteId, onSelectSatellite])
 
