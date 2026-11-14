@@ -664,12 +664,6 @@
   white-space: nowrap;
 }
 
-.legend-ramp {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
 .legend-fire-dot {
   display: block;
   inline-size: 0.625rem;

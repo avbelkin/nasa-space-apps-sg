@@ -1,6 +1,5 @@
 import type { FeatureCollection, Point } from 'geojson'
 
-export type ViewMode = 'anomaly' | 'seasonal' | 'sensors'
 export type SensorFilter = 'harmonized' | 'modis' | 'viirs'
 export type ProjectionMode = 'globe' | 'mercator'
 export type StatusCategory = 'anomaly-high' | 'fits-typical' | 'below-typical'

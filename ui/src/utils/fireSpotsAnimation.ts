@@ -6,7 +6,7 @@ import type {
   MapSourceDataEvent,
 } from 'maplibre-gl'
 import { FIRE_SPOT_COLORS } from '../data/dataPalette.ts'
-import type { SensorFilter, ViewMode } from '../data/stubSeasonalData.ts'
+import type { SensorFilter } from '../data/stubSeasonalData.ts'
 import {
   ANIMATION_INTERVAL_MS,
   COHORT_PHASE_RADIANS,
@@ -29,32 +29,6 @@ export const FIRMS_SPOTS_PULSE_LAYER_IDS = [
 ] as const
 
 const PULSE_HALO_MAX_OPACITY = 0.52
-
-export function getFireSpotColorExpression(viewMode: ViewMode): ExpressionSpecification {
-  if (viewMode === 'sensors') {
-    return [
-      'match',
-      ['get', 'instrument'],
-      'modis',
-      FIRE_SPOT_COLORS.modis,
-      'viirs',
-      FIRE_SPOT_COLORS.viirs,
-      FIRE_SPOT_COLORS.otherInstrument,
-    ]
-  }
-
-  return [
-    'interpolate',
-    ['linear'],
-    ['get', 'frp'],
-    0,
-    FIRE_SPOT_COLORS.frpLow,
-    20,
-    FIRE_SPOT_COLORS.frpMid,
-    100,
-    FIRE_SPOT_COLORS.frpHigh,
-  ]
-}
 
 function getDeclutterProperty(
   sensorFilter: SensorFilter,
@@ -141,12 +115,10 @@ export function buildFireSpotPulseRadiusExpression(pulse: number): ExpressionSpe
 }
 
 export function buildFireSpotLayers(
-  initialViewMode: ViewMode,
   initialSensorFilter: SensorFilter,
   initialVisible: boolean,
 ): CircleLayerSpecification[] {
   const visibility = initialVisible ? 'visible' : 'none'
-  const colorExpression = getFireSpotColorExpression(initialViewMode)
 
   const pulseLayers: CircleLayerSpecification[] = FIRMS_SPOTS_PULSE_LAYER_IDS.map((id, idx) => {
     const cohort = idx as PhaseCohort
@@ -159,7 +131,7 @@ export function buildFireSpotLayers(
         visibility,
       },
       paint: {
-        'circle-color': colorExpression,
+        'circle-color': FIRE_SPOT_COLORS.pulse,
         'circle-blur': 0.85,
         'circle-radius': buildFireSpotPulseRadiusExpression(0),
         'circle-radius-transition': { duration: 0, delay: 0 },
@@ -179,7 +151,7 @@ export function buildFireSpotLayers(
       'circle-sort-key': ['get', 'frp'],
     },
     paint: {
-      'circle-color': colorExpression,
+      'circle-color': FIRE_SPOT_COLORS.fill,
       'circle-radius': [
         'interpolate',
         ['linear'],
