@@ -9,6 +9,7 @@ import {
   OrbitIcon,
   PauseIcon,
   PlusIcon,
+  RainCloudIcon,
   ResetViewIcon,
 } from './icons'
 import { SegmentedControl, type SegmentedOption } from './SegmentedControl'
@@ -31,6 +32,8 @@ interface MapControlsProps {
   onShowOrbitsChange: (next: boolean) => void
   showClouds: boolean
   onShowCloudsChange: (next: boolean) => void
+  showRain: boolean
+  onShowRainChange: (next: boolean) => void
   showNightLights: boolean
   onShowNightLightsChange: (next: boolean) => void
   showFires: boolean
@@ -56,6 +59,8 @@ export function MapControls({
   onShowOrbitsChange,
   showClouds,
   onShowCloudsChange,
+  showRain,
+  onShowRainChange,
   showNightLights,
   onShowNightLightsChange,
   showFires,
@@ -133,6 +138,17 @@ export function MapControls({
         onClick={() => onShowCloudsChange(!showClouds)}
       >
         <CloudIcon />
+      </button>
+
+      <button
+        type="button"
+        className="hud-btn hud-icon-btn"
+        aria-label="Rain clouds"
+        title="Rain clouds (z6+)"
+        aria-pressed={showRain}
+        onClick={() => onShowRainChange(!showRain)}
+      >
+        <RainCloudIcon />
       </button>
 
       <button

@@ -62,6 +62,12 @@ export const USER_LOCATION_COLORS = {
   halo: '#ffffff',
 } as const
 
+export const RAIN_CLOUD_COLORS = {
+  low: '#38a8f5',
+  mid: '#3b6df6',
+  high: '#a855f7',
+} as const
+
 // Exposes the palette to CSS consumers (legend glyphs, satellite badges) as custom properties,
 // so stylesheets never repeat a hex value. Applied once on the app root.
 export const DATA_PALETTE_CSS_VARIABLES: CSSProperties & Record<`--${string}`, string> = {
@@ -78,4 +84,7 @@ export const DATA_PALETTE_CSS_VARIABLES: CSSProperties & Record<`--${string}`, s
   '--data-swath-wide': SWATH_COLORS.wide,
   '--data-user-fill': USER_LOCATION_COLORS.fill,
   '--data-user-ring': USER_LOCATION_COLORS.ring,
+  '--data-rain-low': RAIN_CLOUD_COLORS.low,
+  '--data-rain-mid': RAIN_CLOUD_COLORS.mid,
+  '--data-rain-high': RAIN_CLOUD_COLORS.high,
 }

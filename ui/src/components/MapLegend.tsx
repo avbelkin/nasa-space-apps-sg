@@ -3,6 +3,7 @@ import { MONTH_LABELS, type ViewMode } from '../data/stubSeasonalData'
 import { STATUS_TEXT } from '../data/statusDisplay'
 import { STATUS_CATEGORIES } from '../data/statusMarks'
 import type { MapViewportState } from '../state/urlHashState'
+import { RAIN_FADE_IN_START_ZOOM } from '../utils/rainCloudShader'
 import { StatusMark } from './StatusMark'
 
 // Legend marks are drawn a little smaller than the smallest map mark (radius 8) to fit a text row.
@@ -18,6 +19,8 @@ interface MapLegendProps {
   // Live NASA FIRMS spots replace the sample status marks on the map while they are loaded
   hasLiveFires: boolean
   showFires: boolean
+  showRain: boolean
+  rainSummaryLabel: string | null
   viewMode: ViewMode
   reducedMotion: boolean
 }
@@ -45,6 +48,8 @@ export function MapLegend({
   showUserLocation,
   hasLiveFires,
   showFires,
+  showRain,
+  rainSummaryLabel,
   viewMode,
   reducedMotion,
 }: MapLegendProps) {
@@ -106,6 +111,12 @@ export function MapLegend({
               <span>Wide swath (2,330&ndash;3,040 km, dashed)</span>
             </li>
           </>
+        )}
+        {showRain && viewport.zoom > RAIN_FADE_IN_START_ZOOM && (
+          <li>
+            <span className="legend-glyph legend-glyph-rain" aria-hidden="true" />
+            <span>Rain / snow ({rainSummaryLabel ?? 'IMERG 30m'})</span>
+          </li>
         )}
         {showModisOrbits && (
           <li>

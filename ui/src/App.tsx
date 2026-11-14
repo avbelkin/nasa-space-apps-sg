@@ -51,6 +51,7 @@ import {
   summarizeFireSpotsForSensor,
   type FirmsLiveSpotsResponse,
 } from './utils/fireSpots'
+import { formatRainLookbackLabel, type RainLayerMetadata } from './utils/rainCloudShader'
 
 const FIRES_REFRESH_INTERVAL_MS = 15 * 60 * 1000
 const FOCUS_ZOOM = 3.6
@@ -72,6 +73,15 @@ function App() {
   const [showOrbits, setShowOrbits] = useState<boolean>(initialResolution.state.showOrbits)
   const [showClouds, setShowClouds] = useState<boolean>(initialResolution.state.showClouds)
   const [cloudRefreshNonce, setCloudRefreshNonce] = useState<number>(0)
+  const [showRain, setShowRain] = useState<boolean>(initialResolution.state.showRain)
+  const [rainBackMinutes, setRainBackMinutes] = useState<number>(
+    initialResolution.state.rainBackMinutes,
+  )
+  const [rainMetadata, setRainMetadata] = useState<RainLayerMetadata>({
+    latestAvailableIso: null,
+    effectiveTimeIso: null,
+    lookbackMinutes: initialResolution.state.rainBackMinutes,
+  })
   const [showNightLights, setShowNightLights] = useState<boolean>(
     initialResolution.state.showNightLights,
   )
@@ -139,6 +149,8 @@ function App() {
       selectedMonth,
       showOrbits,
       showClouds,
+      showRain,
+      rainBackMinutes,
       showNightLights,
       showFires,
       ...(selectedRegionId ? { selectedRegionId } : {}),
@@ -152,6 +164,8 @@ function App() {
     selectedMonth,
     showOrbits,
     showClouds,
+    showRain,
+    rainBackMinutes,
     showNightLights,
     showFires,
     selectedRegionId,
@@ -173,6 +187,8 @@ function App() {
       setSelectedMonth(parsed.selectedMonth)
       setShowOrbits(parsed.showOrbits)
       setShowClouds(parsed.showClouds)
+      setShowRain(parsed.showRain)
+      setRainBackMinutes(parsed.rainBackMinutes)
       setShowNightLights(parsed.showNightLights)
       setShowFires(parsed.showFires)
       setSelectedRegionId(parsed.selectedRegionId ?? null)
@@ -466,6 +482,19 @@ function App() {
     return [...sources].join(', ')
   }, [orbitsPayload])
 
+  const rainSummaryLabel = useMemo(() => {
+    let utcHhMm = ''
+    if (rainMetadata.effectiveTimeIso) {
+      const parsed = new Date(rainMetadata.effectiveTimeIso)
+      if (!Number.isNaN(parsed.getTime())) {
+        const hh = String(parsed.getUTCHours()).padStart(2, '0')
+        const mm = String(parsed.getUTCMinutes()).padStart(2, '0')
+        utcHhMm = `${hh}:${mm} UTC`
+      }
+    }
+    return `IMERG 30m · ${formatRainLookbackLabel(rainBackMinutes)}${utcHhMm ? ` · ${utcHhMm}` : ''}`
+  }, [rainBackMinutes, rainMetadata.effectiveTimeIso])
+
   return (
     <div className="app-frame" style={DATA_PALETTE_CSS_VARIABLES}>
       <header className="top-bar wrapper-surface">
@@ -495,6 +524,12 @@ function App() {
         cloudsDisabled={isProdUnconfigured}
         showClouds={showClouds}
         onShowCloudsChange={setShowClouds}
+        showRain={showRain}
+        onShowRainChange={setShowRain}
+        rainBackMinutes={rainBackMinutes}
+        onRainBackMinutesChange={setRainBackMinutes}
+        rainMetadata={rainMetadata}
+        onRainMetadataChange={setRainMetadata}
         cloudRefreshNonce={cloudRefreshNonce}
         showNightLights={showNightLights}
         onShowNightLightsChange={setShowNightLights}
@@ -570,6 +605,8 @@ function App() {
         showSwaths={hasOrbitSnapshots}
         showModisOrbits={hasOrbitSnapshots && sensorFilter !== 'viirs'}
         showViirsOrbits={hasOrbitSnapshots && sensorFilter !== 'modis'}
+        showRain={showRain}
+        rainSummaryLabel={rainSummaryLabel}
         showUserLocation={geolocationState.hasUserLocation}
         hasLiveFires={fireSpotsPayload !== null}
         showFires={showFires}

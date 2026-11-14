@@ -19,9 +19,10 @@ export function AttributionFooter({ connectionState, liveFiresConfigured }: Attr
           ? '(live fire spots; the regional index is sample values)'
           : '(sample values)'}{' '}
         &middot; <a href="https://celestrak.org/" {...EXTERNAL}>CelesTrak</a> &middot;
-        clouds <a href="https://layers.extremum.org" {...EXTERNAL}>Extremum</a> &middot; night lights{' '}
-        <a href="https://earthdata.nasa.gov/gibs" {...EXTERNAL}>NASA GIBS</a> &middot; basemap <a href="https://s2maps.eu" {...EXTERNAL}>EOX</a> / Copernicus Sentinel-2. Not
-        affiliated with NASA.
+        clouds <a href="https://layers.extremum.org" {...EXTERNAL}>Extremum</a> &middot; rain
+        &amp; night lights <a href="https://earthdata.nasa.gov/gibs" {...EXTERNAL}>NASA GIBS</a>{' '}
+        &middot; basemap <a href="https://s2maps.eu" {...EXTERNAL}>EOX</a> / Copernicus Sentinel-2.
+        Not affiliated with NASA.
       </p>
 
       <div className="footer-meta">
@@ -64,6 +65,16 @@ export function AttributionFooter({ connectionState, liveFiresConfigured }: Attr
                     layers.extremum.org
                   </a>
                   .
+                </dd>
+              </div>
+              <div className="meta-row">
+                <dt>Precipitation</dt>
+                <dd>
+                  30-minute global rain and snow rates (GPM IMERG) from{' '}
+                  <a href="https://earthdata.nasa.gov/gibs" {...EXTERNAL}>
+                    NASA GIBS / Earthdata
+                  </a>
+                  , smoothly interpolated from z6 upward.
                 </dd>
               </div>
               <div className="meta-row">
