@@ -83,6 +83,7 @@ import {
 import {
   buildFireSpotsGeoJson,
   compareMatchedFireSpots,
+  expandHoveredFireSpots,
   formatFireSpotsTooltip,
   MIN_FIRE_SPOT_ZOOM,
   type BuiltFireSpotsData,
@@ -103,6 +104,7 @@ import {
   getFireSpotColorExpression,
   type FireSpotsAnimationController,
 } from '../utils/fireSpotsAnimation'
+import { FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
 import { CloseIcon } from './icons'
 import { MapControls } from './MapControls'
 import { SatelliteHud } from './SatelliteHud'
@@ -416,6 +418,11 @@ const EMPTY_FIRE_SPOTS: BuiltFireSpotsData = {
   cohortCounts: [0, 0, 0, 0],
   activeSpotCount: 0,
   referenceNowMs: 0,
+  declutterGroupMembers: {
+    harmonized: [],
+    modis: [],
+    viirs: [],
+  },
 }
 
 function buildFireSpotFocusGeoJson(coords: [number, number] | null): FeatureCollection<Point> {
@@ -471,6 +478,8 @@ function querySpotTooltipAtPoint(
   map: MapLibreMap,
   point: { x: number; y: number },
   sensorFilter: SensorFilter,
+  viewMode: ViewMode,
+  builtFireSpots: BuiltFireSpotsData,
 ): SpotTooltipCardState | null {
   if (map.getZoom() < MIN_FIRE_SPOT_ZOOM || !map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
     return null
@@ -486,8 +495,26 @@ function querySpotTooltipAtPoint(
     return null
   }
 
-  const inputs = rendered.map(toFireSpotTooltipInput)
-  const tooltip = formatFireSpotsTooltip(inputs, Date.now())
+  const hitIndices: number[] = []
+  const fallbackInputs: FireSpotTooltipInput[] = []
+  for (const feature of rendered) {
+    const props = (feature.properties ?? {}) as Record<string, unknown>
+    const rawIdx = props.spotIndex !== undefined ? Number(props.spotIndex) : Number.NaN
+    if (Number.isInteger(rawIdx) && rawIdx >= 0) {
+      hitIndices.push(rawIdx)
+    } else {
+      fallbackInputs.push(toFireSpotTooltipInput(feature))
+    }
+  }
+
+  const expanded = expandHoveredFireSpots(
+    builtFireSpots,
+    hitIndices,
+    map.getZoom(),
+    sensorFilter,
+  )
+  const inputs = expanded.length > 0 ? [...expanded, ...fallbackInputs] : fallbackInputs
+  const tooltip = formatFireSpotsTooltip(inputs, Date.now(), { viewMode })
   if (!tooltip) {
     return null
   }
@@ -1230,7 +1257,13 @@ export function EarthMapStage({
         if (latestBuiltFireSpotsRef.current.featureCollection.features.length === 0) {
           return
         }
-        const hit = querySpotTooltipAtPoint(map, event.point, latestSensorFilterRef.current)
+        const hit = querySpotTooltipAtPoint(
+          map,
+          event.point,
+          latestSensorFilterRef.current,
+          latestViewModeRef.current,
+          latestBuiltFireSpotsRef.current,
+        )
         map.getCanvas().style.cursor = hit ? 'pointer' : ''
         setHoverSpotCard((prev) => {
           if (!prev && !hit) {
@@ -1244,7 +1277,13 @@ export function EarthMapStage({
         if (!map || !latestShowFiresRef.current) {
           return
         }
-        const hit = querySpotTooltipAtPoint(map, event.point, latestSensorFilterRef.current)
+        const hit = querySpotTooltipAtPoint(
+          map,
+          event.point,
+          latestSensorFilterRef.current,
+          latestViewModeRef.current,
+          latestBuiltFireSpotsRef.current,
+        )
         if (hit) {
           userInteractedRef.current = true
         }
@@ -1799,11 +1838,15 @@ export function EarthMapStage({
                   </button>
                 )}
               </div>
-              <ul className="fire-tooltip-list" role="list">
-                {activeSpotCard.tooltip.lines.map((line, index) => (
-                  <li key={`${index}-${line}`}>{line}</li>
-                ))}
-              </ul>
+              {activeSpotCard.tooltip.mode === 'timeline' && activeSpotCard.tooltip.timeline ? (
+                <FireDetectionsTimelineCard timeline={activeSpotCard.tooltip.timeline} />
+              ) : (
+                <ul className="fire-tooltip-list" role="list">
+                  {activeSpotCard.tooltip.lines.map((line, index) => (
+                    <li key={`${index}-${line}`}>{line}</li>
+                  ))}
+                </ul>
+              )}
               {!isPinned && <p className="fire-tooltip-hint">Click spot to pin details</p>}
             </div>
           )}

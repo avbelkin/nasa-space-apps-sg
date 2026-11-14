@@ -89,18 +89,51 @@ public static class FirmsSensorCatalog
         };
     }
 
-    public static string NormalizeSatelliteLabel(string raw)
+    public static string NormalizeSatelliteLabel(string raw, string? sourceDataset = null)
     {
         var trimmed = raw.Trim();
-        return trimmed.ToUpperInvariant() switch
+        var normalized = trimmed.ToUpperInvariant() switch
         {
-            "T" => "Terra",
-            "A" => "Aqua",
-            "N20" => "NOAA-20",
-            "N21" => "NOAA-21",
-            "N" => "Suomi NPP",
-            _ => trimmed,
+            "T" or "TERRA" => "Terra",
+            "A" or "AQUA" => "Aqua",
+            "N20" or "1" or "J1" or "NOAA-20" or "NOAA20" => "NOAA-20",
+            "N21" or "2" or "J2" or "NOAA-21" or "NOAA21" => "NOAA-21",
+            "N" or "SNPP" or "SUOMI NPP" or "SUOMI-NPP" => "Suomi NPP",
+            _ => null,
         };
+
+        if (normalized is not null)
+        {
+            return normalized;
+        }
+
+        return InferSatelliteFromDataset(sourceDataset) ?? trimmed;
+    }
+
+    private static string? InferSatelliteFromDataset(string? sourceDataset)
+    {
+        if (string.IsNullOrWhiteSpace(sourceDataset))
+        {
+            return null;
+        }
+
+        var upper = sourceDataset.Trim().ToUpperInvariant();
+        if (upper.Contains("NOAA20", StringComparison.Ordinal) || upper.Contains("VJ1", StringComparison.Ordinal))
+        {
+            return "NOAA-20";
+        }
+
+        if (upper.Contains("NOAA21", StringComparison.Ordinal) || upper.Contains("VJ2", StringComparison.Ordinal))
+        {
+            return "NOAA-21";
+        }
+
+        if (upper.Contains("SNPP", StringComparison.Ordinal) || upper.Contains("VNP", StringComparison.Ordinal))
+        {
+            return "Suomi NPP";
+        }
+
+        return null;
     }
 }
 
@@ -116,6 +149,8 @@ public sealed record FirmsLiveSpotsResponse(
     DateTimeOffset GeneratedAtUtc,
     DateTimeOffset FetchedAtUtc,
     DateTimeOffset? LatestAcquiredAtUtc,
+    DateTimeOffset WindowStartUtc,
+    DateTimeOffset WindowEndUtc,
     bool Stale,
     int WindowHours,
     string SensorFilter,

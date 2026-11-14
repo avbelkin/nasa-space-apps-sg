@@ -218,14 +218,14 @@ public static class FirmsCsvParser
             out timestampUtc);
     }
 
-    private static int NormalizeConfidence(string raw)
+    public static int NormalizeConfidence(string raw)
     {
         var normalized = raw.Trim().ToLowerInvariant();
         return normalized switch
         {
             "l" or "low" => 25,
-            "n" or "nominal" => 50,
-            "h" or "high" => 75,
+            "n" or "nominal" => 65,
+            "h" or "high" => 95,
             _ when int.TryParse(normalized, NumberStyles.Integer, CultureInfo.InvariantCulture, out var numeric)
                 => Math.Clamp(numeric, 0, 100),
             _ => 50,

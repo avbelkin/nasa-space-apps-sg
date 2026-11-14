@@ -573,6 +573,11 @@
   line-height: 1.35;
 }
 
+.fire-tooltip-card:has(.fire-timeline) {
+  max-inline-size: min(27.5rem, 100%);
+  min-inline-size: 0;
+}
+
 .fire-tooltip-card[data-pinned='false'] {
   pointer-events: none;
 }
@@ -617,6 +622,220 @@
 .fire-tooltip-hint {
   margin: 0;
   color: #94a3b8;
+}
+
+/* Grouped 24h fire detections timeline + place-relative solar horizon curve */
+.fire-timeline {
+  display: grid;
+  gap: 0.3rem;
+  min-inline-size: 0;
+}
+
+.fire-timeline-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.2rem 0.6rem;
+  font-variant-numeric: tabular-nums;
+  color: #e2e8f0;
+}
+
+.fire-timeline-sun-events {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.6rem;
+}
+
+.fire-timeline-sun-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  color: #f8fafc;
+}
+
+.fire-timeline-sun-item .icon {
+  inline-size: 0.9rem;
+  block-size: 0.9rem;
+  color: #fde68a;
+}
+
+.fire-timeline-peak {
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+
+.fire-timeline-scroll {
+  min-inline-size: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.fire-timeline-frame {
+  min-inline-size: max-content;
+}
+
+.fire-timeline-plot {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  block-size: 5.75rem;
+  border-radius: 0.45rem;
+  border: 1px solid rgb(148 163 184 / 0.35);
+  background-color: rgb(2 6 23 / 0.62);
+  overflow: clip;
+}
+
+.fire-timeline-sun-svg {
+  grid-column: 1;
+  grid-row: 1;
+  inline-size: 100%;
+  block-size: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+.fire-timeline-horizon {
+  stroke: rgb(148 163 184 / 0.65);
+  stroke-width: 1.25;
+}
+
+.fire-timeline-sun-day {
+  fill: none;
+  stroke: rgb(226 232 240 / 0.85);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fire-timeline-sun-night {
+  fill: none;
+  stroke: rgb(148 163 184 / 0.38);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fire-timeline-sun-dot {
+  position: absolute;
+  inset-inline-end: 0.15rem;
+  inset-block-start: var(--sun-now-y, 52%);
+  translate: 0 -50%;
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+  forced-color-adjust: none;
+}
+
+.fire-timeline-sun-dot[data-daylight='true'] {
+  background-color: #fde68a;
+  border: 1.5px solid #020617;
+  box-shadow: 0 0 6px rgb(253 230 138 / 0.75);
+}
+
+.fire-timeline-sun-dot[data-daylight='false'] {
+  background-color: #0f172a;
+  border: 1.5px solid #e2e8f0;
+}
+
+.fire-timeline-bars {
+  grid-column: 1;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: repeat(24, minmax(1rem, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  column-gap: 1px;
+  align-items: end;
+  block-size: 100%;
+  padding-inline: 0.125rem;
+  z-index: 1;
+}
+
+.fire-timeline-slot {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  block-size: 100%;
+  min-inline-size: 0;
+}
+
+.fire-timeline-bar {
+  display: block;
+  inline-size: 100%;
+  block-size: var(--bar-height, 20%);
+  min-block-size: 0.25rem;
+  border-radius: 0.2rem 0.2rem 0 0;
+  background-color: var(--bar-color, #ff9100);
+  opacity: var(--bar-opacity, 1);
+  outline: 1px solid rgb(2 6 23 / 0.45);
+  outline-offset: -1px;
+  forced-color-adjust: none;
+}
+
+.fire-timeline-negative-tick {
+  display: block;
+  inline-size: 100%;
+  block-size: 0.2rem;
+  border-radius: 0.1rem 0.1rem 0 0;
+  border-block-start: 1.5px dashed rgb(148 163 184 / 0.75);
+  background-color: rgb(148 163 184 / 0.18);
+}
+
+.fire-timeline-sat {
+  position: absolute;
+  inset-block-end: 0.2rem;
+  inset-inline: 0;
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-block-size: calc(100% - 0.35rem);
+  overflow: hidden;
+  writing-mode: vertical-rl;
+  rotate: 180deg;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  color: #f8fafc;
+  text-shadow: 0 0 3px #020617, 0 1px 2px #020617;
+  pointer-events: none;
+}
+
+.fire-timeline-sat-negative {
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+.fire-timeline-axis {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-block-start: 0.2rem;
+  font-size: 0.6875rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: #cbd5e1;
+}
+
+@media (forced-colors: active) {
+  .fire-timeline-horizon,
+  .fire-timeline-sun-day,
+  .fire-timeline-sun-night {
+    stroke: CanvasText;
+  }
+
+  .fire-timeline-bar {
+    border: 1px solid CanvasText;
+  }
 }
 
 /* Legend row below the map and the panels (outside the map stage). One inline flow: heading,

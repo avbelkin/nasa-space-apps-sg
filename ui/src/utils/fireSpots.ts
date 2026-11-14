@@ -1,5 +1,14 @@
 import type { Feature, FeatureCollection, Point } from 'geojson'
-import type { SensorFilter } from '../data/stubSeasonalData.ts'
+import type { SensorFilter, ViewMode } from '../data/stubSeasonalData.ts'
+import {
+  buildFireDetectionsTimeline,
+  compareMatchedFireSpots,
+  formatBrowserLocalHhMm,
+  normalizeFullSatelliteLabel,
+  type FireDetectionsTimeline,
+} from './fireTimeline.ts'
+
+export { compareMatchedFireSpots }
 
 export const ACTIVE_AGE_SECONDS = 24 * 60 * 60
 export const ACTIVE_AGE_MS = ACTIVE_AGE_SECONDS * 1000
@@ -55,6 +64,8 @@ export interface FirmsLiveSpotsResponse {
   generatedAtUtc: string
   fetchedAtUtc: string
   latestAcquiredAtUtc: string | null
+  windowStartUtc?: string
+  windowEndUtc?: string
   stale: boolean
   windowHours: number
   sensorFilter: string
@@ -69,6 +80,7 @@ export interface FirmsLiveSpotsResponse {
 }
 
 export interface FireSpotFeatureProperties {
+  spotIndex: number
   timestamp: number
   frp: number
   brightnessK: number
@@ -87,12 +99,18 @@ export interface FireSpotFeatureProperties {
   minZoomViirs: number
 }
 
+export type DeclutterGroupMembersBySensor = Record<
+  SensorFilter,
+  ReadonlyArray<ReadonlyMap<number, readonly number[]>>
+>
+
 export interface BuiltFireSpotsData {
   featureCollection: FeatureCollection<Point, FireSpotFeatureProperties>
   cohortAgeSeconds: [number, number, number, number]
   cohortCounts: [number, number, number, number]
   activeSpotCount: number
   referenceNowMs: number
+  declutterGroupMembers: DeclutterGroupMembersBySensor
 }
 
 export interface FireSpotsSensorSummary {
@@ -117,10 +135,16 @@ export interface FireSpotTooltipInput {
 }
 
 export interface FormattedFireSpotsTooltip {
-  mode: 'individual' | 'aggregated'
+  mode: 'individual' | 'timeline'
   header: string
   lines: string[]
   count: number
+  timeline?: FireDetectionsTimeline
+}
+
+export interface FormatFireSpotsTooltipOptions {
+  viewMode?: ViewMode
+  timeZone?: string
 }
 
 interface SourceMetaEntry {
@@ -248,13 +272,13 @@ function computeDeclutterCellKey(lng: number, lat: number, cellDeg: number): num
   return cellY * 16384 + cellX
 }
 
-/** Assigns additive minZoom tiers (z1..z7) so high-FRP spots claim coarse cells while denser spots fill in on zoom. */
+/** Assigns additive minZoom tiers (z1..z7) and builds leader -> hidden-member maps per zoom tier. */
 function assignDeclutterTierProperty(
   features: Array<Feature<Point, FireSpotFeatureProperties>>,
   sortedIndices: readonly number[],
   prop: DeclutterZoomProp,
-): void {
-  const occupied = DECLUTTER_CELL_DEGREES.map(() => new Set<number>())
+): ReadonlyArray<ReadonlyMap<number, readonly number[]>> {
+  const occupied = DECLUTTER_CELL_DEGREES.map(() => new Map<number, number>())
   for (const idx of sortedIndices) {
     const feature = features[idx]
     const [lng, lat] = feature.geometry.coordinates
@@ -265,18 +289,47 @@ function assignDeclutterTierProperty(
       if (!occupied[tierIdx].has(key)) {
         assignedTierIdx = tierIdx
         assignedZoom = MIN_FIRE_SPOT_ZOOM + tierIdx
-        occupied[tierIdx].add(key)
+        occupied[tierIdx].set(key, idx)
         break
       }
     }
     if (assignedTierIdx >= 0) {
       // Reserve finer grid cells down to z6 so higher-priority spots remain exclusive within their footprint.
       for (let k = assignedTierIdx + 1; k < DECLUTTER_CELL_DEGREES.length; k++) {
-        occupied[k].add(computeDeclutterCellKey(lng, lat, DECLUTTER_CELL_DEGREES[k]))
+        occupied[k].set(computeDeclutterCellKey(lng, lat, DECLUTTER_CELL_DEGREES[k]), idx)
       }
     }
     feature.properties[prop] = assignedZoom
   }
+
+  const groupMembersByTier: Array<Map<number, number[]>> = DECLUTTER_CELL_DEGREES.map(
+    () => new Map<number, number[]>(),
+  )
+  for (let tierIdx = 0; tierIdx < DECLUTTER_CELL_DEGREES.length; tierIdx++) {
+    const tierZoom = MIN_FIRE_SPOT_ZOOM + tierIdx
+    const cellDeg = DECLUTTER_CELL_DEGREES[tierIdx]
+    const cellOwners = occupied[tierIdx]
+    const groupMap = groupMembersByTier[tierIdx]
+
+    for (const idx of sortedIndices) {
+      const feature = features[idx]
+      const assignedZoom = feature.properties[prop]
+      const [lng, lat] = feature.geometry.coordinates
+      const leaderIdx =
+        assignedZoom <= tierZoom
+          ? idx
+          : (cellOwners.get(computeDeclutterCellKey(lng, lat, cellDeg)) ?? idx)
+
+      let members = groupMap.get(leaderIdx)
+      if (!members) {
+        members = []
+        groupMap.set(leaderIdx, members)
+      }
+      members.push(idx)
+    }
+  }
+
+  return groupMembersByTier
 }
 
 export function buildFireSpotsGeoJson(
@@ -296,6 +349,7 @@ export function buildFireSpotsGeoJson(
       continue
     }
 
+    const spotIndex = features.length
     const sourceMeta = sourceLookup.get(sourceCode) ?? DEFAULT_SOURCE_META[1]
     const safeTs = Number.isFinite(timestampMs) ? timestampMs : NaN
     const ageSeconds = Number.isFinite(safeTs) ? (referenceNowMs - safeTs) / 1000 : Infinity
@@ -317,13 +371,14 @@ export function buildFireSpotsGeoJson(
         coordinates: [lng, lat],
       },
       properties: {
+        spotIndex,
         timestamp: Number.isFinite(safeTs) ? safeTs : 0,
         frp: Number.isFinite(frp) ? frp : 0,
         brightnessK: Number.isFinite(brightnessK) ? brightnessK : 0,
         confidence: Number.isFinite(confidence) ? confidence : 50,
         instrument: sourceMeta.instrument,
         source: sourceMeta.label,
-        satellite: satellite ?? '',
+        satellite: normalizeFullSatelliteLabel(satellite, sourceMeta.label, sourceMeta.instrument),
         dayNight: dayNight ?? '',
         radiusMeters: sourceMeta.radiusMeters,
         powerScale: computePowerScale(frp),
@@ -340,13 +395,13 @@ export function buildFireSpotsGeoJson(
   const sortedIndices = Array.from({ length: features.length }, (_, i) => i).sort(
     (a, b) => compareMatchedFireSpots(features[a].properties, features[b].properties) || a - b,
   )
-  assignDeclutterTierProperty(features, sortedIndices, 'minZoomAll')
-  assignDeclutterTierProperty(
+  const harmonizedGroups = assignDeclutterTierProperty(features, sortedIndices, 'minZoomAll')
+  const modisGroups = assignDeclutterTierProperty(
     features,
     sortedIndices.filter((i) => features[i].properties.instrument === 'modis'),
     'minZoomModis',
   )
-  assignDeclutterTierProperty(
+  const viirsGroups = assignDeclutterTierProperty(
     features,
     sortedIndices.filter((i) => features[i].properties.instrument === 'viirs'),
     'minZoomViirs',
@@ -368,7 +423,84 @@ export function buildFireSpotsGeoJson(
     cohortCounts,
     activeSpotCount,
     referenceNowMs,
+    declutterGroupMembers: {
+      harmonized: harmonizedGroups,
+      modis: modisGroups,
+      viirs: viirsGroups,
+    },
   }
+}
+
+function featureToTooltipInput(
+  feature: Feature<Point, FireSpotFeatureProperties>,
+): FireSpotTooltipInput {
+  const [lng, lat] = feature.geometry.coordinates
+  const props = feature.properties
+  return {
+    lng,
+    lat,
+    timestamp: props.timestamp,
+    frp: props.frp,
+    brightnessK: props.brightnessK,
+    confidence: props.confidence,
+    instrument: props.instrument,
+    source: props.source,
+    satellite: props.satellite,
+    dayNight: props.dayNight,
+  }
+}
+
+export function expandHoveredFireSpots(
+  built: BuiltFireSpotsData,
+  hitSpotIndices: readonly number[],
+  zoom: number,
+  sensorFilter: SensorFilter,
+): FireSpotTooltipInput[] {
+  const features = built.featureCollection.features
+  if (features.length === 0 || hitSpotIndices.length === 0) {
+    return []
+  }
+
+  const expandedIndices = new Set<number>()
+  const tierGroups =
+    zoom < FULL_DETAIL_FIRE_SPOT_ZOOM
+      ? built.declutterGroupMembers[sensorFilter][
+          clamp(
+            Math.floor(zoom) - MIN_FIRE_SPOT_ZOOM,
+            0,
+            DECLUTTER_CELL_DEGREES.length - 1,
+          )
+        ]
+      : undefined
+
+  for (const hitIdx of hitSpotIndices) {
+    if (!Number.isInteger(hitIdx) || hitIdx < 0 || hitIdx >= features.length) {
+      continue
+    }
+    if (tierGroups) {
+      const members = tierGroups.get(hitIdx)
+      if (members && members.length > 0) {
+        for (const memberIdx of members) {
+          expandedIndices.add(memberIdx)
+        }
+        continue
+      }
+    }
+    expandedIndices.add(hitIdx)
+  }
+
+  const results: FireSpotTooltipInput[] = []
+  for (const idx of expandedIndices) {
+    const feature = features[idx]
+    if (!feature) {
+      continue
+    }
+    if (sensorFilter !== 'harmonized' && feature.properties.instrument !== sensorFilter) {
+      continue
+    }
+    results.push(featureToTooltipInput(feature))
+  }
+  return results
 }
 
 export function summarizeFireSpotsForSensor(
@@ -433,29 +565,6 @@ export function summarizeFireSpotsForSensor(
   }
 }
 
-export function compareMatchedFireSpots(
-  first: Pick<FireSpotTooltipInput, 'frp' | 'timestamp'>,
-  second: Pick<FireSpotTooltipInput, 'frp' | 'timestamp'>,
-): number {
-  const frpDiff = (Number(second.frp) || 0) - (Number(first.frp) || 0)
-  if (frpDiff !== 0) {
-    return frpDiff
-  }
-  const secondTs = Number(second.timestamp)
-  const firstTs = Number(first.timestamp)
-  if (Number.isFinite(firstTs) && Number.isFinite(secondTs)) {
-    return secondTs - firstTs
-  }
-  return 0
-}
-
-function formatUtcHhMm(timestampMs: number): string {
-  const date = new Date(timestampMs)
-  const hours = String(date.getUTCHours()).padStart(2, '0')
-  const minutes = String(date.getUTCMinutes()).padStart(2, '0')
-  return `${hours}:${minutes}`
-}
-
 function formatRelativeAge(timestampMs: number, nowMs: number): string {
   const diffMs = Math.max(0, nowMs - timestampMs)
   const diffMinutes = Math.round(diffMs / 60_000)
@@ -487,93 +596,63 @@ function deduplicateSpotMatches(spots: readonly FireSpotTooltipInput[]): FireSpo
 export function formatFireSpotsTooltip(
   spots: readonly FireSpotTooltipInput[],
   nowMs = Date.now(),
+  options: FormatFireSpotsTooltipOptions = {},
 ): FormattedFireSpotsTooltip | null {
   const uniqueSpots = deduplicateSpotMatches(spots)
   if (uniqueSpots.length === 0) {
     return null
   }
 
-  const sorted = [...uniqueSpots].sort(compareMatchedFireSpots)
+  if (uniqueSpots.length === 1) {
+    const spot = uniqueSpots[0]
+    const parts: string[] = []
+    if (Number.isFinite(spot.timestamp) && spot.timestamp > 0) {
+      parts.push(
+        `${formatBrowserLocalHhMm(spot.timestamp, options.timeZone)} (${formatRelativeAge(spot.timestamp, nowMs)})`,
+      )
+    }
+    const roundedFrp = Math.round((Number(spot.frp) || 0) * 10) / 10
+    parts.push(`${roundedFrp} MW`)
 
-  if (sorted.length <= MAX_INDIVIDUAL_SPOT_TOOLTIPS) {
-    const lines = sorted.map((spot) => {
-      const parts: string[] = []
-      if (Number.isFinite(spot.timestamp) && spot.timestamp > 0) {
-        parts.push(`${formatUtcHhMm(spot.timestamp)} UTC (${formatRelativeAge(spot.timestamp, nowMs)})`)
-      }
-      const roundedFrp = Math.round((Number(spot.frp) || 0) * 10) / 10
-      parts.push(`${roundedFrp} MW`)
+    const satLabel = spot.satellite
+      ? normalizeFullSatelliteLabel(spot.satellite, spot.source, spot.instrument)
+      : ''
+    const sourceLabel =
+      satLabel && !spot.source.toUpperCase().includes(satLabel.toUpperCase())
+        ? `${spot.source} (${satLabel})`
+        : spot.source || satLabel
+    if (sourceLabel) {
+      parts.push(sourceLabel)
+    }
 
-      const sourceLabel = spot.satellite
-        ? `${spot.source} (${spot.satellite})`
-        : spot.source
-      if (sourceLabel) {
-        parts.push(sourceLabel)
-      }
+    if (typeof spot.brightnessK === 'number' && Number.isFinite(spot.brightnessK) && spot.brightnessK > 0) {
+      const celsius = Math.round(spot.brightnessK - 273.15)
+      parts.push(`${spot.brightnessK.toFixed(1)} K (${celsius}\u00b0C)`)
+    }
 
-      if (typeof spot.brightnessK === 'number' && Number.isFinite(spot.brightnessK) && spot.brightnessK > 0) {
-        const celsius = Math.round(spot.brightnessK - 273.15)
-        parts.push(`${spot.brightnessK.toFixed(1)} K (${celsius}\u00b0C)`)
-      }
-
-      if (typeof spot.confidence === 'number' && Number.isFinite(spot.confidence)) {
-        parts.push(`Conf ${Math.round(spot.confidence)}%`)
-      }
-
-      return parts.join(' \u00b7 ')
-    })
+    if (typeof spot.confidence === 'number' && Number.isFinite(spot.confidence)) {
+      parts.push(`Conf ${Math.round(spot.confidence)}%`)
+    }
 
     return {
       mode: 'individual',
-      header:
-        sorted.length === 1
-          ? 'NASA FIRMS Active Spot'
-          : `${sorted.length} Active Fire Spots`,
-      lines,
-      count: sorted.length,
+      header: 'NASA FIRMS Active Spot',
+      lines: [parts.join(' \u00b7 ')],
+      count: 1,
     }
   }
 
-  let minTs = Infinity
-  let maxTs = -Infinity
-  let totalFrp = 0
-  let maxFrp = 0
-  const sourcesSet = new Set<string>()
-
-  for (const spot of sorted) {
-    if (Number.isFinite(spot.timestamp) && spot.timestamp > 0) {
-      if (spot.timestamp < minTs) minTs = spot.timestamp
-      if (spot.timestamp > maxTs) maxTs = spot.timestamp
-    }
-    const frp = Number(spot.frp) || 0
-    totalFrp += frp
-    if (frp > maxFrp) {
-      maxFrp = frp
-    }
-    if (spot.source) {
-      sourcesSet.add(spot.source)
-    }
-  }
-
-  const parts: string[] = []
-  if (Number.isFinite(minTs) && Number.isFinite(maxTs)) {
-    const fromTime = formatUtcHhMm(minTs)
-    const toTime = formatUtcHhMm(maxTs)
-    const windowStr = fromTime === toTime ? `${toTime} UTC` : `${fromTime}\u2013${toTime} UTC`
-    parts.push(`${windowStr} (${formatRelativeAge(maxTs, nowMs)})`)
-  }
-  parts.push(`${sorted.length}\u00d7 spots`)
-  parts.push(
-    `${(Math.round(totalFrp * 10) / 10).toLocaleString('en-US')} MW total (peak ${(Math.round(maxFrp * 10) / 10).toLocaleString('en-US')} MW)`,
-  )
-  if (sourcesSet.size > 0) {
-    parts.push([...sourcesSet].join(', '))
-  }
+  const timeline = buildFireDetectionsTimeline(uniqueSpots, {
+    nowMs,
+    viewMode: options.viewMode ?? 'anomaly',
+    timeZone: options.timeZone,
+  })
 
   return {
-    mode: 'aggregated',
-    header: `${sorted.length} Overlapping Fire Spots`,
-    lines: [parts.join(' \u00b7 ')],
-    count: sorted.length,
+    mode: 'timeline',
+    header: `${uniqueSpots.length} Grouped Fire Detections`,
+    lines: [timeline.accessibleSummary],
+    count: uniqueSpots.length,
+    timeline,
   }
 }

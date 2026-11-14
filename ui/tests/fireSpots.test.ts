@@ -9,6 +9,7 @@ import {
   computePowerScale,
   computeWildfireActivity,
   computeWildfirePulse,
+  expandHoveredFireSpots,
   formatFireSpotsTooltip,
   FULL_DETAIL_FIRE_SPOT_ZOOM,
   MIN_FIRE_SPOT_ZOOM,
@@ -166,7 +167,7 @@ describe('fire spot tooltips and hit sorting', () => {
     assert.equal(sorted[2].source, 'VIIRS 375m / NOAA-20')
   })
 
-  it('formats 1..3 spots individually and deduplicates tile-boundary duplicates', () => {
+  it('formats 1 spot individually in local browser time and deduplicates tile-boundary duplicates', () => {
     assert.equal(formatFireSpotsTooltip([], nowMs), null)
 
     const single = formatFireSpotsTooltip(
@@ -193,40 +194,114 @@ describe('fire spot tooltips and hit sorting', () => {
         },
       ],
       nowMs,
+      { timeZone: 'Asia/Singapore' },
     )
 
     assert.ok(single)
     assert.equal(single.mode, 'individual')
     assert.equal(single.count, 1)
+    assert.equal(single.timeline, undefined)
     assert.equal(single.header, 'NASA FIRMS Active Spot')
     assert.equal(single.lines.length, 1)
-    assert.match(single.lines[0], /11:30 UTC \(30m ago\)/)
+    assert.match(single.lines[0], /19:30 \(30m ago\)/)
+    assert.doesNotMatch(single.lines[0], /\bUTC\b/)
     assert.match(single.lines[0], /84\.3 MW/)
     assert.match(single.lines[0], /MODIS 1km \(Aqua\)/)
     assert.match(single.lines[0], /340\.1 K \(67°C\)|340\.2 K \(67°C\)/)
     assert.match(single.lines[0], /Conf 92%/)
   })
 
-  it('aggregates 4 or more spots with total FRP, peak FRP, time range, and unique sources', () => {
-    const spots: FireSpotTooltipInput[] = [
-      { lng: 10.1, lat: 20.1, timestamp: nowMs - 3 * 3600_000, frp: 15, source: 'VIIRS 375m / NOAA-20' },
-      { lng: 10.2, lat: 20.2, timestamp: nowMs - 2 * 3600_000, frp: 45, source: 'VIIRS 375m / NOAA-21' },
-      { lng: 10.3, lat: 20.3, timestamp: nowMs - 1 * 3600_000, frp: 110, source: 'MODIS 1km' },
-      { lng: 10.4, lat: 20.4, timestamp: nowMs - 30 * 60_000, frp: 30, source: 'VIIRS 375m / NOAA-20' },
+  it('formats 2+ spots as a 24h grouped timeline with sun context and accessible summary', () => {
+    const pair: FireSpotTooltipInput[] = [
+      {
+        lng: 103.85,
+        lat: 1.35,
+        timestamp: nowMs - 4 * 3600_000,
+        frp: 35,
+        confidence: 65,
+        instrument: 'viirs',
+        source: 'VIIRS 375m / NOAA-20',
+        satellite: '1',
+      },
+      {
+        lng: 103.852,
+        lat: 1.352,
+        timestamp: nowMs - 30 * 60_000,
+        frp: 88,
+        confidence: 95,
+        instrument: 'modis',
+        source: 'MODIS 1km',
+        satellite: 'T',
+      },
     ]
 
-    const aggregated = formatFireSpotsTooltip(spots, nowMs)
-    assert.ok(aggregated)
-    assert.equal(aggregated.mode, 'aggregated')
-    assert.equal(aggregated.count, 4)
-    assert.equal(aggregated.header, '4 Overlapping Fire Spots')
-    assert.equal(aggregated.lines.length, 1)
-    assert.match(aggregated.lines[0], /09:00–11:30 UTC \(30m ago\)/)
-    assert.match(aggregated.lines[0], /4× spots/)
-    assert.match(aggregated.lines[0], /200 MW total \(peak 110 MW\)/)
-    assert.match(aggregated.lines[0], /MODIS 1km/)
-    assert.match(aggregated.lines[0], /VIIRS 375m \/ NOAA-20/)
-    assert.match(aggregated.lines[0], /VIIRS 375m \/ NOAA-21/)
+    const pairTooltip = formatFireSpotsTooltip(pair, nowMs, { timeZone: 'Asia/Singapore' })
+    assert.ok(pairTooltip)
+    assert.equal(pairTooltip.mode, 'timeline')
+    assert.equal(pairTooltip.count, 2)
+    assert.equal(pairTooltip.header, '2 Grouped Fire Detections')
+    assert.ok(pairTooltip.timeline)
+    assert.equal(pairTooltip.timeline.detectionCount, 2)
+    assert.equal(pairTooltip.timeline.peakFrpMw, 88)
+
+    const spots: FireSpotTooltipInput[] = [
+      {
+        lng: 10.1,
+        lat: 20.1,
+        timestamp: nowMs - 3 * 3600_000,
+        frp: 15,
+        confidence: 50,
+        instrument: 'viirs',
+        source: 'VIIRS 375m / NOAA-20',
+        satellite: 'NOAA-20',
+      },
+      {
+        lng: 10.2,
+        lat: 20.2,
+        timestamp: nowMs - 2 * 3600_000,
+        frp: 45,
+        confidence: 75,
+        instrument: 'viirs',
+        source: 'VIIRS 375m / NOAA-21',
+        satellite: 'NOAA-21',
+      },
+      {
+        lng: 10.3,
+        lat: 20.3,
+        timestamp: nowMs - 1 * 3600_000,
+        frp: 110,
+        confidence: 95,
+        instrument: 'modis',
+        source: 'MODIS 1km',
+        satellite: 'Terra',
+      },
+      {
+        lng: 10.4,
+        lat: 20.4,
+        timestamp: nowMs - 30 * 60_000,
+        frp: 30,
+        confidence: 80,
+        instrument: 'viirs',
+        source: 'VIIRS 375m / NOAA-20',
+        satellite: 'NOAA-20',
+      },
+    ]
+
+    const grouped = formatFireSpotsTooltip(spots, nowMs, { timeZone: 'UTC' })
+    assert.ok(grouped)
+    assert.equal(grouped.mode, 'timeline')
+    assert.equal(grouped.count, 4)
+    assert.equal(grouped.header, '4 Grouped Fire Detections')
+    assert.equal(grouped.lines.length, 1)
+    assert.ok(grouped.timeline)
+    assert.equal(grouped.timeline.totalFrpMw, 200)
+    assert.equal(grouped.timeline.peakFrpMw, 110)
+    assert.match(grouped.lines[0], /09:00–11:30 local/)
+    assert.match(grouped.lines[0], /4 detections/)
+    assert.match(grouped.lines[0], /200 MW total \(peak 110 MW\)/)
+    assert.match(grouped.lines[0], /Terra/)
+    assert.match(grouped.lines[0], /NOAA-20/)
+    assert.match(grouped.lines[0], /NOAA-21/)
   })
 })
 
@@ -313,5 +388,62 @@ describe('hierarchical z1..z7 spatial decluttering', () => {
     assert.equal(viirsFeature.properties.minZoomViirs, 1)
     assert.equal(modisFeature.properties.minZoomAll, 7)
     assert.equal(modisFeature.properties.minZoomModis, 1)
+  })
+
+  it('expands hovered decluttered leaders into their hidden group members at z1..z6 without cross-sensor leaks', () => {
+    const payload: FirmsLiveSpotsResponse = {
+      generatedAtUtc: new Date(referenceNowMs).toISOString(),
+      fetchedAtUtc: new Date(referenceNowMs).toISOString(),
+      latestAcquiredAtUtc: new Date(referenceNowMs).toISOString(),
+      stale: false,
+      windowHours: 24,
+      sensorFilter: 'harmonized',
+      sources: [
+        { code: 0, dataset: 'MODIS_NRT', label: 'MODIS 1km', instrument: 'modis', radiusMeters: 1000, count: 1 },
+        { code: 1, dataset: 'VIIRS_NOAA20_NRT', label: 'VIIRS 375m / NOAA-20', instrument: 'viirs', radiusMeters: 375, count: 3 },
+      ],
+      count: 4,
+      modisCount: 1,
+      viirsCount: 3,
+      maxFrpMw: 280,
+      attribution: 'NASA FIRMS',
+      columns: ['lng', 'lat', 'timestampMs', 'frp', 'brightnessK', 'confidence', 'sourceCode', 'satellite', 'dayNight'],
+      spots: [
+        // 0: Cluster leader inside z1 (100..102.5, 0..2.5)
+        [101.05, 1.05, referenceNowMs - 600_000, 280, 355, 95, 1, 'NOAA-20', 'D'],
+        // 1: Immediate MODIS neighbor (< 0.01° away)
+        [101.055, 1.055, referenceNowMs - 500_000, 90, 330, 80, 0, 'Terra', 'D'],
+        // 2: Same z1 (2.5°) cell, separate z2 (1.25°) cell (~1.35° north)
+        [101.05, 2.4, referenceNowMs - 400_000, 140, 342, 85, 1, 'NOAA-20', 'D'],
+        // 3: Distant spot (~8° east)
+        [109.0, 1.05, referenceNowMs - 300_000, 50, 325, 75, 1, 'NOAA-20', 'D'],
+      ],
+    }
+
+    const built = buildFireSpotsGeoJson(payload, referenceNowMs)
+
+    const z1Harmonized = expandHoveredFireSpots(built, [0], 1.5, 'harmonized')
+    assert.deepEqual(
+      z1Harmonized.map((s) => s.frp).sort((a, b) => b - a),
+      [280, 140, 90],
+    )
+
+    const z2Harmonized = expandHoveredFireSpots(built, [0], 2.2, 'harmonized')
+    assert.deepEqual(
+      z2Harmonized.map((s) => s.frp).sort((a, b) => b - a),
+      [280, 90],
+    )
+
+    const z7Harmonized = expandHoveredFireSpots(built, [0], 7.0, 'harmonized')
+    assert.deepEqual(
+      z7Harmonized.map((s) => s.frp),
+      [280],
+    )
+
+    const z1Modis = expandHoveredFireSpots(built, [1], 1.5, 'modis')
+    assert.deepEqual(
+      z1Modis.map((s) => ({ frp: s.frp, instrument: s.instrument })),
+      [{ frp: 90, instrument: 'modis' }],
+    )
   })
 })
