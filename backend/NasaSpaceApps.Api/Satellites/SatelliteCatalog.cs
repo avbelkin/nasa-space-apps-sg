@@ -8,7 +8,7 @@ public sealed record SatelliteMetadata(
     string InstrumentLabel,
     string CrossingNote,
     double NadirSwathKm,
-    double? WideSwathKm,
+    double WideSwathKm,
     int TypicalIngestionLagMinutes,
     IReadOnlyList<string> LayerVariantIds,
     string DefaultTleLine1,

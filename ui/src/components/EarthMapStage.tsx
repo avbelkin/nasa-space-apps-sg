@@ -34,9 +34,6 @@ import {
   WIDE_SWATH_DASH_ARRAY,
   WIDE_SWATH_FILL_OPACITY,
   WIDE_SWATH_STROKE_OPACITY,
-  clampViewportBounds,
-  getSatelliteTooltip,
-  type GeoBounds,
   type LiveOrbitalState,
   type LiveSatelliteSnapshot,
   type SatelliteHudSection,
@@ -59,7 +56,6 @@ interface EarthMapStageProps {
   onProjectionModeChange: (next: ProjectionMode) => void
   initialViewport: MapViewportState
   onViewportChange: (next: MapViewportState) => void
-  onBoundsChange?: (bounds: GeoBounds) => void
   cameraFocusRequest: CameraFocusRequest | null
   autoLocateOnMount: boolean
   geolocationMaxZoom?: number
@@ -78,11 +74,9 @@ interface EarthMapStageProps {
 
 interface SatelliteMarkerEntry {
   marker: Marker
-  wrap: HTMLDivElement
   button: HTMLButtonElement
   iconSvg: SVGSVGElement
   labelSpan: HTMLSpanElement
-  tooltipSpan: HTMLSpanElement
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -148,8 +142,8 @@ function buildUserLocationGeoJson(coords: [number, number] | null): FeatureColle
 function createSpacecraftIconSvg(): SVGSVGElement {
   const svg = document.createElementNS(SVG_NS, 'svg')
   svg.setAttribute('viewBox', '0 0 18 18')
-  svg.setAttribute('width', '18')
-  svg.setAttribute('height', '18')
+  svg.setAttribute('width', '15')
+  svg.setAttribute('height', '15')
   svg.setAttribute('aria-hidden', 'true')
   svg.classList.add('sat-marker-icon')
 
@@ -173,12 +167,12 @@ function createSpacecraftIconSvg(): SVGSVGElement {
     return rect
   }
 
-  // Exact extremum 18x18 spacecraft silhouette: left/right solar wings + center bus + crossbar
+  // Solar arrays (left & right wings) + center bus + sensor crossbar
   svg.append(
-    makeRect('0', '7', '7', '4', 'sat-svg-wing'),
-    makeRect('11', '7', '7', '4', 'sat-svg-wing'),
-    makeRect('8', '4', '2', '11', 'sat-svg-body', '0.3'),
-    makeRect('7', '8', '4', '1', 'sat-svg-body'),
+    makeRect('0', '7', '6.5', '4', 'sat-svg-wing', '0.5'),
+    makeRect('11.5', '7', '6.5', '4', 'sat-svg-wing', '0.5'),
+    makeRect('7.8', '3.5', '2.4', '11', 'sat-svg-body', '0.6'),
+    makeRect('6.5', '8', '5', '1.8', 'sat-svg-body'),
   )
   return svg
 }
@@ -218,6 +212,10 @@ function createBaseStyle(
       'satellite-tracks-future': {
         type: 'geojson',
         data: initialOrbitalState.futureTracksGeoJson,
+      },
+      'satellite-positions': {
+        type: 'geojson',
+        data: initialOrbitalState.positionsGeoJson,
       },
       'fire-anomalies': {
         type: 'geojson',
@@ -292,6 +290,28 @@ function createBaseStyle(
           'line-width': 2.2,
           'line-opacity': 0.9,
           'line-dasharray': [2, 2],
+        },
+      },
+      {
+        id: 'satellite-positions-halo',
+        type: 'circle',
+        source: 'satellite-positions',
+        paint: {
+          'circle-radius': 9,
+          'circle-color': ['get', 'color'],
+          'circle-opacity': 0.28,
+          'circle-blur': 0.4,
+        },
+      },
+      {
+        id: 'satellite-positions-core',
+        type: 'circle',
+        source: 'satellite-positions',
+        paint: {
+          'circle-radius': 4,
+          'circle-color': ['get', 'color'],
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': '#f8fafc',
         },
       },
       {
@@ -374,6 +394,7 @@ function syncOrbitalSources(map: MapLibreMap, state: LiveOrbitalState): void {
   setGeoJsonSourceData(map, 'satellite-swaths-nadir', state.nadirSwathsGeoJson)
   setGeoJsonSourceData(map, 'satellite-tracks-past', state.pastTracksGeoJson)
   setGeoJsonSourceData(map, 'satellite-tracks-future', state.futureTracksGeoJson)
+  setGeoJsonSourceData(map, 'satellite-positions', state.positionsGeoJson)
 }
 
 export function EarthMapStage({
@@ -385,7 +406,6 @@ export function EarthMapStage({
   onProjectionModeChange,
   initialViewport,
   onViewportChange,
-  onBoundsChange,
   cameraFocusRequest,
   autoLocateOnMount,
   geolocationMaxZoom = DEFAULT_GEOLOCATION_MAX_ZOOM,
@@ -408,7 +428,6 @@ export function EarthMapStage({
   const satMarkersRef = useRef<Map<string, SatelliteMarkerEntry>>(new Map())
   const initialViewportRef = useRef<MapViewportState>(initialViewport)
   const latestOnViewportChangeRef = useRef(onViewportChange)
-  const latestOnBoundsChangeRef = useRef(onBoundsChange)
   const userInteractedRef = useRef(false)
   const isMountedRef = useRef(false)
 
@@ -445,22 +464,11 @@ export function EarthMapStage({
 
   useEffect(() => {
     latestOnViewportChangeRef.current = onViewportChange
-    latestOnBoundsChangeRef.current = onBoundsChange
-  }, [onViewportChange, onBoundsChange])
+  }, [onViewportChange])
 
   useEffect(() => {
     isMountedRef.current = true
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') {
-        return
-      }
-      for (const entry of satMarkersRef.current.values()) {
-        delete entry.wrap.dataset.tooltipOpen
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown)
     return () => {
-      document.removeEventListener('keydown', handleKeyDown)
       isMountedRef.current = false
     }
   }, [])
@@ -492,45 +500,16 @@ export function EarthMapStage({
     for (const sat of snapshots) {
       let entry = entries.get(sat.id)
       if (!entry) {
-        const tooltipId = `sat-tooltip-${sat.id}`
-        const wrap = document.createElement('div')
-        wrap.className = 'sat-marker-wrap'
-
         const button = document.createElement('button')
         button.type = 'button'
         button.className = 'sat-marker-badge'
         button.dataset.satId = sat.id
-        button.setAttribute('aria-describedby', tooltipId)
 
         const iconSvg = createSpacecraftIconSvg()
         const labelSpan = document.createElement('span')
         labelSpan.className = 'sat-marker-label'
 
-        const tooltipSpan = document.createElement('span')
-        tooltipSpan.id = tooltipId
-        tooltipSpan.setAttribute('role', 'tooltip')
-        tooltipSpan.className = 'sat-marker-tooltip'
-
         button.append(iconSvg, labelSpan)
-        wrap.append(button, tooltipSpan)
-
-        const showTooltip = () => {
-          wrap.dataset.tooltipOpen = 'true'
-        }
-        const hideTooltip = () => {
-          delete wrap.dataset.tooltipOpen
-        }
-
-        wrap.addEventListener('pointerenter', showTooltip)
-        wrap.addEventListener('pointerleave', hideTooltip)
-        button.addEventListener('focus', showTooltip)
-        wrap.addEventListener('focusout', (event) => {
-          const related = event.relatedTarget as Node | null
-          if (!related || !wrap.contains(related)) {
-            hideTooltip()
-          }
-        })
-
         button.addEventListener('click', (event) => {
           event.stopPropagation()
           userInteractedRef.current = true
@@ -541,24 +520,28 @@ export function EarthMapStage({
         })
 
         const marker = new Marker({
-          element: wrap,
+          element: button,
           anchor: 'left',
-          offset: [-11, 0],
+          offset: [10, 0],
           subpixelPositioning: true,
           opacityWhenCovered: '0.12',
         })
           .setLngLat([sat.lng, sat.lat])
           .addTo(map)
 
-        entry = { marker, wrap, button, iconSvg, labelSpan, tooltipSpan }
+        entry = { marker, button, iconSvg, labelSpan }
         entries.set(sat.id, entry)
       }
 
       entry.marker.setLngLat([sat.lng, sat.lat])
+      entry.button.style.setProperty('--sat-color', sat.color)
       entry.button.setAttribute('aria-pressed', activeSatId === sat.id ? 'true' : 'false')
+      entry.button.setAttribute(
+        'aria-label',
+        `Focus ${sat.name} (${sat.instrumentLabel}) at ${sat.lat.toFixed(1)} degrees latitude, ${sat.lng.toFixed(1)} degrees longitude`,
+      )
       entry.iconSvg.style.transform = `rotate(${sat.headingDeg.toFixed(1)}deg)`
-      entry.labelSpan.textContent = sat.name
-      entry.tooltipSpan.textContent = getSatelliteTooltip(sat)
+      entry.labelSpan.textContent = `${sat.glyph} ${sat.shortBadge}`
     }
   }
 
@@ -599,22 +582,6 @@ export function EarthMapStage({
 
       mapInstanceRef.current = map
 
-      const emitClampedBounds = (targetMap: MapLibreMap) => {
-        const bounds = targetMap.getBounds()
-        const clamped = clampViewportBounds(
-          {
-            west: bounds.getWest(),
-            south: bounds.getSouth(),
-            east: bounds.getEast(),
-            north: bounds.getNorth(),
-          },
-          { satelliteOnly: true },
-        )
-        if (clamped) {
-          latestOnBoundsChangeRef.current?.(clamped)
-        }
-      }
-
       map.on('style.load', () => {
         if (!map) {
           return
@@ -640,7 +607,6 @@ export function EarthMapStage({
           latestShowOrbitsRef.current,
           latestSelectedSatIdRef.current,
         )
-        emitClampedBounds(map)
       })
 
       map.on('movestart', (event: MapMovementEvent) => {
@@ -661,7 +627,6 @@ export function EarthMapStage({
         }
         setViewport(nextViewport)
         latestOnViewportChangeRef.current(nextViewport)
-        emitClampedBounds(map)
       })
 
       map.on('error', (event: ErrorEvent) => {

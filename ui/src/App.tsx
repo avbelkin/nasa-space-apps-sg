@@ -16,20 +16,12 @@ import {
   type MapViewportState,
 } from './state/urlHashState'
 import {
-  areBoundsClose,
-  clampViewportBounds,
   computeLiveOrbitalState,
   fetchSatelliteOrbits,
-  fetchSatelliteSwaths,
   formatSatelliteHudSection,
   SATELLITE_ANIMATION_INTERVAL_MS,
-  SATELLITE_SWATH_POLL_INTERVAL_MS,
-  SAT_ONLY_BOUNDS_EPSILON_DEGREES,
-  SAT_ONLY_MIN_HALF_SPAN_DEGREES,
-  type GeoBounds,
   type LiveSatelliteSnapshot,
   type SatelliteOrbitsResponse,
-  type SatelliteSwathsResponse,
 } from './utils/satelliteOrbits'
 
 interface ApiStatusResponse {
@@ -47,7 +39,6 @@ const apiBaseUrl = rawApiBaseUrl.trim().replace(/\/$/, '')
 const statusEndpoint = apiBaseUrl ? `${apiBaseUrl}/api/status` : '/api/status'
 const isProdUnconfigured = import.meta.env.PROD && !apiBaseUrl
 const ORBITS_REFRESH_INTERVAL_MS = 20 * 60 * 1000
-const SWATH_POLL_INACTIVITY_MS = 2 * 60 * 1000
 
 const STATUS_LABELS: Record<ConnectionState, string> = {
   checking: 'Checking...',
@@ -109,58 +100,16 @@ function App() {
   const [lastChecked, setLastChecked] = useState<string>('Never')
 
   const [orbitsPayload, setOrbitsPayload] = useState<SatelliteOrbitsResponse | null>(null)
-  const [liveSwaths, setLiveSwaths] = useState<SatelliteSwathsResponse | null>(null)
   const [orbitsError, setOrbitsError] = useState<string | null>(null)
   const [nowUnixMs, setNowUnixMs] = useState<number>(() => Date.now())
-  const [viewportBounds, setViewportBounds] = useState<GeoBounds | null>(() =>
-    clampViewportBounds(
-      {
-        west: initialResolution.state.lng - SAT_ONLY_MIN_HALF_SPAN_DEGREES,
-        south: initialResolution.state.lat - SAT_ONLY_MIN_HALF_SPAN_DEGREES,
-        east: initialResolution.state.lng + SAT_ONLY_MIN_HALF_SPAN_DEGREES,
-        north: initialResolution.state.lat + SAT_ONLY_MIN_HALF_SPAN_DEGREES,
-      },
-      { satelliteOnly: true },
-    ),
-  )
-  const [isDocumentVisible, setIsDocumentVisible] = useState<boolean>(() =>
-    typeof document === 'undefined' ? true : document.visibilityState !== 'hidden',
-  )
-  const lastActivityMsRef = useRef<number>(0)
-  const viewportBoundsRef = useRef<GeoBounds | null>(viewportBounds)
+  const viewportRef = useRef<{ lat: number; lng: number }>({
+    lat: initialResolution.state.lat,
+    lng: initialResolution.state.lng,
+  })
 
   useEffect(() => {
-    viewportBoundsRef.current = viewportBounds
-  }, [viewportBounds])
-
-  useEffect(() => {
-    lastActivityMsRef.current = Date.now()
-    const recordActivity = () => {
-      lastActivityMsRef.current = Date.now()
-    }
-    const handleVisibilityChange = () => {
-      const visible = document.visibilityState !== 'hidden'
-      setIsDocumentVisible(visible)
-      if (visible) {
-        lastActivityMsRef.current = Date.now()
-        setNowUnixMs(Date.now())
-      }
-    }
-
-    window.addEventListener('pointerdown', recordActivity, { passive: true })
-    window.addEventListener('keydown', recordActivity, { passive: true })
-    window.addEventListener('wheel', recordActivity, { passive: true })
-    window.addEventListener('touchstart', recordActivity, { passive: true })
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    return () => {
-      window.removeEventListener('pointerdown', recordActivity)
-      window.removeEventListener('keydown', recordActivity)
-      window.removeEventListener('wheel', recordActivity)
-      window.removeEventListener('touchstart', recordActivity)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [])
+    viewportRef.current = { lat: viewport.lat, lng: viewport.lng }
+  }, [viewport])
 
   useEffect(() => {
     lastSyncedHashRef.current = syncUrlHashAndStorage({
@@ -254,19 +203,10 @@ function App() {
     setOrbitsError(null)
     setCloudRefreshNonce((value) => value + 1)
     void fetchApiStatus().then(applySuccess, applyFailure)
-    void fetchSatelliteOrbits(apiBaseUrl, undefined, viewportBoundsRef.current).then(
+    void fetchSatelliteOrbits(apiBaseUrl, undefined, viewportRef.current).then(
       applyOrbitsSuccess,
       applyOrbitsFailure,
     )
-    if (showOrbits) {
-      void fetchSatelliteSwaths(apiBaseUrl, viewportBoundsRef.current).then(
-        (swaths) => {
-          setLiveSwaths(swaths)
-          setNowUnixMs(Date.now())
-        },
-        () => {},
-      )
-    }
   }
 
   useEffect(() => {
@@ -291,7 +231,7 @@ function App() {
       void fetchSatelliteOrbits(
         apiBaseUrl,
         controller.signal,
-        viewportBoundsRef.current,
+        viewportRef.current,
       ).then(
         (data) => {
           if (!controller.signal.aborted) {
@@ -316,54 +256,14 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!orbitsPayload || !showOrbits || !isDocumentVisible) {
+    if (!orbitsPayload || !showOrbits) {
       return
     }
     const timer = window.setInterval(() => {
       setNowUnixMs(Date.now())
     }, SATELLITE_ANIMATION_INTERVAL_MS)
     return () => window.clearInterval(timer)
-  }, [orbitsPayload, showOrbits, isDocumentVisible])
-
-  useEffect(() => {
-    if (isProdUnconfigured || !showOrbits || !isDocumentVisible) {
-      return
-    }
-
-    const controller = new AbortController()
-    const pollSwaths = (force = false) => {
-      if (!force && Date.now() - lastActivityMsRef.current >= SWATH_POLL_INACTIVITY_MS) {
-        return
-      }
-      void fetchSatelliteSwaths(apiBaseUrl, viewportBounds, controller.signal).then(
-        (data) => {
-          if (!controller.signal.aborted) {
-            setLiveSwaths(data)
-            setOrbitsError(null)
-          }
-        },
-        () => {
-          // Keep existing orbitsPayload client fallback running smoothly if swath poll fails.
-        },
-      )
-    }
-
-    pollSwaths(true)
-    const pollTimer = window.setInterval(() => {
-      pollSwaths(false)
-    }, SATELLITE_SWATH_POLL_INTERVAL_MS)
-
-    return () => {
-      window.clearInterval(pollTimer)
-      controller.abort()
-    }
-  }, [showOrbits, isDocumentVisible, viewportBounds])
-
-  const handleBoundsChange = (nextBounds: GeoBounds) => {
-    if (!areBoundsClose(viewportBoundsRef.current, nextBounds, SAT_ONLY_BOUNDS_EPSILON_DEGREES)) {
-      setViewportBounds(nextBounds)
-    }
-  }
+  }, [orbitsPayload, showOrbits])
 
   const orbitalState = useMemo(
     () =>
@@ -372,18 +272,17 @@ function App() {
         sensorFilter,
         nowUnixMs,
         showOrbits,
-        liveSwaths,
       ),
-    [orbitsPayload, sensorFilter, nowUnixMs, showOrbits, liveSwaths],
+    [orbitsPayload, sensorFilter, nowUnixMs, showOrbits],
   )
 
   const satelliteHudSection = useMemo(
     () =>
       formatSatelliteHudSection(
-        liveSwaths?.satelliteHud ?? orbitsPayload?.satelliteHud ?? [],
+        orbitsPayload?.satelliteHud ?? [],
         { sensorFilter, showOrbits },
       ),
-    [liveSwaths, orbitsPayload, sensorFilter, showOrbits],
+    [orbitsPayload, sensorFilter, showOrbits],
   )
 
   const monthProfile = MONTHLY_PROFILE[selectedMonth]
@@ -475,7 +374,6 @@ function App() {
         onProjectionModeChange={setProjectionMode}
         initialViewport={initialResolution.state}
         onViewportChange={setViewport}
-        onBoundsChange={handleBoundsChange}
         cameraFocusRequest={cameraFocusRequest}
         autoLocateOnMount={initialResolution.source === 'default'}
         geolocationMaxZoom={DEFAULT_GEOLOCATION_MAX_ZOOM}
@@ -490,7 +388,6 @@ function App() {
         onShowOrbitsChange={(next) => {
           setShowOrbits(next)
           if (next) {
-            lastActivityMsRef.current = Date.now()
             setNowUnixMs(Date.now())
           }
         }}
@@ -567,7 +464,7 @@ function App() {
           ) : (
             <>
               <p className="panel-note">
-                500ms client interpolation over live swath vectors &amp; CelesTrak window (TLE: <code>{tleSourceSummary}</code>). Click a spacecraft to center Earth.
+                500ms client interpolation over CelesTrak window (TLE: <code>{tleSourceSummary}</code>). Click a spacecraft to center Earth.
               </p>
               <ul className="satellite-list" role="list">
                 {orbitalState.snapshots.map((sat) => (
@@ -595,7 +492,7 @@ function App() {
                         {formatDeg(sat.lat, 'N', 'S')}, {formatDeg(sat.lng, 'E', 'W')} &middot; {sat.altitudeKm.toFixed(0)} km &middot; {sat.groundSpeedKmS.toFixed(2)} km/s
                       </span>
                       <span className="region-meta">
-                        {sat.crossingNote} &middot; Swath {(sat.wideSwathKm ?? sat.nadirSwathKm).toLocaleString()} km &middot; Lag ~{sat.typicalIngestionLagMinutes}m
+                        {sat.crossingNote} &middot; Swath {sat.wideSwathKm.toLocaleString()} km &middot; Lag ~{sat.typicalIngestionLagMinutes}m
                       </span>
                     </button>
                   </li>
