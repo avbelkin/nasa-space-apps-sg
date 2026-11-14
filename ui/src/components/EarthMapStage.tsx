@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { FeatureCollection, MultiLineString, Point, Polygon } from 'geojson'
 import { LngLat, LngLatBounds, Map as MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl'
 import type {
@@ -113,6 +113,10 @@ interface SatelliteMarkerEntry {
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
+// The satellite pass card starts open only on a map at least this wide (in rem). Below that it
+// starts folded: open, it covers a data mark at the default view (1024 px window) or a third of
+// the map (phone). One click on its header opens it.
+const WIDE_STAGE_MIN_REM = 48
 const GEO_STATUS_TIMEOUT_MS = 8000
 
 // MapLibre match expression: statusCategory -> palette color (below-typical is the fallback)
@@ -601,6 +605,7 @@ export function EarthMapStage({
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
   const [isLocating, setIsLocating] = useState(false)
   const [geoErrorMessage, setGeoErrorMessage] = useState<string | null>(null)
+  const [isStageWide, setIsStageWide] = useState(true)
   const [viewport, setViewport] = useState<MapViewportState>(() => ({
     lng: normalizeLng(initialViewport.lng),
     lat: clampLat(initialViewport.lat),
@@ -642,6 +647,21 @@ export function EarthMapStage({
   useEffect(() => {
     onSelectSatelliteRef.current = onSelectSatellite
   }, [onSelectSatellite])
+
+  useLayoutEffect(() => {
+    const stage = stageRef.current
+    if (!stage) {
+      return
+    }
+    const update = () => {
+      const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+      setIsStageWide(stage.getBoundingClientRect().width >= WIDE_STAGE_MIN_REM * rootFontSize)
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(stage)
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     latestOnGeolocationStateChangeRef.current = onGeolocationStateChange
@@ -1104,7 +1124,9 @@ export function EarthMapStage({
         onShowCloudsChange={onShowCloudsChange}
       />
 
-      {satelliteHudSection && <SatelliteHud section={satelliteHudSection} />}
+      {satelliteHudSection && (
+        <SatelliteHud section={satelliteHudSection} defaultOpen={isStageWide} />
+      )}
 
       <div ref={mapContainerRef} className="map-canvas" />
 
