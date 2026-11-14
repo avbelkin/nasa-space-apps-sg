@@ -11,6 +11,7 @@ export function FireDetectionsTimelineCard({ timeline }: FireDetectionsTimelineC
   const dayClipId = `${clipBaseId}-day`
   const nightClipId = `${clipBaseId}-night`
   const { sun, processingCutoff } = timeline
+  const horizonYPct = (sun.horizonY / sun.viewBoxHeight) * 100
 
   const sunEvents: Array<{ kind: 'sunrise' | 'sunset'; ms: number; label: string }> = []
   if (sun.sunriseMs !== null && sun.sunriseLabel !== null) {
@@ -54,7 +55,11 @@ export function FireDetectionsTimelineCard({ timeline }: FireDetectionsTimelineC
 
       <div className="fire-timeline-scroll">
         <div className="fire-timeline-frame">
-          <div className="fire-timeline-plot" aria-hidden="true">
+          <div
+            className="fire-timeline-plot"
+            style={{ '--horizon-y': `${horizonYPct}%` } as CSSProperties}
+            aria-hidden="true"
+          >
             {processingCutoff.widthPct > 0 && (
               <div
                 className="fire-timeline-cutoff-zone"

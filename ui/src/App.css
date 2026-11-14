@@ -691,6 +691,8 @@
 }
 
 .fire-timeline-plot {
+  --timeline-day-bg: var(--surface-subtle-dark, #1e293b);
+  --timeline-night-bg: #000000;
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -698,7 +700,14 @@
   block-size: 5.75rem;
   border-radius: 0.45rem;
   border: 1px solid rgb(148 163 184 / 0.35);
-  background-color: rgb(2 6 23 / 0.62);
+  background-color: var(--timeline-night-bg);
+  background-image: linear-gradient(
+    180deg,
+    var(--timeline-day-bg) 0%,
+    var(--timeline-day-bg) var(--horizon-y, 52%),
+    var(--timeline-night-bg) var(--horizon-y, 52%),
+    var(--timeline-night-bg) 100%
+  );
   overflow: clip;
 }
 
@@ -712,8 +721,8 @@
   border-inline-start: 1px dashed rgb(251 191 36 / 0.55);
   background: repeating-linear-gradient(
     45deg,
-    rgb(251 191 36 / 0.1) 0 3px,
-    rgb(15 23 42 / 0.22) 0 7px
+    rgb(251 191 36 / 0.12) 0 3px,
+    transparent 0 7px
   );
 }
 
@@ -743,7 +752,7 @@
 
 .fire-timeline-sun-night {
   fill: none;
-  stroke: rgb(148 163 184 / 0.38);
+  stroke: rgb(148 163 184 / 0.44);
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -769,7 +778,7 @@
 }
 
 .fire-timeline-sun-dot[data-daylight='false'] {
-  background-color: #0f172a;
+  background-color: #000000;
   border: 1.5px solid #e2e8f0;
 }
 
@@ -939,6 +948,10 @@
 }
 
 @media (forced-colors: active) {
+  .fire-timeline-plot {
+    background: Canvas;
+  }
+
   .fire-timeline-horizon,
   .fire-timeline-sun-day,
   .fire-timeline-sun-night {

@@ -373,8 +373,14 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
     assert.equal(recentNoaa20.status, 'pending')
   })
 
-  it('enforces >= 1rem minimum bar width, clip overflow, negative stripes, cutoff overlay, and forced-colors borders in App.css', () => {
+  it('enforces >= 1rem minimum bar width, clip overflow, horizon day/night split, negative stripes, cutoff overlay, and forced-colors borders in App.css', () => {
     const appCss = fs.readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
+    const plotMatch = appCss.match(/\.fire-timeline-plot\s*\{([^}]*)\}/)
+    assert.ok(plotMatch, 'expected .fire-timeline-plot CSS rule')
+    assert.match(plotMatch[1], /--timeline-day-bg:\s*var\(--surface-subtle-dark,\s*#1e293b\)\s*;/)
+    assert.match(plotMatch[1], /--timeline-night-bg:\s*#000000\s*;/)
+    assert.match(plotMatch[1], /background-image:\s*linear-gradient\([\s\S]*var\(--horizon-y,\s*52%\)/)
+
     const barsMatch = appCss.match(/\.fire-timeline-bars\s*\{([^}]*)\}/)
     assert.ok(barsMatch, 'expected .fire-timeline-bars CSS rule')
     assert.match(barsMatch[1], /grid-template-columns:\s*repeat\(24,\s*minmax\(1rem,\s*1fr\)\)\s*;/)
@@ -397,6 +403,7 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
     assert.match(cutoffMatch[1], /inset-inline-end:\s*0\s*;/)
     assert.match(cutoffMatch[1], /var\(--cutoff-width/)
 
+    assert.match(appCss, /@media\s*\(forced-colors:\s*active\)[\s\S]*\.fire-timeline-plot/)
     assert.match(appCss, /@media\s*\(forced-colors:\s*active\)[\s\S]*\.fire-timeline-bar-negative/)
     assert.match(appCss, /@media\s*\(forced-colors:\s*active\)[\s\S]*\.fire-timeline-cutoff-zone/)
   })
