@@ -149,6 +149,62 @@ test('formatSatelliteHudSection formats SAT freshness, ready fallback, and senso
   )
 })
 
+test('formatSatelliteHudSection deduplicates repeated satellite entries by noradId', () => {
+  const hudEntries: SatelliteHudEntry[] = [
+    {
+      noradId: 27424,
+      name: 'Aqua',
+      minutesSincePass: 114,
+      ingestionLagMinutes: 120,
+      isIngested: false,
+      isNadir: false,
+      nextPassMinutes: 190,
+      layerVariantIds: ['modis', 'harmonized', 'wF'],
+    },
+    {
+      noradId: 27424,
+      name: 'Aqua',
+      minutesSincePass: 120,
+      ingestionLagMinutes: 120,
+      isIngested: true,
+      isNadir: false,
+      nextPassMinutes: 190,
+      layerVariantIds: ['modis', 'harmonized', 'wF'],
+    },
+    {
+      noradId: 54234,
+      name: 'NOAA-21',
+      minutesSincePass: 228,
+      ingestionLagMinutes: 90,
+      isIngested: true,
+      isNadir: false,
+      nextPassMinutes: 250,
+      layerVariantIds: ['viirs', 'harmonized', 'wF'],
+    },
+    {
+      noradId: 43013,
+      name: 'NOAA-20',
+      minutesSincePass: 276,
+      ingestionLagMinutes: 90,
+      isIngested: true,
+      isNadir: false,
+      nextPassMinutes: 180,
+      layerVariantIds: ['viirs', 'harmonized', 'wF'],
+    },
+  ]
+
+  const section = formatSatelliteHudSection(hudEntries, {
+    sensorFilter: 'harmonized',
+    showOrbits: true,
+  })
+  assert.ok(section)
+  assert.equal(section.items.filter((item) => item.label === 'Aqua').length, 1)
+  assert.deepEqual(
+    section.items.map((item) => item.label),
+    ['Aqua', 'NOAA-21', 'NOAA-20'],
+  )
+})
+
 test('computeLiveOrbitalState builds separate 49-vertex wide and nadir swaths plus positions', () => {
   const orbit = createSampleOrbit()
   const t0Ms = 1_794_500_000_000

@@ -127,18 +127,32 @@ public sealed class SatelliteSwathAndTrackingTests
             state.Longitude,
             tle.EpochUtc);
 
-        Assert.NotEmpty(entries);
+        Assert.Equal(4, entries.Count);
+        Assert.Equal(entries.Count, entries.Select(e => e.NoradId).Distinct().Count());
         Assert.Contains(entries, f => f.SatelliteName == "Terra");
         Assert.Contains(entries, f => f.SatelliteName == "Aqua");
 
-        var noaa20Entries = entries.Where(f => f.NoradId == 43013).ToList();
-        Assert.Contains(noaa20Entries, f => !f.IsIngested);
-        Assert.Contains(noaa20Entries, f => f.IsIngested);
+        var noaa20Entry = Assert.Single(entries, f => f.NoradId == 43013);
+        Assert.Equal(0, noaa20Entry.MinutesSincePass);
+        Assert.False(noaa20Entry.IsIngested);
+        Assert.True(noaa20Entry.IsNadirPass);
+        Assert.True(noaa20Entry.NextPassMinutes > 30);
 
         for (var i = 1; i < entries.Count; i++)
         {
             Assert.True(entries[i].MinutesSincePass >= entries[i - 1].MinutesSincePass);
         }
+
+        // Straddling NOAA-20's 90-minute ingestion lag must still yield one unique entry per satellite.
+        var straddleEntries = SatelliteOverpassEvaluator.EvaluateFleetFreshness(
+            SatelliteCatalog.Default,
+            new Dictionary<int, SatelliteTle> { [43013] = tle },
+            state.Latitude,
+            state.Longitude,
+            tle.EpochUtc.AddMinutes(90));
+
+        Assert.Equal(4, straddleEntries.Count);
+        Assert.Equal(1, straddleEntries.Count(e => e.NoradId == 43013));
     }
 
     private static bool IsPointInPolygon(double lon, double lat, IReadOnlyList<SwathVertex> ring)
