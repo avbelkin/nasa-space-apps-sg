@@ -238,6 +238,7 @@
 .sat-marker-icon {
   display: block;
   flex-shrink: 0;
+  rotate: 0deg;
 }
 
 .sat-svg-wing {

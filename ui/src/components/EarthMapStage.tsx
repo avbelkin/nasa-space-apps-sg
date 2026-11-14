@@ -82,6 +82,7 @@ import {
   type SpaceStarfieldController,
 } from '../utils/spaceStarfield'
 import {
+  computeLiveOrbitalState,
   NADIR_SWATH_COLOR,
   NADIR_SWATH_FILL_OPACITY,
   NADIR_SWATH_STROKE_OPACITY,
@@ -92,7 +93,13 @@ import {
   type LiveOrbitalState,
   type LiveSatelliteSnapshot,
   type SatelliteHudSection,
+  type SatelliteOrbit,
 } from '../utils/satelliteOrbits'
+import {
+  createSatelliteAnimationController,
+  SATELLITE_ORBITS_SOURCE_ID,
+  type SatelliteAnimationController,
+} from '../utils/satelliteAnimation'
 import {
   buildFireSpotsGeoJson,
   compareMatchedFireSpots,
@@ -160,6 +167,7 @@ interface EarthMapStageProps {
   cloudRefreshNonce?: number
   showNightLights: boolean
   onShowNightLightsChange: (next: boolean) => void
+  satellites: readonly SatelliteOrbit[]
   orbitalState: LiveOrbitalState
   overpassIndex?: SatelliteOverpassIndex | null
   satelliteHudSection: SatelliteHudSection | null
@@ -185,9 +193,20 @@ interface SatelliteMarkerEntry {
   button: HTMLButtonElement
   iconSvg: SVGSVGElement
   labelSpan: HTMLSpanElement
+  lastColor: string
+  lastAriaLabel: string
+  lastBadgeText: string
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
+
+/** Syncs a satellite marker's `aria-pressed` state only when its selection changes. */
+function syncSatelliteMarkerPressed(button: HTMLButtonElement, isSelected: boolean): void {
+  const nextPressed = isSelected ? 'true' : 'false'
+  if (button.getAttribute('aria-pressed') !== nextPressed) {
+    button.setAttribute('aria-pressed', nextPressed)
+  }
+}
 
 // The satellite pass card starts open only on a map at least this wide (in rem). Below that it
 // starts folded: open, it covers a data mark at the default view (1024 px window) or a third of
@@ -573,25 +592,10 @@ function createBaseStyle(
         attribution:
           'Sentinel-2 cloudless — <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer">s2maps.eu</a> by <a href="https://eox.at" target="_blank" rel="noopener noreferrer">EOX IT Services GmbH</a> (Contains modified Copernicus Sentinel data 2025)',
       },
-      'satellite-swaths-wide': {
+      [SATELLITE_ORBITS_SOURCE_ID]: {
         type: 'geojson',
-        data: initialOrbitalState.wideSwathsGeoJson,
-      },
-      'satellite-swaths-nadir': {
-        type: 'geojson',
-        data: initialOrbitalState.nadirSwathsGeoJson,
-      },
-      'satellite-tracks-past': {
-        type: 'geojson',
-        data: initialOrbitalState.pastTracksGeoJson,
-      },
-      'satellite-tracks-future': {
-        type: 'geojson',
-        data: initialOrbitalState.futureTracksGeoJson,
-      },
-      'satellite-positions': {
-        type: 'geojson',
-        data: initialOrbitalState.positionsGeoJson,
+        maxzoom: 12,
+        data: initialOrbitalState.combinedGeoJson,
       },
       [FIRMS_SPOTS_SOURCE_ID]: {
         type: 'geojson',
@@ -625,7 +629,8 @@ function createBaseStyle(
       {
         id: 'satellite-swaths-wide-fill',
         type: 'fill',
-        source: 'satellite-swaths-wide',
+        source: SATELLITE_ORBITS_SOURCE_ID,
+        filter: ['==', ['get', 'orbitalFeatureKind'], 'wide-swath'],
         paint: {
           'fill-color': WIDE_SWATH_COLOR,
           'fill-opacity': WIDE_SWATH_FILL_OPACITY,
@@ -634,7 +639,8 @@ function createBaseStyle(
       {
         id: 'satellite-swaths-wide-outline',
         type: 'line',
-        source: 'satellite-swaths-wide',
+        source: SATELLITE_ORBITS_SOURCE_ID,
+        filter: ['==', ['get', 'orbitalFeatureKind'], 'wide-swath'],
         paint: {
           'line-color': WIDE_SWATH_COLOR,
           'line-width': 1,
@@ -645,7 +651,8 @@ function createBaseStyle(
       {
         id: 'satellite-swaths-nadir-fill',
         type: 'fill',
-        source: 'satellite-swaths-nadir',
+        source: SATELLITE_ORBITS_SOURCE_ID,
+        filter: ['==', ['get', 'orbitalFeatureKind'], 'nadir-swath'],
         paint: {
           'fill-color': NADIR_SWATH_COLOR,
           'fill-opacity': NADIR_SWATH_FILL_OPACITY,
@@ -654,7 +661,8 @@ function createBaseStyle(
       {
         id: 'satellite-swaths-nadir-outline',
         type: 'line',
-        source: 'satellite-swaths-nadir',
+        source: SATELLITE_ORBITS_SOURCE_ID,
+        filter: ['==', ['get', 'orbitalFeatureKind'], 'nadir-swath'],
         paint: {
           'line-color': NADIR_SWATH_COLOR,
           'line-width': 1,
@@ -664,7 +672,8 @@ function createBaseStyle(
       {
         id: 'satellite-tracks-past-line',
         type: 'line',
-        source: 'satellite-tracks-past',
+        source: SATELLITE_ORBITS_SOURCE_ID,
+        filter: ['==', ['get', 'orbitalFeatureKind'], 'past-track'],
         paint: {
           'line-color': ['get', 'color'],
           'line-width': 2,
@@ -674,7 +683,8 @@ function createBaseStyle(
       {
         id: 'satellite-tracks-future-line',
         type: 'line',
-        source: 'satellite-tracks-future',
+        source: SATELLITE_ORBITS_SOURCE_ID,
+        filter: ['==', ['get', 'orbitalFeatureKind'], 'future-track'],
         paint: {
           'line-color': ['get', 'color'],
           'line-width': 2.2,
@@ -702,7 +712,8 @@ function createBaseStyle(
       {
         id: 'satellite-positions-halo',
         type: 'circle',
-        source: 'satellite-positions',
+        source: SATELLITE_ORBITS_SOURCE_ID,
+        filter: ['==', ['get', 'orbitalFeatureKind'], 'position'],
         paint: {
           'circle-radius': 9,
           'circle-color': ['get', 'color'],
@@ -713,7 +724,8 @@ function createBaseStyle(
       {
         id: 'satellite-positions-core',
         type: 'circle',
-        source: 'satellite-positions',
+        source: SATELLITE_ORBITS_SOURCE_ID,
+        filter: ['==', ['get', 'orbitalFeatureKind'], 'position'],
         paint: {
           'circle-radius': 4,
           'circle-color': ['get', 'color'],
@@ -802,11 +814,7 @@ function setGeoJsonSourceData(
 }
 
 function syncOrbitalSources(map: MapLibreMap, state: LiveOrbitalState): void {
-  setGeoJsonSourceData(map, 'satellite-swaths-wide', state.wideSwathsGeoJson)
-  setGeoJsonSourceData(map, 'satellite-swaths-nadir', state.nadirSwathsGeoJson)
-  setGeoJsonSourceData(map, 'satellite-tracks-past', state.pastTracksGeoJson)
-  setGeoJsonSourceData(map, 'satellite-tracks-future', state.futureTracksGeoJson)
-  setGeoJsonSourceData(map, 'satellite-positions', state.positionsGeoJson)
+  setGeoJsonSourceData(map, SATELLITE_ORBITS_SOURCE_ID, state.combinedGeoJson)
 }
 
 function isMapStyleReady(map: MapLibreMap | null, styleReady = true): map is MapLibreMap {
@@ -836,6 +844,7 @@ export function EarthMapStage({
   cloudRefreshNonce = 0,
   showNightLights,
   onShowNightLightsChange,
+  satellites,
   orbitalState,
   overpassIndex = null,
   satelliteHudSection,
@@ -904,9 +913,11 @@ export function EarthMapStage({
   const latestOnRainMetadataChangeRef = useRef(onRainMetadataChange)
   const lastCloudRefreshNonceRef = useRef(cloudRefreshNonce)
   const latestShowNightLightsRef = useRef(showNightLights)
+  const latestSatellitesRef = useRef(satellites)
   const latestOrbitalStateRef = useRef(orbitalState)
   const latestShowOrbitsRef = useRef(showOrbits)
   const latestSelectedSatIdRef = useRef(selectedSatelliteId)
+  const satAnimControllerRef = useRef<SatelliteAnimationController | null>(null)
   const onSelectSatelliteRef = useRef(onSelectSatellite)
   const latestSelectedRegionIdRef = useRef(selectedRegionId)
   const onSelectRegionRef = useRef(onSelectRegion)
@@ -1168,19 +1179,39 @@ export function EarthMapStage({
           .setLngLat([sat.lng, sat.lat])
           .addTo(map)
 
-        entry = { marker, button, iconSvg, labelSpan }
+        entry = {
+          marker,
+          button,
+          iconSvg,
+          labelSpan,
+          lastColor: '',
+          lastAriaLabel: '',
+          lastBadgeText: '',
+        }
         entries.set(sat.id, entry)
       }
 
       entry.marker.setLngLat([sat.lng, sat.lat])
-      entry.button.style.setProperty('--sat-color', sat.color)
-      entry.button.setAttribute('aria-pressed', activeSatId === sat.id ? 'true' : 'false')
-      entry.button.setAttribute(
-        'aria-label',
-        `Show ${sat.name} (${sat.instrumentLabel}), now at latitude ${sat.lat.toFixed(1)}, longitude ${sat.lng.toFixed(1)}`,
-      )
-      entry.iconSvg.style.transform = `rotate(${sat.headingDeg.toFixed(1)}deg)`
-      entry.labelSpan.textContent = `${sat.glyph} ${sat.shortBadge}`
+      entry.iconSvg.style.rotate = `${sat.headingDeg.toFixed(2)}deg`
+
+      if (entry.lastColor !== sat.color) {
+        entry.button.style.setProperty('--sat-color', sat.color)
+        entry.lastColor = sat.color
+      }
+
+      syncSatelliteMarkerPressed(entry.button, activeSatId === sat.id)
+
+      const nextAriaLabel = `Show ${sat.name} (${sat.instrumentLabel}), now at latitude ${sat.lat.toFixed(1)}, longitude ${sat.lng.toFixed(1)}`
+      if (entry.lastAriaLabel !== nextAriaLabel) {
+        entry.button.setAttribute('aria-label', nextAriaLabel)
+        entry.lastAriaLabel = nextAriaLabel
+      }
+
+      const nextBadgeText = `${sat.glyph} ${sat.shortBadge}`
+      if (entry.lastBadgeText !== nextBadgeText) {
+        entry.labelSpan.textContent = nextBadgeText
+        entry.lastBadgeText = nextBadgeText
+      }
     }
   }
 
@@ -1336,22 +1367,31 @@ export function EarthMapStage({
         if (!map) {
           return
         }
-        if (!map.getLayer(GLOBE_HALO_LAYER_ID)) {
+        const activeMap = map
+        if (!activeMap.getLayer(GLOBE_HALO_LAYER_ID)) {
           const globeHaloLayer = createGlobeHaloLayer()
           globeHaloLayerRef.current = globeHaloLayer
           // Render atmospheric limb glow above clouds/surface and below satellite swaths/tracks.
-          map.addLayer(globeHaloLayer, 'satellite-swaths-wide-fill')
+          activeMap.addLayer(globeHaloLayer, 'satellite-swaths-wide-fill')
         }
-        setGeoJsonSourceData(map, 'fire-anomalies', latestGeoJsonRef.current)
-        syncOrbitalSources(map, latestOrbitalStateRef.current)
-        setGeoJsonSourceData(map, 'user-geolocation', latestUserGeoJsonRef.current)
-        map.setProjection({ type: latestProjectionRef.current })
-        syncSatelliteMarkers(
-          map,
-          latestOrbitalStateRef.current.snapshots,
-          latestShowOrbitsRef.current,
-          latestSelectedSatIdRef.current,
-        )
+        setGeoJsonSourceData(activeMap, 'fire-anomalies', latestGeoJsonRef.current)
+        setGeoJsonSourceData(activeMap, 'user-geolocation', latestUserGeoJsonRef.current)
+        activeMap.setProjection({ type: latestProjectionRef.current })
+        satAnimControllerRef.current?.dispose()
+        satAnimControllerRef.current = createSatelliteAnimationController({
+          map: activeMap,
+          getSatellites: () => latestSatellitesRef.current,
+          getSensorFilter: () => latestSensorFilterRef.current,
+          isOrbitsVisible: () => latestShowOrbitsRef.current,
+          onApplyOrbitalGeoJson: (state) => {
+            latestOrbitalStateRef.current = state
+            syncOrbitalSources(activeMap, state)
+          },
+          onCommitMarkers: (snapshots, visible) => {
+            syncSatelliteMarkers(activeMap, snapshots, visible, latestSelectedSatIdRef.current)
+          },
+        })
+        satAnimControllerRef.current.syncNow()
         addStatusMarkImages(map)
         map.addLayer(STATUS_MARK_LAYER, 'user-geolocation-halo')
         for (const layerId of SELECTION_LAYER_IDS) {
@@ -1521,6 +1561,8 @@ export function EarthMapStage({
 
     const markerMap = satMarkersRef.current
     return () => {
+      satAnimControllerRef.current?.dispose()
+      satAnimControllerRef.current = null
       fireAnimControllerRef.current?.dispose()
       fireAnimControllerRef.current = null
       firePointerCleanupRef.current?.()
@@ -1572,20 +1614,28 @@ export function EarthMapStage({
   }, [userLocationGeoJson])
 
   useEffect(() => {
-    latestOrbitalStateRef.current = orbitalState
+    latestSatellitesRef.current = satellites
+    latestSensorFilterRef.current = sensorFilter
     latestShowOrbitsRef.current = showOrbits
-    latestSelectedSatIdRef.current = selectedSatelliteId
 
-    const map = mapInstanceRef.current
-    if (!map) {
-      return
+    if (satAnimControllerRef.current) {
+      satAnimControllerRef.current.syncNow()
+    } else {
+      latestOrbitalStateRef.current = computeLiveOrbitalState(
+        satellites,
+        sensorFilter,
+        Date.now(),
+        showOrbits,
+      )
     }
-    // Not gated on isStyleLoaded() for the same reason as the fire layer: it stays false while
-    // tiles load and would drop a second's position update; 'style.load' syncs if sources are
-    // missing.
-    syncOrbitalSources(map, orbitalState)
-    syncSatelliteMarkers(map, orbitalState.snapshots, showOrbits, selectedSatelliteId)
-  }, [orbitalState, showOrbits, selectedSatelliteId])
+  }, [satellites, sensorFilter, showOrbits])
+
+  useEffect(() => {
+    latestSelectedSatIdRef.current = selectedSatelliteId
+    for (const [id, entry] of satMarkersRef.current) {
+      syncSatelliteMarkerPressed(entry.button, selectedSatelliteId === id)
+    }
+  }, [selectedSatelliteId])
 
   useEffect(() => {
     latestShowCloudsRef.current = showClouds

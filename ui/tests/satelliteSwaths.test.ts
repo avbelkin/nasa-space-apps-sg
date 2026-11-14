@@ -1,22 +1,35 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import test from 'node:test'
+import type { MapSourceDataEvent } from 'maplibre-gl'
+import {
+  createSatelliteAnimationController,
+  MAX_PENDING_ORBIT_SYNC_MS,
+  SATELLITE_ORBITS_SOURCE_ID,
+  shouldAdvanceSatelliteFrame,
+  type SatelliteAnimationMapLike,
+} from '../src/utils/satelliteAnimation.ts'
 import {
   advanceSatelliteHudEntries,
+  buildInstantaneousSwathPolygon,
   computeGreatCircleDistanceKm,
   computeLiveOrbitalState,
   computeSatelliteHudElapsedMinutes,
   formatSatelliteHudSection,
   hasSatelliteHudCenterMoved,
+  interpolateTrackAtTime,
   NADIR_SWATH_COLOR,
   NADIR_SWATH_FILL_OPACITY,
   NADIR_SWATH_STROKE_OPACITY,
+  SATELLITE_ANIMATION_FPS,
   SATELLITE_ANIMATION_INTERVAL_MS,
   SATELLITE_HUD_MIN_MOVE_KM,
   WIDE_SWATH_COLOR,
   WIDE_SWATH_DASH_ARRAY,
   WIDE_SWATH_FILL_OPACITY,
   WIDE_SWATH_STROKE_OPACITY,
+  type LiveOrbitalState,
+  type LiveSatelliteSnapshot,
   type SatelliteHudEntry,
   type SatelliteOrbit,
 } from '../src/utils/satelliteOrbits.ts'
@@ -76,8 +89,9 @@ function createSampleOrbit(): SatelliteOrbit {
   }
 }
 
-test('extremum swath styles and 500ms animation interval match', () => {
-  assert.equal(SATELLITE_ANIMATION_INTERVAL_MS, 500)
+test('extremum swath styles and 30fps animation interval match', () => {
+  assert.equal(SATELLITE_ANIMATION_FPS, 30)
+  assert.equal(SATELLITE_ANIMATION_INTERVAL_MS, 1000 / 30)
   assert.equal(NADIR_SWATH_COLOR, '#92b4de')
   assert.equal(NADIR_SWATH_FILL_OPACITY, 0.14)
   assert.equal(NADIR_SWATH_STROKE_OPACITY, 0.32)
@@ -223,10 +237,23 @@ test('computeLiveOrbitalState builds separate 49-vertex wide and nadir swaths pl
   assert.equal(state.wideSwathsGeoJson.features[0].geometry.coordinates[0].length, 49)
   assert.equal(state.nadirSwathsGeoJson.features[0].geometry.coordinates[0].length, 49)
 
+  const countByKind = new Map<string, number>()
+  for (const feature of state.combinedGeoJson.features) {
+    const kind = String(feature.properties?.orbitalFeatureKind ?? '')
+    countByKind.set(kind, (countByKind.get(kind) ?? 0) + 1)
+  }
+  assert.equal(state.combinedGeoJson.features.length, 5)
+  assert.equal(countByKind.get('wide-swath'), 1)
+  assert.equal(countByKind.get('nadir-swath'), 1)
+  assert.equal(countByKind.get('past-track'), 1)
+  assert.equal(countByKind.get('future-track'), 1)
+  assert.equal(countByKind.get('position'), 1)
+
   const hidden = computeLiveOrbitalState([orbit], 'harmonized', t0Ms + 500, false)
   assert.equal(hidden.wideSwathsGeoJson.features.length, 0)
   assert.equal(hidden.nadirSwathsGeoJson.features.length, 0)
   assert.equal(hidden.positionsGeoJson.features.length, 0)
+  assert.equal(hidden.combinedGeoJson.features.length, 0)
 })
 
 test('hasSatelliteHudCenterMoved respects minMoveKm threshold and antimeridian wrap', () => {
@@ -341,4 +368,241 @@ test('map-hud-bottom keeps SatelliteHud bottom-anchored when fire-tooltip-card a
   assert.match(body, /flex-wrap:\s*wrap\s*;/)
   assert.match(body, /align-items:\s*flex-end\s*;/)
   assert.doesNotMatch(body, /wrap-reverse/)
+})
+
+test('interpolateTrackAtTime and swaths advance smoothly across 30fps frames, heading wraparound, and antimeridian', () => {
+  const orbit = createSampleOrbit()
+  const t0 = orbit.currentPosition.timestampUnixMs
+
+  const framePositions = Array.from({ length: 12 }, (_, idx) => {
+    const pos = interpolateTrackAtTime(orbit, t0 + idx * SATELLITE_ANIMATION_INTERVAL_MS)
+    const ring = buildInstantaneousSwathPolygon(pos.lat, pos.lng, pos.headingDeg, 400, 180)
+    return { pos, ring }
+  })
+
+  for (let i = 1; i < framePositions.length; i++) {
+    const prev = framePositions[i - 1]
+    const curr = framePositions[i]
+    const dLat = curr.pos.lat - prev.pos.lat
+    const dLng = curr.pos.lng - prev.pos.lng
+    assert.ok(dLat > 0.001 && dLat < 0.002, `expected sub-pixel 30fps lat delta, got ${dLat}`)
+    assert.ok(dLng < -0.0003 && dLng > -0.001, `expected sub-pixel 30fps lng delta, got ${dLng}`)
+    assert.notDeepEqual(curr.ring[0], prev.ring[0])
+  }
+
+  // Smooth shortest-arc heading wraparound (355 deg -> 5 deg -> 15 deg) without 30s jumps
+  const headingOrbit: SatelliteOrbit = {
+    ...orbit,
+    track: [
+      { timestampUnixMs: t0, lat: 70, lng: 10, altitudeKm: 830, headingDeg: 355, isAscending: true },
+      {
+        timestampUnixMs: t0 + 30_000,
+        lat: 71,
+        lng: 11,
+        altitudeKm: 830,
+        headingDeg: 5,
+        isAscending: true,
+      },
+      {
+        timestampUnixMs: t0 + 60_000,
+        lat: 72,
+        lng: 12,
+        altitudeKm: 830,
+        headingDeg: 15,
+        isAscending: true,
+      },
+    ],
+  }
+  const q1 = interpolateTrackAtTime(headingOrbit, t0 + 7_500)
+  const mid = interpolateTrackAtTime(headingOrbit, t0 + 15_000)
+  const q3 = interpolateTrackAtTime(headingOrbit, t0 + 22_500)
+  const pastBoundary = interpolateTrackAtTime(headingOrbit, t0 + 30_000 + SATELLITE_ANIMATION_INTERVAL_MS)
+  assert.ok(Math.abs(q1.headingDeg - 357.5) < 1e-6)
+  assert.ok(mid.headingDeg < 1e-6 || Math.abs(mid.headingDeg - 360) < 1e-6)
+  assert.ok(Math.abs(q3.headingDeg - 2.5) < 1e-6)
+  assert.ok(Math.abs(pastBoundary.headingDeg - (5 + 10 / 900)) < 1e-6)
+
+  // Spherical great-circle interpolation across the ±180° antimeridian stays near ±180°
+  const antiOrbit: SatelliteOrbit = {
+    ...orbit,
+    track: [
+      {
+        timestampUnixMs: t0,
+        lat: 5,
+        lng: 179.8,
+        altitudeKm: 830,
+        headingDeg: 340,
+        isAscending: true,
+      },
+      {
+        timestampUnixMs: t0 + 30_000,
+        lat: 6,
+        lng: -179.8,
+        altitudeKm: 830,
+        headingDeg: 340,
+        isAscending: true,
+      },
+    ],
+  }
+  const antiMid = interpolateTrackAtTime(antiOrbit, t0 + 15_000)
+  assert.ok(Math.abs(antiMid.lng) >= 179.99, `expected antimeridian crossing near ±180, got ${antiMid.lng}`)
+})
+
+test('shouldAdvanceSatelliteFrame locks cleanly to 30fps on 60Hz and 120Hz displays with ±2ms jitter', () => {
+  const simulateDisplay = (refreshHz: number, jitterSequence: readonly number[]) => {
+    const refreshPeriodMs = 1000 / refreshHz
+    let nextFrameTimeMs: number | null = null
+    let steps = 0
+    const totalVsyncs = refreshHz / 2 // 500ms window
+    for (let i = 0; i < totalVsyncs; i++) {
+      const jitter = jitterSequence[i % jitterSequence.length]
+      const timestamp = (i + 1) * refreshPeriodMs + jitter
+      const decision = shouldAdvanceSatelliteFrame(timestamp, nextFrameTimeMs)
+      nextFrameTimeMs = decision.nextFrameTimeMs
+      if (decision.shouldStep) {
+        steps += 1
+      }
+    }
+    return steps
+  }
+
+  const jitter = [0, -1.8, 1.9, -1.2, 2.0, -2.0]
+  assert.equal(simulateDisplay(60, jitter), 15)
+  assert.equal(simulateDisplay(120, jitter), 15)
+})
+
+test('createSatelliteAnimationController coordinates rAF pacing, sourcedata lockstep, backpressure, pause, and dispose', () => {
+  const orbit = createSampleOrbit()
+  let nowMs = orbit.currentPosition.timestampUnixMs
+  let hidden = false
+  let orbitsVisible = true
+  let sourceLoaded = true
+  let nextRafId = 1
+  const pendingRafs = new Map<number, FrameRequestCallback>()
+  const cancelledRafs: number[] = []
+  const sourceListeners = new Set<(event: MapSourceDataEvent) => void>()
+
+  const appliedStates: LiveOrbitalState[] = []
+  const committedMarkers: Array<{ count: number; visible: boolean }> = []
+
+  const mockMap: SatelliteAnimationMapLike = {
+    isSourceLoaded: (id) => id === SATELLITE_ORBITS_SOURCE_ID && sourceLoaded,
+    on: (type, listener) => {
+      if (type === 'sourcedata') {
+        sourceListeners.add(listener)
+      }
+    },
+    off: (type, listener) => {
+      if (type === 'sourcedata') {
+        sourceListeners.delete(listener)
+      }
+    },
+  }
+
+  const controller = createSatelliteAnimationController({
+    map: mockMap,
+    getSatellites: () => [orbit],
+    getSensorFilter: () => 'harmonized',
+    isOrbitsVisible: () => orbitsVisible,
+    onApplyOrbitalGeoJson: (state) => {
+      appliedStates.push(state)
+    },
+    onCommitMarkers: (snapshots: readonly LiveSatelliteSnapshot[], visible: boolean) => {
+      committedMarkers.push({ count: snapshots.length, visible })
+    },
+    nowProvider: () => nowMs,
+    frameNowProvider: () => nowMs,
+    requestFrame: (cb) => {
+      const id = nextRafId++
+      pendingRafs.set(id, cb)
+      return id
+    },
+    cancelFrame: (id) => {
+      cancelledRafs.push(id)
+      pendingRafs.delete(id)
+    },
+    isDocumentHidden: () => hidden,
+  })
+
+  const runNextFrame = (frameTimeMs: number) => {
+    const first = pendingRafs.entries().next()
+    assert.ok(!first.done, 'expected a scheduled rAF callback')
+    const [id, cb] = first.value
+    pendingRafs.delete(id)
+    cb(frameTimeMs)
+  }
+
+  const emitSourceData = () => {
+    const event = { sourceId: SATELLITE_ORBITS_SOURCE_ID } as MapSourceDataEvent
+    for (const listener of sourceListeners) {
+      listener(event)
+    }
+  }
+
+  // Initial synchronous sync
+  controller.syncNow()
+  assert.equal(appliedStates.length, 1)
+  assert.equal(committedMarkers.length, 1)
+  assert.equal(committedMarkers[0].count, 1)
+  assert.equal(committedMarkers[0].visible, true)
+  assert.equal(pendingRafs.size, 1)
+
+  // Frame 0: applies GeoJSON and holds markers until sourcedata completes
+  sourceLoaded = false
+  nowMs += 16.67
+  runNextFrame(16.67)
+  assert.equal(appliedStates.length, 2)
+  assert.equal(committedMarkers.length, 1)
+
+  // Intermediate 60Hz VSync before 33.33ms interval: skipped cleanly
+  nowMs += 16.67
+  runNextFrame(33.34)
+  assert.equal(appliedStates.length, 2)
+  assert.equal(committedMarkers.length, 1)
+
+  // Next 30fps tick while source is still loading (< 100ms): gated by backpressure
+  nowMs += 16.67
+  runNextFrame(50.01)
+  assert.equal(appliedStates.length, 2)
+  assert.equal(committedMarkers.length, 1)
+
+  // Worker completes tile reload and emits sourcedata -> markers commit in lockstep
+  sourceLoaded = true
+  emitSourceData()
+  assert.equal(committedMarkers.length, 2)
+
+  // Next 30fps tick pushes GeoJSON; if sourcedata stalls >= MAX_PENDING_ORBIT_SYNC_MS, flush fallback triggers
+  nowMs += 33.34
+  runNextFrame(83.35)
+  assert.equal(appliedStates.length, 3)
+  assert.equal(committedMarkers.length, 2)
+
+  sourceLoaded = false
+  nowMs += MAX_PENDING_ORBIT_SYNC_MS + 1
+  runNextFrame(83.35 + MAX_PENDING_ORBIT_SYNC_MS + 1)
+  assert.equal(committedMarkers.length, 3)
+  assert.equal(appliedStates.length, 4)
+
+  // Pausing when hidden stops rAF loop
+  hidden = true
+  runNextFrame(250)
+  assert.equal(pendingRafs.size, 0)
+
+  // Resuming and hiding orbits clears markers and stops loop
+  hidden = false
+  controller.syncNow()
+  assert.equal(pendingRafs.size, 1)
+  orbitsVisible = false
+  controller.syncNow()
+  assert.equal(pendingRafs.size, 0)
+  assert.equal(committedMarkers[committedMarkers.length - 1].visible, false)
+
+  // Clean dispose cancels active rAF and detaches map listener
+  orbitsVisible = true
+  controller.syncNow()
+  assert.equal(pendingRafs.size, 1)
+  controller.dispose()
+  assert.ok(cancelledRafs.length >= 1)
+  assert.equal(pendingRafs.size, 0)
+  assert.equal(sourceListeners.size, 0)
 })
