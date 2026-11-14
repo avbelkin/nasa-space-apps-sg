@@ -1,8 +1,16 @@
-import { FIRE_SPOT_COLORS, SATELLITE_COLORS, USER_LOCATION_COLORS } from '../data/dataPalette'
+import {
+  FIRE_SPOT_COLORS,
+  RAIN_DOT_RAINBOW_STOPS,
+  RAIN_DOT_SOLID_COLOR,
+  RAIN_DOT_WHITE_COLOR,
+  SATELLITE_COLORS,
+  USER_LOCATION_COLORS,
+} from '../data/dataPalette'
 import { MONTH_LABELS } from '../data/stubSeasonalData'
 import { STATUS_TEXT } from '../data/statusDisplay'
 import { STATUS_CATEGORIES } from '../data/statusMarks'
 import type { MapViewportState } from '../state/urlHashState'
+import { RAIN_DOT_COLOR_MODE, RAIN_FADE_IN_START_ZOOM } from '../utils/rainCloudShader'
 import { StatusMark } from './StatusMark'
 
 // Legend marks are drawn a little smaller than the smallest map mark (radius 8) to fit a text row.
@@ -18,6 +26,8 @@ interface MapLegendProps {
   // Live NASA FIRMS spots replace the sample status marks on the map while they are loaded
   hasLiveFires: boolean
   showFires: boolean
+  showRain: boolean
+  rainSummaryLabel: string | null
   reducedMotion: boolean
 }
 
@@ -44,6 +54,8 @@ export function MapLegend({
   showUserLocation,
   hasLiveFires,
   showFires,
+  showRain,
+  rainSummaryLabel,
   reducedMotion,
 }: MapLegendProps) {
   return (
@@ -84,6 +96,39 @@ export function MapLegend({
             </li>
           </>
         )}
+        {showRain && viewport.zoom > RAIN_FADE_IN_START_ZOOM &&
+          (RAIN_DOT_COLOR_MODE === 'rainbow' ? (
+            <li className="legend-rain-item">
+              <span>Rain ({rainSummaryLabel ?? 'IMERG 30m'}):</span>
+              <span className="legend-rain-ramp">
+                {RAIN_DOT_RAINBOW_STOPS.map((stop) => (
+                  <span key={stop.label} className="legend-rain-stop">
+                    <span
+                      className="legend-rain-dot"
+                      style={{ backgroundColor: stop.color }}
+                      aria-hidden="true"
+                    />
+                    {stop.label}
+                  </span>
+                ))}
+              </span>
+            </li>
+          ) : (
+            <li className="legend-rain-item">
+              <span
+                className="legend-rain-dot"
+                style={{
+                  backgroundColor:
+                    RAIN_DOT_COLOR_MODE === 'white' ? RAIN_DOT_WHITE_COLOR : RAIN_DOT_SOLID_COLOR,
+                }}
+                aria-hidden="true"
+              />
+              <span>
+                {RAIN_DOT_COLOR_MODE === 'white' ? 'Intense rain' : 'Rain'} (
+                {rainSummaryLabel ?? 'IMERG 30m'})
+              </span>
+            </li>
+          ))}
         {showModisOrbits && (
           <li>
             <span className="legend-glyph" aria-hidden="true">

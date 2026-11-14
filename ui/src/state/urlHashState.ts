@@ -5,6 +5,7 @@ import {
   type ProjectionMode,
   type SensorFilter,
 } from '../data/stubSeasonalData.ts'
+import { snapRainLookbackMinutes } from '../utils/rainCloudShader.ts'
 
 // Versioned: the first key was written on every load (with a hard-coded September) by earlier
 // builds, so its values say nothing about a visitor's choice and are ignored.
@@ -30,6 +31,10 @@ export interface UrlHashState extends MapViewportState {
   selectedMonth: number
   showOrbits: boolean
   showClouds: boolean
+  // NASA GIBS IMERG 30-min rain clouds (z6+); hash carries only the off state (rain=0)
+  showRain: boolean
+  // 30-min stepped lookback offset in minutes; hash carries rainBack=<minutes> when > 0
+  rainBackMinutes: number
   // Night-hemisphere VIIRS Black Marble blending; the hash carries only the off state (lights=0)
   showNightLights: boolean
   // Live NASA FIRMS fire spots; the hash carries only the off state (fires=0)
@@ -57,6 +62,8 @@ export function createDefaultUrlHashState(now: Date = new Date()): UrlHashState 
     selectedMonth: now.getMonth(),
     showOrbits: true,
     showClouds: true,
+    showRain: true,
+    rainBackMinutes: 0,
     showNightLights: true,
     showFires: true,
   }
@@ -289,6 +296,33 @@ const HASH_FEATURE_CODECS: readonly HashFeatureCodec[] = [
     },
   },
   {
+    key: 'rain',
+    serialize: (state) => (state.showRain ? null : '0'),
+    parse: (raw, draft) => {
+      const parsed = parseBooleanHashFlag(raw)
+      if (parsed === null) {
+        return false
+      }
+      draft.showRain = parsed
+      return true
+    },
+  },
+  {
+    key: 'rainBack',
+    serialize: (state) => {
+      const snapped = snapRainLookbackMinutes(state.rainBackMinutes)
+      return snapped > 0 ? String(snapped) : null
+    },
+    parse: (raw, draft) => {
+      const parsed = parseFiniteNumber(raw)
+      if (parsed === null || parsed < 0) {
+        return false
+      }
+      draft.rainBackMinutes = snapRainLookbackMinutes(parsed)
+      return true
+    },
+  },
+  {
     key: 'fires',
     serialize: (state) => (state.showFires ? null : '0'),
     parse: (raw, draft) => {
@@ -372,6 +406,8 @@ function cloneFallbackState(fallback: UrlHashState): UrlHashState {
     selectedMonth: fallback.selectedMonth,
     showOrbits: fallback.showOrbits,
     showClouds: fallback.showClouds,
+    showRain: fallback.showRain,
+    rainBackMinutes: snapRainLookbackMinutes(fallback.rainBackMinutes),
     showNightLights: fallback.showNightLights,
     showFires: fallback.showFires,
     ...(fallback.selectedRegionId ? { selectedRegionId: fallback.selectedRegionId } : {}),

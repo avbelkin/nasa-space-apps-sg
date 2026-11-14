@@ -80,6 +80,8 @@ test('serializeUrlHash and parseUrlHash round-trip core controls and extensible 
     selectedMonth: 2,
     showOrbits: false,
     showClouds: false,
+    showRain: true,
+    rainBackMinutes: 0,
     showNightLights: false,
     showFires: false,
     extraParams: {
@@ -461,6 +463,35 @@ test('lights sits in the same registry: on by default and absent, lights=0 when 
     TODAY,
   )
   assert.equal(restored.state.showNightLights, false)
+})
+
+test('rain and rainBack sit in the codec registry: omitted by default, preserved when customized', () => {
+  assert.equal(DEFAULT_URL_HASH_STATE.showRain, true)
+  assert.equal(DEFAULT_URL_HASH_STATE.rainBackMinutes, 0)
+  assert.doesNotMatch(serializeUrlHash(DEFAULT_URL_HASH_STATE), /rain=/)
+  assert.doesNotMatch(serializeUrlHash(DEFAULT_URL_HASH_STATE), /rainBack=/)
+
+  const customized: UrlHashState = {
+    ...DEFAULT_URL_HASH_STATE,
+    showRain: false,
+    rainBackMinutes: 240,
+  }
+  const hash = serializeUrlHash(customized)
+  assert.match(hash, /&orbits=1&clouds=1&rain=0&rainBack=240$/)
+  assert.deepEqual(parseUrlHash(hash, DEFAULT_URL_HASH_STATE), customized)
+
+  assert.equal(parseUrlHash('#rain=0')?.showRain, false)
+  assert.equal(parseUrlHash('#rain=off')?.showRain, false)
+  assert.equal(parseUrlHash('#rain=1')?.showRain, true)
+  assert.equal(parseUrlHash('#rainBack=230')?.rainBackMinutes, 240)
+  assert.equal(parseUrlHash('#z=3&rain=0&rainBack=240')?.extraParams, undefined)
+
+  const restored = resolveInitialUrlHashState(
+    createMockBrowserTarget('', serializeStoredState(customized)).target,
+    TODAY,
+  )
+  assert.equal(restored.state.showRain, false)
+  assert.equal(restored.state.rainBackMinutes, 240)
 })
 
 test('default viewport centers on Singapore at globe zoom z3', () => {
