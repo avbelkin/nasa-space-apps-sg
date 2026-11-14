@@ -258,6 +258,8 @@
 
 .hud-btn {
   appearance: none;
+  min-block-size: 1.75rem;
+  min-inline-size: 1.75rem;
   border: 1px solid rgb(148 163 184 / 0.4);
   border-radius: 0.45rem;
   padding: 0.3rem 0.6rem;
@@ -267,6 +269,11 @@
   cursor: pointer;
   background-color: rgb(30 41 59 / 0.85);
   color: #f8fafc;
+}
+
+.hud-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
 }
 
 .hud-btn[aria-pressed='true'] {
@@ -320,6 +327,16 @@
 
 .legend-glyph-below {
   color: #38bdf8;
+}
+
+.legend-glyph-user {
+  color: #22d3ee;
+}
+
+.hud-geo-status {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #fde68a;
 }
 
 /* Outer Bottom Seasonal / Calendar Timeline Scrubber */

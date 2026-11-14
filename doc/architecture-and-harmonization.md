@@ -14,6 +14,7 @@ This repository implements the [Harmonization of MODIS and VIIRS Hot Spots](./RE
     - `sidepanel` (`<aside>`) — Regional seasonal-fit vs. anomaly inspector, harmonization notes, and deployment diagnostics.
   - **Inner Map CSS Grid Container (`.map-stage`)**: Dedicated CSS Grid stage holding the full-bleed MapLibre canvas across all tracks (`grid-column: 1 / -1; grid-row: 1 / -1`) alongside named overlay grid areas (`hud-top-start`, `hud-top-end`, `hud-bottom-start`) for floating controls positioned *over* the map without brittle pixel offsets, keeping unobstructed map tracks directly interactive.
 - **Sensor Transparency & Accessible Visuals**: Toggle between Harmonized, MODIS (1 km), and VIIRS (375 m) layers with explicit text labels and symbols alongside accessible color ramps so researchers and responders never rely on color alone.
+- **URL Hash, LocalStorage & Geolocation State**: Viewport (`z`, `lat`, `lng`) and active UI controls (`mode`, `sensor`, `proj`, `month`, plus extensible feature parameters) sync continuously into `window.location.hash` and `window.localStorage` (`nasa_fire_calendar_url_hash`), restoring in `hash` → `localStorage` → default order. A HUD **My Location** control (and one-time initial load prompt only when no URL hash or saved `localStorage` state exists) jumps to the user's coarse browser geolocation capped at default max zoom `z9`.
 
 ### 2. Backend (`backend/` — ASP.NET Core `.NET 10` Container on Google Cloud Run)
 
