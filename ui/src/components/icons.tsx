@@ -142,3 +142,23 @@ export function ChevronRightIcon(props: IconProps) {
     </SvgIcon>
   )
 }
+
+export function SunriseIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M3 18h18" />
+      <path d="M7 18a5 5 0 0 1 10 0" />
+      <path d="M12 10V4m-3 3 3-3 3 3" />
+    </SvgIcon>
+  )
+}
+
+export function SunsetIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M3 18h18" />
+      <path d="M7 18a5 5 0 0 1 10 0" />
+      <path d="M12 4v6m-3-3 3 3 3-3" />
+    </SvgIcon>
+  )
+}

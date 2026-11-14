@@ -12,7 +12,9 @@ public sealed record SatelliteTle(
     double ArgumentOfPerigeeDegrees,
     double MeanAnomalyDegrees,
     double MeanMotionRevPerDay,
-    double BStarDrag);
+    double BStarDrag,
+    string Line1 = "",
+    string Line2 = "");
 
 public static class SatelliteTleParser
 {
@@ -64,6 +66,9 @@ public static class SatelliteTleParser
         {
             return null;
         }
+
+        line1 = line1.Trim();
+        line2 = line2.Trim();
 
         if (line1.Length < 68 || line2.Length < 68)
         {
@@ -143,7 +148,9 @@ public static class SatelliteTleParser
             argPerigee,
             meanAnomaly,
             meanMotion,
-            bstar);
+            bstar,
+            line1.Trim(),
+            line2.Trim());
     }
 
     private static double ParseTleExponentialField(ReadOnlySpan<char> span)

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 using NasaSpaceApps.Api.Satellites;
 using Xunit;
 
@@ -153,6 +155,48 @@ public sealed class SatelliteSwathAndTrackingTests
 
         Assert.Equal(4, straddleEntries.Count);
         Assert.Equal(1, straddleEntries.Count(e => e.NoradId == 43013));
+    }
+
+    [Fact]
+    public async Task SatelliteOrbitService_PreservesAndExposesTleLinesOnDtos()
+    {
+        var parsed = SatelliteTleParser.ParseSingle("NOAA-20", $"  {Noaa20TleLine1}  ", $"  {Noaa20TleLine2}  ");
+        Assert.NotNull(parsed);
+        Assert.Equal(Noaa20TleLine1, parsed.Line1);
+        Assert.Equal(Noaa20TleLine2, parsed.Line2);
+
+        using var memoryCache = new MemoryCache(new MemoryCacheOptions());
+        var downloader = new CelesTrakTleDownloader(
+            new FailingHttpClientFactory(),
+            memoryCache,
+            NullLogger<CelesTrakTleDownloader>.Instance);
+        var service = new SatelliteOrbitService(downloader);
+
+        var response = await service.GetOrbitsAsync(pastMinutes: 10, futureMinutes: 20, stepSeconds: 60);
+
+        Assert.Equal(SatelliteCatalog.Default.Count, response.Satellites.Count);
+        Assert.All(response.Satellites, sat =>
+        {
+            Assert.Equal(69, sat.TleLine1.Length);
+            Assert.Equal(69, sat.TleLine2.Length);
+            Assert.StartsWith($"1 {sat.NoradId}", sat.TleLine1, StringComparison.Ordinal);
+            Assert.StartsWith($"2 {sat.NoradId}", sat.TleLine2, StringComparison.Ordinal);
+        });
+    }
+
+    private sealed class FailingHttpClientFactory : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) =>
+            new(new ThrowingHandler())
+            {
+                BaseAddress = new Uri("https://celestrak.org/"),
+            };
+    }
+
+    private sealed class ThrowingHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            throw new HttpRequestException("Simulated offline test");
     }
 
     private static bool IsPointInPolygon(double lon, double lat, IReadOnlyList<SwathVertex> ring)

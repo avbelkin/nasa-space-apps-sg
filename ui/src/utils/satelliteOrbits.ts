@@ -46,6 +46,8 @@ export interface SatelliteOrbit {
   layerVariantIds?: string[]
   tleSource: string
   tleEpochUtc: string
+  tleLine1?: string
+  tleLine2?: string
   inclinationDeg: number
   periodMinutes: number
   currentPosition: SatellitePosition
@@ -101,6 +103,8 @@ export interface LiveSatelliteSnapshot {
   layerVariantIds: string[]
   tleSource: string
   tleEpochUtc: string
+  tleLine1?: string
+  tleLine2?: string
   inclinationDeg: number
   periodMinutes: number
   lat: number

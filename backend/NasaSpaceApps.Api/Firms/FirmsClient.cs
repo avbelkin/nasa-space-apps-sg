@@ -243,7 +243,7 @@ public sealed class FirmsClient(
                 Math.Round(spot.BrightnessKelvin, 1),
                 spot.ConfidenceScore,
                 meta.SourceCode,
-                FirmsSensorCatalog.NormalizeSatelliteLabel(spot.Satellite),
+                FirmsSensorCatalog.NormalizeSatelliteLabel(spot.Satellite, spot.SourceDataset),
                 spot.DayNight,
             ]);
         }
@@ -264,6 +264,8 @@ public sealed class FirmsClient(
             GeneratedAtUtc: nowUtc,
             FetchedAtUtc: snapshot.FetchedAtUtc,
             LatestAcquiredAtUtc: latestAcquiredAtUtc,
+            WindowStartUtc: nowUtc.AddHours(-windowHours),
+            WindowEndUtc: nowUtc,
             Stale: snapshot.Stale,
             WindowHours: windowHours,
             SensorFilter: sensorFilter,
@@ -433,7 +435,7 @@ public sealed class FirmsClient(
                     Radius: meta.RadiusMeters,
                     Source: meta.Label,
                     Instrument: meta.Instrument,
-                    Satellite: FirmsSensorCatalog.NormalizeSatelliteLabel(spot.Satellite),
+                    Satellite: FirmsSensorCatalog.NormalizeSatelliteLabel(spot.Satellite, spot.SourceDataset),
                     Confidence: spot.ConfidenceScore,
                     Daynight: spot.DayNight)));
         }
