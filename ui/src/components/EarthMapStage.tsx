@@ -9,8 +9,8 @@ import type {
   PointLike,
   StyleSpecification,
 } from 'maplibre-gl'
-import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import {
   buildStubGeoJson,
   MONTH_LABELS,
@@ -38,6 +38,7 @@ import {
   buildFireSpotsGeoJson,
   compareMatchedFireSpots,
   formatFireSpotsTooltip,
+  MIN_FIRE_SPOT_ZOOM,
   type BuiltFireSpotsData,
   type FireSpotFeatureProperties,
   type FireSpotTooltipInput,
@@ -56,6 +57,9 @@ import {
   getFireSpotColorExpression,
   type FireSpotsAnimationController,
 } from '../utils/fireSpotsAnimation'
+
+// Point MapLibre to the self-contained worker asset so Vite dev/prod bundling never breaks GeoJSON tiling.
+setWorkerUrl(maplibreWorkerUrl)
 
 export interface CameraFocusRequest {
   lng: number
@@ -270,7 +274,7 @@ function querySpotTooltipAtPoint(
   point: { x: number; y: number },
   sensorFilter: SensorFilter,
 ): SpotTooltipCardState | null {
-  if (!map.isStyleLoaded() || !map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
+  if (map.getZoom() < MIN_FIRE_SPOT_ZOOM || !map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
     return null
   }
   const bbox: [PointLike, PointLike] = [
@@ -428,9 +432,11 @@ function createBaseStyle(
         },
         paint: {
           'circle-radius': 14,
-          'circle-color': 'rgba(255, 255, 255, 0.12)',
+          'circle-color': '#ffffff',
+          'circle-opacity': ['step', ['zoom'], 0, 1, 0.12],
           'circle-stroke-width': 2,
           'circle-stroke-color': '#ffffff',
+          'circle-stroke-opacity': ['step', ['zoom'], 0, 1, 1],
         },
       },
       {
@@ -541,6 +547,10 @@ function syncOrbitalSources(map: MapLibreMap, state: LiveOrbitalState): void {
   setGeoJsonSourceData(map, 'satellite-tracks-past', state.pastTracksGeoJson)
   setGeoJsonSourceData(map, 'satellite-tracks-future', state.futureTracksGeoJson)
   setGeoJsonSourceData(map, 'satellite-positions', state.positionsGeoJson)
+}
+
+function isMapStyleReady(map: MapLibreMap | null, styleReady = true): map is MapLibreMap {
+  return Boolean(styleReady && map && map.getSource(FIRMS_SPOTS_SOURCE_ID))
 }
 
 export function EarthMapStage({
@@ -681,7 +691,7 @@ export function EarthMapStage({
 
   useEffect(() => {
     const map = mapInstanceRef.current
-    if (!map || !map.isStyleLoaded()) {
+    if (!isMapStyleReady(map)) {
       return
     }
     setGeoJsonSourceData(map, FIRMS_SPOTS_SOURCE_ID, builtFireSpots.featureCollection)
@@ -690,7 +700,7 @@ export function EarthMapStage({
 
   useEffect(() => {
     const map = mapInstanceRef.current
-    if (!map || !map.isStyleLoaded()) {
+    if (!isMapStyleReady(map)) {
       return
     }
     setGeoJsonSourceData(map, 'fire-spot-focus', focusSpotGeoJson)
@@ -698,7 +708,7 @@ export function EarthMapStage({
 
   useEffect(() => {
     const map = mapInstanceRef.current
-    if (!map || !map.isStyleLoaded()) {
+    if (!isMapStyleReady(map)) {
       return
     }
     setFireLayerVisibility(map, FIRMS_SPOTS_CORE_LAYER_ID, showFires)
@@ -714,7 +724,7 @@ export function EarthMapStage({
 
   useEffect(() => {
     const map = mapInstanceRef.current
-    if (!map || !map.isStyleLoaded()) {
+    if (!isMapStyleReady(map)) {
       return
     }
     setFireLayerVisibility(map, 'fire-anomaly-halo', showStubAnomalies)
@@ -727,7 +737,7 @@ export function EarthMapStage({
 
   useEffect(() => {
     const map = mapInstanceRef.current
-    if (!map || !map.isStyleLoaded()) {
+    if (!isMapStyleReady(map)) {
       return
     }
     if (map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
@@ -744,7 +754,7 @@ export function EarthMapStage({
 
   useEffect(() => {
     const map = mapInstanceRef.current
-    if (!map || !map.isStyleLoaded()) {
+    if (!isMapStyleReady(map)) {
       return
     }
     const colorExpr = getFireSpotColorExpression(viewMode)
@@ -849,7 +859,6 @@ export function EarthMapStage({
     const startViewport = initialViewportRef.current
 
     try {
-      setWorkerUrl(maplibreWorkerUrl)
       styleReadyRef.current = false
       map = new MapLibreMap({
         container,
@@ -1040,7 +1049,7 @@ export function EarthMapStage({
   useEffect(() => {
     latestGeoJsonRef.current = geoJson
     const map = mapInstanceRef.current
-    if (!map || !styleReadyRef.current) {
+    if (!isMapStyleReady(map, styleReadyRef.current)) {
       return
     }
     setGeoJsonSourceData(map, 'fire-anomalies', geoJson)
@@ -1049,7 +1058,7 @@ export function EarthMapStage({
   useEffect(() => {
     latestUserGeoJsonRef.current = userLocationGeoJson
     const map = mapInstanceRef.current
-    if (!map || !styleReadyRef.current) {
+    if (!isMapStyleReady(map, styleReadyRef.current)) {
       return
     }
     setGeoJsonSourceData(map, 'user-geolocation', userLocationGeoJson)
@@ -1065,7 +1074,7 @@ export function EarthMapStage({
     if (!map) {
       return
     }
-    if (styleReadyRef.current) {
+    if (isMapStyleReady(map, styleReadyRef.current)) {
       syncOrbitalSources(map, orbitalState)
     }
     syncSatelliteMarkers(map, orbitalState.snapshots, showOrbits, selectedSatelliteId)
@@ -1093,7 +1102,7 @@ export function EarthMapStage({
   useEffect(() => {
     latestProjectionRef.current = projectionMode
     const map = mapInstanceRef.current
-    if (!map || !styleReadyRef.current) {
+    if (!isMapStyleReady(map, styleReadyRef.current)) {
       return
     }
     map.setProjection({ type: projectionMode })

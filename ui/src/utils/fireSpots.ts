@@ -23,6 +23,9 @@ export const MAX_CONFIDENCE = 100
 export const MIN_CONFIDENCE_OPACITY = 0.6
 export const MAX_INDIVIDUAL_SPOT_TOOLTIPS = 3
 export const PULSE_PHASE_COHORT_COUNT = 4
+export const MIN_FIRE_SPOT_ZOOM = 1
+export const FULL_DETAIL_FIRE_SPOT_ZOOM = 7
+export const DECLUTTER_CELL_DEGREES = [2.5, 1.25, 0.6, 0.3, 0.14, 0.06] as const
 
 export type FireInstrument = 'modis' | 'viirs'
 export type PhaseCohort = 0 | 1 | 2 | 3
@@ -79,6 +82,9 @@ export interface FireSpotFeatureProperties {
   certainty: number
   activity: number
   phaseCohort: PhaseCohort | -1
+  minZoomAll: number
+  minZoomModis: number
+  minZoomViirs: number
 }
 
 export interface BuiltFireSpotsData {
@@ -229,6 +235,50 @@ function buildSourceLookup(sources: readonly FirmsSourceSummary[]): Map<number, 
   return map
 }
 
+type DeclutterZoomProp = 'minZoomAll' | 'minZoomModis' | 'minZoomViirs'
+
+/** Computes an integer spatial hash bucket key with cos(lat) longitude scaling for uniform globe spacing. */
+function computeDeclutterCellKey(lng: number, lat: number, cellDeg: number): number {
+  const safeLat = clamp(lat, -89.999, 89.999)
+  const safeLng = ((((lng + 180) % 360) + 360) % 360) - 180
+  const cosLat = Math.max(0.2, Math.cos((safeLat * Math.PI) / 180))
+  const lngStep = cellDeg / cosLat
+  const cellY = Math.floor((safeLat + 90) / cellDeg)
+  const cellX = Math.floor((safeLng + 180) / lngStep)
+  return cellY * 16384 + cellX
+}
+
+/** Assigns additive minZoom tiers (z1..z7) so high-FRP spots claim coarse cells while denser spots fill in on zoom. */
+function assignDeclutterTierProperty(
+  features: Array<Feature<Point, FireSpotFeatureProperties>>,
+  sortedIndices: readonly number[],
+  prop: DeclutterZoomProp,
+): void {
+  const occupied = DECLUTTER_CELL_DEGREES.map(() => new Set<number>())
+  for (const idx of sortedIndices) {
+    const feature = features[idx]
+    const [lng, lat] = feature.geometry.coordinates
+    let assignedZoom = FULL_DETAIL_FIRE_SPOT_ZOOM
+    let assignedTierIdx = -1
+    for (let tierIdx = 0; tierIdx < DECLUTTER_CELL_DEGREES.length; tierIdx++) {
+      const key = computeDeclutterCellKey(lng, lat, DECLUTTER_CELL_DEGREES[tierIdx])
+      if (!occupied[tierIdx].has(key)) {
+        assignedTierIdx = tierIdx
+        assignedZoom = MIN_FIRE_SPOT_ZOOM + tierIdx
+        occupied[tierIdx].add(key)
+        break
+      }
+    }
+    if (assignedTierIdx >= 0) {
+      // Reserve finer grid cells down to z6 so higher-priority spots remain exclusive within their footprint.
+      for (let k = assignedTierIdx + 1; k < DECLUTTER_CELL_DEGREES.length; k++) {
+        occupied[k].add(computeDeclutterCellKey(lng, lat, DECLUTTER_CELL_DEGREES[k]))
+      }
+    }
+    feature.properties[prop] = assignedZoom
+  }
+}
+
 export function buildFireSpotsGeoJson(
   payload: FirmsLiveSpotsResponse,
   referenceNowMs = Date.now(),
@@ -280,9 +330,27 @@ export function buildFireSpotsGeoJson(
         certainty: computeConfidenceOpacity(confidence),
         activity,
         phaseCohort,
+        minZoomAll: FULL_DETAIL_FIRE_SPOT_ZOOM,
+        minZoomModis: FULL_DETAIL_FIRE_SPOT_ZOOM,
+        minZoomViirs: FULL_DETAIL_FIRE_SPOT_ZOOM,
       },
     })
   }
+
+  const sortedIndices = Array.from({ length: features.length }, (_, i) => i).sort(
+    (a, b) => compareMatchedFireSpots(features[a].properties, features[b].properties) || a - b,
+  )
+  assignDeclutterTierProperty(features, sortedIndices, 'minZoomAll')
+  assignDeclutterTierProperty(
+    features,
+    sortedIndices.filter((i) => features[i].properties.instrument === 'modis'),
+    'minZoomModis',
+  )
+  assignDeclutterTierProperty(
+    features,
+    sortedIndices.filter((i) => features[i].properties.instrument === 'viirs'),
+    'minZoomViirs',
+  )
 
   const cohortAgeSeconds: [number, number, number, number] = [
     cohortCounts[0] > 0 ? cohortAgeSums[0] / cohortCounts[0] : 0,

@@ -11,6 +11,7 @@ import {
   COHORT_PHASE_RADIANS,
   computeWildfirePulse,
   MAX_INACTIVITY_MS,
+  MIN_FIRE_SPOT_ZOOM,
   SPOT_EXPANSION,
   SPOT_RADIUS,
   STILL_OPACITY,
@@ -26,7 +27,7 @@ export const FIRMS_SPOTS_PULSE_LAYER_IDS = [
   'firms-spots-pulse-3',
 ] as const
 
-const PULSE_HALO_MAX_OPACITY = 0.45
+const PULSE_HALO_MAX_OPACITY = 0.52
 
 export function getFireSpotColorExpression(viewMode: ViewMode): ExpressionSpecification {
   if (viewMode === 'sensors') {
@@ -54,21 +55,69 @@ export function getFireSpotColorExpression(viewMode: ViewMode): ExpressionSpecif
   ]
 }
 
-export function buildFireSpotsCoreFilter(sensorFilter: SensorFilter): FilterSpecification {
-  if (sensorFilter === 'harmonized') {
-    return ['has', 'timestamp']
+function getDeclutterProperty(
+  sensorFilter: SensorFilter,
+): 'minZoomAll' | 'minZoomModis' | 'minZoomViirs' {
+  if (sensorFilter === 'modis') {
+    return 'minZoomModis'
   }
-  return ['==', ['get', 'instrument'], sensorFilter]
+  if (sensorFilter === 'viirs') {
+    return 'minZoomViirs'
+  }
+  return 'minZoomAll'
+}
+
+/** Builds a MapLibre-valid top-level `step(['zoom'], ...)` filter revealing hierarchical declutter tiers across z1..z7. */
+function buildZoomTieredSpotFilter(
+  sensorFilter: SensorFilter,
+  cohort?: PhaseCohort,
+): FilterSpecification {
+  const minZoomProp = getDeclutterProperty(sensorFilter)
+  const buildPredicate = (maxTier: number | null): boolean | ExpressionSpecification => {
+    const clauses: ExpressionSpecification[] = []
+    if (sensorFilter !== 'harmonized') {
+      clauses.push(['==', ['get', 'instrument'], sensorFilter])
+    }
+    if (cohort !== undefined) {
+      clauses.push(['==', ['get', 'phaseCohort'], cohort])
+    }
+    if (maxTier !== null) {
+      clauses.push(['<=', ['get', minZoomProp], maxTier])
+    }
+    if (clauses.length === 0) {
+      return true
+    }
+    return clauses.length === 1 ? clauses[0] : (['all', ...clauses] as ExpressionSpecification)
+  }
+
+  return [
+    'step',
+    ['zoom'],
+    buildPredicate(1),
+    2,
+    buildPredicate(2),
+    3,
+    buildPredicate(3),
+    4,
+    buildPredicate(4),
+    5,
+    buildPredicate(5),
+    6,
+    buildPredicate(6),
+    7,
+    buildPredicate(null),
+  ]
+}
+
+export function buildFireSpotsCoreFilter(sensorFilter: SensorFilter): FilterSpecification {
+  return buildZoomTieredSpotFilter(sensorFilter)
 }
 
 export function buildFireSpotsPulseFilter(
   sensorFilter: SensorFilter,
   cohort: PhaseCohort,
 ): FilterSpecification {
-  if (sensorFilter === 'harmonized') {
-    return ['==', ['get', 'phaseCohort'], cohort]
-  }
-  return ['all', ['==', ['get', 'instrument'], sensorFilter], ['==', ['get', 'phaseCohort'], cohort]]
+  return buildZoomTieredSpotFilter(sensorFilter, cohort)
 }
 
 export function buildFireSpotPulseRadiusExpression(pulse: number): ExpressionSpecification {
@@ -78,11 +127,11 @@ export function buildFireSpotPulseRadiusExpression(pulse: number): ExpressionSpe
     ['linear'],
     ['zoom'],
     1,
-    Number((r11 * 0.22).toFixed(2)),
+    Number((r11 * 0.38).toFixed(2)),
     4,
-    Number((r11 * 0.4).toFixed(2)),
+    Number((r11 * 0.54).toFixed(2)),
     7,
-    Number((r11 * 0.68).toFixed(2)),
+    Number((r11 * 0.74).toFixed(2)),
     11,
     Number(r11.toFixed(2)),
     15,
@@ -135,11 +184,13 @@ export function buildFireSpotLayers(
         ['linear'],
         ['zoom'],
         1,
-        ['*', 2.2, ['get', 'powerScale']],
-        4,
-        ['*', 4.0, ['get', 'powerScale']],
-        7,
-        ['*', 7.5, ['get', 'powerScale']],
+        ['*', 3.4, ['get', 'powerScale']],
+        3,
+        ['*', 4.5, ['get', 'powerScale']],
+        5,
+        ['*', 6.0, ['get', 'powerScale']],
+        8,
+        ['*', 8.5, ['get', 'powerScale']],
         11,
         ['*', SPOT_RADIUS, ['get', 'powerScale']],
         15,
@@ -149,14 +200,39 @@ export function buildFireSpotLayers(
         'interpolate',
         ['linear'],
         ['zoom'],
+        0.95,
+        0,
         1,
-        ['*', 0.72, ['get', 'certainty']],
-        3,
-        ['*', 0.72, ['get', 'certainty']],
-        7,
+        ['*', 0.9, ['get', 'certainty']],
+        4,
+        ['*', 0.82, ['get', 'certainty']],
+        8,
         ['*', STILL_OPACITY, ['get', 'certainty']],
       ],
-      'circle-blur': 0.5,
+      'circle-blur': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        1,
+        0.15,
+        6,
+        0.35,
+        10,
+        0.5,
+      ],
+      'circle-stroke-width': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        1,
+        0.6,
+        5,
+        0.4,
+        8,
+        0,
+      ],
+      'circle-stroke-color': 'rgba(15, 23, 42, 0.65)',
+      'circle-stroke-opacity': ['step', ['zoom'], 0, 1, 1],
     },
   }
 
@@ -202,7 +278,7 @@ export function createFireSpotsAnimationController({
   const isReducedMotion = () => Boolean(media?.matches)
 
   const clearPulses = () => {
-    if (pulsesCleared || !map.isStyleLoaded()) {
+    if (pulsesCleared || !map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
       return
     }
     for (const layerId of FIRMS_SPOTS_PULSE_LAYER_IDS) {
@@ -228,6 +304,9 @@ export function createFireSpotsAnimationController({
     if (document.hidden || isReducedMotion() || !isVisible() || isPaused()) {
       return false
     }
+    if (map.getZoom() < MIN_FIRE_SPOT_ZOOM) {
+      return false
+    }
     if (nowMs - lastActivityAtMs >= MAX_INACTIVITY_MS) {
       return false
     }
@@ -238,7 +317,12 @@ export function createFireSpotsAnimationController({
   }
 
   const queryViewportHasActiveSpots = (): boolean => {
-    if (disposed || !isVisible() || getActiveSpotCount() <= 0 || !map.isStyleLoaded()) {
+    if (
+      disposed ||
+      !isVisible() ||
+      getActiveSpotCount() <= 0 ||
+      map.getZoom() < MIN_FIRE_SPOT_ZOOM
+    ) {
       return false
     }
     if (!map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
@@ -264,7 +348,7 @@ export function createFireSpotsAnimationController({
     if (map.isMoving() || map.isZooming() || map.isRotating()) {
       return
     }
-    if (!map.isStyleLoaded()) {
+    if (!map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
       return
     }
 
@@ -330,9 +414,22 @@ export function createFireSpotsAnimationController({
     }
   }
 
+  const handleIdle = () => {
+    if (intervalId === null) {
+      sync()
+    }
+  }
+
   const handleSourceData = (event: MapSourceDataEvent) => {
     if (event.sourceId === FIRMS_SPOTS_SOURCE_ID && event.isSourceLoaded) {
       sync()
+      if (intervalId === null && typeof window !== 'undefined') {
+        window.requestAnimationFrame(() => {
+          if (!disposed && intervalId === null) {
+            sync()
+          }
+        })
+      }
     }
   }
 
@@ -343,6 +440,7 @@ export function createFireSpotsAnimationController({
   document.addEventListener('visibilitychange', handleVisibilityChange)
   media?.addEventListener('change', handleReducedMotionChange)
   map.on('moveend', sync)
+  map.on('idle', handleIdle)
   map.on('sourcedata', handleSourceData)
 
   onReducedMotionChange?.(isReducedMotion())
@@ -360,6 +458,7 @@ export function createFireSpotsAnimationController({
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       media?.removeEventListener('change', handleReducedMotionChange)
       map.off('moveend', sync)
+      map.off('idle', handleIdle)
       map.off('sourcedata', handleSourceData)
     },
   }

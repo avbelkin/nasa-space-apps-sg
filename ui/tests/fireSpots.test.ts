@@ -10,6 +10,8 @@ import {
   computeWildfireActivity,
   computeWildfirePulse,
   formatFireSpotsTooltip,
+  FULL_DETAIL_FIRE_SPOT_ZOOM,
+  MIN_FIRE_SPOT_ZOOM,
   summarizeFireSpotsForSensor,
   type FireSpotTooltipInput,
   type FirmsLiveSpotsResponse,
@@ -225,5 +227,91 @@ describe('fire spot tooltips and hit sorting', () => {
     assert.match(aggregated.lines[0], /MODIS 1km/)
     assert.match(aggregated.lines[0], /VIIRS 375m \/ NOAA-20/)
     assert.match(aggregated.lines[0], /VIIRS 375m \/ NOAA-21/)
+  })
+})
+
+describe('hierarchical z1..z7 spatial decluttering', () => {
+  const referenceNowMs = Date.UTC(2026, 6, 15, 12, 0, 0)
+
+  it('assigns additive minZoom tiers from z1 coarse leaders down to z7 individual pixels', () => {
+    const payload: FirmsLiveSpotsResponse = {
+      generatedAtUtc: new Date(referenceNowMs).toISOString(),
+      fetchedAtUtc: new Date(referenceNowMs).toISOString(),
+      latestAcquiredAtUtc: new Date(referenceNowMs).toISOString(),
+      stale: false,
+      windowHours: 24,
+      sensorFilter: 'harmonized',
+      sources: [
+        { code: 0, dataset: 'MODIS_NRT', label: 'MODIS 1km', instrument: 'modis', radiusMeters: 1000, count: 0 },
+        { code: 1, dataset: 'VIIRS_NOAA20_NRT', label: 'VIIRS 375m / NOAA-20', instrument: 'viirs', radiusMeters: 375, count: 4 },
+      ],
+      count: 4,
+      modisCount: 0,
+      viirsCount: 4,
+      maxFrpMw: 280,
+      attribution: 'NASA FIRMS',
+      columns: ['lng', 'lat', 'timestampMs', 'frp', 'brightnessK', 'confidence', 'sourceCode', 'satellite', 'dayNight'],
+      spots: [
+        // Cluster leader inside z1 (100..102.5, 0..2.5)
+        [101.05, 1.05, referenceNowMs - 600_000, 280, 355, 95, 1, 'NOAA-20', 'D'],
+        // Immediate neighbor (< 0.01° away): deferred to full resolution z7
+        [101.055, 1.055, referenceNowMs - 500_000, 90, 330, 80, 1, 'NOAA-20', 'D'],
+        // Same z1 (2.5°) cell, separate z2 (1.25°) cell (~1.35° north)
+        [101.05, 2.4, referenceNowMs - 400_000, 140, 342, 85, 1, 'NOAA-20', 'D'],
+        // Distant spot (~8° east): gets z1 immediately
+        [109.0, 1.05, referenceNowMs - 300_000, 50, 325, 75, 1, 'NOAA-20', 'D'],
+      ],
+    }
+
+    const { featureCollection } = buildFireSpotsGeoJson(payload, referenceNowMs)
+    const [leader, neighbor, midDist, distant] = featureCollection.features
+
+    assert.equal(leader.properties.minZoomAll, 1)
+    assert.equal(neighbor.properties.minZoomAll, 7)
+    assert.equal(midDist.properties.minZoomAll, 2)
+    assert.equal(distant.properties.minZoomAll, 1)
+
+    for (const feature of featureCollection.features) {
+      for (const tier of [
+        feature.properties.minZoomAll,
+        feature.properties.minZoomModis,
+        feature.properties.minZoomViirs,
+      ]) {
+        assert.ok(tier >= MIN_FIRE_SPOT_ZOOM && tier <= FULL_DETAIL_FIRE_SPOT_ZOOM)
+      }
+    }
+  })
+
+  it('computes independent minZoomModis so MODIS spots are not hidden behind colocated higher-FRP VIIRS spots', () => {
+    const payload: FirmsLiveSpotsResponse = {
+      generatedAtUtc: new Date(referenceNowMs).toISOString(),
+      fetchedAtUtc: new Date(referenceNowMs).toISOString(),
+      latestAcquiredAtUtc: new Date(referenceNowMs).toISOString(),
+      stale: false,
+      windowHours: 24,
+      sensorFilter: 'harmonized',
+      sources: [
+        { code: 0, dataset: 'MODIS_NRT', label: 'MODIS 1km', instrument: 'modis', radiusMeters: 1000, count: 1 },
+        { code: 1, dataset: 'VIIRS_NOAA20_NRT', label: 'VIIRS 375m / NOAA-20', instrument: 'viirs', radiusMeters: 375, count: 1 },
+      ],
+      count: 2,
+      modisCount: 1,
+      viirsCount: 1,
+      maxFrpMw: 260,
+      attribution: 'NASA FIRMS',
+      columns: ['lng', 'lat', 'timestampMs', 'frp', 'brightnessK', 'confidence', 'sourceCode', 'satellite', 'dayNight'],
+      spots: [
+        [101.05, 1.05, referenceNowMs - 600_000, 260, 360, 95, 1, 'NOAA-20', 'D'],
+        [101.055, 1.055, referenceNowMs - 600_000, 110, 345, 90, 0, 'Terra', 'D'],
+      ],
+    }
+
+    const { featureCollection } = buildFireSpotsGeoJson(payload, referenceNowMs)
+    const [viirsFeature, modisFeature] = featureCollection.features
+
+    assert.equal(viirsFeature.properties.minZoomAll, 1)
+    assert.equal(viirsFeature.properties.minZoomViirs, 1)
+    assert.equal(modisFeature.properties.minZoomAll, 7)
+    assert.equal(modisFeature.properties.minZoomModis, 1)
   })
 })
