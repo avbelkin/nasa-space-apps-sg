@@ -16,7 +16,6 @@ import {
   type ProjectionMode,
   type RegionalEvaluatedRegime,
   type SensorFilter,
-  type ViewMode,
 } from './data/stubSeasonalData'
 import {
   apiBaseUrl,
@@ -58,8 +57,6 @@ const FOCUS_ZOOM = 3.6
 function App() {
   const [todayMonth] = useState(() => new Date().getMonth())
   const [initialResolution] = useState(() => resolveInitialUrlHashState())
-  // No UI for the view mode any more; kept so the `mode` key in old links still round-trips.
-  const [viewMode, setViewMode] = useState<ViewMode>(initialResolution.state.viewMode)
   const [sensorFilter, setSensorFilter] = useState<SensorFilter>(
     initialResolution.state.sensorFilter,
   )
@@ -133,7 +130,6 @@ function App() {
   useEffect(() => {
     lastSyncedHashRef.current = syncUrlHashAndStorage({
       ...viewport,
-      viewMode,
       sensorFilter,
       projectionMode,
       selectedMonth,
@@ -146,7 +142,6 @@ function App() {
     })
   }, [
     viewport,
-    viewMode,
     sensorFilter,
     projectionMode,
     selectedMonth,
@@ -167,7 +162,6 @@ function App() {
       if (!parsed) {
         return
       }
-      setViewMode(parsed.viewMode)
       setSensorFilter(parsed.sensorFilter)
       setProjectionMode(parsed.projectionMode)
       setSelectedMonth(parsed.selectedMonth)
@@ -482,7 +476,6 @@ function App() {
 
       <EarthMapStage
         selectedMonth={selectedMonth}
-        viewMode={viewMode}
         sensorFilter={sensorFilter}
         projectionMode={projectionMode}
         onProjectionModeChange={setProjectionMode}
@@ -573,7 +566,6 @@ function App() {
         showUserLocation={geolocationState.hasUserLocation}
         hasLiveFires={fireSpotsPayload !== null}
         showFires={showFires}
-        viewMode={viewMode}
         reducedMotion={reducedMotion}
       />
     </div>

@@ -35,7 +35,6 @@ import {
   type ProjectionMode,
   type SensorFilter,
   type StatusCategory,
-  type ViewMode,
 } from '../data/stubSeasonalData'
 import {
   clampGeolocationTargetZoom,
@@ -100,7 +99,6 @@ import {
   FIRMS_SPOTS_CORE_LAYER_ID,
   FIRMS_SPOTS_PULSE_LAYER_IDS,
   FIRMS_SPOTS_SOURCE_ID,
-  getFireSpotColorExpression,
   type FireSpotsAnimationController,
 } from '../utils/fireSpotsAnimation'
 import { CloseIcon } from './icons'
@@ -125,7 +123,6 @@ export interface GeolocationLegendState {
 
 interface EarthMapStageProps {
   selectedMonth: number
-  viewMode: ViewMode
   sensorFilter: SensorFilter
   projectionMode: ProjectionMode
   onProjectionModeChange: (next: ProjectionMode) => void
@@ -510,7 +507,6 @@ function createBaseStyle(
   initialSelectedRegionId: string | null,
   initialLiveFiresData: FeatureCollection<Point, FireSpotFeatureProperties>,
   initialFocusData: FeatureCollection<Point>,
-  initialViewMode: ViewMode,
   initialSensorFilter: SensorFilter,
   initialShowLiveFires: boolean,
   initialShowStubAnomalies: boolean,
@@ -639,7 +635,7 @@ function createBaseStyle(
           'line-dasharray': [2, 2],
         },
       },
-      ...buildFireSpotLayers(initialViewMode, initialSensorFilter, initialShowLiveFires),
+      ...buildFireSpotLayers(initialSensorFilter, initialShowLiveFires),
       {
         id: 'fire-spot-focus-ring',
         type: 'circle',
@@ -772,7 +768,6 @@ function isMapStyleReady(map: MapLibreMap | null, styleReady = true): map is Map
 
 export function EarthMapStage({
   selectedMonth,
-  viewMode,
   sensorFilter,
   projectionMode,
   onProjectionModeChange,
@@ -888,7 +883,6 @@ export function EarthMapStage({
   const latestShowFiresRef = useRef(showFires)
   const latestPulsePausedRef = useRef(pulsePaused)
   const latestFocusSpotGeoJsonRef = useRef(focusSpotGeoJson)
-  const latestViewModeRef = useRef(viewMode)
   const latestSensorFilterRef = useRef(sensorFilter)
   const latestShowStubAnomaliesRef = useRef(showStubAnomalies)
   const latestOnReducedMotionChangeRef = useRef(onReducedMotionChange)
@@ -900,7 +894,6 @@ export function EarthMapStage({
     latestShowFiresRef.current = showFires
     latestPulsePausedRef.current = pulsePaused
     latestFocusSpotGeoJsonRef.current = focusSpotGeoJson
-    latestViewModeRef.current = viewMode
     latestSensorFilterRef.current = sensorFilter
     latestShowStubAnomaliesRef.current = showStubAnomalies
   }, [
@@ -908,7 +901,6 @@ export function EarthMapStage({
     showFires,
     pulsePaused,
     focusSpotGeoJson,
-    viewMode,
     sensorFilter,
     showStubAnomalies,
   ])
@@ -992,19 +984,6 @@ export function EarthMapStage({
     }
     fireAnimControllerRef.current?.sync()
   }, [sensorFilter])
-
-  useEffect(() => {
-    const map = mapInstanceRef.current
-    if (!isMapStyleReady(map)) {
-      return
-    }
-    const colorExpr = getFireSpotColorExpression(viewMode)
-    for (const layerId of [FIRMS_SPOTS_CORE_LAYER_ID, ...FIRMS_SPOTS_PULSE_LAYER_IDS]) {
-      if (map.getLayer(layerId)) {
-        map.setPaintProperty(layerId, 'circle-color', colorExpr)
-      }
-    }
-  }, [viewMode])
 
   useEffect(() => {
     latestOnReducedMotionChangeRef.current = onReducedMotionChange
@@ -1185,7 +1164,6 @@ export function EarthMapStage({
           latestSelectedRegionIdRef.current,
           latestBuiltFireSpotsRef.current.featureCollection,
           latestFocusSpotGeoJsonRef.current,
-          latestViewModeRef.current,
           latestSensorFilterRef.current,
           latestShowFiresRef.current,
           latestShowStubAnomaliesRef.current,
@@ -1310,14 +1288,12 @@ export function EarthMapStage({
           setFireLayerVisibility(map, layerId, latestShowStubAnomaliesRef.current)
         }
 
-        const colorExpr = getFireSpotColorExpression(latestViewModeRef.current)
         if (map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
           setFireLayerVisibility(map, FIRMS_SPOTS_CORE_LAYER_ID, latestShowFiresRef.current)
           map.setFilter(
             FIRMS_SPOTS_CORE_LAYER_ID,
             buildFireSpotsCoreFilter(latestSensorFilterRef.current),
           )
-          map.setPaintProperty(FIRMS_SPOTS_CORE_LAYER_ID, 'circle-color', colorExpr)
         }
         for (let idx = 0; idx < FIRMS_SPOTS_PULSE_LAYER_IDS.length; idx++) {
           const layerId = FIRMS_SPOTS_PULSE_LAYER_IDS[idx]
@@ -1327,7 +1303,6 @@ export function EarthMapStage({
               layerId,
               buildFireSpotsPulseFilter(latestSensorFilterRef.current, idx as PhaseCohort),
             )
-            map.setPaintProperty(layerId, 'circle-color', colorExpr)
           }
         }
         setFireLayerVisibility(map, 'fire-spot-focus-ring', latestShowFiresRef.current)
