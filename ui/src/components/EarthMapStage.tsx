@@ -647,10 +647,17 @@ export function EarthMapStage({
   useEffect(() => {
     latestProjectionRef.current = projectionMode
     const map = mapInstanceRef.current
-    if (!map || !map.isStyleLoaded()) {
+    if (!map) {
       return
     }
-    map.setProjection({ type: projectionMode })
+    // Not gated on isStyleLoaded(): that also waits for every tile, so it stays false right after
+    // a projection change and the next switch would be dropped. setProjection only needs the
+    // parsed style; before that it throws and the 'load' handler applies latestProjectionRef.
+    try {
+      map.setProjection({ type: projectionMode })
+    } catch {
+      // Style not parsed yet
+    }
   }, [projectionMode])
 
   useEffect(() => {
