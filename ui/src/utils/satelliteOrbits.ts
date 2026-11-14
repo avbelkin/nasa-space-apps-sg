@@ -489,7 +489,7 @@ export function formatSatelliteHudSection(
 
   const summary =
     upcoming && upcoming.nextPassMinutes !== null
-      ? `next ${upcoming.name} ~${formatDurationBrief(upcoming.nextPassMinutes)}`
+      ? `Next: ${upcoming.name} in ~${formatDurationBrief(upcoming.nextPassMinutes)}`
       : ''
 
   const items: SatelliteHudItem[] = candidates.map((entry) => {
@@ -497,7 +497,7 @@ export function formatSatelliteHudSection(
     const passAgo = isNow ? 'now' : `${formatDurationBrief(entry.minutesSincePass)} ago`
     const detail = entry.isIngested
       ? ''
-      : `lag ~${formatDurationBrief(entry.ingestionLagMinutes)}`
+      : `~${formatDurationBrief(entry.ingestionLagMinutes)} delay`
     const badge = entry.isIngested ? 'ready' : 'processing'
     return {
       id: `sat-hud-${entry.noradId}`,
@@ -510,7 +510,7 @@ export function formatSatelliteHudSection(
   })
 
   return {
-    title: 'SAT',
+    title: 'Satellite passes',
     summary,
     items,
   }

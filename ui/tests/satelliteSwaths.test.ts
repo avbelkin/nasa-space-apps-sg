@@ -130,11 +130,11 @@ test('formatSatelliteHudSection formats SAT freshness, ready fallback, and senso
     showOrbits: true,
   })
   assert.ok(section)
-  assert.equal(section.title, 'SAT')
-  assert.equal(section.summary, 'next NOAA-20 ~48m')
+  assert.equal(section.title, 'Satellite passes')
+  assert.equal(section.summary, 'Next: NOAA-20 in ~48m')
   assert.equal(section.items.length, 3)
   assert.equal(section.items[0].badge, 'processing')
-  assert.equal(section.items[0].detail, 'lag ~1.5h')
+  assert.equal(section.items[0].detail, '~1.5h delay')
   assert.equal(section.items[2].label, 'Aqua')
   assert.equal(section.items[2].badge, 'ready')
 
