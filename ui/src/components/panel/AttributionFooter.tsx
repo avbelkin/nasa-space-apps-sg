@@ -3,13 +3,11 @@ import { ChevronDownIcon } from '../icons'
 
 interface AttributionFooterProps {
   connectionState: ConnectionState
-  // With a data service, fire spots are live NASA FIRMS detections; the regional index stays sample
-  liveFiresConfigured: boolean
 }
 
 const EXTERNAL = { target: '_blank', rel: 'noopener noreferrer' } as const
 
-export function AttributionFooter({ connectionState, liveFiresConfigured }: AttributionFooterProps) {
+export function AttributionFooter({ connectionState }: AttributionFooterProps) {
   return (
     <footer className="panel-footer">
       <div className="footer-meta">
@@ -23,15 +21,12 @@ export function AttributionFooter({ connectionState, liveFiresConfigured }: Attr
               <div className="meta-row">
                 <dt>Fire detections</dt>
                 <dd>
-                  Active fires seen by MODIS (NASA EOS Terra &amp; Aqua) and VIIRS (NOAA/NASA JPSS),
-                  published by{' '}
+                  Active fire detections from MODIS (NASA EOS Terra &amp; Aqua) and VIIRS (NOAA/NASA JPSS)
+                  for the rolling 24-hour map layer, published by{' '}
                   <a href="https://firms.modaps.eosdis.nasa.gov/" {...EXTERNAL}>
                     NASA FIRMS
                   </a>
-                  .{' '}
-                  {liveFiresConfigured
-                    ? 'The fire spots on the map are live detections of the last 24 hours; the regional fire activity index, its map marks and the month strip remain sample values.'
-                    : 'The fire activity values shown here are sample values until FIRMS data is connected.'}
+                  .
                 </dd>
               </div>
               <div className="meta-row">

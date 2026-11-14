@@ -595,7 +595,6 @@ function App() {
           summary: fireSummary,
           refreshFailed: fireSpotsPayload !== null && fireSpotsError !== null,
         }}
-        liveFiresConfigured={!isProdUnconfigured}
       />
 
       <MapLegend

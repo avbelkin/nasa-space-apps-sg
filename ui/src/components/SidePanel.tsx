@@ -44,7 +44,6 @@ interface SidePanelProps {
   tleSourceSummary: string | null
   orbitsError: string | null
   liveFires: LiveFiresInfo
-  liveFiresConfigured: boolean
 }
 
 export function SidePanel({
@@ -68,7 +67,6 @@ export function SidePanel({
   tleSourceSummary,
   orbitsError,
   liveFires,
-  liveFiresConfigured,
 }: SidePanelProps) {
   const scopeRef = useRef<HTMLDListElement | null>(null)
   const regionRowRefs = useRef(new Map<string, HTMLButtonElement>())
@@ -151,10 +149,7 @@ export function SidePanel({
         />
       </div>
 
-      <AttributionFooter
-        connectionState={connectionState}
-        liveFiresConfigured={liveFiresConfigured}
-      />
+      <AttributionFooter connectionState={connectionState} />
     </aside>
   )
 }
