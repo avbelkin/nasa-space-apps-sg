@@ -14,13 +14,13 @@ interface RegionListProps {
   rowRefs: RefObject<Map<string, HTMLButtonElement>>
 }
 
-// Compact rows with Singapore pinned first, and the remaining regions sorted by size of departure.
+// Compact rows with Singapore pinned first, and the remaining locations sorted by size of departure.
 export function RegionList({ regions, selectedRegionId, onSelectRegion, rowRefs }: RegionListProps) {
   const sorted = useMemo(() => sortRegionsForList(regions), [regions])
 
   return (
-    <section className="panel-section" aria-labelledby="regions-heading">
-      <h2 id="regions-heading">Regions</h2>
+    <section className="panel-section" aria-labelledby="locations-heading">
+      <h2 id="locations-heading">Locations</h2>
       <ul className="region-list" role="list">
         {sorted.map((region) => (
           <li key={region.id}>
