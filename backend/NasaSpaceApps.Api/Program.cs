@@ -1,4 +1,6 @@
+using System.Net;
 using System.Runtime.InteropServices;
+using NasaSpaceApps.Api.Satellites;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +17,19 @@ var allowedOrigins = builder.Configuration
     .ToArray() ?? [];
 
 builder.Services.AddOpenApi();
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient("CelesTrak", client =>
+{
+    client.BaseAddress = new Uri("https://celestrak.org/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "NasaSpaceApps-EarthFireCalendar/1.0 (+https://github.com/avbelkin/nasa-space-apps-sg)");
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    AutomaticDecompression = DecompressionMethods.All,
+});
+builder.Services.AddSingleton<CelesTrakTleDownloader>();
+builder.Services.AddSingleton<SatelliteOrbitService>();
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -57,5 +72,20 @@ app.MapGet("/api/status", (IHostEnvironment env) => Results.Ok(new
     framework = RuntimeInformation.FrameworkDescription,
     timestampUtc = DateTimeOffset.UtcNow
 }));
+
+app.MapGet("/api/satellites/orbits", async (
+    int? pastMinutes,
+    int? futureMinutes,
+    int? stepSeconds,
+    SatelliteOrbitService orbitService,
+    CancellationToken cancellationToken) =>
+{
+    var response = await orbitService.GetOrbitsAsync(
+        pastMinutes ?? 45,
+        futureMinutes ?? 90,
+        stepSeconds ?? 30,
+        cancellationToken);
+    return Results.Ok(response);
+});
 
 app.Run();
