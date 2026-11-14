@@ -299,6 +299,12 @@ function App() {
       <header className="top-bar wrapper-surface">
         <h1>Earth Fire Calendar</h1>
         <p className="brand-subtitle">See where fire activity is above or below typical</p>
+        <p className="sample-badge top-bar-badge">
+          Sample data
+          <span className="visually-hidden">
+            : illustrative values until live NASA FIRMS data is connected
+          </span>
+        </p>
       </header>
 
       <EarthMapStage

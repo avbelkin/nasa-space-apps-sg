@@ -19,10 +19,6 @@ export function AttributionFooter({ connectionState }: AttributionFooterProps) {
       </p>
 
       <div className="footer-meta">
-        <span className="api-indicator" data-state={connectionState} aria-live="polite">
-          <span className="api-dot" aria-hidden="true" />
-          {CONNECTION_SHORT_LABELS[connectionState]}
-        </span>
         <details className="panel-details panel-details-quiet">
           <summary className="panel-details-summary">
             <span>Sources and credits</span>
@@ -73,6 +69,10 @@ export function AttributionFooter({ connectionState }: AttributionFooterProps) {
             </p>
           </div>
         </details>
+        <span className="api-indicator" data-state={connectionState} aria-live="polite">
+          <span className="api-dot" aria-hidden="true" />
+          {CONNECTION_SHORT_LABELS[connectionState]}
+        </span>
       </div>
     </footer>
   )

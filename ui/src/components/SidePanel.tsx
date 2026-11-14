@@ -16,7 +16,8 @@ import { ScopeRow } from './panel/ScopeRow'
 import { SegmentedControl, type SegmentedOption } from './SegmentedControl'
 
 const SENSOR_FILTER_OPTIONS: readonly SegmentedOption<SensorFilter>[] = [
-  { value: 'harmonized', label: 'Combined', ariaLabel: 'MODIS and VIIRS combined' },
+  // The challenge's own term; the accessible name says what is harmonized
+  { value: 'harmonized', label: 'Harmonized', ariaLabel: 'Harmonized MODIS and VIIRS' },
   { value: 'modis', label: 'MODIS' },
   { value: 'viirs', label: 'VIIRS' },
 ]

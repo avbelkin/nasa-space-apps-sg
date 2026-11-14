@@ -33,27 +33,46 @@
   border-radius: 0.75rem;
 }
 
-/* Outer Top Bar: title and one line on what the page answers */
+/* Outer Top Bar: title, one line on what the page answers, and the sample-data marker */
 .top-bar {
   grid-area: topbar;
   padding: 0.625rem 1rem;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "title subtitle badge";
   align-items: baseline;
   gap: 0.125rem 1rem;
 }
 
+/* Narrow screens: the badge stays on the title row, so the bar keeps two lines */
+@media (width < 48rem) {
+  .top-bar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title    badge"
+      "subtitle subtitle";
+  }
+}
+
 .top-bar h1 {
+  grid-area: title;
   margin: 0;
   font-size: var(--fs-20);
   line-height: 1.2;
 }
 
 .brand-subtitle {
+  grid-area: subtitle;
   margin: 0;
   font-size: var(--fs-14);
   line-height: 1.35;
   color: var(--text-muted);
+}
+
+.top-bar-badge {
+  grid-area: badge;
+  align-self: center;
+  margin: 0;
 }
 
 .hud-btn:focus-visible,
@@ -427,6 +446,15 @@
 .status-mark {
   display: block;
   flex: none;
+  forced-color-adjust: none;
+}
+
+/* Same for the satellite swatches: the map keeps its colors, so the keys must too */
+.legend-glyph-terra,
+.legend-glyph-aqua,
+.legend-glyph-noaa-20,
+.legend-glyph-noaa-21,
+.satellite-swatch {
   forced-color-adjust: none;
 }
 
@@ -1115,19 +1143,25 @@
   color: var(--text-muted);
 }
 
+/* "Sources and credits" and the API indicator share a row while both fit, and wrap otherwise */
 .footer-meta {
-  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 0.75rem;
 }
 
-/* Sits on the "Sources and credits" row; the details body below spans the full width */
+/* Open, the credits take the full width and the indicator moves below them */
+.footer-meta > .panel-details[open] {
+  flex-basis: 100%;
+}
+
 .api-indicator {
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline-end: 0;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  block-size: 2rem;
+  min-block-size: 2rem;
   font-size: var(--fs-12);
   font-weight: 600;
   color: var(--text-muted);
@@ -1297,7 +1331,8 @@
     block-size: 2.5rem;
   }
 
-  .panel-details-summary {
+  .panel-details-summary,
+  .panel-details-quiet > .panel-details-summary {
     min-block-size: 2.75rem;
   }
 

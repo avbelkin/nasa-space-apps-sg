@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { MONTHLY_PROFILE, type MonthlyBaselinePoint } from '../data/stubSeasonalData'
 import {
   formatSignedDelta,
@@ -33,15 +33,27 @@ function describeMonth(point: MonthlyBaselinePoint, isToday: boolean): string {
 export function MonthStrip({ selectedMonth, todayMonth, onSelectMonth }: MonthStripProps) {
   // Escape hides the hover/focus tooltip until the pointer or focus moves on
   const [tooltipsHidden, setTooltipsHidden] = useState(false)
+  // Whether the focused month got focus from the keyboard, i.e. shows its focus tooltip
+  const keyboardFocusRef = useRef(false)
   const selected = MONTHLY_PROFILE[selectedMonth]
   const selectedCategory = monthStatusCategory(selected)
   const selectedDelta = selected.currentIndex - selected.typicalIndex
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape' && !tooltipsHidden) {
-      // Consumed here, so the same press does not also clear the selected region
+    if (event.key !== 'Escape') {
+      return
+    }
+    // Not read from the styles: Chrome turns on :focus-visible for a clicked month at this very key
+    // press, so its tooltip would look visible although the user never saw it.
+    const hovered =
+      window.matchMedia('(hover: hover)').matches &&
+      event.currentTarget.querySelector('.month-btn:hover') !== null
+    const tooltipShowing = !tooltipsHidden && (keyboardFocusRef.current || hovered)
+    // Hidden either way, so the key press itself never reveals a tooltip
+    setTooltipsHidden(true)
+    if (tooltipShowing) {
+      // Consumed only then, so the same press does not also clear the selected region
       event.preventDefault()
-      setTooltipsHidden(true)
     }
   }
 
@@ -87,7 +99,13 @@ export function MonthStrip({ selectedMonth, todayMonth, onSelectMonth }: MonthSt
           data-tooltips-hidden={tooltipsHidden || undefined}
           onKeyDown={handleKeyDown}
           onPointerMove={() => setTooltipsHidden(false)}
-          onFocus={() => setTooltipsHidden(false)}
+          onFocus={(event) => {
+            keyboardFocusRef.current = event.target.matches(':focus-visible')
+            setTooltipsHidden(false)
+          }}
+          onBlur={() => {
+            keyboardFocusRef.current = false
+          }}
         >
           {MONTHLY_PROFILE.map((point) => {
             const category = monthStatusCategory(point)

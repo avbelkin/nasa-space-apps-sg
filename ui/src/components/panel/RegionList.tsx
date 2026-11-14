@@ -45,9 +45,10 @@ export function RegionList({ regions, selectedRegionId, onSelectRegion, rowRefs 
             >
               <span className="region-row-name">{region.region}</span>{' '}
               <span className={`region-delta ${STATUS_TONE_CLASS[region.statusCategory]}`}>
-                {region.delta !== 0 && (
+                {/* Triangles only for above/below typical, as in the legend; the sign shows direction */}
+                {region.statusCategory !== 'fits-typical' && (
                   <span className="region-delta-arrow" aria-hidden="true">
-                    {region.delta > 0 ? STATUS_GLYPHS['anomaly-high'] : STATUS_GLYPHS['below-typical']}
+                    {STATUS_GLYPHS[region.statusCategory]}
                   </span>
                 )}
                 {formatSignedDelta(region.delta)}

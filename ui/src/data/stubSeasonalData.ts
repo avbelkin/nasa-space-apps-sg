@@ -115,7 +115,7 @@ export const MONTHLY_PROFILE: MonthlyBaselinePoint[] = [
     typicalIndex: 88,
     currentIndex: 95,
     classification: 'Above-Normal Anomaly',
-    summary: 'Concurrent Boreal, Mediterranean, and Amazon dry-season activity pushes above typical baselines.',
+    summary: 'Concurrent Boreal, Mediterranean, and Amazon dry-season activity runs at the top of the typical range.',
   },
   {
     monthIndex: 8,
@@ -231,11 +231,15 @@ function circularMonthDistance(a: number, b: number): number {
   return Math.min(diff, 12 - diff)
 }
 
-function classifyStatus(delta: number): { category: StatusCategory; label: string } {
-  if (delta >= 8) {
+// A departure of at least this many index points reads as above or below typical; anything smaller
+// is typical. One rule for the regions and for the worldwide month.
+export const STATUS_DELTA_THRESHOLD = 8
+
+export function classifyStatus(delta: number): { category: StatusCategory; label: string } {
+  if (delta >= STATUS_DELTA_THRESHOLD) {
     return { category: 'anomaly-high', label: 'Positive Anomaly' }
   }
-  if (delta <= -8) {
+  if (delta <= -STATUS_DELTA_THRESHOLD) {
     return { category: 'below-typical', label: 'Below Typical' }
   }
   return { category: 'fits-typical', label: 'Fits Typical Season' }

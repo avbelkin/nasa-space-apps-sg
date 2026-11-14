@@ -1,4 +1,9 @@
-import type { MonthlyBaselinePoint, RegionalFireRegime, StatusCategory } from './stubSeasonalData'
+import {
+  classifyStatus,
+  type MonthlyBaselinePoint,
+  type RegionalFireRegime,
+  type StatusCategory,
+} from './stubSeasonalData'
 
 // User-facing wording and text glyphs for the status categories in the panel; the glyphs follow the
 // map marks (see statusMarks.ts), where "typical" is a ring.
@@ -65,10 +70,7 @@ export function formatPeakMonths(months: readonly number[]): string {
   return ordered.map((month) => MONTH_SHORT_NAMES[month]).join(', ')
 }
 
-// Global month classification in the same three categories as the regions.
+// Worldwide month status from the same classifier as the regions.
 export function monthStatusCategory(point: MonthlyBaselinePoint): StatusCategory {
-  if (point.classification !== 'Fits Typical Calendar') {
-    return 'anomaly-high'
-  }
-  return 'fits-typical'
+  return classifyStatus(point.currentIndex - point.typicalIndex).category
 }

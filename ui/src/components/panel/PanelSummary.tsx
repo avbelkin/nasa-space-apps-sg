@@ -13,10 +13,13 @@ import {
   STATUS_TONE_CLASS,
 } from '../../data/statusDisplay'
 
-const MONTH_STATUS_TEXT: Record<MonthlyBaselinePoint['classification'], string> = {
-  'Fits Typical Calendar': 'Typical for the month',
-  'Above-Normal Anomaly': 'Above typical',
-  'Early-Season Anomaly': 'Above typical: the season started early',
+// The worldwide status follows the shared classifier; the sample's early-season note only adds
+// a reason to an "above typical" month.
+function monthStatusText(point: MonthlyBaselinePoint, category: StatusCategory): string {
+  if (category === 'anomaly-high' && point.classification === 'Early-Season Anomaly') {
+    return 'Above typical: the season started early'
+  }
+  return category === 'fits-typical' ? 'Typical for the month' : STATUS_TEXT[category]
 }
 
 interface PanelSummaryProps {
@@ -27,9 +30,8 @@ interface PanelSummaryProps {
 function DeltaValue({ delta, category }: { delta: number; category: StatusCategory }) {
   return (
     <span className={`metric-delta ${STATUS_TONE_CLASS[category]}`}>
-      {delta !== 0 && (
-        <span aria-hidden="true">{delta > 0 ? STATUS_GLYPHS['anomaly-high'] : STATUS_GLYPHS['below-typical']}</span>
-      )}
+      {/* The legend's triangles mean "above/below typical": a small change keeps only its sign */}
+      {category !== 'fits-typical' && <span aria-hidden="true">{STATUS_GLYPHS[category]}</span>}
       {formatSignedDelta(delta)}
       <span className="visually-hidden"> vs. typical</span>
     </span>
@@ -44,7 +46,7 @@ export function PanelSummary({ monthProfile, selectedRegion }: PanelSummaryProps
   const category = selectedRegion ? selectedRegion.statusCategory : monthStatusCategory(monthProfile)
   const statusText = selectedRegion
     ? STATUS_TEXT[selectedRegion.statusCategory]
-    : MONTH_STATUS_TEXT[monthProfile.classification]
+    : monthStatusText(monthProfile, category)
 
   return (
     <section className="panel-section panel-summary" aria-labelledby="summary-heading">
