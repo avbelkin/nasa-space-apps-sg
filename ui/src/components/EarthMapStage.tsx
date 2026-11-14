@@ -83,7 +83,6 @@ import {
   buildFireSpotsGeoJson,
   compareMatchedFireSpots,
   expandHoveredFireSpots,
-  formatFireSpotsTooltip,
   MIN_FIRE_SPOT_ZOOM,
   type BuiltFireSpotsData,
   type FireSpotFeatureProperties,
@@ -91,7 +90,6 @@ import {
   type FirmsLiveSpotsResponse,
   type PhaseCohort,
 } from '../utils/fireSpots'
-import type { SatelliteOverpassIndex } from '../utils/satelliteOverpassTimeline'
 import {
   buildFireSpotLayers,
   buildFireSpotsCoreFilter,
@@ -102,9 +100,9 @@ import {
   FIRMS_SPOTS_SOURCE_ID,
   type FireSpotsAnimationController,
 } from '../utils/fireSpotsAnimation'
-import { FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
-import { ChevronLeftIcon, ChevronRightIcon, CloseIcon } from './icons'
+import { ChevronLeftIcon, ChevronRightIcon } from './icons'
 import { MapControls } from './MapControls'
+import type { PinnedFireSelection } from './PinnedFireDetails'
 import { SatelliteHud } from './SatelliteHud'
 
 // Point MapLibre to the self-contained worker asset so Vite dev/prod bundling never breaks GeoJSON tiling.
@@ -147,7 +145,8 @@ interface EarthMapStageProps {
   onShowNightLightsChange: (next: boolean) => void
   satellites: readonly SatelliteOrbit[]
   orbitalState: LiveOrbitalState
-  overpassIndex?: SatelliteOverpassIndex | null
+  pinnedFireSelection: PinnedFireSelection | null
+  onPinFireSelection: (selection: PinnedFireSelection | null) => void
   satelliteHudSection: SatelliteHudSection | null
   showOrbits: boolean
   onShowOrbitsChange: (next: boolean) => void
@@ -303,13 +302,6 @@ function createSpacecraftIconSvg(): SVGSVGElement {
   return svg
 }
 
-interface SpotTooltipCardState {
-  inputs: readonly FireSpotTooltipInput[]
-  nowMs: number
-  anchorLngLat: [number, number]
-  sensorFilter: SensorFilter
-}
-
 const EMPTY_FIRE_SPOTS: BuiltFireSpotsData = {
   featureCollection: {
     type: 'FeatureCollection',
@@ -375,12 +367,12 @@ function toFireSpotTooltipInput(feature: MapGeoJSONFeature): FireSpotTooltipInpu
   }
 }
 
-function querySpotTooltipAtPoint(
+function queryFireSelectionAtPoint(
   map: MapLibreMap,
   point: { x: number; y: number },
   sensorFilter: SensorFilter,
   builtFireSpots: BuiltFireSpotsData,
-): SpotTooltipCardState | null {
+): PinnedFireSelection | null {
   if (map.getZoom() < MIN_FIRE_SPOT_ZOOM || !map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
     return null
   }
@@ -420,10 +412,10 @@ function querySpotTooltipAtPoint(
 
   const sorted = [...inputs].sort(compareMatchedFireSpots)
   const topSpot = sorted[0]
-  const anchorLngLat: [number, number] =
+  const anchorLngLat: [number, number] | null =
     topSpot && Number.isFinite(topSpot.lng) && Number.isFinite(topSpot.lat)
       ? [topSpot.lng!, topSpot.lat!]
-      : [0, 0]
+      : null
 
   return { inputs, nowMs: Date.now(), anchorLngLat, sensorFilter }
 }
@@ -658,7 +650,8 @@ export function EarthMapStage({
   onShowNightLightsChange,
   satellites,
   orbitalState,
-  overpassIndex = null,
+  pinnedFireSelection,
+  onPinFireSelection,
   satelliteHudSection,
   showOrbits,
   onShowOrbitsChange,
@@ -729,32 +722,10 @@ export function EarthMapStage({
     [fireSpotsPayload],
   )
 
-  const [hoverSpotCard, setHoverSpotCard] = useState<SpotTooltipCardState | null>(null)
-  const [pinnedSpotCard, setPinnedSpotCard] = useState<SpotTooltipCardState | null>(null)
   const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion)
-  const visibleHoverSpotCard =
-    showFires && hoverSpotCard && hoverSpotCard.sensorFilter === sensorFilter
-      ? hoverSpotCard
-      : null
-  const visiblePinnedSpotCard =
-    showFires && pinnedSpotCard && pinnedSpotCard.sensorFilter === sensorFilter
-      ? pinnedSpotCard
-      : null
-  const activeSpotCard = visiblePinnedSpotCard ?? visibleHoverSpotCard
-  const isPinned = visiblePinnedSpotCard !== null
-  const activeSpotTooltip = useMemo(() => {
-    if (!activeSpotCard) {
-      return null
-    }
-    return formatFireSpotsTooltip(activeSpotCard.inputs, activeSpotCard.nowMs, {
-      sensorFilter,
-      overpassIndex,
-    })
-  }, [activeSpotCard, sensorFilter, overpassIndex])
   const focusSpotGeoJson = useMemo(
-    () =>
-      buildFireSpotFocusGeoJson(visiblePinnedSpotCard ? visiblePinnedSpotCard.anchorLngLat : null),
-    [visiblePinnedSpotCard],
+    () => buildFireSpotFocusGeoJson(pinnedFireSelection?.anchorLngLat ?? null),
+    [pinnedFireSelection],
   )
 
   const latestBuiltFireSpotsRef = useRef(builtFireSpots)
@@ -762,6 +733,7 @@ export function EarthMapStage({
   const latestPulsePausedRef = useRef(pulsePaused)
   const latestFocusSpotGeoJsonRef = useRef(focusSpotGeoJson)
   const latestSensorFilterRef = useRef(sensorFilter)
+  const onPinFireSelectionRef = useRef(onPinFireSelection)
   const latestOnReducedMotionChangeRef = useRef(onReducedMotionChange)
   const fireAnimControllerRef = useRef<FireSpotsAnimationController | null>(null)
   const firePointerCleanupRef = useRef<(() => void) | null>(null)
@@ -779,21 +751,6 @@ export function EarthMapStage({
     focusSpotGeoJson,
     sensorFilter,
   ])
-
-  // Escape unpins the fire spot card.
-  useEffect(() => {
-    if (!visiblePinnedSpotCard) {
-      return
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !event.defaultPrevented) {
-        event.preventDefault()
-        setPinnedSpotCard(null)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown, true)
-    return () => window.removeEventListener('keydown', handleKeyDown, true)
-  }, [visiblePinnedSpotCard])
 
   useEffect(() => {
     const map = mapInstanceRef.current
@@ -852,6 +809,10 @@ export function EarthMapStage({
   useEffect(() => {
     latestOnReducedMotionChangeRef.current = onReducedMotionChange
   }, [onReducedMotionChange])
+
+  useEffect(() => {
+    onPinFireSelectionRef.current = onPinFireSelection
+  }, [onPinFireSelection])
 
   useEffect(() => {
     latestOnReducedMotionChangeRef.current?.(reducedMotion)
@@ -1056,7 +1017,6 @@ export function EarthMapStage({
       const canvas = map.getCanvas()
       const handleCanvasMouseLeave = () => {
         canvas.style.cursor = ''
-        setHoverSpotCard((prev) => (prev === null ? prev : null))
       }
       canvas.addEventListener('mouseleave', handleCanvasMouseLeave)
       firePointerCleanupRef.current = () => {
@@ -1070,26 +1030,20 @@ export function EarthMapStage({
         if (latestBuiltFireSpotsRef.current.featureCollection.features.length === 0) {
           return
         }
-        const hit = querySpotTooltipAtPoint(
+        const hit = queryFireSelectionAtPoint(
           map,
           event.point,
           latestSensorFilterRef.current,
           latestBuiltFireSpotsRef.current,
         )
         map.getCanvas().style.cursor = hit ? 'pointer' : ''
-        setHoverSpotCard((prev) => {
-          if (!prev && !hit) {
-            return prev
-          }
-          return hit
-        })
       })
 
       map.on('click', (event) => {
         if (!map || !latestShowFiresRef.current) {
           return
         }
-        const hit = querySpotTooltipAtPoint(
+        const hit = queryFireSelectionAtPoint(
           map,
           event.point,
           latestSensorFilterRef.current,
@@ -1098,7 +1052,7 @@ export function EarthMapStage({
         if (hit) {
           userInteractedRef.current = true
         }
-        setPinnedSpotCard(hit)
+        onPinFireSelectionRef.current(hit)
       })
 
       map.on('movestart', (event: MapMovementEvent) => {
@@ -1615,13 +1569,7 @@ export function EarthMapStage({
         showNightLights={showNightLights}
         onShowNightLightsChange={onShowNightLightsChange}
         showFires={showFires}
-        onShowFiresChange={(next) => {
-          if (!next) {
-            setHoverSpotCard(null)
-            setPinnedSpotCard(null)
-          }
-          onShowFiresChange(next)
-        }}
+        onShowFiresChange={onShowFiresChange}
         showPulseToggle={hasLiveFires && showFires && !reducedMotion}
         pulsePaused={pulsePaused}
         onPulsePausedChange={onPulsePausedChange}
@@ -1679,52 +1627,9 @@ export function EarthMapStage({
         </div>
       )}
 
-      {/* Bottom of the map: fire spot card (start) and satellite pass card (end), one row that
-          wraps when both do not fit */}
-      {((showFires && activeSpotCard && activeSpotTooltip) || satelliteHudSection) && (
+      {satelliteHudSection && (
         <div className="map-hud-bottom">
-          {showFires && activeSpotCard && activeSpotTooltip && (
-            <div
-              className="map-hud fire-tooltip-card"
-              data-pinned={isPinned ? 'true' : 'false'}
-              role={isPinned ? 'region' : undefined}
-              aria-label={isPinned ? 'Pinned fire spot details' : undefined}
-            >
-              <div className="fire-tooltip-header">
-                <div className="fire-tooltip-title-group">
-                  <span className="fire-tooltip-title">{activeSpotTooltip.header}</span>
-                  <span className="fire-tooltip-coords">
-                    Lat {activeSpotCard.anchorLngLat[1].toFixed(3)}&deg;, Lon{' '}
-                    {activeSpotCard.anchorLngLat[0].toFixed(3)}&deg;
-                  </span>
-                </div>
-                {isPinned && (
-                  <button
-                    type="button"
-                    className="hud-btn hud-icon-btn"
-                    aria-label="Unpin fire spot details"
-                    title="Unpin"
-                    onClick={() => setPinnedSpotCard(null)}
-                  >
-                    <CloseIcon />
-                  </button>
-                )}
-              </div>
-              {activeSpotTooltip.mode === 'timeline' && activeSpotTooltip.timeline ? (
-                <FireDetectionsTimelineCard timeline={activeSpotTooltip.timeline} />
-              ) : (
-                <ul className="fire-tooltip-list" role="list">
-                  {activeSpotTooltip.lines.map((line, index) => (
-                    <li key={`${index}-${line}`}>{line}</li>
-                  ))}
-                </ul>
-              )}
-              {!isPinned && <p className="fire-tooltip-hint">Click spot to pin details</p>}
-            </div>
-          )}
-          {satelliteHudSection && (
-            <SatelliteHud section={satelliteHudSection} defaultOpen={isStageWide} />
-          )}
+          <SatelliteHud section={satelliteHudSection} defaultOpen={isStageWide} />
         </div>
       )}
 

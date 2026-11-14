@@ -47,13 +47,9 @@ export function FireDetectionsTimelineCard({ timeline }: FireDetectionsTimelineC
             ))
           )}
         </div>
-        <span className="fire-timeline-peak">
-          {timeline.singleSpotDetail ??
-            `Peak ${timeline.peakFrpMw.toLocaleString('en-US')} MW (${timeline.totalFrpMw.toLocaleString('en-US')} MW total)`}
-        </span>
       </div>
 
-      <div className="fire-timeline-scroll">
+      <div className="fire-timeline-scroll" role="region" aria-label="24-hour detection chart" tabIndex={0}>
         <div className="fire-timeline-frame">
           <div
             className="fire-timeline-plot"

@@ -409,7 +409,7 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
     assert.equal(recentNoaa20.status, 'pending')
   })
 
-  it('enforces >= 1rem minimum bar width, clip overflow, horizon day/night split, negative stripes, cutoff overlay, and forced-colors borders in App.css', () => {
+  it('enforces >= 1rem minimum bar width, horizontal scrolling, horizon day/night split, negative stripes, cutoff overlay, and forced-colors borders in App.css', () => {
     const appCss = fs.readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
     const plotMatch = appCss.match(/\.fire-timeline-plot\s*\{([^}]*)\}/)
     assert.ok(plotMatch, 'expected .fire-timeline-plot CSS rule')
@@ -423,8 +423,11 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
 
     const scrollMatch = appCss.match(/\.fire-timeline-scroll\s*\{([^}]*)\}/)
     assert.ok(scrollMatch, 'expected .fire-timeline-scroll CSS rule')
-    assert.match(scrollMatch[1], /overflow:\s*clip\s*;/)
-    assert.doesNotMatch(scrollMatch[1], /overflow(-[xy])?:\s*(auto|scroll)\b/)
+    assert.match(scrollMatch[1], /overflow-x:\s*auto\s*;/)
+    assert.doesNotMatch(scrollMatch[1], /overflow-y:\s*(auto|scroll)\b/)
+    const frameMatch = appCss.match(/\.fire-timeline-frame\s*\{([^}]*)\}/)
+    assert.ok(frameMatch, 'expected a chart frame with room for all 24 hourly slots')
+    assert.match(frameMatch[1], /min-inline-size:\s*26rem\s*;/)
 
     const negMatch = appCss.match(/\.fire-timeline-bar-negative\s*\{([^}]*)\}/)
     assert.ok(negMatch, 'expected .fire-timeline-bar-negative CSS rule')
