@@ -24,10 +24,6 @@
   --code-bg-light: #e2e8f0;
   --code-bg-dark: #1e293b;
   /* Delta text in the panels: >= 4.5:1 on card, page, hovered and pressed card surfaces in both themes */
-  --delta-up-light: #9a3412;
-  --delta-up-dark: #fdba74;
-  --delta-down-light: #1e40af;
-  --delta-down-dark: #93c5fd;
   /* API indicator dot only; never a data color */
   --status-ok-light: #15803d;
   --status-ok-dark: #4ade80;
@@ -41,8 +37,6 @@
   --accent: var(--accent-light);
   --accent-text: var(--accent-text-light);
   --code-bg: var(--code-bg-light);
-  --delta-up: var(--delta-up-light);
-  --delta-down: var(--delta-down-light);
   --status-ok: var(--status-ok-light);
 
   @media (prefers-color-scheme: dark) {
@@ -55,8 +49,6 @@
     --accent: var(--accent-dark);
     --accent-text: var(--accent-text-dark);
     --code-bg: var(--code-bg-dark);
-    --delta-up: var(--delta-up-dark);
-    --delta-down: var(--delta-down-dark);
     --status-ok: var(--status-ok-dark);
   }
 
@@ -70,8 +62,6 @@
     --accent: light-dark(var(--accent-light), var(--accent-dark));
     --accent-text: light-dark(var(--accent-text-light), var(--accent-text-dark));
     --code-bg: light-dark(var(--code-bg-light), var(--code-bg-dark));
-    --delta-up: light-dark(var(--delta-up-light), var(--delta-up-dark));
-    --delta-down: light-dark(var(--delta-down-light), var(--delta-down-dark));
     --status-ok: light-dark(var(--status-ok-light), var(--status-ok-dark));
   }
 

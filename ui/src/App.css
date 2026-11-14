@@ -1,15 +1,13 @@
-/* Outer Controls Wrapper: wraps topbar, timeline, side inspector, and bottom legend around the map stage */
+/* Outer Controls Wrapper: wraps topbar, side panel, and bottom legend around the map stage */
 .app-frame {
   display: grid;
   inline-size: 100%;
   min-block-size: 100dvh;
   grid-template-columns: minmax(0, 1fr);
-  /* Small screens: the map leaves room for the timeline header and month strip on the first screen */
-  grid-template-rows: auto minmax(44dvh, 1fr) auto auto auto;
+  grid-template-rows: auto minmax(44dvh, 1fr) auto auto;
   grid-template-areas:
     "topbar"
     "mapstage"
-    "timeline"
     "sidepanel"
     "legend";
   gap: 0.75rem;
@@ -20,11 +18,10 @@
   .app-frame {
     block-size: 100dvh;
     grid-template-columns: minmax(0, 1fr) minmax(19rem, 23rem);
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
     grid-template-areas:
       "topbar   topbar"
       "mapstage sidepanel"
-      "timeline sidepanel"
       "legend   legend";
   }
 }
@@ -35,24 +32,23 @@
   border-radius: 0.75rem;
 }
 
-/* Outer Top Bar: title, one line on what the page answers, and the sample-data marker */
+/* Outer Top Bar: title and subtitle */
 .top-bar {
   grid-area: topbar;
   padding: 0.625rem 1rem;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "title subtitle badge";
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "title subtitle";
   align-items: baseline;
   gap: 0.125rem 1rem;
 }
 
-/* Narrow screens: the badge stays on the title row, so the bar keeps two lines */
 @media (width < 48rem) {
   .top-bar {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "title    badge"
-      "subtitle subtitle";
+      "title"
+      "subtitle";
   }
 }
 
@@ -71,21 +67,12 @@
   color: var(--text-muted);
 }
 
-.top-bar-badge {
-  grid-area: badge;
-  align-self: center;
-  margin: 0;
-}
-
 .hud-btn:focus-visible,
 .hud-rain-select:focus-visible,
 .segmented-option:focus-visible,
-.month-btn:focus-visible,
-.region-row:focus-visible,
 .satellite-row:focus-visible,
 .sat-marker-badge:focus-visible,
 .secondary-btn:focus-visible,
-.icon-btn:focus-visible,
 .panel-details-summary:focus-visible,
 .sat-hud-header:focus-visible,
 .side-panel a:focus-visible {
@@ -116,23 +103,6 @@
 }
 
 /* Small square icon button inside the panel (clear selection) */
-.icon-btn {
-  --tap-bg: transparent;
-  appearance: none;
-  display: inline-grid;
-  place-items: center;
-  flex-shrink: 0;
-  inline-size: 1.75rem;
-  block-size: 1.75rem;
-  padding: 0;
-  border: 1px solid var(--border-subtle);
-  border-radius: 0.375rem;
-  font: inherit;
-  cursor: pointer;
-  background-color: var(--tap-bg);
-  color: var(--text-primary);
-}
-
 .icon {
   display: block;
   inline-size: 1rem;
@@ -521,8 +491,6 @@
   line-height: 1;
 }
 
-/* Status marks are the map's own marks (see StatusMark.tsx): keep their data colors in forced colors too */
-.status-mark,
 .legend-user-mark {
   display: block;
   flex: none;
@@ -1141,294 +1109,7 @@
   color: #f8fafc;
 }
 
-/* Bottom timeline: worldwide index by month, "typical" band vs "this year" bar on one 0-100 scale */
-.timeline-bar {
-  grid-area: timeline;
-  container: timeline / inline-size;
-  padding: 0.625rem 1rem 0.75rem;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.timeline-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.125rem 1rem;
-}
-
-.timeline-header h2 {
-  margin: 0;
-  font-size: var(--fs-16);
-}
-
-.timeline-status {
-  margin: 0;
-  font-size: var(--fs-14);
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.timeline-status-part {
-  white-space: nowrap;
-}
-
-.timeline-status strong {
-  color: var(--text-primary);
-}
-
-.timeline-status .tone-up,
-.timeline-status .tone-down,
-.timeline-status .tone-neutral {
-  font-weight: 600;
-}
-
-/* Slot for the future period selector and CSV export; renders nothing while empty */
-.timeline-tools {
-  margin-inline-start: auto;
-  display: flex;
-  gap: 0.5rem;
-}
-
-.timeline-tools:empty {
-  display: none;
-}
-
-/* "row label | months": one row today, one per year once the archive is connected */
-.timeline-grid {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 0.375rem 0.75rem;
-}
-
-.timeline-row-label {
-  display: grid;
-  gap: 0.25rem;
-  font-size: var(--fs-14);
-  font-weight: 700;
-}
-
-.timeline-key {
-  display: grid;
-  gap: 0.125rem;
-  font-size: var(--fs-12);
-  font-weight: 400;
-  color: var(--text-muted);
-}
-
-.timeline-key-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  white-space: nowrap;
-}
-
-.timeline-key-swatch {
-  flex-shrink: 0;
-}
-
-.timeline-key-typical {
-  inline-size: 0.75rem;
-  block-size: 0.625rem;
-  background-color: var(--bar-typical);
-  border-block-start: 2px solid var(--bar-typical-line);
-}
-
-/* A year reads as one sequence: 12 columns, or 6 x 2 on a narrow strip, never a ragged wrap */
-.month-track {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 0.25rem;
-}
-
-@container timeline (inline-size < 32rem) {
-  .timeline-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .timeline-row-label,
-  .timeline-key {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.25rem 0.75rem;
-  }
-
-  .month-track {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-}
-
-/* Theme tokens, not map fills: the map's light "typical" fill would vanish on a light surface */
-.timeline-bar {
-  --bar-typical: color-mix(in srgb, var(--text-muted) 30%, transparent);
-  --bar-typical-line: var(--text-primary);
-}
-
-.month-btn {
-  --tap-bg: transparent;
-  --bar-current: var(--text-muted);
-  position: relative;
-  appearance: none;
-  min-inline-size: 0;
-  border: 1px solid var(--border-subtle);
-  border-radius: 0.5rem;
-  padding: 0.125rem 0.125rem 0.25rem;
-  font: inherit;
-  cursor: pointer;
-  background-color: var(--tap-bg);
-  color: var(--text-primary);
-  display: grid;
-  justify-items: center;
-}
-
-.month-btn[data-status='anomaly-high'] {
-  --bar-current: var(--delta-up);
-}
-
-.month-btn[data-status='below-typical'] {
-  --bar-current: var(--delta-down);
-}
-
-/* Selection is a ring and a bold label; the bars keep their data colors */
-.month-btn[aria-pressed='true'] {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
-
-/* Status glyph above every bar that departs from typical; the selected month adds its value */
-.month-value {
-  block-size: 1rem;
-  font-size: var(--fs-12);
-  line-height: 1rem;
-  font-weight: 700;
-  color: var(--bar-current);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.month-bars {
-  position: relative;
-  inline-size: 100%;
-  block-size: 3.75rem;
-  border-block-end: 1px solid var(--border-subtle);
-}
-
-.month-bar-typical,
-.month-bar-current,
-.month-typical-line {
-  position: absolute;
-  inset-block-end: 0;
-  inset-inline-start: 50%;
-  translate: -50% 0;
-}
-
-.month-bar-typical {
-  inline-size: min(1.5rem, 80%);
-  block-size: var(--typical-height);
-  background-color: var(--bar-typical);
-}
-
-.month-bar-current {
-  inline-size: min(0.75rem, 40%);
-  block-size: var(--current-height);
-  background-color: var(--bar-current);
-  border-radius: 2px 2px 0 0;
-}
-
-/* The typical level stays readable where the bar covers the band */
-.month-typical-line {
-  inline-size: min(1.5rem, 80%);
-  block-size: var(--typical-height);
-  border-block-start: 2px solid var(--bar-typical-line);
-}
-
-.month-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.15rem;
-  font-size: var(--fs-14);
-  font-weight: 400;
-  line-height: 1.3;
-}
-
-.month-btn[aria-pressed='true'] .month-label {
-  font-weight: 700;
-}
-
-.month-today,
-.timeline-key-today {
-  inline-size: 0.375rem;
-  block-size: 0.375rem;
-  border-radius: 50%;
-  background-color: currentColor;
-}
-
-.timeline-key-today {
-  background-color: var(--text-primary);
-}
-
-/* Both values and the delta on hover and keyboard focus; Escape hides it (data-tooltips-hidden) */
-.month-tooltip {
-  position: absolute;
-  z-index: 20;
-  inset-block-end: calc(100% + 0.375rem);
-  inset-inline-start: 50%;
-  translate: -50% 0;
-  display: none;
-  gap: 0.0625rem;
-  padding: 0.375rem 0.5rem;
-  border-radius: 0.375rem;
-  background-color: var(--text-primary);
-  color: var(--surface-card);
-  font-size: var(--fs-14);
-  line-height: 1.35;
-  text-align: start;
-  white-space: nowrap;
-  pointer-events: none;
-  box-shadow: 0 4px 12px rgb(15 23 42 / 0.25);
-}
-
-.month-track > :first-child .month-tooltip {
-  inset-inline-start: 0;
-  translate: none;
-}
-
-.month-track > :last-child .month-tooltip {
-  inset-inline-start: auto;
-  inset-inline-end: 0;
-  translate: none;
-}
-
-@container timeline (inline-size < 32rem) {
-  .month-track > :nth-child(6n + 1) .month-tooltip {
-    inset-inline-start: 0;
-    translate: none;
-  }
-
-  .month-track > :nth-child(6n) .month-tooltip {
-    inset-inline-start: auto;
-    inset-inline-end: 0;
-    translate: none;
-  }
-}
-
-.month-btn:focus-visible .month-tooltip {
-  display: grid;
-}
-
-@media (hover: hover) {
-  .month-btn:hover .month-tooltip {
-    display: grid;
-  }
-}
-
-.month-track[data-tooltips-hidden] .month-tooltip {
-  display: none;
-}
-
-/* Outer Side Panel Inspector: selection, summary and regions first, secondary blocks collapsed */
+/* Outer Side Panel */
 .side-panel {
   grid-area: sidepanel;
   padding: 0.875rem 1rem;
@@ -1458,38 +1139,6 @@
   color: var(--text-muted);
 }
 
-/* Scope readout: the future slot for area and date inputs */
-.scope-row {
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem 1.25rem;
-  font-size: var(--fs-14);
-}
-
-.scope-item {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-inline-size: 0;
-  min-block-size: 1.75rem;
-}
-
-.scope-item dt {
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.scope-item dd {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-inline-size: 0;
-  font-weight: 700;
-}
-
 .sensor-row {
   display: flex;
   flex-wrap: wrap;
@@ -1500,46 +1149,6 @@
 .sensor-row-label {
   font-size: var(--fs-14);
   font-weight: 600;
-  color: var(--text-muted);
-}
-
-.summary-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-/* Stub data is always marked as such (AGENTS.md) */
-.sample-badge {
-  flex-shrink: 0;
-  padding: 0.05rem 0.5rem;
-  border: 1px dashed var(--text-muted);
-  border-radius: 999px;
-  font-size: var(--fs-12);
-  font-weight: 700;
-  color: var(--text-muted);
-}
-
-.status-line {
-  margin: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  font-size: var(--fs-14);
-  font-weight: 600;
-}
-
-/* Panel text tones per status category: theme tokens with >= 4.5:1, the glyph carries direction */
-.tone-up {
-  color: var(--delta-up);
-}
-
-.tone-down {
-  color: var(--delta-down);
-}
-
-.tone-neutral {
   color: var(--text-muted);
 }
 
@@ -1557,14 +1166,9 @@
   gap: 0.1rem;
 }
 
-.metric-label,
-.metric-unit {
+.metric-label {
   font-size: var(--fs-12);
   color: var(--text-muted);
-}
-
-.metric-unit {
-  margin: 0;
 }
 
 .metric-value {
@@ -1577,45 +1181,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.metric-delta,
-.region-delta {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.2rem;
-  flex-shrink: 0;
-  font-size: var(--fs-14);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.metric-delta.tone-neutral,
-.region-delta.tone-neutral {
-  color: var(--text-primary);
-}
-
-.summary-facts {
-  margin: 0;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.2rem 0.75rem;
-  font-size: var(--fs-14);
-}
-
-.summary-facts div {
-  display: contents;
-}
-
-.summary-facts dt {
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.summary-facts dd {
-  margin: 0;
-}
-
-.satellite-list,
-.region-list {
+.satellite-list {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1623,7 +1189,6 @@
   gap: 0.25rem;
 }
 
-.region-row,
 .satellite-row {
   --tap-bg: var(--surface-bg);
   inline-size: 100%;
@@ -1638,27 +1203,12 @@
   color: var(--text-primary);
 }
 
-.region-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  min-block-size: 2.5rem;
-  padding: 0.3rem 0.75rem;
-  font-weight: 600;
-}
-
-.region-row-name {
-  min-inline-size: 0;
-}
-
 .satellite-row {
   display: grid;
   gap: 0.15rem;
   padding: 0.4rem 0.75rem;
 }
 
-.region-row[aria-pressed='true'],
 .satellite-row[aria-pressed='true'] {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
@@ -1890,11 +1440,8 @@
 /* Hover and press feedback: tint the control's own background toward its text color */
 @media (hover: hover) {
   .secondary-btn:not([aria-disabled='true']):hover,
-  .icon-btn:hover,
   .hud-btn:not([aria-disabled='true']):hover,
   .segmented-option[aria-checked='false']:hover,
-  .month-btn:hover,
-  .region-row:hover,
   .satellite-row:hover,
   .panel-details-summary:hover,
   .sat-marker-badge:hover {
@@ -1902,9 +1449,6 @@
   }
 
   .secondary-btn:not([aria-disabled='true']):hover,
-  .icon-btn:hover,
-  .month-btn:not([aria-pressed='true']):hover,
-  .region-row:not([aria-pressed='true']):hover,
   .satellite-row:not([aria-pressed='true']):hover {
     border-color: var(--text-muted);
   }
@@ -1923,11 +1467,8 @@
 }
 
 .secondary-btn:not([aria-disabled='true']):active,
-.icon-btn:active,
 .hud-btn:not([aria-disabled='true']):active,
 .segmented-option[aria-checked='false']:active,
-.month-btn:active,
-.region-row:active,
 .satellite-row:active,
 .panel-details-summary:active,
 .sat-marker-badge:active {
@@ -1940,11 +1481,8 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .secondary-btn,
-  .icon-btn,
   .hud-btn,
   .segmented-option,
-  .month-btn,
-  .region-row,
   .satellite-row,
   .panel-details-summary,
   .sat-marker-badge,
@@ -1968,15 +1506,9 @@
     --hud-btn-size: 2.5rem;
   }
 
-  .secondary-btn,
-  .icon-btn {
+  .secondary-btn {
     min-inline-size: 2.5rem;
     min-block-size: 2.5rem;
-  }
-
-  .icon-btn {
-    inline-size: 2.5rem;
-    block-size: 2.5rem;
   }
 
   .panel-details-summary,
@@ -2024,42 +1556,10 @@
     border-color: ButtonBorder;
   }
 
-  .satellite-row[aria-pressed='true'],
-  .region-row[aria-pressed='true'] {
+  .satellite-row[aria-pressed='true'] {
     outline: 2px solid Highlight;
   }
 
-  .month-btn[aria-pressed='true'] {
-    border: 2px solid Highlight;
-  }
-
-  /* Backgrounds are dropped in forced colors: draw the bars in system colors instead */
-  .month-bars,
-  .month-today,
-  .timeline-key-typical,
-  .timeline-key-today {
-    forced-color-adjust: none;
-  }
-
-  .timeline-bar {
-    --bar-typical: GrayText;
-    --bar-typical-line: CanvasText;
-  }
-
-  .month-btn,
-  .month-btn[data-status] {
-    --bar-current: CanvasText;
-  }
-
-  .month-today {
-    background-color: CanvasText;
-  }
-
-  .month-tooltip {
-    border: 1px solid CanvasText;
-  }
-
-  .sample-badge,
   .api-dot {
     border-color: CanvasText;
   }

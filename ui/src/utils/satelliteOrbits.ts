@@ -4,7 +4,7 @@ import {
   SATELLITE_COLORS,
   SWATH_COLORS,
 } from '../data/dataPalette.ts'
-import type { SensorFilter } from '../data/stubSeasonalData.ts'
+import type { SensorFilter } from '../data/mapTypes.ts'
 
 export interface OrbitTrackPoint {
   timestampUnixMs: number

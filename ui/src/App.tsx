@@ -6,17 +6,10 @@ import {
   type GeolocationLegendState,
 } from './components/EarthMapStage'
 import { MapLegend } from './components/MapLegend'
-import { MonthStrip } from './components/MonthStrip'
 import type { SatelliteFeedState } from './components/panel/SatelliteDetails'
 import { SidePanel } from './components/SidePanel'
 import { DATA_PALETTE_CSS_VARIABLES } from './data/dataPalette'
-import {
-  evaluateRegionsForMonth,
-  MONTHLY_PROFILE,
-  type ProjectionMode,
-  type RegionalEvaluatedRegime,
-  type SensorFilter,
-} from './data/stubSeasonalData'
+import type { ProjectionMode, SensorFilter } from './data/mapTypes'
 import {
   apiBaseUrl,
   fetchApiStatus,
@@ -58,16 +51,12 @@ const FOCUS_ZOOM = 3.6
 const EMPTY_SATELLITES: readonly SatelliteOrbit[] = []
 
 function App() {
-  const [todayMonth] = useState(() => new Date().getMonth())
   const [initialResolution] = useState(() => resolveInitialUrlHashState())
   const [sensorFilter, setSensorFilter] = useState<SensorFilter>(
     initialResolution.state.sensorFilter,
   )
   const [projectionMode, setProjectionMode] = useState<ProjectionMode>(
     initialResolution.state.projectionMode,
-  )
-  const [selectedMonth, setSelectedMonth] = useState<number>(
-    initialResolution.state.selectedMonth,
   )
   const [showOrbits, setShowOrbits] = useState<boolean>(initialResolution.state.showOrbits)
   const [showClouds, setShowClouds] = useState<boolean>(initialResolution.state.showClouds)
@@ -94,9 +83,6 @@ function App() {
   }))
   const [extraParams, setExtraParams] = useState<Record<string, string> | undefined>(
     initialResolution.state.extraParams,
-  )
-  const [selectedRegionId, setSelectedRegionId] = useState<string | null>(
-    initialResolution.state.selectedRegionId ?? null,
   )
   const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null)
   const [geolocationState, setGeolocationState] = useState<GeolocationLegendState>({
@@ -144,28 +130,24 @@ function App() {
       ...viewport,
       sensorFilter,
       projectionMode,
-      selectedMonth,
       showOrbits,
       showClouds,
       showRain,
       rainBackMinutes,
       showNightLights,
       showFires,
-      ...(selectedRegionId ? { selectedRegionId } : {}),
       extraParams,
     })
   }, [
     viewport,
     sensorFilter,
     projectionMode,
-    selectedMonth,
     showOrbits,
     showClouds,
     showRain,
     rainBackMinutes,
     showNightLights,
     showFires,
-    selectedRegionId,
     extraParams,
   ])
 
@@ -180,14 +162,12 @@ function App() {
       }
       setSensorFilter(parsed.sensorFilter)
       setProjectionMode(parsed.projectionMode)
-      setSelectedMonth(parsed.selectedMonth)
       setShowOrbits(parsed.showOrbits)
       setShowClouds(parsed.showClouds)
       setShowRain(parsed.showRain)
       setRainBackMinutes(parsed.rainBackMinutes)
       setShowNightLights(parsed.showNightLights)
       setShowFires(parsed.showFires)
-      setSelectedRegionId(parsed.selectedRegionId ?? null)
       setExtraParams(parsed.extraParams)
       setViewport({
         zoom: parsed.zoom,
@@ -419,12 +399,6 @@ function App() {
 
   const hasOrbitSnapshots = showOrbits && orbitalState.snapshots.length > 0
 
-  const monthProfile = MONTHLY_PROFILE[selectedMonth]
-  const evaluatedRegions = useMemo(
-    () => evaluateRegionsForMonth(selectedMonth, sensorFilter),
-    [selectedMonth, sensorFilter],
-  )
-
   const handleSelectSatellite = (satellite: LiveSatelliteSnapshot) => {
     // The snapshot can be minutes old (positions only tick while orbits are shown): fly to where
     // the satellite is now.
@@ -441,22 +415,6 @@ function App() {
       animate: true,
       requestId: ++focusRequestSeqRef.current,
     })
-  }
-
-  const handleSelectRegion = (region: RegionalEvaluatedRegime) => {
-    setSelectedRegionId(region.id)
-    setCameraFocusRequest({
-      lng: region.coordinates[0],
-      lat: region.coordinates[1],
-      zoom: region.focusZoom ?? FOCUS_ZOOM,
-      animate: true,
-      requestId: ++focusRequestSeqRef.current,
-    })
-  }
-
-  // A map click selects in place: the user is already looking at the mark, so the camera stays.
-  const handleSelectRegionOnMap = (regionId: string) => {
-    setSelectedRegionId(regionId)
   }
 
   const satelliteFeedState: SatelliteFeedState =
@@ -498,18 +456,10 @@ function App() {
     <div className="app-frame" style={DATA_PALETTE_CSS_VARIABLES}>
       <header className="top-bar wrapper-surface">
         <h1>Earth Fire Calendar</h1>
-        <p className="brand-subtitle">See where fire activity is above or below typical</p>
-        <p className="sample-badge top-bar-badge">
-          {/* Fire spots are live NASA FIRMS detections; the regional index is not, yet */}
-          Sample index
-          <span className="visually-hidden">
-            : the regional fire activity index and the month strip use illustrative values
-          </span>
-        </p>
+        <p className="brand-subtitle">Explore active fires detected by satellites</p>
       </header>
 
       <EarthMapStage
-        selectedMonth={selectedMonth}
         sensorFilter={sensorFilter}
         projectionMode={projectionMode}
         onProjectionModeChange={setProjectionMode}
@@ -544,8 +494,6 @@ function App() {
         }}
         selectedSatelliteId={selectedSatelliteId}
         onSelectSatellite={handleSelectSatellite}
-        selectedRegionId={selectedRegionId}
-        onSelectRegion={handleSelectRegionOnMap}
         onGeolocationStateChange={setGeolocationState}
         onReducedMotionChange={setReducedMotion}
         fireSpotsPayload={fireSpotsPayload}
@@ -555,21 +503,9 @@ function App() {
         onPulsePausedChange={setPulsePaused}
       />
 
-      <MonthStrip
-        selectedMonth={selectedMonth}
-        todayMonth={todayMonth}
-        onSelectMonth={setSelectedMonth}
-      />
-
       <SidePanel
-        selectedMonth={selectedMonth}
-        monthProfile={monthProfile}
         sensorFilter={sensorFilter}
         onSensorFilterChange={setSensorFilter}
-        regions={evaluatedRegions}
-        selectedRegionId={selectedRegionId}
-        onSelectRegion={handleSelectRegion}
-        onClearRegion={() => setSelectedRegionId(null)}
         satelliteFeedState={satelliteFeedState}
         satellites={orbitalState.snapshots}
         selectedSatelliteId={selectedSatelliteId}
@@ -598,7 +534,6 @@ function App() {
       />
 
       <MapLegend
-        selectedMonth={selectedMonth}
         viewport={viewport}
         showSwaths={hasOrbitSnapshots}
         showModisOrbits={hasOrbitSnapshots && sensorFilter !== 'viirs'}

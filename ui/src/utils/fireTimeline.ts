@@ -1,5 +1,5 @@
 import { DEFAULT_SATELLITE_COLOR, SATELLITE_COLORS } from '../data/dataPalette.ts'
-import type { SensorFilter } from '../data/stubSeasonalData.ts'
+import type { SensorFilter } from '../data/mapTypes.ts'
 import type { FireInstrument, FireSpotTooltipInput } from './fireSpots.ts'
 import { computeSubsolarPoint } from './nightLightsShader.ts'
 
