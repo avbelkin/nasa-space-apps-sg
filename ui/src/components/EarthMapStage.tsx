@@ -44,6 +44,7 @@ import {
 } from '../utils/globeHaloLayer'
 import {
   createSpaceStarfieldController,
+  DEFAULT_VERTICAL_FOV_DEG,
   type SpaceStarfieldController,
 } from '../utils/spaceStarfield'
 import {
@@ -930,6 +931,10 @@ export function EarthMapStage({
         latDeg: initialViewportRef.current.lat,
         bearingDeg: 0,
         pitchDeg: 0,
+        rollDeg: 0,
+        fovDeg: DEFAULT_VERTICAL_FOV_DEG,
+        unixMs: Date.now(),
+        isGlobe: latestProjectionRef.current === 'globe',
       },
     })
     starfieldControllerRef.current = controller
@@ -1126,6 +1131,10 @@ export function EarthMapStage({
           latDeg: center.lat,
           bearingDeg: map.getBearing(),
           pitchDeg: map.getPitch(),
+          rollDeg: map.getRoll(),
+          fovDeg: map.getVerticalFieldOfView(),
+          unixMs: Date.now(),
+          isGlobe: latestProjectionRef.current === 'globe',
         })
       })
 

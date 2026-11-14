@@ -12,6 +12,8 @@ export interface GlobeHaloUniformInput {
   centerLatDeg: number
   viewportHeightCssPx: number
   projectionTransition: number
+  subsolarLatRad?: number
+  subsolarLonRad?: number
 }
 
 export interface GlobeHaloUniforms {
@@ -20,6 +22,7 @@ export interface GlobeHaloUniforms {
   globeRadius: number
   viewUnitsPerCssPx: number
   scalesCssPx: [number, number, number]
+  sunDirView: [number, number, number]
   strength: number
 }
 
@@ -121,6 +124,8 @@ export function computeGlobeHaloUniforms(
     centerLatDeg,
     viewportHeightCssPx,
     projectionTransition,
+    subsolarLatRad = 0,
+    subsolarLonRad = 0,
   } = input
 
   if (
@@ -207,16 +212,52 @@ export function computeGlobeHaloUniforms(
   }
 
   const apparentRadiusPx = globeRadius / viewUnitsPerCssPx
-  const outerHaloCssPx = clamp(0.19 * apparentRadiusPx, 30, 108)
-  const innerGrazingCssPx = clamp(0.065 * apparentRadiusPx, 10, 34)
-  const rimCoreCssPx = clamp(0.014 * apparentRadiusPx, 2.0, 5.2)
+  const outerHaloCssPx = clamp(0.28 * apparentRadiusPx, 44, 155)
+  const innerGrazingCssPx = clamp(0.10 * apparentRadiusPx, 14, 48)
+  const scaleHeightCssPx = clamp(0.055 * apparentRadiusPx, 8, 28)
+
+  // MapLibre unit-sphere Solar direction (matching projectTileCoordinatesToSphere):
+  // vec = [cos(lat) * sin(lon), sin(lat), cos(lat) * cos(lon)].
+  const safeSunLat = Number.isFinite(subsolarLatRad) ? subsolarLatRad : 0
+  const safeSunLon = Number.isFinite(subsolarLonRad) ? subsolarLonRad : 0
+  const cosSunLat = Math.cos(safeSunLat)
+  const sxWorld = cosSunLat * Math.sin(safeSunLon)
+  const syWorld = Math.sin(safeSunLat)
+  const szWorld = cosSunLat * Math.cos(safeSunLon)
+
+  // Transform directional vector [sx, sy, sz, 0] -> clip space (mvp cols 0..2) -> view space.
+  const sxClip = mvp[0] * sxWorld + mvp[4] * syWorld + mvp[8] * szWorld
+  const syClip = mvp[1] * sxWorld + mvp[5] * syWorld + mvp[9] * szWorld
+  const szClip = mvp[2] * sxWorld + mvp[6] * syWorld + mvp[10] * szWorld
+  const swClip = mvp[3] * sxWorld + mvp[7] * syWorld + mvp[11] * szWorld
+
+  const svx =
+    invProjMatrix[0] * sxClip +
+    invProjMatrix[4] * syClip +
+    invProjMatrix[8] * szClip +
+    invProjMatrix[12] * swClip
+  const svy =
+    invProjMatrix[1] * sxClip +
+    invProjMatrix[5] * syClip +
+    invProjMatrix[9] * szClip +
+    invProjMatrix[13] * swClip
+  const svz =
+    invProjMatrix[2] * sxClip +
+    invProjMatrix[6] * syClip +
+    invProjMatrix[10] * szClip +
+    invProjMatrix[14] * swClip
+
+  const svLen = Math.hypot(svx, svy, svz)
+  const sunDirView: [number, number, number] =
+    svLen > 1e-9 && Number.isFinite(svLen) ? [svx / svLen, svy / svLen, svz / svLen] : [0, 0, -1]
 
   return {
     invProjMatrix,
     globeCenterView: [gx, gy, gz],
     globeRadius,
     viewUnitsPerCssPx,
-    scalesCssPx: [outerHaloCssPx, innerGrazingCssPx, rimCoreCssPx],
+    scalesCssPx: [outerHaloCssPx, innerGrazingCssPx, scaleHeightCssPx],
+    sunDirView,
     strength,
   }
 }
@@ -244,6 +285,7 @@ uniform vec3 u_globeCenter;
 uniform float u_globeRadius;
 uniform float u_viewUnitsPerCssPx;
 uniform vec3 u_scalesCssPx;
+uniform vec3 u_sunDirView;
 uniform float u_strength;
 uniform int u_pass;
 
@@ -282,56 +324,80 @@ void main() {
     if (occludeAlpha <= 0.001) {
       discard;
     }
-    vec3 nightBase = vec3(0.016, 0.032, 0.078);
+    vec3 nightBase = vec3(0.012, 0.024, 0.058);
     fragColor = vec4(nightBase * occludeAlpha, occludeAlpha);
     return;
   }
 
   float outerScalePx = max(u_scalesCssPx.x, 1.0);
   float innerScalePx = max(u_scalesCssPx.y, 1.0);
-  float rimScalePx = max(u_scalesCssPx.z, 0.5);
+  float scaleHeightPx = max(u_scalesCssPx.z, 2.0);
 
-  if (signedPx > outerScalePx * 1.65 || signedPx < -innerScalePx * 2.2) {
+  vec3 sunDir = normalize(u_sunDirView);
+  float cosForward = dot(rayDir, sunDir);
+  float backlitBoost = smoothstep(-0.18, 0.78, cosForward);
+  float effectiveOuterPx = outerScalePx * mix(0.68, 1.18, backlitBoost);
+
+  if (signedPx > effectiveOuterPx * 1.95 || signedPx < -innerScalePx * 2.4) {
     discard;
   }
 
-  // Tight luminous atmospheric limb line hugging signedPx = 0.
-  float rimOffset = signedPx - 0.15 * rimScalePx;
-  float rimNorm = rimOffset / rimScalePx;
-  float rimCore = exp(-rimNorm * rimNorm * 1.15);
+  vec3 toCam = -centerDir;
+  vec3 radialPlane = rayDir - centerDir * cosAngle;
+  float radialLen = length(radialPlane);
+  vec3 perpDir = radialLen > 1e-6 ? (radialPlane / radialLen) : vec3(0.0, 1.0, 0.0);
 
-  // Inner grazing atmospheric scatter kissing the Earth edge without washing out continents/night lights.
-  float innerDist = max(-signedPx, 0.0);
-  float innerWeight = step(signedPx, 0.75) * exp(-innerDist / (innerScalePx * 0.42)) *
-    (1.0 - smoothstep(innerScalePx * 1.4, innerScalePx * 2.1, innerDist));
+  float camTilt = min(u_globeRadius / centerDist, 0.14);
+  vec3 limbNormal = normalize(toCam * camTilt + perpDir * sqrt(max(1.0 - camTilt * camTilt, 0.0)));
 
-  // Multi-scale outer atmospheric glow extending from the bright cyan limb into deep sapphire space.
-  float outerDist = max(signedPx, 0.0);
-  float outerMask = smoothstep(-0.85, 0.85, signedPx);
-  float outerEnvelope = 1.0 - smoothstep(outerScalePx * 0.95, outerScalePx * 1.6, outerDist);
-  float outerNear = exp(-outerDist / (outerScalePx * 0.13)) * outerMask * outerEnvelope;
-  float outerMid = exp(-outerDist / (outerScalePx * 0.34)) * outerMask * outerEnvelope;
-  float outerFar = exp(-outerDist / (outerScalePx * 0.72)) * outerMask * outerEnvelope;
+  float highAltRelief = clamp(max(signedPx, 0.0) / effectiveOuterPx, 0.0, 1.0) * 0.08;
+  float muSun = dot(limbNormal, sunDir) + highAltRelief;
+  float twilight = smoothstep(-0.26, 0.30, muSun);
+  float eclipseBridge = smoothstep(-0.24, 0.06, muSun) * backlitBoost * 0.24;
+  float sunIntensity = clamp(twilight * mix(0.22, 1.0, backlitBoost) + eclipseBridge, 0.0, 1.12);
+  if (sunIntensity <= 0.002) {
+    discard;
+  }
 
-  vec3 rimColor = vec3(0.84, 0.95, 1.00);
-  vec3 innerColor = vec3(0.32, 0.76, 1.00);
-  vec3 nearColor = vec3(0.24, 0.74, 0.98);
-  vec3 midColor = vec3(0.11, 0.46, 0.92);
-  vec3 farColor = vec3(0.05, 0.17, 0.54);
+  // Smooth C^inf barometric scale-height transition across the horizon (no hard rim edge or Mach band).
+  float softAltPx = 0.5 * (signedPx + sqrt(signedPx * signedPx + 9.0));
+  float innerDepthPx = 0.5 * (-signedPx + sqrt(signedPx * signedPx + 9.0));
+  float innerEnvelope = 1.0 - smoothstep(innerScalePx * 1.35, innerScalePx * 2.35, innerDepthPx);
+  float outerEnvelope = 1.0 - smoothstep(effectiveOuterPx * 0.88, effectiveOuterPx * 1.90, softAltPx);
 
-  vec3 premulRgb =
-    rimColor * (rimCore * 0.78) +
-    innerColor * (innerWeight * 0.25) +
-    nearColor * (outerNear * 0.46) +
-    midColor * (outerMid * 0.26) +
-    farColor * (outerFar * 0.12);
+  float tauLow =
+    exp(-softAltPx / (scaleHeightPx * 0.52)) *
+    exp(-innerDepthPx / (scaleHeightPx * 0.65)) *
+    innerEnvelope *
+    outerEnvelope *
+    (0.20 + 0.34 * backlitBoost) *
+    sunIntensity;
 
-  float rawAlpha =
-    rimCore * 0.80 +
-    innerWeight * 0.28 +
-    outerNear * 0.49 +
-    outerMid * 0.30 +
-    outerFar * 0.15;
+  float tauMid =
+    exp(-softAltPx / (scaleHeightPx * 1.55)) *
+    exp(-innerDepthPx / (innerScalePx * 0.62)) *
+    innerEnvelope *
+    outerEnvelope *
+    (0.26 + 0.14 * backlitBoost) *
+    sunIntensity;
+
+  float tauHigh =
+    exp(-softAltPx / (effectiveOuterPx * 0.46)) *
+    exp(-innerDepthPx / (innerScalePx * 1.05)) *
+    innerEnvelope *
+    outerEnvelope *
+    (0.14 + 0.12 * backlitBoost) *
+    sunIntensity;
+
+  float tauTotal = tauLow + tauMid + tauHigh;
+  float rawAlpha = 1.0 - exp(-tauTotal);
+
+  vec3 lowColor = mix(vec3(0.32, 0.72, 0.98), vec3(0.76, 0.93, 1.00), backlitBoost);
+  vec3 midColor = vec3(0.15, 0.54, 0.96);
+  vec3 highColor = vec3(0.04, 0.18, 0.58);
+  vec3 scatterColor =
+    (lowColor * tauLow + midColor * tauMid + highColor * tauHigh) / max(tauTotal, 1e-5);
+  vec3 premulRgb = scatterColor * rawAlpha;
 
   float dither = interleavedGradientNoise(gl_FragCoord.xy) / 255.0;
   float finalAlpha = clamp((rawAlpha + dither * 0.6) * u_strength, 0.0, 1.0);

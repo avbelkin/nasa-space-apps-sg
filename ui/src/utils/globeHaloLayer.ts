@@ -4,8 +4,17 @@ import {
   buildGlobeHaloVertexShaderSource,
   computeGlobeHaloUniforms,
 } from './globeHaloShader.ts'
+import {
+  computeSubsolarPoint,
+  NIGHT_TERMINATOR_REFRESH_MS,
+} from './nightLightsShader.ts'
 
 export const GLOBE_HALO_LAYER_ID = 'globe-halo-layer'
+const SUBSOLAR_CACHE_MS = 10_000
+
+export interface CreateGlobeHaloLayerOptions {
+  nowProvider?: () => number
+}
 
 interface CompiledHaloProgram {
   program: WebGLProgram
@@ -16,6 +25,7 @@ interface CompiledHaloProgram {
   uGlobeRadius: WebGLUniformLocation | null
   uViewUnitsPerCssPx: WebGLUniformLocation | null
   uScalesCssPx: WebGLUniformLocation | null
+  uSunDirView: WebGLUniformLocation | null
   uStrength: WebGLUniformLocation | null
   uPass: WebGLUniformLocation | null
 }
@@ -80,6 +90,7 @@ function createProgramEntry(gl: WebGL2RenderingContext): CompiledHaloProgram {
     uGlobeRadius: gl.getUniformLocation(program, 'u_globeRadius'),
     uViewUnitsPerCssPx: gl.getUniformLocation(program, 'u_viewUnitsPerCssPx'),
     uScalesCssPx: gl.getUniformLocation(program, 'u_scalesCssPx'),
+    uSunDirView: gl.getUniformLocation(program, 'u_sunDirView'),
     uStrength: gl.getUniformLocation(program, 'u_strength'),
     uPass: gl.getUniformLocation(program, 'u_pass'),
   }
@@ -109,15 +120,29 @@ function createQuadBuffers(gl: WebGL2RenderingContext): HaloQuadBuffers {
  * Creates a MapLibre WebGL2 custom layer rendering an unloaded-tile silhouette occluder
  * and a luminous cyan-to-sapphire atmospheric limb halo around the 3D globe.
  */
-export function createGlobeHaloLayer(): GlobeHaloLayerController {
+export function createGlobeHaloLayer({
+  nowProvider = Date.now,
+}: CreateGlobeHaloLayerOptions = {}): GlobeHaloLayerController {
   let mapRef: MapLibreMap | null = null
   let glRef: WebGL2RenderingContext | null = null
   let visible = true
   let contextLost = false
   let disposed = false
+  let terminatorTimerId: number | null = null
+  let cachedSubsolar = computeSubsolarPoint(nowProvider())
+  let cachedSubsolarMs = nowProvider()
 
   let programEntry: CompiledHaloProgram | null = null
   let quadBuffers: HaloQuadBuffers | null = null
+
+  const getCurrentSubsolarPoint = () => {
+    const now = nowProvider()
+    if (now - cachedSubsolarMs >= SUBSOLAR_CACHE_MS || now < cachedSubsolarMs) {
+      cachedSubsolar = computeSubsolarPoint(now)
+      cachedSubsolarMs = now
+    }
+    return cachedSubsolar
+  }
 
   const clearGpuHandles = (deleteLiveObjects: boolean) => {
     const gl = glRef
@@ -160,10 +185,24 @@ export function createGlobeHaloLayer(): GlobeHaloLayerController {
       const canvas = map.getCanvas()
       canvas.addEventListener('webglcontextlost', onContextLost)
       canvas.addEventListener('webglcontextrestored', onContextRestored)
+
+      if (typeof window !== 'undefined' && terminatorTimerId === null) {
+        terminatorTimerId = window.setInterval(() => {
+          if (!disposed) {
+            cachedSubsolar = computeSubsolarPoint(nowProvider())
+            cachedSubsolarMs = nowProvider()
+            mapRef?.triggerRepaint()
+          }
+        }, NIGHT_TERMINATOR_REFRESH_MS)
+      }
     },
 
     onRemove(map) {
       disposed = true
+      if (terminatorTimerId !== null && typeof window !== 'undefined') {
+        window.clearInterval(terminatorTimerId)
+        terminatorTimerId = null
+      }
       const canvas = map.getCanvas()
       canvas.removeEventListener('webglcontextlost', onContextLost)
       canvas.removeEventListener('webglcontextrestored', onContextRestored)
@@ -185,6 +224,8 @@ export function createGlobeHaloLayer(): GlobeHaloLayerController {
       const viewportHeightCssPx =
         mapRef.getCanvas().clientHeight || gl.drawingBufferHeight / dpr
 
+      const subsolar = getCurrentSubsolarPoint()
+
       const uniforms = computeGlobeHaloUniforms({
         modelViewProjectionMatrix: options.modelViewProjectionMatrix,
         projectionMatrix: options.projectionMatrix,
@@ -192,6 +233,8 @@ export function createGlobeHaloLayer(): GlobeHaloLayerController {
         centerLatDeg: mapRef.getCenter().lat,
         viewportHeightCssPx,
         projectionTransition,
+        subsolarLatRad: subsolar.latRad,
+        subsolarLonRad: subsolar.lonRad,
       })
 
       if (!uniforms) {
@@ -225,6 +268,9 @@ export function createGlobeHaloLayer(): GlobeHaloLayerController {
       }
       if (programEntry.uScalesCssPx !== null) {
         gl.uniform3fv(programEntry.uScalesCssPx, uniforms.scalesCssPx)
+      }
+      if (programEntry.uSunDirView !== null) {
+        gl.uniform3fv(programEntry.uSunDirView, uniforms.sunDirView)
       }
       if (programEntry.uStrength !== null) {
         gl.uniform1f(programEntry.uStrength, uniforms.strength)

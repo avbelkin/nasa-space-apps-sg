@@ -1,6 +1,11 @@
-export type StarTier = 'pinprick' | 'medium' | 'hero'
+import {
+  BRIGHT_STAR_CATALOG_J2000,
+  bvToPaletteIndex,
+  type StarPaletteIndex,
+} from '../data/brightStarCatalog.ts'
 
-export type StarPaletteIndex = 0 | 1 | 2 | 3
+export type StarTier = 'pinprick' | 'medium' | 'hero'
+export type { StarPaletteIndex }
 
 export interface StarCatalogEntry {
   x: number
@@ -13,11 +18,24 @@ export interface StarCatalogEntry {
   paletteIndex: StarPaletteIndex
 }
 
+export interface MilkyWayCloudNode {
+  x: number
+  y: number
+  z: number
+  angularRadiusRad: number
+  alpha: number
+  tintIndex: 0 | 1
+}
+
 export interface CelestialCameraPose {
   lngDeg: number
   latDeg: number
   bearingDeg: number
   pitchDeg: number
+  rollDeg?: number
+  fovDeg?: number
+  unixMs?: number
+  isGlobe?: boolean
 }
 
 export interface Vec3Tuple {
@@ -55,59 +73,64 @@ interface StarPaletteSpec {
 }
 
 const DEG_TO_RAD = Math.PI / 180
-const DEFAULT_STAR_COUNT = 1400
+const MS_PER_DAY = 86_400_000
+const J2000_UNIX_MS = 946_728_000_000
+const DEFAULT_STAR_COUNT = 8500
 const DEFAULT_STAR_SEED = 0x51a7f13d
-const MIN_DEPTH_THRESHOLD = 0.42
-const SPRITE_CELL_PX = 64
-const CULL_MARGIN_PX = 36
+const DEFAULT_MILKY_WAY_COUNT = 165
+const DEFAULT_MILKY_WAY_SEED = 0x2c91b4e7
+const SPRITE_CELL_PX = 96
+const MILKY_WAY_CELL_PX = 96
+const CULL_MARGIN_PX = 40
+const SIDEREAL_BUCKET_MS = 15_000
+const PINPRICK_ALPHA_BANDS: readonly number[] = [0.22, 0.44, 0.68]
 
-const STATIC_REDUCED_MOTION_POSE: CelestialCameraPose = {
+// MapLibre default vertical FOV: 2 * atan(1 / 3) rad ~= 36.87 deg.
+export const DEFAULT_VERTICAL_FOV_DEG = (2 * Math.atan(1 / 3)) / DEG_TO_RAD
+
+const STATIC_REDUCED_MOTION_POSE: Required<CelestialCameraPose> = {
   lngDeg: 15,
   latDeg: 15,
   bearingDeg: 0,
   pitchDeg: 0,
+  rollDeg: 0,
+  fovDeg: DEFAULT_VERTICAL_FOV_DEG,
+  unixMs: J2000_UNIX_MS,
+  isGlobe: true,
 }
 
+// 5 spectral color palettes from hot O/B blue-white to cool K/M warm amber.
 const STAR_PALETTES: readonly StarPaletteSpec[] = [
-  // 0: Ice-blue sapphire
+  // 0: O/B hot sapphire
   {
-    core: '#f0f8ff',
-    innerBloom: 'rgba(125, 211, 252, 0.85)',
-    outerBloom: 'rgba(37, 99, 235, 0.38)',
+    core: '#f4f9ff',
+    innerBloom: 'rgba(147, 210, 255, 0.72)',
+    outerBloom: 'rgba(56, 132, 248, 0.24)',
   },
-  // 1: Cool diamond blue-white
-  {
-    core: '#ffffff',
-    innerBloom: 'rgba(186, 230, 253, 0.82)',
-    outerBloom: 'rgba(59, 130, 246, 0.34)',
-  },
-  // 2: Pure crisp starlight
+  // 1: B/A blue-white
   {
     core: '#ffffff',
-    innerBloom: 'rgba(224, 242, 254, 0.78)',
-    outerBloom: 'rgba(96, 165, 250, 0.28)',
+    innerBloom: 'rgba(191, 226, 255, 0.68)',
+    outerBloom: 'rgba(84, 152, 252, 0.22)',
   },
-  // 3: Warm faint ivory
+  // 2: A/F pure white
   {
-    core: '#fffbeb',
-    innerBloom: 'rgba(254, 243, 199, 0.72)',
-    outerBloom: 'rgba(147, 197, 253, 0.22)',
+    core: '#ffffff',
+    innerBloom: 'rgba(226, 240, 255, 0.64)',
+    outerBloom: 'rgba(120, 174, 252, 0.18)',
   },
-]
-
-const CURATED_HERO_DIRECTIONS: readonly {
-  lngDeg: number
-  latDeg: number
-  glowRadiusPx: number
-  alpha: number
-  paletteIndex: StarPaletteIndex
-}[] = [
-  { lngDeg: -12, latDeg: 38, glowRadiusPx: 19, alpha: 0.98, paletteIndex: 0 },
-  { lngDeg: 41, latDeg: 35, glowRadiusPx: 15, alpha: 0.94, paletteIndex: 1 },
-  { lngDeg: 47, latDeg: -11, glowRadiusPx: 14, alpha: 0.9, paletteIndex: 0 },
-  { lngDeg: -74, latDeg: 24, glowRadiusPx: 17, alpha: 0.95, paletteIndex: 1 },
-  { lngDeg: 168, latDeg: 33, glowRadiusPx: 18, alpha: 0.96, paletteIndex: 0 },
-  { lngDeg: -136, latDeg: -22, glowRadiusPx: 16, alpha: 0.92, paletteIndex: 2 },
+  // 3: F/G solar ivory
+  {
+    core: '#fffdf2',
+    innerBloom: 'rgba(254, 243, 210, 0.62)',
+    outerBloom: 'rgba(218, 200, 168, 0.16)',
+  },
+  // 4: K/M warm amber
+  {
+    core: '#fff3db',
+    innerBloom: 'rgba(255, 210, 152, 0.64)',
+    outerBloom: 'rgba(244, 154, 88, 0.19)',
+  },
 ]
 
 function mulberry32(seed: number): () => number {
@@ -120,21 +143,19 @@ function mulberry32(seed: number): () => number {
   }
 }
 
-function sphericalDegToUnitVec(lngDeg: number, latDeg: number): Vec3Tuple {
-  const lng = lngDeg * DEG_TO_RAD
-  const lat = latDeg * DEG_TO_RAD
-  const cosLat = Math.cos(lat)
-  return {
-    x: cosLat * Math.sin(lng),
-    y: Math.sin(lat),
-    z: cosLat * Math.cos(lng),
-  }
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
+function normalizeDeg(deg: number): number {
+  const mod = deg % 360
+  return mod < 0 ? mod + 360 : mod
 }
 
 function normalizeTuple(v: Vec3Tuple): Vec3Tuple {
   const len = Math.hypot(v.x, v.y, v.z)
   if (len <= 1e-12) {
-    return { x: 0, y: 0, z: -1 }
+    return { x: 0, y: 0, z: 1 }
   }
   return { x: v.x / len, y: v.y / len, z: v.z / len }
 }
@@ -152,173 +173,378 @@ function dotTuple(a: Vec3Tuple, b: { x: number; y: number; z: number }): number 
 }
 
 /**
- * Generates a deterministic 3D celestial star catalog uniformly distributed over
- * the unit sphere, plus curated bright sapphire-white hero stars across hemispheres.
+ * Computes Greenwich Mean Sidereal Time (GMST) in radians for a Unix timestamp,
+ * matching the astronomical epoch/rate used in `nightLightsShader.ts`.
+ */
+export function computeGmstRad(unixMs: number): number {
+  const safeMs = Number.isFinite(unixMs) ? unixMs : J2000_UNIX_MS
+  const d = (safeMs - J2000_UNIX_MS) / MS_PER_DAY
+  return normalizeDeg(280.46061837 + 360.98564736629 * d) * DEG_TO_RAD
+}
+
+/**
+ * Converts J2000 Equatorial right ascension & declination (degrees) to an
+ * ECI J2000 unit vector: +X = Vernal Equinox (RA 0), +Y = RA 90E, +Z = NCP.
+ */
+export function equatorialDegToUnitVec(raDeg: number, decDeg: number): Vec3Tuple {
+  const ra = raDeg * DEG_TO_RAD
+  const dec = decDeg * DEG_TO_RAD
+  const cosDec = Math.cos(dec)
+  return {
+    x: cosDec * Math.cos(ra),
+    y: cosDec * Math.sin(ra),
+    z: Math.sin(dec),
+  }
+}
+
+// Orthonormal IAU J2000 Galactic -> Equatorial basis.
+// North Galactic Pole: RA = 192.85948 deg, Dec = +27.12825 deg.
+// Galactic Center: RA = 266.40500 deg, Dec = -28.93617 deg.
+const GALACTIC_Z = equatorialDegToUnitVec(192.85948, 27.12825)
+const GALACTIC_CENTER_RAW = equatorialDegToUnitVec(266.405, -28.93617)
+const GALACTIC_Z_DOT_X = dotTuple(GALACTIC_Z, GALACTIC_CENTER_RAW)
+const GALACTIC_X = normalizeTuple({
+  x: GALACTIC_CENTER_RAW.x - GALACTIC_Z_DOT_X * GALACTIC_Z.x,
+  y: GALACTIC_CENTER_RAW.y - GALACTIC_Z_DOT_X * GALACTIC_Z.y,
+  z: GALACTIC_CENTER_RAW.z - GALACTIC_Z_DOT_X * GALACTIC_Z.z,
+})
+const GALACTIC_Y = normalizeTuple(crossTuple(GALACTIC_Z, GALACTIC_X))
+
+/**
+ * Converts J2000 Galactic longitude l and latitude b (degrees) to a J2000 Equatorial unit vector.
+ */
+export function galacticDegToEquatorialUnitVec(lDeg: number, bDeg: number): Vec3Tuple {
+  const l = lDeg * DEG_TO_RAD
+  const b = bDeg * DEG_TO_RAD
+  const cosB = Math.cos(b)
+  const gx = cosB * Math.cos(l)
+  const gy = cosB * Math.sin(l)
+  const gz = Math.sin(b)
+  return normalizeTuple({
+    x: GALACTIC_X.x * gx + GALACTIC_Y.x * gy + GALACTIC_Z.x * gz,
+    y: GALACTIC_X.y * gx + GALACTIC_Y.y * gy + GALACTIC_Z.y * gz,
+    z: GALACTIC_X.z * gx + GALACTIC_Y.z * gy + GALACTIC_Z.z * gz,
+  })
+}
+
+function sampleGaussian(rng: () => number): number {
+  const u1 = Math.max(1e-7, rng())
+  const u2 = rng()
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
+}
+
+function computeFocalPx(widthCss: number, heightCss: number, fovDeg: number): number {
+  const clampedFov = clamp(Number.isFinite(fovDeg) ? fovDeg : DEFAULT_VERTICAL_FOV_DEG, 10, 100)
+  const tanHalfFov = Math.tan(clampedFov * 0.5 * DEG_TO_RAD)
+  const refHeight = heightCss > 0 ? heightCss : widthCss
+  return (refHeight * 0.5) / Math.max(tanHalfFov, 1e-4)
+}
+
+/**
+ * Generates a realistic 3D astronomical star catalog in J2000 Equatorial space:
+ * - All ~215+ bright real J2000 catalog stars (Hipparcos / Yale Bright Star V <= 3.65)
+ * - Pogson-distributed fainter stars partitioned between Galactic disk (with bulge & Great Rift)
+ *   and isotropic celestial sphere halo stars.
  */
 export function createStarCatalog(
   seed: number = DEFAULT_STAR_SEED,
   count: number = DEFAULT_STAR_COUNT,
 ): readonly StarCatalogEntry[] {
-  const safeCount = Math.max(0, Math.floor(count))
-  const rng = mulberry32(seed)
   const stars: StarCatalogEntry[] = []
 
-  for (let i = 0; i < safeCount; i++) {
-    // Uniform area sampling on S^2: z = 2u - 1, phi = 2pi * v.
-    const z = rng() * 2 - 1
-    const phi = rng() * Math.PI * 2
-    const rXy = Math.sqrt(Math.max(0, 1 - z * z))
-    const x = rXy * Math.sin(phi)
-    const y = z
-    const zCoord = rXy * Math.cos(phi)
-
-    const tierRoll = rng()
-    const paletteRoll = rng()
-    const paletteIndex: StarPaletteIndex =
-      paletteRoll < 0.38 ? 0 : paletteRoll < 0.72 ? 1 : paletteRoll < 0.92 ? 2 : 3
-
-    if (tierRoll < 0.82) {
+  // 1. Real bright navigation & constellation stars in J2000 equatorial coordinates
+  for (const [raDeg, decDeg, vMag, bv] of BRIGHT_STAR_CATALOG_J2000) {
+    const dir = equatorialDegToUnitVec(raDeg, decDeg)
+    const paletteIndex = bvToPaletteIndex(bv)
+    if (vMag <= 1.35) {
       stars.push({
-        x,
-        y,
-        z: zCoord,
-        tier: 'pinprick',
-        radiusPx: 0.45 + rng() * 0.45,
-        glowRadiusPx: 0,
-        alpha: 0.25 + rng() * 0.65,
-        paletteIndex,
-      })
-    } else if (tierRoll < 0.97) {
-      stars.push({
-        x,
-        y,
-        z: zCoord,
-        tier: 'medium',
-        radiusPx: 0.9 + rng() * 0.5,
-        glowRadiusPx: 3.5 + rng() * 3.0,
-        alpha: 0.55 + rng() * 0.37,
+        x: dir.x,
+        y: dir.y,
+        z: dir.z,
+        tier: 'hero',
+        radiusPx: clamp(2.1 - 0.35 * vMag, 1.4, 2.5),
+        glowRadiusPx: clamp(10.5 - 3.2 * vMag, 9.5, 16.5),
+        alpha: clamp(0.92 - 0.06 * vMag, 0.80, 0.99),
         paletteIndex,
       })
     } else {
       stars.push({
-        x,
-        y,
-        z: zCoord,
-        tier: 'hero',
-        radiusPx: 1.5 + rng() * 0.7,
-        glowRadiusPx: 10 + rng() * 9.5,
-        alpha: 0.78 + rng() * 0.2,
-        paletteIndex: paletteIndex === 3 ? 0 : paletteIndex,
+        x: dir.x,
+        y: dir.y,
+        z: dir.z,
+        tier: 'medium',
+        radiusPx: clamp(1.45 - 0.14 * (vMag - 1.35), 0.9, 1.5),
+        glowRadiusPx: clamp(9.8 - 1.9 * vMag, 3.0, 8.2),
+        alpha: clamp(0.95 - 0.11 * vMag, 0.55, 0.90),
+        paletteIndex,
       })
     }
   }
 
-  for (const curated of CURATED_HERO_DIRECTIONS) {
-    const dir = sphericalDegToUnitVec(curated.lngDeg, curated.latDeg)
-    stars.push({
-      x: dir.x,
-      y: dir.y,
-      z: dir.z,
-      tier: 'hero',
-      radiusPx: 1.9,
-      glowRadiusPx: curated.glowRadiusPx,
-      alpha: curated.alpha,
-      paletteIndex: curated.paletteIndex,
-    })
+  // 2. Deterministic Galactic disk (58%) + isotropic halo (42%) background stars
+  const safeCount = Math.max(0, Math.floor(count))
+  const rng = mulberry32(seed)
+
+  let generated = 0
+  let safetyCounter = 0
+  const maxAttempts = safeCount * 3 + 64
+
+  while (generated < safeCount && safetyCounter < maxAttempts) {
+    safetyCounter += 1
+    let dir: Vec3Tuple
+    let inDisk = false
+    let diskBoost = 0
+
+    if (rng() < 0.58) {
+      inDisk = true
+      // Prefer Galactic center bulge & Carina/Cygnus spiral arms cleanly
+      const bulgePick = rng()
+      let lDeg: number
+      if (bulgePick < 0.32) {
+        lDeg = normalizeDeg(sampleGaussian(rng) * 34)
+      } else if (bulgePick < 0.48) {
+        lDeg = normalizeDeg(78 + sampleGaussian(rng) * 26)
+      } else if (bulgePick < 0.64) {
+        lDeg = normalizeDeg(286 + sampleGaussian(rng) * 28)
+      } else {
+        lDeg = rng() * 360
+      }
+
+      const scaleHeightDeg = rng() < 0.72 ? 6.2 : 15.0
+      const bDeg = clamp(sampleGaussian(rng) * scaleHeightDeg, -88, 88)
+
+      // Subtle Great Rift dust absorption along l = -20..75 deg near |b| < 2.6 deg
+      const wrappedL = ((lDeg + 180) % 360) - 180
+      if (wrappedL > -18 && wrappedL < 78 && Math.abs(bDeg) < 2.6 && rng() < 0.58) {
+        continue
+      }
+
+      dir = galacticDegToEquatorialUnitVec(lDeg, bDeg)
+      diskBoost = Math.abs(bDeg) < 10 ? 0.35 : 0
+    } else {
+      const z = rng() * 2 - 1
+      const phi = rng() * Math.PI * 2
+      const rXy = Math.sqrt(Math.max(0, 1 - z * z))
+      dir = {
+        x: rXy * Math.cos(phi),
+        y: rXy * Math.sin(phi),
+        z,
+      }
+    }
+
+    // Pogson magnitude distribution: N(m) ~ 10^(0.42 * m) between V 3.65 and 6.6
+    const uMag = rng()
+    const vMag = clamp(3.65 + 2.95 * Math.pow(uMag, 0.36), 3.65, 6.6)
+    const paletteRoll = rng()
+    let paletteIndex: StarPaletteIndex
+    if (inDisk) {
+      paletteIndex =
+        paletteRoll < 0.28
+          ? 0
+          : paletteRoll < 0.58
+            ? 1
+            : paletteRoll < 0.80
+              ? 2
+              : paletteRoll < 0.92
+                ? 3
+                : 4
+    } else {
+      paletteIndex =
+        paletteRoll < 0.18
+          ? 0
+          : paletteRoll < 0.44
+            ? 1
+            : paletteRoll < 0.70
+              ? 2
+              : paletteRoll < 0.88
+                ? 3
+                : 4
+    }
+
+    if (vMag <= 4.15) {
+      stars.push({
+        x: dir.x,
+        y: dir.y,
+        z: dir.z,
+        tier: 'medium',
+        radiusPx: clamp(1.05 - (vMag - 3.65) * 0.25, 0.85, 1.05),
+        glowRadiusPx: clamp(3.6 - (vMag - 3.65) * 1.4, 2.8, 3.6),
+        alpha: clamp(0.68 - (vMag - 3.65) * 0.22 + diskBoost * 0.12, 0.45, 0.78),
+        paletteIndex,
+      })
+    } else {
+      const normMag = (vMag - 4.15) / 2.45
+      stars.push({
+        x: dir.x,
+        y: dir.y,
+        z: dir.z,
+        tier: 'pinprick',
+        radiusPx: clamp(0.95 - normMag * 0.56, 0.36, 1.0),
+        glowRadiusPx: 0,
+        alpha: clamp(0.76 - normMag * 0.60, 0.15, 0.76),
+        paletteIndex,
+      })
+    }
+    generated += 1
   }
 
   return stars
 }
 
 /**
- * Builds an orthonormal right-handed celestial basis from the map camera pose.
- * Uses exact 1.0x longitude and latitude angles so +/-180 deg wraps seamlessly.
+ * Generates diffuse 3D Milky Way star-cloud nodes concentrated along the Galactic Plane
+ * in J2000 Equatorial coordinates for subtle deep-space nebular depth.
+ */
+export function createMilkyWayCatalog(
+  seed: number = DEFAULT_MILKY_WAY_SEED,
+  count: number = DEFAULT_MILKY_WAY_COUNT,
+): readonly MilkyWayCloudNode[] {
+  const rng = mulberry32(seed)
+  const nodes: MilkyWayCloudNode[] = []
+  const safeCount = Math.max(0, Math.floor(count))
+
+  for (let i = 0; i < safeCount; i++) {
+    const regionRoll = rng()
+    let lDeg: number
+    let warmBulge = false
+    if (regionRoll < 0.38) {
+      // Sagittarius / Scorpius Galactic Bulge
+      lDeg = normalizeDeg(sampleGaussian(rng) * 26)
+      warmBulge = rng() < 0.68
+    } else if (regionRoll < 0.60) {
+      // Carina / Crux cloud arm
+      lDeg = normalizeDeg(290 + sampleGaussian(rng) * 22)
+    } else if (regionRoll < 0.80) {
+      // Cygnus cloud arm
+      lDeg = normalizeDeg(78 + sampleGaussian(rng) * 22)
+    } else {
+      lDeg = rng() * 360
+    }
+
+    const bDeg = clamp(sampleGaussian(rng) * 5.2, -22, 22)
+    // Skip central Great Rift notch so dark dust rift preserves contrast
+    const wrappedL = ((lDeg + 180) % 360) - 180
+    const riftFactor =
+      wrappedL > -14 && wrappedL < 74 && Math.abs(bDeg) < 2.2 ? 0.35 : 1.0
+
+    const dir = galacticDegToEquatorialUnitVec(lDeg, bDeg)
+    nodes.push({
+      x: dir.x,
+      y: dir.y,
+      z: dir.z,
+      angularRadiusRad: (4.5 + rng() * 7.5) * DEG_TO_RAD,
+      alpha: clamp((0.014 + rng() * 0.024) * riftFactor, 0.008, 0.038),
+      tintIndex: warmBulge ? 1 : 0,
+    })
+  }
+
+  return nodes
+}
+
+function rotateXVec(v: Vec3Tuple, rad: number): Vec3Tuple {
+  const c = Math.cos(rad)
+  const s = Math.sin(rad)
+  return {
+    x: v.x,
+    y: c * v.y - s * v.z,
+    z: s * v.y + c * v.z,
+  }
+}
+
+function rotateYVec(v: Vec3Tuple, rad: number): Vec3Tuple {
+  const c = Math.cos(rad)
+  const s = Math.sin(rad)
+  return {
+    x: c * v.x + s * v.z,
+    y: v.y,
+    z: -s * v.x + c * v.z,
+  }
+}
+
+function rotateZVec(v: Vec3Tuple, rad: number): Vec3Tuple {
+  const c = Math.cos(rad)
+  const s = Math.sin(rad)
+  return {
+    x: c * v.x - s * v.y,
+    y: s * v.x + c * v.y,
+    z: v.z,
+  }
+}
+
+/**
+ * Builds an orthonormal J2000 Equatorial camera basis matching MapLibre's exact
+ * 5-step globe camera rotation (`RotZ(roll) * RotX(-pitch) * RotZ(bearing) * RotX(+lat) * RotY(-lng)`)
+ * and Greenwich Mean Sidereal Time (GMST) Earth rotation.
  */
 export function computeCelestialCameraBasis(
   pose: CelestialCameraPose,
 ): CelestialCameraBasis {
   const lngRad = (Number.isFinite(pose.lngDeg) ? pose.lngDeg : 0) * DEG_TO_RAD
-  const latRad = (Number.isFinite(pose.latDeg) ? pose.latDeg : 0) * DEG_TO_RAD
+  const latRad = clamp(Number.isFinite(pose.latDeg) ? pose.latDeg : 0, -90, 90) * DEG_TO_RAD
   const bearingRad = (Number.isFinite(pose.bearingDeg) ? pose.bearingDeg : 0) * DEG_TO_RAD
-  const pitchRad =
-    Math.max(0, Math.min(85, Number.isFinite(pose.pitchDeg) ? pose.pitchDeg : 0)) *
-    0.65 *
-    DEG_TO_RAD
+  const pitchRad = clamp(Number.isFinite(pose.pitchDeg) ? pose.pitchDeg : 0, 0, 85) * DEG_TO_RAD
+  const rollRad = (pose.rollDeg !== undefined && Number.isFinite(pose.rollDeg) ? pose.rollDeg : 0) * DEG_TO_RAD
+  const gmstRad = computeGmstRad(pose.unixMs ?? J2000_UNIX_MS)
+  const cosG = Math.cos(gmstRad)
+  const sinG = Math.sin(gmstRad)
 
-  const cosLat = Math.cos(latRad)
-  const forward0: Vec3Tuple = {
-    x: -cosLat * Math.sin(lngRad),
-    y: -Math.sin(latRad),
-    z: -cosLat * Math.cos(lngRad),
-  }
-  const right0: Vec3Tuple = {
-    x: Math.cos(lngRad),
-    y: 0,
-    z: -Math.sin(lngRad),
-  }
-  const up0 = normalizeTuple(crossTuple(right0, forward0))
-
-  const cosB = Math.cos(bearingRad)
-  const sinB = Math.sin(bearingRad)
-  const rightBearing: Vec3Tuple = {
-    x: right0.x * cosB - up0.x * sinB,
-    y: right0.y * cosB - up0.y * sinB,
-    z: right0.z * cosB - up0.z * sinB,
-  }
-  const upBearing: Vec3Tuple = {
-    x: right0.x * sinB + up0.x * cosB,
-    y: right0.y * sinB + up0.y * cosB,
-    z: right0.z * sinB + up0.z * cosB,
+  // Inverse MapLibre camera rotation: View -> MapLibre unit-globe space:
+  // RotY(+lng) * RotX(-lat) * RotZ(-bearing) * RotX(+pitch) * RotZ(-roll),
+  // followed by MapLibre globe -> J2000 Equatorial ECI via GMST:
+  // eqX = mapZ * cosG - mapX * sinG, eqY = mapX * cosG + mapZ * sinG, eqZ = mapY.
+  const viewAxisToEquatorial = (viewVec: Vec3Tuple): Vec3Tuple => {
+    let v = rotateZVec(viewVec, -rollRad)
+    v = rotateXVec(v, pitchRad)
+    v = rotateZVec(v, -bearingRad)
+    v = rotateXVec(v, -latRad)
+    v = rotateYVec(v, lngRad)
+    return normalizeTuple({
+      x: v.z * cosG - v.x * sinG,
+      y: v.x * cosG + v.z * sinG,
+      z: v.y,
+    })
   }
 
-  const cosP = Math.cos(pitchRad)
-  const sinP = Math.sin(pitchRad)
-  const forward = normalizeTuple({
-    x: forward0.x * cosP + upBearing.x * sinP,
-    y: forward0.y * cosP + upBearing.y * sinP,
-    z: forward0.z * cosP + upBearing.z * sinP,
-  })
-  const up = normalizeTuple({
-    x: upBearing.x * cosP - forward0.x * sinP,
-    y: upBearing.y * cosP - forward0.y * sinP,
-    z: upBearing.z * cosP - forward0.z * sinP,
-  })
+  const right = viewAxisToEquatorial({ x: 1, y: 0, z: 0 })
+  const up = viewAxisToEquatorial({ x: 0, y: 1, z: 0 })
+  const forward = viewAxisToEquatorial({ x: 0, y: 0, z: -1 })
 
-  return {
-    forward,
-    right: normalizeTuple(rightBearing),
-    up,
-  }
+  return { forward, right, up }
 }
 
 /**
- * Perspective-projects a unit-sphere star into 2D CSS pixel coordinates.
- * Returns null if the star is behind the culling cone or outside viewport bounds.
+ * Perspective-projects a J2000 celestial unit vector into 2D CSS pixel coordinates
+ * using MapLibre's exact vertical FOV perspective scale.
  */
 export function projectStarToViewport(
   star: Pick<StarCatalogEntry, 'x' | 'y' | 'z'>,
   basis: CelestialCameraBasis,
   widthCss: number,
   heightCss: number,
+  fovDeg: number = DEFAULT_VERTICAL_FOV_DEG,
+  marginPx: number = CULL_MARGIN_PX,
 ): ProjectedStar | null {
   if (widthCss <= 0 || heightCss <= 0) {
     return null
   }
+  const focal = computeFocalPx(widthCss, heightCss, fovDeg)
+  const halfDiag = Math.hypot(widthCss * 0.5 + marginPx, heightCss * 0.5 + marginPx)
+  const minDepth = 1 / Math.hypot(1, halfDiag / focal)
+
   const depth = dotTuple(basis.forward, star)
-  if (depth <= MIN_DEPTH_THRESHOLD) {
+  if (depth <= minDepth) {
     return null
   }
   const sx = dotTuple(basis.right, star) / depth
   const sy = dotTuple(basis.up, star) / depth
-  const focal = 0.88 * Math.hypot(widthCss, heightCss) * 0.5
   const x = widthCss * 0.5 + sx * focal
   const y = heightCss * 0.5 - sy * focal
 
   if (
-    x < -CULL_MARGIN_PX ||
-    x > widthCss + CULL_MARGIN_PX ||
-    y < -CULL_MARGIN_PX ||
-    y > heightCss + CULL_MARGIN_PX
+    x < -marginPx ||
+    x > widthCss + marginPx ||
+    y < -marginPx ||
+    y > heightCss + marginPx
   ) {
     return null
   }
@@ -344,69 +570,69 @@ function createStarSpriteSheet(): HTMLCanvasElement | null {
     const palette = STAR_PALETTES[pIdx]
     const cx = pIdx * SPRITE_CELL_PX + half
 
-    // Row 0: medium star soft glow + core
+    // Row 0: medium star optical PSF + crisp Airy core
     {
       const cy = half
-      const grad = ctx.createRadialGradient(cx, cy, 0.5, cx, cy, half - 4)
+      const grad = ctx.createRadialGradient(cx, cy, 0.5, cx, cy, half - 6)
       grad.addColorStop(0, palette.core)
-      grad.addColorStop(0.18, palette.innerBloom)
-      grad.addColorStop(0.55, palette.outerBloom)
+      grad.addColorStop(0.16, palette.innerBloom)
+      grad.addColorStop(0.48, palette.outerBloom)
       grad.addColorStop(1, 'rgba(0, 0, 0, 0)')
       ctx.fillStyle = grad
       ctx.beginPath()
-      ctx.arc(cx, cy, half - 4, 0, Math.PI * 2)
+      ctx.arc(cx, cy, half - 6, 0, Math.PI * 2)
       ctx.fill()
     }
 
-    // Row 1: hero sapphire-white star with bloom + delicate 4-point diffraction spikes
+    // Row 1: bright hero star with smooth optical Airy halo & whisper-soft micro-glint
     {
       const cy = SPRITE_CELL_PX + half
-      const outerGrad = ctx.createRadialGradient(cx, cy, 0.5, cx, cy, half - 2)
+      const outerGrad = ctx.createRadialGradient(cx, cy, 0.5, cx, cy, half - 4)
       outerGrad.addColorStop(0, '#ffffff')
-      outerGrad.addColorStop(0.14, palette.innerBloom)
-      outerGrad.addColorStop(0.45, palette.outerBloom)
+      outerGrad.addColorStop(0.10, palette.core)
+      outerGrad.addColorStop(0.24, palette.innerBloom)
+      outerGrad.addColorStop(0.54, palette.outerBloom)
       outerGrad.addColorStop(1, 'rgba(0, 0, 0, 0)')
       ctx.fillStyle = outerGrad
       ctx.beginPath()
-      ctx.arc(cx, cy, half - 2, 0, Math.PI * 2)
+      ctx.arc(cx, cy, half - 4, 0, Math.PI * 2)
       ctx.fill()
 
-      // Tapered 4-point diffraction glints
-      const spikeLen = half - 5
+      // Ultra-subtle photographic optical glint (0.12 max opacity, no artificial spiky cross)
+      const glintLen = half - 14
       for (const horizontal of [true, false]) {
         const sg = horizontal
-          ? ctx.createLinearGradient(cx - spikeLen, cy, cx + spikeLen, cy)
-          : ctx.createLinearGradient(cx, cy - spikeLen, cx, cy + spikeLen)
-        sg.addColorStop(0, 'rgba(186, 230, 253, 0)')
-        sg.addColorStop(0.38, 'rgba(186, 230, 253, 0.45)')
-        sg.addColorStop(0.5, 'rgba(255, 255, 255, 0.95)')
-        sg.addColorStop(0.62, 'rgba(186, 230, 253, 0.45)')
-        sg.addColorStop(1, 'rgba(186, 230, 253, 0)')
+          ? ctx.createLinearGradient(cx - glintLen, cy, cx + glintLen, cy)
+          : ctx.createLinearGradient(cx, cy - glintLen, cx, cy + glintLen)
+        sg.addColorStop(0, 'rgba(220, 238, 255, 0)')
+        sg.addColorStop(0.42, 'rgba(220, 238, 255, 0.06)')
+        sg.addColorStop(0.5, 'rgba(255, 255, 255, 0.14)')
+        sg.addColorStop(0.58, 'rgba(220, 238, 255, 0.06)')
+        sg.addColorStop(1, 'rgba(220, 238, 255, 0)')
         ctx.fillStyle = sg
         ctx.beginPath()
         if (horizontal) {
-          ctx.moveTo(cx - spikeLen, cy)
-          ctx.lineTo(cx, cy - 1.35)
-          ctx.lineTo(cx + spikeLen, cy)
-          ctx.lineTo(cx, cy + 1.35)
+          ctx.moveTo(cx - glintLen, cy)
+          ctx.lineTo(cx, cy - 1.1)
+          ctx.lineTo(cx + glintLen, cy)
+          ctx.lineTo(cx, cy + 1.1)
         } else {
-          ctx.moveTo(cx, cy - spikeLen)
-          ctx.lineTo(cx + 1.35, cy)
-          ctx.lineTo(cx, cy + spikeLen)
-          ctx.lineTo(cx - 1.35, cy)
+          ctx.moveTo(cx, cy - glintLen)
+          ctx.lineTo(cx + 1.1, cy)
+          ctx.lineTo(cx, cy + glintLen)
+          ctx.lineTo(cx - 1.1, cy)
         }
         ctx.closePath()
         ctx.fill()
       }
 
-      // Crisp bright white star nucleus
-      const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 5)
+      const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 5.5)
       coreGrad.addColorStop(0, '#ffffff')
       coreGrad.addColorStop(0.55, palette.core)
       coreGrad.addColorStop(1, 'rgba(255, 255, 255, 0)')
       ctx.fillStyle = coreGrad
       ctx.beginPath()
-      ctx.arc(cx, cy, 5, 0, Math.PI * 2)
+      ctx.arc(cx, cy, 5.5, 0, Math.PI * 2)
       ctx.fill()
     }
   }
@@ -414,9 +640,47 @@ function createStarSpriteSheet(): HTMLCanvasElement | null {
   return sheet
 }
 
+function createMilkyWaySpriteSheet(): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') {
+    return null
+  }
+  const sheet = document.createElement('canvas')
+  sheet.width = MILKY_WAY_CELL_PX * 2
+  sheet.height = MILKY_WAY_CELL_PX
+  const ctx = sheet.getContext('2d')
+  if (!ctx) {
+    return null
+  }
+
+  const half = MILKY_WAY_CELL_PX / 2
+  const radius = half - 2
+  const tints: readonly [string, string] = [
+    'rgba(58, 108, 196, 1)',
+    'rgba(108, 146, 212, 1)',
+  ]
+  const midTints: readonly [string, string] = [
+    'rgba(28, 58, 128, 0.45)',
+    'rgba(56, 86, 152, 0.45)',
+  ]
+
+  for (let i = 0; i < 2; i++) {
+    const cx = i * MILKY_WAY_CELL_PX + half
+    const grad = ctx.createRadialGradient(cx, half, 0, cx, half, radius)
+    grad.addColorStop(0, tints[i])
+    grad.addColorStop(0.45, midTints[i])
+    grad.addColorStop(1, 'rgba(2, 5, 16, 0)')
+    ctx.fillStyle = grad
+    ctx.beginPath()
+    ctx.arc(cx, half, radius, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  return sheet
+}
+
 /**
- * Creates a deterministic, camera-coupled deep-space starfield renderer on a 2D canvas.
- * Stays static at rest and caches the last rendered pose so idle/pulse frames do 0 work.
+ * Creates a deterministic, astronomically anchored 3D deep-space star map & Milky Way
+ * skybox controller on a 2D canvas synced with MapLibre's 3D globe camera.
  */
 export function createSpaceStarfieldController({
   canvas,
@@ -424,7 +688,9 @@ export function createSpaceStarfieldController({
 }: CreateSpaceStarfieldOptions): SpaceStarfieldController {
   const ctx = canvas.getContext('2d', { alpha: false })
   const catalog = createStarCatalog()
+  const milkyWayNodes = createMilkyWayCatalog()
   const spriteSheet = createStarSpriteSheet()
+  const milkyWaySheet = createMilkyWaySpriteSheet()
 
   let disposed = false
   let skippedByVisibility = false
@@ -438,9 +704,16 @@ export function createSpaceStarfieldController({
       : null
   let reducedMotion = motionQuery?.matches ?? false
 
-  const buildPoseKey = (pose: CelestialCameraPose, widthCss: number, heightCss: number, dpr: number) => {
+  const buildPoseKey = (
+    pose: CelestialCameraPose,
+    widthCss: number,
+    heightCss: number,
+    dpr: number,
+  ) => {
     const q = (v: number) => Math.round(v * 10000)
-    return `${widthCss}x${heightCss}@${dpr}:${q(pose.lngDeg)},${q(pose.latDeg)},${q(pose.bearingDeg)},${q(pose.pitchDeg)}`
+    const isGlobeFlag = pose.isGlobe === false ? 0 : 1
+    const siderealBucket = Math.floor((pose.unixMs ?? J2000_UNIX_MS) / SIDEREAL_BUCKET_MS)
+    return `${widthCss}x${heightCss}@${dpr}:${isGlobeFlag}:${siderealBucket}:${q(pose.lngDeg)},${q(pose.latDeg)},${q(pose.bearingDeg)},${q(pose.pitchDeg)},${q(pose.rollDeg ?? 0)},${q(pose.fovDeg ?? DEFAULT_VERTICAL_FOV_DEG)}`
   }
 
   const drawFrame = (force = false) => {
@@ -462,7 +735,11 @@ export function createSpaceStarfieldController({
       typeof window !== 'undefined' && window.devicePixelRatio > 0
         ? Math.min(window.devicePixelRatio, 2)
         : 1
-    const activePose = reducedMotion ? STATIC_REDUCED_MOTION_POSE : currentPose
+    const useStaticPose = reducedMotion || currentPose.isGlobe === false
+    const activePose: CelestialCameraPose = useStaticPose
+      ? STATIC_REDUCED_MOTION_POSE
+      : currentPose
+
     const renderKey = buildPoseKey(activePose, widthCss, heightCss, dpr)
     if (!force && renderKey === lastRenderKey) {
       return
@@ -478,45 +755,60 @@ export function createSpaceStarfieldController({
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    // Deep cosmic navy-indigo gradient background
+    // Deep orbital blackness / very dark abyssal navy gradient
     const bgGrad = ctx.createRadialGradient(
       widthCss * 0.5,
-      heightCss * 0.56,
-      Math.min(widthCss, heightCss) * 0.08,
+      heightCss * 0.54,
+      Math.min(widthCss, heightCss) * 0.10,
       widthCss * 0.5,
       heightCss * 0.5,
       Math.hypot(widthCss, heightCss) * 0.65,
     )
-    bgGrad.addColorStop(0, '#091836')
-    bgGrad.addColorStop(0.45, '#050c1f')
-    bgGrad.addColorStop(1, '#020510')
+    bgGrad.addColorStop(0, '#040a18')
+    bgGrad.addColorStop(0.55, '#020612')
+    bgGrad.addColorStop(1, '#010309')
     ctx.fillStyle = bgGrad
     ctx.fillRect(0, 0, widthCss, heightCss)
 
-    // Subtle cosmic dust glow washes for orbital depth
-    const wash = ctx.createRadialGradient(
-      widthCss * 0.32,
-      heightCss * 0.28,
-      0,
-      widthCss * 0.32,
-      heightCss * 0.28,
-      Math.max(widthCss, heightCss) * 0.45,
-    )
-    wash.addColorStop(0, 'rgba(30, 64, 175, 0.08)')
-    wash.addColorStop(0.6, 'rgba(15, 23, 42, 0.03)')
-    wash.addColorStop(1, 'rgba(2, 5, 16, 0)')
-    ctx.fillStyle = wash
-    ctx.fillRect(0, 0, widthCss, heightCss)
-
+    const fovDeg = activePose.fovDeg ?? DEFAULT_VERTICAL_FOV_DEG
+    const focalPx = computeFocalPx(widthCss, heightCss, fovDeg)
     const basis = computeCelestialCameraBasis(activePose)
 
-    // Batch pinpricks by palette to minimize state switches
-    const pinprickBuckets: Array<Array<{ x: number; y: number; r: number; a: number }>> = [
-      [],
-      [],
-      [],
-      [],
-    ]
+    // 1. Subtle diffuse 3D Milky Way star-cloud band
+    if (milkyWaySheet) {
+      for (const node of milkyWayNodes) {
+        const radiusPx = node.angularRadiusRad * focalPx
+        const projected = projectStarToViewport(
+          node,
+          basis,
+          widthCss,
+          heightCss,
+          fovDeg,
+          Math.max(CULL_MARGIN_PX, radiusPx),
+        )
+        if (!projected) {
+          continue
+        }
+        ctx.globalAlpha = node.alpha
+        ctx.drawImage(
+          milkyWaySheet,
+          node.tintIndex * MILKY_WAY_CELL_PX,
+          0,
+          MILKY_WAY_CELL_PX,
+          MILKY_WAY_CELL_PX,
+          projected.x - radiusPx,
+          projected.y - radiusPx,
+          radiusPx * 2,
+          radiusPx * 2,
+        )
+      }
+    }
+
+    // 2. Partition projected stars into 15 batched pinprick buckets (5 palettes x 3 alpha bands) + sprites
+    const pinprickBuckets: Array<Array<Array<{ x: number; y: number; r: number }>>> = Array.from(
+      { length: STAR_PALETTES.length },
+      () => Array.from({ length: PINPRICK_ALPHA_BANDS.length }, () => []),
+    )
     const spriteStars: Array<{
       star: StarCatalogEntry
       x: number
@@ -524,32 +816,35 @@ export function createSpaceStarfieldController({
     }> = []
 
     for (const star of catalog) {
-      const projected = projectStarToViewport(star, basis, widthCss, heightCss)
+      const projected = projectStarToViewport(star, basis, widthCss, heightCss, fovDeg)
       if (!projected) {
         continue
       }
       if (star.tier === 'pinprick') {
-        pinprickBuckets[star.paletteIndex].push({
+        const bandIdx = star.alpha < 0.34 ? 0 : star.alpha < 0.58 ? 1 : 2
+        pinprickBuckets[star.paletteIndex][bandIdx].push({
           x: projected.x,
           y: projected.y,
           r: star.radiusPx,
-          a: star.alpha,
         })
       } else {
         spriteStars.push({ star, x: projected.x, y: projected.y })
       }
     }
 
-    for (let pIdx = 0; pIdx < pinprickBuckets.length; pIdx++) {
-      const bucket = pinprickBuckets[pIdx]
-      if (bucket.length === 0) {
-        continue
-      }
+    for (let pIdx = 0; pIdx < STAR_PALETTES.length; pIdx++) {
       ctx.fillStyle = STAR_PALETTES[pIdx].core
-      for (const dot of bucket) {
-        ctx.globalAlpha = dot.a
+      for (let bIdx = 0; bIdx < PINPRICK_ALPHA_BANDS.length; bIdx++) {
+        const bucket = pinprickBuckets[pIdx][bIdx]
+        if (bucket.length === 0) {
+          continue
+        }
+        ctx.globalAlpha = PINPRICK_ALPHA_BANDS[bIdx]
         ctx.beginPath()
-        ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2)
+        for (const dot of bucket) {
+          ctx.moveTo(dot.x + dot.r, dot.y)
+          ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2)
+        }
         ctx.fill()
       }
     }
@@ -663,6 +958,10 @@ export function createSpaceStarfieldController({
       if (spriteSheet) {
         spriteSheet.width = 0
         spriteSheet.height = 0
+      }
+      if (milkyWaySheet) {
+        milkyWaySheet.width = 0
+        milkyWaySheet.height = 0
       }
       void scheduleDraw
     },
