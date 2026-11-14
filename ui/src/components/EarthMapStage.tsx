@@ -8,7 +8,6 @@ import type {
   GeoJSONSource,
   LngLatLike,
   MapLayerMouseEvent,
-  MapMovementEvent,
   StyleSpecification,
   SymbolLayerSpecification,
 } from 'maplibre-gl'
@@ -66,7 +65,6 @@ interface EarthMapStageProps {
   initialViewport: MapViewportState
   onViewportChange: (next: MapViewportState) => void
   cameraFocusRequest: CameraFocusRequest | null
-  autoLocateOnMount: boolean
   geolocationMaxZoom?: number
   orbitalState: LiveOrbitalState
   showOrbits: boolean
@@ -521,7 +519,6 @@ export function EarthMapStage({
   initialViewport,
   onViewportChange,
   cameraFocusRequest,
-  autoLocateOnMount,
   geolocationMaxZoom = DEFAULT_GEOLOCATION_MAX_ZOOM,
   orbitalState,
   showOrbits,
@@ -537,7 +534,6 @@ export function EarthMapStage({
   const satMarkersRef = useRef<Map<string, SatelliteMarkerEntry>>(new Map())
   const initialViewportRef = useRef<MapViewportState>(initialViewport)
   const latestOnViewportChangeRef = useRef(onViewportChange)
-  const userInteractedRef = useRef(false)
   const isMountedRef = useRef(false)
 
   const [mapError, setMapError] = useState<string | null>(null)
@@ -647,7 +643,6 @@ export function EarthMapStage({
         button.append(iconSvg, labelSpan)
         button.addEventListener('click', (event) => {
           event.stopPropagation()
-          userInteractedRef.current = true
           const current = latestOrbitalStateRef.current.snapshots.find((item) => item.id === sat.id)
           if (current) {
             onSelectSatelliteRef.current(current)
@@ -731,12 +726,6 @@ export function EarthMapStage({
         )
       })
 
-      map.on('movestart', (event: MapMovementEvent) => {
-        if (event.originalEvent) {
-          userInteractedRef.current = true
-        }
-      })
-
       map.on('moveend', () => {
         if (!map) {
           return
@@ -767,7 +756,6 @@ export function EarthMapStage({
         map.on('click', STATUS_MARK_LAYER_ID, (event: MapLayerMouseEvent) => {
           const regionId: unknown = event.features?.[0]?.properties?.id
           if (typeof regionId === 'string') {
-            userInteractedRef.current = true
             onSelectRegionRef.current(regionId)
           }
         })
@@ -878,7 +866,6 @@ export function EarthMapStage({
     if (!cameraFocusRequest) {
       return
     }
-    userInteractedRef.current = true
     const map = mapInstanceRef.current
     if (!map) {
       const nextViewport: MapViewportState = {
@@ -904,92 +891,62 @@ export function EarthMapStage({
     }
   }, [cameraFocusRequest])
 
-  const triggerGeolocation = useCallback(
-    (silentError: boolean, isCancelled?: () => boolean) => {
-      if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
-        if (!silentError) {
-          setGeoErrorMessage('Geolocation is not supported by this browser.')
-        }
-        return
-      }
-
-      setIsLocating(true)
-      if (!silentError) {
-        setGeoErrorMessage(null)
-      }
-
-      void requestCurrentBrowserPosition(GEOLOCATION_POSITION_OPTIONS)
-        .then((position) => {
-          if (!isMountedRef.current || isCancelled?.()) {
-            return
-          }
-
-          const lng = normalizeLng(position.coords.longitude)
-          const lat = clampLat(position.coords.latitude)
-          setUserLocation([lng, lat])
-          setGeoErrorMessage(null)
-
-          if (silentError && userInteractedRef.current) {
-            return
-          }
-
-          const map = mapInstanceRef.current
-          if (!map) {
-            const targetZoom = clampGeolocationTargetZoom(geolocationMaxZoom, geolocationMaxZoom)
-            const nextViewport: MapViewportState = { lng, lat, zoom: targetZoom }
-            setViewport(nextViewport)
-            latestOnViewportChangeRef.current(nextViewport)
-            return
-          }
-
-          const safeRadius =
-            Number.isFinite(position.coords.accuracy) && position.coords.accuracy > 0
-              ? position.coords.accuracy
-              : 100
-          const fitted = map.cameraForBounds(
-            LngLatBounds.fromLngLat(new LngLat(lng, lat), safeRadius),
-            {
-              maxZoom: geolocationMaxZoom,
-              padding: 40,
-            },
-          )
-          const targetZoom = clampGeolocationTargetZoom(fitted?.zoom, geolocationMaxZoom)
-          moveCamera(map, { center: fitted?.center ?? [lng, lat], zoom: targetZoom }, 900)
-        })
-        .catch((error: unknown) => {
-          if (!isMountedRef.current || isCancelled?.()) {
-            return
-          }
-          if (!silentError) {
-            setGeoErrorMessage(formatGeolocationError(error))
-          }
-        })
-        .finally(() => {
-          if (isMountedRef.current && !isCancelled?.()) {
-            setIsLocating(false)
-          }
-        })
-    },
-    [geolocationMaxZoom],
-  )
-
-  useEffect(() => {
-    if (!autoLocateOnMount) {
+  const triggerGeolocation = useCallback(() => {
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+      setGeoErrorMessage('Geolocation is not supported by this browser.')
       return
     }
-    let cancelled = false
-    queueMicrotask(() => {
-      if (!cancelled) {
-        triggerGeolocation(true, () => cancelled)
-      }
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [autoLocateOnMount, triggerGeolocation])
+
+    setIsLocating(true)
+    setGeoErrorMessage(null)
+
+    void requestCurrentBrowserPosition(GEOLOCATION_POSITION_OPTIONS)
+      .then((position) => {
+        if (!isMountedRef.current) {
+          return
+        }
+
+        const lng = normalizeLng(position.coords.longitude)
+        const lat = clampLat(position.coords.latitude)
+        setUserLocation([lng, lat])
+        setGeoErrorMessage(null)
+
+        const map = mapInstanceRef.current
+        if (!map) {
+          const targetZoom = clampGeolocationTargetZoom(geolocationMaxZoom, geolocationMaxZoom)
+          const nextViewport: MapViewportState = { lng, lat, zoom: targetZoom }
+          setViewport(nextViewport)
+          latestOnViewportChangeRef.current(nextViewport)
+          return
+        }
+
+        const safeRadius =
+          Number.isFinite(position.coords.accuracy) && position.coords.accuracy > 0
+            ? position.coords.accuracy
+            : 100
+        const fitted = map.cameraForBounds(
+          LngLatBounds.fromLngLat(new LngLat(lng, lat), safeRadius),
+          {
+            maxZoom: geolocationMaxZoom,
+            padding: 40,
+          },
+        )
+        const targetZoom = clampGeolocationTargetZoom(fitted?.zoom, geolocationMaxZoom)
+        moveCamera(map, { center: fitted?.center ?? [lng, lat], zoom: targetZoom }, 900)
+      })
+      .catch((error: unknown) => {
+        if (isMountedRef.current) {
+          setGeoErrorMessage(formatGeolocationError(error))
+        }
+      })
+      .finally(() => {
+        if (isMountedRef.current) {
+          setIsLocating(false)
+        }
+      })
+  }, [geolocationMaxZoom])
 
   const handleZoom = (delta: number) => {
-    userInteractedRef.current = true
     const map = mapInstanceRef.current
     if (!map) {
       const nextViewport: MapViewportState = {
@@ -1004,7 +961,6 @@ export function EarthMapStage({
   }
 
   const handleResetView = () => {
-    userInteractedRef.current = true
     const map = mapInstanceRef.current
     if (!map) {
       const nextViewport: MapViewportState = {
@@ -1035,7 +991,7 @@ export function EarthMapStage({
       <MapControls
         onZoomIn={() => handleZoom(1)}
         onZoomOut={() => handleZoom(-1)}
-        onLocate={() => triggerGeolocation(false)}
+        onLocate={triggerGeolocation}
         isLocating={isLocating}
         geoErrorMessage={geoErrorMessage}
         onResetView={handleResetView}

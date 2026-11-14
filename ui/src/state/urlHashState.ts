@@ -37,15 +37,19 @@ export interface ResolvedInitialState {
   source: InitialStateSource
 }
 
-export const DEFAULT_URL_HASH_STATE: UrlHashState = {
-  zoom: DEFAULT_ZOOM,
-  lat: DEFAULT_CENTER[1],
-  lng: DEFAULT_CENTER[0],
-  viewMode: 'anomaly',
-  sensorFilter: 'harmonized',
-  projectionMode: 'globe',
-  selectedMonth: 8,
-  showOrbits: true,
+// Defaults for a first visit; the month follows the visitor's calendar, so it is built from a date.
+export function createDefaultUrlHashState(now: Date = new Date()): UrlHashState {
+  return {
+    zoom: DEFAULT_ZOOM,
+    lat: DEFAULT_CENTER[1],
+    lng: DEFAULT_CENTER[0],
+    viewMode: 'anomaly',
+    sensorFilter: 'harmonized',
+    projectionMode: 'globe',
+    selectedMonth: now.getMonth(),
+    // Orbits are a secondary layer; links and stored state can still turn them on.
+    showOrbits: false,
+  }
 }
 
 const VALID_VIEW_MODES: readonly ViewMode[] = ['anomaly', 'seasonal', 'sensors']
@@ -272,7 +276,7 @@ const POSITIONAL_HASH_REGEX = /^\s*#?(-?\d+(?:\.\d+)?)\/(-?\d+(?:\.\d+)?)\/(-?\d
 
 export function parseUrlHash(
   rawHash: string,
-  fallback: UrlHashState = DEFAULT_URL_HASH_STATE,
+  fallback: UrlHashState = createDefaultUrlHashState(),
 ): UrlHashState | null {
   const stripped = rawHash.trim().replace(/^#/, '')
   if (stripped.length === 0) {
@@ -415,29 +419,26 @@ export function resolveInitialUrlHashState(
   'undefined'
     ? window
     : undefined,
+  now: Date = new Date(),
 ): ResolvedInitialState {
+  const defaults = createDefaultUrlHashState(now)
   if (!target) {
-    return {
-      state: cloneFallbackState(DEFAULT_URL_HASH_STATE),
-      source: 'default',
-    }
+    return { state: defaults, source: 'default' }
   }
 
-  const fromHash = parseUrlHash(target.location.hash)
+  // Keys missing from the hash or the stored state fall back to today's defaults
+  const fromHash = parseUrlHash(target.location.hash, defaults)
   if (fromHash) {
     return { state: fromHash, source: 'hash' }
   }
 
   const storedHash = readStoredUrlHash(target.localStorage)
   if (storedHash) {
-    const fromStorage = parseUrlHash(storedHash)
+    const fromStorage = parseUrlHash(storedHash, defaults)
     if (fromStorage) {
       return { state: fromStorage, source: 'storage' }
     }
   }
 
-  return {
-    state: cloneFallbackState(DEFAULT_URL_HASH_STATE),
-    source: 'default',
-  }
+  return { state: defaults, source: 'default' }
 }

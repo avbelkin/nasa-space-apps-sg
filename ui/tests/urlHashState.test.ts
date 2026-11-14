@@ -4,7 +4,7 @@ import {
   clampGeolocationTargetZoom,
   clampLat,
   DEFAULT_GEOLOCATION_MAX_ZOOM,
-  DEFAULT_URL_HASH_STATE,
+  createDefaultUrlHashState,
   normalizeLng,
   parseUrlHash,
   resolveInitialUrlHashState,
@@ -14,6 +14,10 @@ import {
   type BrowserSyncTarget,
   type UrlHashState,
 } from '../src/state/urlHashState.ts'
+
+// Fixed "today" so the date-based defaults are deterministic: 14 November 2026, local time
+const TODAY = new Date(2026, 10, 14, 12)
+const DEFAULT_URL_HASH_STATE = createDefaultUrlHashState(TODAY)
 
 function createMockBrowserTarget(initialHash = '', initialStoredHash: string | null = null): {
   target: BrowserSyncTarget
@@ -100,7 +104,7 @@ test('coordinate normalization rounds to 4 decimals and wraps longitudes into [-
 })
 
 test('parseUrlHash accepts partial hashes, month names, legacy positional hashes, and rejects non-state fragments', () => {
-  const partial = parseUrlHash('#z=9&lat=1.3521&lng=103.8198')
+  const partial = parseUrlHash('#z=9&lat=1.3521&lng=103.8198', DEFAULT_URL_HASH_STATE)
   assert.deepEqual(partial, {
     ...DEFAULT_URL_HASH_STATE,
     zoom: 9,
@@ -178,6 +182,7 @@ test('resolveInitialUrlHashState resolves hash > storage > default priority', ()
       '#z=7.25&lat=-8.5&lng=-60',
       '#z=4&lat=58.6&lng=-114.4',
     ).target,
+    TODAY,
   )
   assert.equal(fromHash.source, 'hash')
   assert.equal(fromHash.state.zoom, 7.25)
@@ -186,6 +191,7 @@ test('resolveInitialUrlHashState resolves hash > storage > default priority', ()
 
   const fromStorage = resolveInitialUrlHashState(
     createMockBrowserTarget('#inspector-heading', '#z=4&lat=58.6&lng=-114.4&mode=seasonal').target,
+    TODAY,
   )
   assert.equal(fromStorage.source, 'storage')
   assert.equal(fromStorage.state.zoom, 4)
@@ -195,9 +201,50 @@ test('resolveInitialUrlHashState resolves hash > storage > default priority', ()
 
   const fromDefault = resolveInitialUrlHashState(
     createMockBrowserTarget('', '#not-valid-state').target,
+    TODAY,
   )
   assert.equal(fromDefault.source, 'default')
   assert.deepEqual(fromDefault.state, DEFAULT_URL_HASH_STATE)
+})
+
+test('defaults follow the given date: current month, orbits off', () => {
+  assert.equal(DEFAULT_URL_HASH_STATE.selectedMonth, 10)
+  assert.equal(DEFAULT_URL_HASH_STATE.showOrbits, false)
+  assert.equal(createDefaultUrlHashState(new Date(2027, 0, 1, 12)).selectedMonth, 0)
+  assert.equal(createDefaultUrlHashState(new Date(2027, 11, 31, 12)).selectedMonth, 11)
+  assert.match(serializeUrlHash(DEFAULT_URL_HASH_STATE), /&month=11&orbits=0(&|$)/)
+})
+
+test('an explicit month or orbits setting in the hash or storage wins over the date defaults', () => {
+  const fresh = resolveInitialUrlHashState(createMockBrowserTarget().target, TODAY)
+  assert.equal(fresh.source, 'default')
+  assert.equal(fresh.state.selectedMonth, 10)
+  assert.equal(fresh.state.showOrbits, false)
+
+  const fromHash = resolveInitialUrlHashState(
+    createMockBrowserTarget('#month=3&orbits=1', '#month=7&orbits=0').target,
+    TODAY,
+  )
+  assert.equal(fromHash.source, 'hash')
+  assert.equal(fromHash.state.selectedMonth, 2)
+  assert.equal(fromHash.state.showOrbits, true)
+
+  const fromStorage = resolveInitialUrlHashState(
+    createMockBrowserTarget('', '#z=2&lat=0&lng=0&month=7&orbits=1').target,
+    TODAY,
+  )
+  assert.equal(fromStorage.source, 'storage')
+  assert.equal(fromStorage.state.selectedMonth, 6)
+  assert.equal(fromStorage.state.showOrbits, true)
+
+  // A hash without a month (e.g. an old viewport-only link) gets today's month
+  const viewportOnly = resolveInitialUrlHashState(
+    createMockBrowserTarget('#4.5/39.2611/53.0722').target,
+    TODAY,
+  )
+  assert.equal(viewportOnly.source, 'hash')
+  assert.equal(viewportOnly.state.selectedMonth, 10)
+  assert.equal(viewportOnly.state.zoom, 4.5)
 })
 
 test('selected region round-trips through the hash and stays out of it when nothing is selected', () => {
@@ -240,6 +287,7 @@ test('unknown region ids are ignored, never selected and never kept as extra par
 test('selected region is restored on load from the hash and from storage, and written by sync', () => {
   const fromHash = resolveInitialUrlHashState(
     createMockBrowserTarget('#z=0.6&lat=0&lng=20&proj=mercator&region=northern-australia').target,
+    TODAY,
   )
   assert.equal(fromHash.source, 'hash')
   assert.equal(fromHash.state.selectedRegionId, 'northern-australia')
@@ -249,6 +297,7 @@ test('selected region is restored on load from the hash and from storage, and wr
 
   const fromStorage = resolveInitialUrlHashState(
     createMockBrowserTarget('', '#z=4&lat=58.6&lng=-114.4&region=boreal-canada').target,
+    TODAY,
   )
   assert.equal(fromStorage.source, 'storage')
   assert.equal(fromStorage.state.selectedRegionId, 'boreal-canada')

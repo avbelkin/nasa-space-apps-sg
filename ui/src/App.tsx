@@ -301,7 +301,6 @@ function App() {
         initialViewport={initialResolution.state}
         onViewportChange={setViewport}
         cameraFocusRequest={cameraFocusRequest}
-        autoLocateOnMount={initialResolution.source === 'default'}
         geolocationMaxZoom={DEFAULT_GEOLOCATION_MAX_ZOOM}
         orbitalState={orbitalState}
         showOrbits={showOrbits}
