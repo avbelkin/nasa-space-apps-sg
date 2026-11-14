@@ -549,7 +549,6 @@ function App() {
         onGeolocationStateChange={setGeolocationState}
         onReducedMotionChange={setReducedMotion}
         fireSpotsPayload={fireSpotsPayload}
-        liveFiresConfigured={!isProdUnconfigured}
         showFires={showFires}
         onShowFiresChange={setShowFires}
         pulsePaused={pulsePaused}

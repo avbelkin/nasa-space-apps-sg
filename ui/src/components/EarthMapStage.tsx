@@ -181,8 +181,6 @@ interface EarthMapStageProps {
   onGeolocationStateChange?: (state: GeolocationLegendState) => void
   onReducedMotionChange?: (reduced: boolean) => void
   fireSpotsPayload: FirmsLiveSpotsResponse | null
-  // False when no data service is configured: live fire spots can never load in this build
-  liveFiresConfigured: boolean
   showFires: boolean
   onShowFiresChange: (next: boolean) => void
   pulsePaused: boolean
@@ -590,8 +588,6 @@ function createBaseStyle(
         ],
         tileSize: 256,
         maxzoom: 15,
-        attribution:
-          'Sentinel-2 cloudless — <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer">s2maps.eu</a> by <a href="https://eox.at" target="_blank" rel="noopener noreferrer">EOX IT Services GmbH</a> (Contains modified Copernicus Sentinel data 2025)',
       },
       [SATELLITE_ORBITS_SOURCE_ID]: {
         type: 'geojson',
@@ -858,7 +854,6 @@ export function EarthMapStage({
   onGeolocationStateChange,
   onReducedMotionChange,
   fireSpotsPayload,
-  liveFiresConfigured,
   showFires,
   onShowFiresChange,
   pulsePaused,
@@ -905,8 +900,6 @@ export function EarthMapStage({
   const latestUserGeoJsonRef = useRef(userLocationGeoJson)
   const latestProjectionRef = useRef(projectionMode)
   const latestApiBaseUrlRef = useRef(apiBaseUrl)
-  // Fixed per build; read once when the attribution control is created
-  const liveFiresConfiguredRef = useRef(liveFiresConfigured)
   const latestCloudsDisabledRef = useRef(cloudsDisabled)
   const latestShowCloudsRef = useRef(showClouds)
   const latestShowRainRef = useRef(showRain)
@@ -1250,7 +1243,6 @@ export function EarthMapStage({
 
     let map: MapLibreMap | null = null
     let resizeObserver: ResizeObserver | null = null
-    let attributionObserver: ResizeObserver | null = null
     const startViewport = initialViewportRef.current
 
     try {
@@ -1272,21 +1264,7 @@ export function EarthMapStage({
         zoom: clampZoom(startViewport.zoom),
         cancelPendingTileRequestsWhileZooming: false,
         maxTileCacheZoomLevels: 8,
-        attributionControl: {
-          compact: true,
-          // Kept short so the EOX/Copernicus basemap credit stays readable on small maps; the side
-          // panel carries the full attribution. Fire spots are live NASA FIRMS data, while the
-          // regional index (its marks, the panel and the month strip) is still sample data.
-          customAttribution: [
-            liveFiresConfiguredRef.current
-              ? 'Active fires (24 h): <a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener noreferrer">NASA FIRMS</a> &middot; Regional index: sample data'
-              : '<a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener noreferrer">NASA FIRMS</a> (sample data)',
-            '<a href="https://celestrak.org/" target="_blank" rel="noopener noreferrer">CelesTrak</a>',
-            'Clouds: <a href="https://layers.extremum.org" target="_blank" rel="noopener noreferrer">Extremum</a> (EUMETSAT, NOAA, JMA)',
-            'Precipitation (30m): <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener noreferrer">NASA GIBS</a> (GPM IMERG)',
-            'Night lights: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener noreferrer">NASA GIBS</a>',
-          ].join(' &middot; '),
-        },
+        attributionControl: false,
       })
 
       mapInstanceRef.current = map
@@ -1541,20 +1519,6 @@ export function EarthMapStage({
         map?.resize()
       })
       resizeObserver.observe(container)
-
-      // The satellite pass card shares the bottom-end corner with MapLibre's attribution, which
-      // grows when expanded: keep the card just above it, whatever its current height.
-      const attributionCorner = container.querySelector<HTMLElement>('.maplibregl-ctrl-bottom-right')
-      const stage = stageRef.current
-      if (attributionCorner && stage) {
-        attributionObserver = new ResizeObserver(() => {
-          stage.style.setProperty(
-            '--attribution-clearance',
-            `${Math.ceil(attributionCorner.getBoundingClientRect().height)}px`,
-          )
-        })
-        attributionObserver.observe(attributionCorner)
-      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to initialize MapLibre WebGL canvas.'
       queueMicrotask(() => setMapError(message))
@@ -1573,7 +1537,6 @@ export function EarthMapStage({
       }
       markerMap.clear()
       resizeObserver?.disconnect()
-      attributionObserver?.disconnect()
       map?.remove()
       nightLightsLayerRef.current = null
       cloudLayerRef.current = null
@@ -1982,7 +1945,7 @@ export function EarthMapStage({
       )}
 
       {/* Bottom of the map: fire spot card (start) and satellite pass card (end), one row that
-          wraps when both do not fit, kept above MapLibre's attribution */}
+          wraps when both do not fit */}
       {((showFires && activeSpotCard && activeSpotTooltip) || satelliteHudSection) && (
         <div className="map-hud-bottom">
           {showFires && activeSpotCard && activeSpotTooltip && (

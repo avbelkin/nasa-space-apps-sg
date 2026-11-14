@@ -9,7 +9,7 @@ interface SatelliteHudProps {
 }
 
 // How fresh the satellite view of the map's centre is: the latest pass of each satellite, whether
-// its data is ready yet, and the next pass. Bottom-end corner, kept above MapLibre's attribution.
+// its data is ready yet, and the next pass. Shown in the bottom-end corner.
 // Collapsible, so it never has to hide the marks underneath it (it starts folded on narrow maps).
 export function SatelliteHud({ section, defaultOpen }: SatelliteHudProps) {
   const [userOpen, setUserOpen] = useState<boolean | null>(null)

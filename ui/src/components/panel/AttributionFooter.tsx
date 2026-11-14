@@ -9,22 +9,9 @@ interface AttributionFooterProps {
 
 const EXTERNAL = { target: '_blank', rel: 'noopener noreferrer' } as const
 
-// One always-visible credit line plus the full text on demand, with a small API indicator.
 export function AttributionFooter({ connectionState, liveFiresConfigured }: AttributionFooterProps) {
   return (
     <footer className="panel-footer">
-      <p className="attribution-line">
-        Data: <a href="https://firms.modaps.eosdis.nasa.gov/" {...EXTERNAL}>NASA FIRMS</a>{' '}
-        {liveFiresConfigured
-          ? '(live fire spots; the regional index is sample values)'
-          : '(sample values)'}{' '}
-        &middot; <a href="https://celestrak.org/" {...EXTERNAL}>CelesTrak</a> &middot;
-        clouds <a href="https://layers.extremum.org" {...EXTERNAL}>Extremum</a> &middot; rain
-        &amp; night lights <a href="https://earthdata.nasa.gov/gibs" {...EXTERNAL}>NASA GIBS</a>{' '}
-        &middot; basemap <a href="https://s2maps.eu" {...EXTERNAL}>EOX</a> / Copernicus Sentinel-2.
-        Not affiliated with NASA.
-      </p>
-
       <div className="footer-meta">
         <details className="panel-details panel-details-quiet">
           <summary className="panel-details-summary">
@@ -45,31 +32,6 @@ export function AttributionFooter({ connectionState, liveFiresConfigured }: Attr
                   {liveFiresConfigured
                     ? 'The fire spots on the map are live detections of the last 24 hours; the regional fire activity index, its map marks and the month strip remain sample values.'
                     : 'The fire activity values shown here are sample values until FIRMS data is connected.'}
-                </dd>
-              </div>
-              <div className="meta-row">
-                <dt>Satellite orbits</dt>
-                <dd>
-                  Orbital elements (NORAD GP / TLE) from{' '}
-                  <a href="https://celestrak.org/" {...EXTERNAL}>
-                    CelesTrak
-                  </a>
-                  .
-                </dd>
-              </div>
-              <div className="meta-row">
-                <dt>Satellite clouds</dt>
-                <dd>
-                  Live geostationary visible and infrared cloud images (EUMETSAT, NOAA, JMA) blended at high latitudes
-                  with NOAA/NASA Suomi NPP &amp; JPSS VIIRS imagery from{' '}
-                  <a href="https://earthdata.nasa.gov/eosdis/science-system-description/eosdis-components/gibs" {...EXTERNAL}>
-                    NASA GIBS / EOSDIS Earthdata
-                  </a>{' '}
-                  via{' '}
-                  <a href="https://layers.extremum.org" {...EXTERNAL}>
-                    layers.extremum.org
-                  </a>
-                  .
                 </dd>
               </div>
               <div className="meta-row">
@@ -94,6 +56,26 @@ export function AttributionFooter({ connectionState, liveFiresConfigured }: Attr
                 </dd>
               </div>
               <div className="meta-row">
+                <dt>High-latitude clouds</dt>
+                <dd>
+                  NOAA/NASA Suomi NPP &amp; JPSS VIIRS imagery from{' '}
+                  <a href="https://earthdata.nasa.gov/gibs" {...EXTERNAL}>
+                    NASA GIBS / Earthdata
+                  </a>
+                  , blended into the satellite cloud layer.
+                </dd>
+              </div>
+              <div className="meta-row">
+                <dt>Satellite orbits</dt>
+                <dd>
+                  Orbital elements (NORAD GP / TLE) from{' '}
+                  <a href="https://celestrak.org/" {...EXTERNAL}>
+                    CelesTrak
+                  </a>
+                  .
+                </dd>
+              </div>
+              <div className="meta-row">
                 <dt>Earth basemap</dt>
                 <dd>
                   Sentinel-2 cloudless via{' '}
@@ -105,6 +87,17 @@ export function AttributionFooter({ connectionState, liveFiresConfigured }: Attr
                     EOX IT Services GmbH
                   </a>{' '}
                   (contains modified Copernicus Sentinel data 2025).
+                </dd>
+              </div>
+              <div className="meta-row">
+                <dt>Satellite clouds</dt>
+                <dd>
+                  Live geostationary visible and infrared cloud images (EUMETSAT, NOAA, JMA) and
+                  the high-latitude VIIRS blend are delivered by{' '}
+                  <a href="https://layers.extremum.org" {...EXTERNAL}>
+                    Extremum
+                  </a>
+                  .
                 </dd>
               </div>
             </dl>
