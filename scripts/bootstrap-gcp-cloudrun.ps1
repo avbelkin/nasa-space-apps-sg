@@ -44,12 +44,15 @@ Workload Identity OIDC Provider ID. Defaults to github-provider.
 .PARAMETER FirmsMapKey
 Optional NASA FIRMS API MAP_KEY value to upload as a new enabled version of secret firms-map-key.
 
+.PARAMETER NasaApiKey
+Optional api.nasa.gov API key value to upload as a new enabled version of secret nasa-api-key.
+
 .PARAMETER GeminiApiKey
 Optional Gemini API key value to upload as a new enabled version of secret gemini-api-key.
 
 .PARAMETER PromptForSecrets
-Prompts interactively (masked input) for FIRMS_MAP_KEY and GEMINI_API_KEY so values never
-enter shell history. Press Enter to skip either secret.
+Prompts interactively (masked input) for FIRMS_MAP_KEY, NASA_API_KEY, and GEMINI_API_KEY so values never
+enter shell history. Press Enter to skip any secret.
 
 .PARAMETER CreateProject
 Creates ProjectId if it does not already exist.
@@ -99,6 +102,8 @@ param(
     [string]$WorkloadProviderId = "github-provider",
 
     [string]$FirmsMapKey = "",
+
+    [string]$NasaApiKey = "",
 
     [string]$GeminiApiKey = "",
 
@@ -667,6 +672,10 @@ if ($PromptForSecrets) {
         $secureFirms = Read-Host -Prompt "Enter NASA FIRMS MAP_KEY (press Enter to skip)" -AsSecureString
         $FirmsMapKey = ConvertFrom-SecureInput -SecureValue $secureFirms
     }
+    if ([string]::IsNullOrWhiteSpace($NasaApiKey)) {
+        $secureNasa = Read-Host -Prompt "Enter api.nasa.gov NASA_API_KEY (press Enter to skip)" -AsSecureString
+        $NasaApiKey = ConvertFrom-SecureInput -SecureValue $secureNasa
+    }
     if ([string]::IsNullOrWhiteSpace($GeminiApiKey)) {
         $secureGemini = Read-Host -Prompt "Enter Gemini API key (press Enter to skip)" -AsSecureString
         $GeminiApiKey = ConvertFrom-SecureInput -SecureValue $secureGemini
@@ -681,8 +690,17 @@ if (-not [string]::IsNullOrWhiteSpace($FirmsMapKey)) {
     $FirmsMapKey = $trimmedFirmsKey
 }
 
+if (-not [string]::IsNullOrWhiteSpace($NasaApiKey)) {
+    $trimmedNasaKey = $NasaApiKey.Trim()
+    if ($trimmedNasaKey -notmatch '^[A-Za-z0-9]{40}$') {
+        throw "Invalid api.nasa.gov NASA_API_KEY format (received $($trimmedNasaKey.Length) chars; expected 40 alphanumeric characters). Check your clipboard and re-run."
+    }
+    $NasaApiKey = $trimmedNasaKey
+}
+
 $secretSpecs = @(
     @{ Name = "firms-map-key"; EnvVar = "FIRMS_MAP_KEY"; Value = $FirmsMapKey },
+    @{ Name = "nasa-api-key"; EnvVar = "NASA_API_KEY"; Value = $NasaApiKey },
     @{ Name = "gemini-api-key"; EnvVar = "GEMINI_API_KEY"; Value = $GeminiApiKey }
 )
 
@@ -810,7 +828,7 @@ foreach ($entry in $repoVars.GetEnumerator()) {
 
 if ([string]::IsNullOrWhiteSpace($cloudRunSecretsSpec)) {
     Write-Host ""
-    Write-Host "  Note: No enabled secret versions were detected yet for firms-map-key or gemini-api-key." -ForegroundColor Yellow
+    Write-Host "  Note: No enabled secret versions were detected yet for firms-map-key, nasa-api-key, or gemini-api-key." -ForegroundColor Yellow
     Write-Host "        Once you add a key version in Secret Manager (or re-run with -PromptForSecrets)," -ForegroundColor Yellow
     Write-Host "        set GCP_CLOUDRUN_SECRETS accordingly." -ForegroundColor Yellow
 }

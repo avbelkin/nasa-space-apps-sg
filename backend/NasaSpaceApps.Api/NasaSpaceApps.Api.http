@@ -24,3 +24,18 @@ GET {{NasaSpaceApps.Api_HostAddress}}/api/hotspots?bbox=100,-5,115,5&days=1&sens
 Accept: application/json
 
 ###
+
+GET {{NasaSpaceApps.Api_HostAddress}}/api/nasa/status
+Accept: application/json
+
+###
+
+GET {{NasaSpaceApps.Api_HostAddress}}/api/nasa/epic
+Accept: application/json
+
+###
+
+GET {{NasaSpaceApps.Api_HostAddress}}/api/nasa/wildfires?status=open&days=14&limit=25
+Accept: application/json
+
+###

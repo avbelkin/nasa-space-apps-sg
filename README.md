@@ -11,7 +11,7 @@
 ## Public Availability
 
 - **Live Web UI (GitHub Pages)**: [https://avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg) — publicly accessible React + MapLibre 3D globe SPA deployed automatically from `main` via [`.github/workflows/deploy-ui.yml`](.github/workflows/deploy-ui.yml).
-- **Backend API (Google Cloud Run, `asia-southeast1`)**: `https://earth-fire-calendar-api-354cntvldq-as.a.run.app` (`/health`, `/api/status`, `/api/firms/status`, `/api/hotspots`, `/api/satellites/orbits`).
+- **Backend API (Google Cloud Run, `asia-southeast1`)**: `https://earth-fire-calendar-api-354cntvldq-as.a.run.app` (`/health`, `/api/status`, `/api/firms/status`, `/api/hotspots`, `/api/nasa/status`, `/api/nasa/epic`, `/api/nasa/wildfires`, `/api/satellites/orbits`).
 
 ## Stack
 
@@ -47,9 +47,12 @@ dotnet run --project backend/NasaSpaceApps.Api
 
 Endpoints:
 - `GET /health`
-- `GET /api/status` — Service metadata plus safe `FIRMS_MAP_KEY` configuration/format diagnostics (reads `FIRMS_MAP_KEY` / `Firms:MapKey` / Windows User env in Development)
+- `GET /api/status` — Service metadata plus safe `FIRMS_MAP_KEY` & `NASA_API_KEY` configuration/format diagnostics (reads env vars / configuration / Windows User env in Development)
 - `GET /api/firms/status` — Cached NASA FIRMS `mapkey_status` quota check & `data_availability` windows
 - `GET /api/hotspots?bbox=west,south,east,north&days=1..5&sensor=all|modis|viirs` — Cached live MODIS & VIIRS active-fire detections from NASA FIRMS
+- `GET /api/nasa/status` — Cached `api.nasa.gov` (`NASA_API_KEY`) reachability, `X-RateLimit-Limit` / `Remaining` quota, and latest DSCOVR EPIC observation check
+- `GET /api/nasa/epic` — Cached latest DSCOVR EPIC natural-color Earth imagery metadata & archive PNG URLs via `api.nasa.gov`
+- `GET /api/nasa/wildfires?status=open|closed|all&days=1..90&limit=1..200` — Cached NASA EONET v3 global wildfire event metadata
 - `GET /api/satellites/orbits` — Cached CelesTrak TLE orbits & sensor swath parameters for MODIS (`Terra`, `Aqua`) and VIIRS (`NOAA-20`, `NOAA-21`)
 
 ### 2. Frontend (`http://localhost:5173`)
@@ -93,7 +96,7 @@ Run [scripts/bootstrap-gcp-cloudrun.ps1](scripts/bootstrap-gcp-cloudrun.ps1) aga
   -SyncGitHubVars
 ```
 
-This idempotently enables required GCP APIs (including Vertex AI when `-EnableVertexAi` is passed), creates the Artifact Registry Docker repository and optional GCS bucket, provisions Workload Identity Federation (GitHub OIDC) and least-privilege deployer/runtime service accounts, sets up Secret Manager (`firms-map-key`, `gemini-api-key`), optionally creates a monthly billing budget alert, and syncs the `GCP_*` variables below to GitHub Actions.
+This idempotently enables required GCP APIs (including Vertex AI when `-EnableVertexAi` is passed), creates the Artifact Registry Docker repository and optional GCS bucket, provisions Workload Identity Federation (GitHub OIDC) and least-privilege deployer/runtime service accounts, sets up Secret Manager (`firms-map-key`, `nasa-api-key`, `gemini-api-key`), optionally creates a monthly billing budget alert, and syncs the `GCP_*` variables below to GitHub Actions.
 
 #### Switching Cloud Run Between Warm & Hibernate Modes
 
@@ -115,7 +118,7 @@ The Cloud Run deployment job runs once the required `GCP_*` repository variables
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | Full Workload Identity Provider resource name for GitHub OIDC | `projects/<num>/locations/global/workloadIdentityPools/github-pool/providers/github-provider` |
 | `GCP_SERVICE_ACCOUNT` | Service account email used by GitHub Actions | `github-deployer@<project>.iam.gserviceaccount.com` |
 | `GCP_RUNTIME_SERVICE_ACCOUNT` | Optional least-privilege runtime service account for Cloud Run | `nasa-api-runtime@<project>.iam.gserviceaccount.com` |
-| `GCP_CLOUDRUN_SECRETS` | Optional Secret Manager env bindings (`ENV=secret:version,...`) | `FIRMS_MAP_KEY=firms-map-key:latest` |
+| `GCP_CLOUDRUN_SECRETS` | Optional Secret Manager env bindings (`ENV=secret:version,...`) | `FIRMS_MAP_KEY=firms-map-key:latest,NASA_API_KEY=nasa-api-key:latest` |
 | `GCP_REGION` | Optional Artifact Registry & Cloud Run region | `asia-southeast1` |
 | `GCP_ARTIFACT_REPO` | Optional Artifact Registry Docker repository name | `cloud-run-source-deploy` |
 | `GCP_SERVICE_NAME` | Optional Cloud Run service name | `earth-fire-calendar-api` |
