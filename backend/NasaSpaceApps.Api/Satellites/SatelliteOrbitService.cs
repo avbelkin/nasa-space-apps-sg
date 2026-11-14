@@ -56,7 +56,7 @@ public sealed record SatelliteOrbitsResponse(
 public sealed class SatelliteOrbitService(CelesTrakTleDownloader tleDownloader)
 {
     public const int DefaultPastMinutes = 180;
-    public const int DefaultFutureMinutes = 90;
+    public const int DefaultFutureMinutes = 30;
     public const int DefaultStepSeconds = 30;
     public const int MinPastMinutes = 5;
     public const int MaxPastMinutes = 360;

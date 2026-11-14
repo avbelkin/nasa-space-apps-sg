@@ -123,7 +123,6 @@ export type OrbitalFeatureKind =
   | 'nadir-swath'
   | 'past-track'
   | 'past-lag-track'
-  | 'future-track'
   | 'position'
 
 export interface LiveOrbitalState {
@@ -132,7 +131,6 @@ export interface LiveOrbitalState {
   nadirSwathsGeoJson: FeatureCollection<Polygon>
   pastTracksGeoJson: FeatureCollection<MultiLineString>
   pastLagTracksGeoJson: FeatureCollection<MultiLineString>
-  futureTracksGeoJson: FeatureCollection<MultiLineString>
   positionsGeoJson: FeatureCollection<Point>
   combinedGeoJson: FeatureCollection<Point | MultiLineString | Polygon>
 }
@@ -159,12 +157,12 @@ const DEFAULT_SATELLITE_STYLE: SatelliteVisualStyle = {
 export const SATELLITE_ANIMATION_FPS = 30
 export const SATELLITE_ANIMATION_INTERVAL_MS = 1000 / SATELLITE_ANIMATION_FPS
 export const SATELLITE_ORBIT_PAST_MINUTES = 180
-export const SATELLITE_ORBIT_FUTURE_MINUTES = 90
+// +30m forward sample buffer feeds smooth 30 FPS interpolation between 60s active / 20m idle polls; no future track line is rendered.
+export const SATELLITE_ORBIT_FUTURE_MINUTES = 30
 export const SATELLITE_ORBIT_STEP_SECONDS = 30
 export const DEFAULT_VIIRS_INGESTION_LAG_MINUTES = 90
 export const DEFAULT_MODIS_INGESTION_LAG_MINUTES = 120
-export const SATELLITE_TRACK_LAG_DASH_ARRAY: [number, number] = [2, 2]
-export const SATELLITE_TRACK_FUTURE_DOT_ARRAY: [number, number] = [0, 2.4]
+export const SATELLITE_TRACK_LAG_DASH_ARRAY: [number, number] = [4, 2]
 export const SATELLITE_ORBITS_REFRESH_INTERVAL_MS = 60_000
 export const SATELLITE_ORBITS_IDLE_REFRESH_INTERVAL_MS = 20 * 60 * 1000
 export const SATELLITE_HUD_VIEWPORT_DEBOUNCE_MS = 350
@@ -777,14 +775,13 @@ export function computeLiveOrbitalState(
   const nadirSwathFeatures: Array<Feature<Polygon>> = []
   const pastTrackFeatures: Array<Feature<MultiLineString>> = []
   const pastLagTrackFeatures: Array<Feature<MultiLineString>> = []
-  const futureTrackFeatures: Array<Feature<MultiLineString>> = []
   const positionFeatures: Array<Feature<Point>> = []
 
   const pushTrackFeature = (
     target: Array<Feature<MultiLineString>>,
     sat: SatelliteOrbit,
     style: SatelliteVisualStyle,
-    kind: Extract<OrbitalFeatureKind, 'past-track' | 'past-lag-track' | 'future-track'>,
+    kind: Extract<OrbitalFeatureKind, 'past-track' | 'past-lag-track'>,
     idSuffix: string,
     points: ReadonlyArray<readonly [number, number]>,
     ingestionLagMinutes?: number,
@@ -891,14 +888,6 @@ export function computeLiveOrbitalState(
       sliceOrbitTrackWindow(sat, cutoffUnixMs, nowUnixMs, cutoffEndpoint, liveEndpoint),
       lagMinutes,
     )
-    pushTrackFeature(
-      futureTrackFeatures,
-      sat,
-      style,
-      'future-track',
-      'future',
-      sliceOrbitTrackWindow(sat, nowUnixMs, Number.POSITIVE_INFINITY, liveEndpoint),
-    )
 
     if (sat.wideSwathKm > sat.nadirSwathKm) {
       const wideRing = buildInstantaneousSwathPolygon(
@@ -949,7 +938,6 @@ export function computeLiveOrbitalState(
     nadirSwathsGeoJson: { type: 'FeatureCollection', features: nadirSwathFeatures },
     pastTracksGeoJson: { type: 'FeatureCollection', features: pastTrackFeatures },
     pastLagTracksGeoJson: { type: 'FeatureCollection', features: pastLagTrackFeatures },
-    futureTracksGeoJson: { type: 'FeatureCollection', features: futureTrackFeatures },
     positionsGeoJson: { type: 'FeatureCollection', features: positionFeatures },
     combinedGeoJson: {
       type: 'FeatureCollection',
@@ -958,7 +946,6 @@ export function computeLiveOrbitalState(
         ...nadirSwathFeatures,
         ...pastTrackFeatures,
         ...pastLagTrackFeatures,
-        ...futureTrackFeatures,
         ...positionFeatures,
       ],
     },

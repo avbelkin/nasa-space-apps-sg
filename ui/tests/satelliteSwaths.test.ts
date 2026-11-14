@@ -29,7 +29,6 @@ import {
   SATELLITE_ORBIT_FUTURE_MINUTES,
   SATELLITE_ORBIT_PAST_MINUTES,
   SATELLITE_ORBIT_STEP_SECONDS,
-  SATELLITE_TRACK_FUTURE_DOT_ARRAY,
   SATELLITE_TRACK_LAG_DASH_ARRAY,
   WIDE_SWATH_COLOR,
   WIDE_SWATH_DASH_ARRAY,
@@ -242,7 +241,6 @@ test('computeLiveOrbitalState builds separate 49-vertex wide and nadir swaths pl
   assert.equal(state.nadirSwathsGeoJson.features.length, 1)
   assert.equal(state.pastTracksGeoJson.features.length, 0)
   assert.equal(state.pastLagTracksGeoJson.features.length, 1)
-  assert.equal(state.futureTracksGeoJson.features.length, 1)
   assert.equal(state.positionsGeoJson.features.length, 1)
   assert.equal(state.wideSwathsGeoJson.features[0].geometry.coordinates[0].length, 49)
   assert.equal(state.nadirSwathsGeoJson.features[0].geometry.coordinates[0].length, 49)
@@ -252,11 +250,11 @@ test('computeLiveOrbitalState builds separate 49-vertex wide and nadir swaths pl
     const kind = String(feature.properties?.orbitalFeatureKind ?? '')
     countByKind.set(kind, (countByKind.get(kind) ?? 0) + 1)
   }
-  assert.equal(state.combinedGeoJson.features.length, 5)
+  assert.equal(state.combinedGeoJson.features.length, 4)
   assert.equal(countByKind.get('wide-swath'), 1)
   assert.equal(countByKind.get('nadir-swath'), 1)
   assert.equal(countByKind.get('past-lag-track'), 1)
-  assert.equal(countByKind.get('future-track'), 1)
+  assert.equal(countByKind.get('future-track'), undefined)
   assert.equal(countByKind.get('position'), 1)
 
   const hidden = computeLiveOrbitalState([orbit], 'harmonized', t0Ms + 500, false)
@@ -264,7 +262,6 @@ test('computeLiveOrbitalState builds separate 49-vertex wide and nadir swaths pl
   assert.equal(hidden.nadirSwathsGeoJson.features.length, 0)
   assert.equal(hidden.pastTracksGeoJson.features.length, 0)
   assert.equal(hidden.pastLagTracksGeoJson.features.length, 0)
-  assert.equal(hidden.futureTracksGeoJson.features.length, 0)
   assert.equal(hidden.positionsGeoJson.features.length, 0)
   assert.equal(hidden.combinedGeoJson.features.length, 0)
 })
@@ -620,12 +617,11 @@ test('createSatelliteAnimationController coordinates rAF pacing, sourcedata lock
   assert.equal(sourceListeners.size, 0)
 })
 
-test('orbit window defaults and 3-part processing-lag track splitting work for VIIRS (90m) and MODIS (120m)', () => {
+test('orbit window defaults and 2-part processing-lag tail splitting work for VIIRS (90m) and MODIS (120m)', () => {
   assert.equal(SATELLITE_ORBIT_PAST_MINUTES, 180)
-  assert.equal(SATELLITE_ORBIT_FUTURE_MINUTES, 90)
+  assert.equal(SATELLITE_ORBIT_FUTURE_MINUTES, 30)
   assert.equal(SATELLITE_ORBIT_STEP_SECONDS, 30)
-  assert.deepEqual(SATELLITE_TRACK_LAG_DASH_ARRAY, [2, 2])
-  assert.deepEqual(SATELLITE_TRACK_FUTURE_DOT_ARRAY, [0, 2.4])
+  assert.deepEqual(SATELLITE_TRACK_LAG_DASH_ARRAY, [4, 2])
 
   assert.equal(
     resolveSatelliteProcessingLagMinutes({ instrument: 'viirs', typicalIngestionLagMinutes: 90 }),
@@ -652,7 +648,7 @@ test('orbit window defaults and 3-part processing-lag track splitting work for V
     lagMinutes: number,
   ): SatelliteOrbit => {
     const track = []
-    for (let mins = -180; mins <= 90; mins += 5) {
+    for (let mins = -180; mins <= 30; mins += 5) {
       const k = (mins + 180) / 5
       track.push({
         timestampUnixMs: t0 + mins * 60_000,
@@ -681,26 +677,27 @@ test('orbit window defaults and 3-part processing-lag track splitting work for V
   const modisState = computeLiveOrbitalState([modisOrbit], 'harmonized', now1, true)
 
   for (const state of [viirsState, modisState]) {
-    assert.equal(state.combinedGeoJson.features.length, 6)
+    assert.equal(state.combinedGeoJson.features.length, 5)
     assert.equal(state.pastTracksGeoJson.features.length, 1)
     assert.equal(state.pastLagTracksGeoJson.features.length, 1)
-    assert.equal(state.futureTracksGeoJson.features.length, 1)
+    assert.equal(
+      state.combinedGeoJson.features.some(
+        (feature) => String(feature.properties?.orbitalFeatureKind) === 'future-track',
+      ),
+      false,
+    )
 
     const pastSegs = state.pastTracksGeoJson.features[0].geometry.coordinates
     const lagSegs = state.pastLagTracksGeoJson.features[0].geometry.coordinates
-    const futureSegs = state.futureTracksGeoJson.features[0].geometry.coordinates
     assert.equal(pastSegs.length, 1)
     assert.equal(lagSegs.length, 1)
-    assert.equal(futureSegs.length, 1)
 
     const pastEnd = pastSegs[0][pastSegs[0].length - 1]
     const lagStart = lagSegs[0][0]
     const lagEnd = lagSegs[0][lagSegs[0].length - 1]
-    const futureStart = futureSegs[0][0]
     const posCoord = state.positionsGeoJson.features[0].geometry.coordinates
 
     assert.deepEqual(pastEnd, lagStart)
-    assert.deepEqual(lagEnd, futureStart)
     assert.deepEqual(lagEnd, posCoord)
   }
 
@@ -715,12 +712,26 @@ test('orbit window defaults and 3-part processing-lag track splitting work for V
   const cutoff2 = viirsNext.pastLagTracksGeoJson.features[0].geometry.coordinates[0][0]
   assert.notDeepEqual(cutoff1, cutoff2)
 
+  // Future points (> now1) are not rendered ahead of the spacecraft at now1,
+  // yet +30m buffer points allow smooth client-side advancement up to now = t0 + 15m.
+  const ptPlus15 = viirsOrbit.track.find((pt) => pt.timestampUnixMs === t0 + 15 * 60_000)!
+  const coordPlus15 = [ptPlus15.lng, ptPlus15.lat]
+  const hasCoord = (pts: number[][], target: number[]) =>
+    pts.some((p) => p[0] === target[0] && p[1] === target[1])
+
+  assert.equal(hasCoord(viirsState.pastTracksGeoJson.features[0].geometry.coordinates[0], coordPlus15), false)
+  assert.equal(hasCoord(viirsState.pastLagTracksGeoJson.features[0].geometry.coordinates[0], coordPlus15), false)
+
+  const viirsAtPlus15 = computeLiveOrbitalState([viirsOrbit], 'harmonized', t0 + 15 * 60_000, true)
+  const posPlus15 = viirsAtPlus15.positionsGeoJson.features[0].geometry.coordinates
+  const lagPlus15Pts = viirsAtPlus15.pastLagTracksGeoJson.features[0].geometry.coordinates[0]
+  assert.deepEqual(posPlus15, coordPlus15)
+  assert.deepEqual(lagPlus15Pts[lagPlus15Pts.length - 1], coordPlus15)
+
   // At -105m before t0: VIIRS (90m lag) places -105m in solid ready past-track,
   // while MODIS (120m lag) still keeps -105m inside dashed in-processing past-lag-track.
   const ptMinus105 = viirsOrbit.track.find((pt) => pt.timestampUnixMs === t0 - 105 * 60_000)!
   const coordMinus105 = [ptMinus105.lng, ptMinus105.lat]
-  const hasCoord = (pts: number[][], target: number[]) =>
-    pts.some((p) => p[0] === target[0] && p[1] === target[1])
 
   const viirsPastPts = viirsState.pastTracksGeoJson.features[0].geometry.coordinates[0]
   const viirsLagPts = viirsState.pastLagTracksGeoJson.features[0].geometry.coordinates[0]
@@ -733,7 +744,7 @@ test('orbit window defaults and 3-part processing-lag track splitting work for V
   assert.equal(hasCoord(modisLagPts, coordMinus105), true)
 })
 
-test('fetchSatelliteOrbits requests 180m past and 90m future window', async () => {
+test('fetchSatelliteOrbits requests 180m past and 30m future buffer', async () => {
   const originalFetch = globalThis.fetch
   let requestedUrl = ''
   globalThis.fetch = (async (input: string | URL | Request) => {
@@ -761,11 +772,11 @@ test('fetchSatelliteOrbits requests 180m past and 90m future window', async () =
   const parsed = new URL(requestedUrl)
   assert.equal(parsed.pathname, '/api/satellites/orbits')
   assert.equal(parsed.searchParams.get('pastMinutes'), '180')
-  assert.equal(parsed.searchParams.get('futureMinutes'), '90')
+  assert.equal(parsed.searchParams.get('futureMinutes'), '30')
   assert.equal(parsed.searchParams.get('stepSeconds'), '30')
 })
 
-test('EarthMapStage and MapLegend wire solid ready, dashed processing-lag, and round-dotted future tracks', () => {
+test('EarthMapStage and MapLegend wire solid ready and dashed processing-lag tail without future track', () => {
   const mapStageSource = fs.readFileSync(
     new URL('../src/components/EarthMapStage.tsx', import.meta.url),
     'utf8',
@@ -775,10 +786,8 @@ test('EarthMapStage and MapLegend wire solid ready, dashed processing-lag, and r
     mapStageSource,
     /id:\s*'satellite-tracks-lag-line'[\s\S]*?'past-lag-track'[\s\S]*?'line-dasharray':\s*SATELLITE_TRACK_LAG_DASH_ARRAY/,
   )
-  assert.match(
-    mapStageSource,
-    /id:\s*'satellite-tracks-future-line'[\s\S]*?'future-track'[\s\S]*?'line-cap':\s*'round'[\s\S]*?'line-join':\s*'round'[\s\S]*?'line-dasharray':\s*SATELLITE_TRACK_FUTURE_DOT_ARRAY/,
-  )
+  assert.doesNotMatch(mapStageSource, /satellite-tracks-future-line/)
+  assert.doesNotMatch(mapStageSource, /future-track/)
 
   const legendSource = fs.readFileSync(
     new URL('../src/components/MapLegend.tsx', import.meta.url),
@@ -786,6 +795,7 @@ test('EarthMapStage and MapLegend wire solid ready, dashed processing-lag, and r
   )
   assert.match(
     legendSource,
-    /Tracks:\s*solid ready,\s*dashed in processing \(\{orbitLagLabel\}\),\s*dotted next 90 min/,
+    /Tracks:\s*solid ready,\s*dashed in processing \(\{orbitLagLabel\}\)/,
   )
+  assert.doesNotMatch(legendSource, /dotted/)
 })
