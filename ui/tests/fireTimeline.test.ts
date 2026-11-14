@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { describe, it } from 'node:test'
-import { FIRE_SPOT_COLORS } from '../src/data/dataPalette.ts'
+import { DEFAULT_SATELLITE_COLOR, SATELLITE_COLORS } from '../src/data/dataPalette.ts'
 import type { FireSpotTooltipInput } from '../src/utils/fireSpots.ts'
 import {
   buildFireDetectionsTimeline,
@@ -11,6 +11,7 @@ import {
   computeTimelineConfidenceOpacity,
   MIN_TIMELINE_BAR_HEIGHT_PCT,
   MIN_TIMELINE_CONFIDENCE_OPACITY,
+  resolveSatellitePaletteColor,
   SUNRISE_SUNSET_ALTITUDE_DEG,
   TIMELINE_SLOT_COUNT,
   TIMELINE_SLOT_MS,
@@ -143,7 +144,16 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
     assert.ok(slot22.opacity < slot20.opacity)
     assert.ok(slot22.opacity >= MIN_TIMELINE_CONFIDENCE_OPACITY)
 
-    // Sensor view mode uses instrument hues
+    // Satellite colors match SATELLITE_COLORS / DEFAULT_SATELLITE_COLOR across all view modes
+    assert.equal(resolveSatellitePaletteColor('T', undefined, 'modis'), SATELLITE_COLORS.terra)
+    assert.equal(resolveSatellitePaletteColor('A', undefined, 'modis'), SATELLITE_COLORS.aqua)
+    assert.equal(resolveSatellitePaletteColor('1', undefined, 'viirs'), SATELLITE_COLORS['noaa-20'])
+    assert.equal(resolveSatellitePaletteColor('2', undefined, 'viirs'), SATELLITE_COLORS['noaa-21'])
+    assert.equal(resolveSatellitePaletteColor('N', undefined, 'viirs'), DEFAULT_SATELLITE_COLOR)
+
+    assert.equal(slot20.color, SATELLITE_COLORS.terra)
+    assert.equal(slot22.color, DEFAULT_SATELLITE_COLOR)
+
     const sensorTimeline = buildFireDetectionsTimeline(spots, {
       nowMs,
       viewMode: 'sensors',
@@ -153,8 +163,8 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
     const sensorSlot22 = sensorTimeline.slots[22]
     assert.ok(sensorSlot20 && sensorSlot20.kind === 'detection')
     assert.ok(sensorSlot22 && sensorSlot22.kind === 'detection')
-    assert.equal(sensorSlot20.color, FIRE_SPOT_COLORS.modis)
-    assert.equal(sensorSlot22.color, FIRE_SPOT_COLORS.viirs)
+    assert.equal(sensorSlot20.color, SATELLITE_COLORS.terra)
+    assert.equal(sensorSlot22.color, DEFAULT_SATELLITE_COLOR)
   })
 
   it('accepts Stage-2 negative satellite passes only in empty hour slots', () => {
@@ -185,17 +195,24 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
     const slot21 = timeline.slots[21]
     assert.ok(slot21 && slot21.kind === 'detection')
     assert.equal(slot21.shortSatellite, 'NOAA-21')
+    assert.equal(slot21.color, SATELLITE_COLORS['noaa-21'])
 
     const slot15 = timeline.slots[15]
     assert.ok(slot15 && slot15.kind === 'non-detection')
     assert.equal(slot15.shortSatellite, 'NOAA-20')
+    assert.equal(slot15.color, SATELLITE_COLORS['noaa-20'])
     assert.equal(slot15.isNadir, false)
   })
 
-  it('enforces >= 1rem minimum bar width in App.css', () => {
+  it('enforces >= 1rem minimum bar width and clip overflow (no scrollbars) in App.css', () => {
     const appCss = fs.readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
-    const match = appCss.match(/\.fire-timeline-bars\s*\{([^}]*)\}/)
-    assert.ok(match, 'expected .fire-timeline-bars CSS rule')
-    assert.match(match[1], /grid-template-columns:\s*repeat\(24,\s*minmax\(1rem,\s*1fr\)\)\s*;/)
+    const barsMatch = appCss.match(/\.fire-timeline-bars\s*\{([^}]*)\}/)
+    assert.ok(barsMatch, 'expected .fire-timeline-bars CSS rule')
+    assert.match(barsMatch[1], /grid-template-columns:\s*repeat\(24,\s*minmax\(1rem,\s*1fr\)\)\s*;/)
+
+    const scrollMatch = appCss.match(/\.fire-timeline-scroll\s*\{([^}]*)\}/)
+    assert.ok(scrollMatch, 'expected .fire-timeline-scroll CSS rule')
+    assert.match(scrollMatch[1], /overflow:\s*clip\s*;/)
+    assert.doesNotMatch(scrollMatch[1], /overflow(-[xy])?:\s*(auto|scroll)\b/)
   })
 })

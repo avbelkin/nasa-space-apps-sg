@@ -114,7 +114,10 @@ export function FireDetectionsTimelineCard({ timeline }: FireDetectionsTimelineC
                       style={{ gridColumn: slot.slotIndex + 1, gridRow: 1 }}
                       title={`${slot.localTimeLabel} · ${slot.satellite} overpass (no detection)`}
                     >
-                      <span className="fire-timeline-negative-tick" />
+                      <span
+                        className="fire-timeline-negative-tick"
+                        style={{ '--sat-color': slot.color } as CSSProperties}
+                      />
                       <span className="fire-timeline-sat fire-timeline-sat-negative">
                         {slot.shortSatellite}
                       </span>

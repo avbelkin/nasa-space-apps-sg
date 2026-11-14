@@ -1,4 +1,4 @@
-import { FIRE_SPOT_COLORS } from '../data/dataPalette.ts'
+import { DEFAULT_SATELLITE_COLOR, SATELLITE_COLORS } from '../data/dataPalette.ts'
 import type { ViewMode } from '../data/stubSeasonalData.ts'
 import type { FireInstrument, FireSpotTooltipInput } from './fireSpots.ts'
 import { computeSubsolarPoint } from './nightLightsShader.ts'
@@ -334,39 +334,33 @@ export function computePlaceSunTimeline(
   }
 }
 
-function parseHexRgb(hex: string): [number, number, number] {
-  const clean = hex.trim().replace(/^#/, '')
-  const num = Number.parseInt(clean, 16)
-  return [(num >> 16) & 255, (num >> 8) & 255, num & 255]
-}
-
-function interpolateHexColor(fromHex: string, toHex: string, t: number): string {
-  const safeT = clamp(t, 0, 1)
-  const [r1, g1, b1] = parseHexRgb(fromHex)
-  const [r2, g2, b2] = parseHexRgb(toHex)
-  const r = Math.round(r1 + (r2 - r1) * safeT)
-  const g = Math.round(g1 + (g2 - g1) * safeT)
-  const b = Math.round(b1 + (b2 - b1) * safeT)
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+export function resolveSatellitePaletteColor(
+  satellite?: string,
+  source?: string,
+  instrument?: FireInstrument,
+): string {
+  switch (normalizeFullSatelliteLabel(satellite, source, instrument)) {
+    case 'Terra':
+      return SATELLITE_COLORS.terra
+    case 'Aqua':
+      return SATELLITE_COLORS.aqua
+    case 'NOAA-20':
+      return SATELLITE_COLORS['noaa-20']
+    case 'NOAA-21':
+      return SATELLITE_COLORS['noaa-21']
+    default:
+      return DEFAULT_SATELLITE_COLOR
+  }
 }
 
 export function computeTimelineBarColor(
-  frpMw: number,
-  viewMode: ViewMode,
+  _frpMw: number,
+  _viewMode: ViewMode,
   instrument: FireInstrument,
+  satellite?: string,
+  source?: string,
 ): string {
-  if (viewMode === 'sensors') {
-    return instrument === 'modis' ? FIRE_SPOT_COLORS.modis : FIRE_SPOT_COLORS.viirs
-  }
-  const safeFrp = Number.isFinite(frpMw) ? Math.max(0, frpMw) : 0
-  if (safeFrp <= 20) {
-    return interpolateHexColor(FIRE_SPOT_COLORS.frpLow, FIRE_SPOT_COLORS.frpMid, safeFrp / 20)
-  }
-  return interpolateHexColor(
-    FIRE_SPOT_COLORS.frpMid,
-    FIRE_SPOT_COLORS.frpHigh,
-    (safeFrp - 20) / 80,
-  )
+  return resolveSatellitePaletteColor(satellite, source, instrument)
 }
 
 export function computeTimelineConfidenceOpacity(confidence?: number): number {
@@ -407,6 +401,7 @@ export interface NegativeTimelinePass {
   localTimeLabel: string
   satellite: string
   shortSatellite: string
+  color: string
   instrument: FireInstrument
   isNadir?: boolean
 }
@@ -451,7 +446,6 @@ export function buildFireDetectionsTimeline(
   options: BuildFireTimelineOptions = {},
 ): FireDetectionsTimeline {
   const nowMs = Number.isFinite(options.nowMs) ? options.nowMs! : Date.now()
-  const viewMode = options.viewMode ?? 'anomaly'
   const timeZone = options.timeZone
 
   let maxSpotTs = -Infinity
@@ -566,7 +560,7 @@ export function buildFireDetectionsTimeline(
       heightPct,
       confidence,
       opacity: computeTimelineConfidenceOpacity(confidence),
-      color: computeTimelineBarColor(frpMw, viewMode, instrument),
+      color: resolveSatellitePaletteColor(winner.satellite, winner.source, instrument),
       satellite,
       shortSatellite,
       instrument,
@@ -608,6 +602,7 @@ export function buildFireDetectionsTimeline(
         localTimeLabel: formatBrowserLocalHhMm(pass.timestampMs, timeZone),
         satellite,
         shortSatellite,
+        color: resolveSatellitePaletteColor(pass.satellite, undefined, pass.instrument),
         instrument: pass.instrument,
         isNadir: pass.isNadir,
       }
