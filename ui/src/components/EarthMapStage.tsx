@@ -974,12 +974,6 @@ export function EarthMapStage({
               <span>VIIRS Orbits (NOAA-20, NOAA-21 &middot; Solid past / Dashed +90m)</span>
             </li>
           )}
-          {showClouds && !cloudsDisabled && (
-            <li>
-              <span className="legend-glyph legend-glyph-clouds" aria-hidden="true">&#9729;</span>
-              <span>Live VIS/IR Clouds (Day/Night Terminator)</span>
-            </li>
-          )}
           {userLocation && (
             <li>
               <span className="legend-glyph legend-glyph-user" aria-hidden="true">&#9673;</span>
