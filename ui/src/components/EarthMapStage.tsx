@@ -26,7 +26,21 @@ import {
   SATELLITE_CLOUDS_LAYER_ID,
   type SatelliteCloudLayerController,
 } from '../utils/satelliteCloudLayer'
-import type { LiveOrbitalState, LiveSatelliteSnapshot } from '../utils/satelliteOrbits'
+import {
+  NADIR_SWATH_COLOR,
+  NADIR_SWATH_FILL_OPACITY,
+  NADIR_SWATH_STROKE_OPACITY,
+  WIDE_SWATH_COLOR,
+  WIDE_SWATH_DASH_ARRAY,
+  WIDE_SWATH_FILL_OPACITY,
+  WIDE_SWATH_STROKE_OPACITY,
+  clampViewportBounds,
+  getSatelliteTooltip,
+  type GeoBounds,
+  type LiveOrbitalState,
+  type LiveSatelliteSnapshot,
+  type SatelliteHudSection,
+} from '../utils/satelliteOrbits'
 
 export interface CameraFocusRequest {
   lng: number
@@ -45,6 +59,7 @@ interface EarthMapStageProps {
   onProjectionModeChange: (next: ProjectionMode) => void
   initialViewport: MapViewportState
   onViewportChange: (next: MapViewportState) => void
+  onBoundsChange?: (bounds: GeoBounds) => void
   cameraFocusRequest: CameraFocusRequest | null
   autoLocateOnMount: boolean
   geolocationMaxZoom?: number
@@ -54,6 +69,7 @@ interface EarthMapStageProps {
   onShowCloudsChange: (next: boolean) => void
   cloudRefreshNonce?: number
   orbitalState: LiveOrbitalState
+  satelliteHudSection: SatelliteHudSection | null
   showOrbits: boolean
   onShowOrbitsChange: (next: boolean) => void
   selectedSatelliteId: string | null
@@ -62,9 +78,11 @@ interface EarthMapStageProps {
 
 interface SatelliteMarkerEntry {
   marker: Marker
+  wrap: HTMLDivElement
   button: HTMLButtonElement
   iconSvg: SVGSVGElement
   labelSpan: HTMLSpanElement
+  tooltipSpan: HTMLSpanElement
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -130,8 +148,8 @@ function buildUserLocationGeoJson(coords: [number, number] | null): FeatureColle
 function createSpacecraftIconSvg(): SVGSVGElement {
   const svg = document.createElementNS(SVG_NS, 'svg')
   svg.setAttribute('viewBox', '0 0 18 18')
-  svg.setAttribute('width', '15')
-  svg.setAttribute('height', '15')
+  svg.setAttribute('width', '18')
+  svg.setAttribute('height', '18')
   svg.setAttribute('aria-hidden', 'true')
   svg.classList.add('sat-marker-icon')
 
@@ -155,12 +173,12 @@ function createSpacecraftIconSvg(): SVGSVGElement {
     return rect
   }
 
-  // Solar arrays (left & right wings) + center bus + sensor crossbar
+  // Exact extremum 18x18 spacecraft silhouette: left/right solar wings + center bus + crossbar
   svg.append(
-    makeRect('0', '7', '6.5', '4', 'sat-svg-wing', '0.5'),
-    makeRect('11.5', '7', '6.5', '4', 'sat-svg-wing', '0.5'),
-    makeRect('7.8', '3.5', '2.4', '11', 'sat-svg-body', '0.6'),
-    makeRect('6.5', '8', '5', '1.8', 'sat-svg-body'),
+    makeRect('0', '7', '7', '4', 'sat-svg-wing'),
+    makeRect('11', '7', '7', '4', 'sat-svg-wing'),
+    makeRect('8', '4', '2', '11', 'sat-svg-body', '0.3'),
+    makeRect('7', '8', '4', '1', 'sat-svg-body'),
   )
   return svg
 }
@@ -185,9 +203,13 @@ function createBaseStyle(
         attribution:
           'Sentinel-2 cloudless — <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer">s2maps.eu</a> by <a href="https://eox.at" target="_blank" rel="noopener noreferrer">EOX IT Services GmbH</a> (Contains modified Copernicus Sentinel data 2025)',
       },
-      'satellite-swaths': {
+      'satellite-swaths-wide': {
         type: 'geojson',
-        data: initialOrbitalState.swathsGeoJson,
+        data: initialOrbitalState.wideSwathsGeoJson,
+      },
+      'satellite-swaths-nadir': {
+        type: 'geojson',
+        data: initialOrbitalState.nadirSwathsGeoJson,
       },
       'satellite-tracks-past': {
         type: 'geojson',
@@ -196,10 +218,6 @@ function createBaseStyle(
       'satellite-tracks-future': {
         type: 'geojson',
         data: initialOrbitalState.futureTracksGeoJson,
-      },
-      'satellite-positions': {
-        type: 'geojson',
-        data: initialOrbitalState.positionsGeoJson,
       },
       'fire-anomalies': {
         type: 'geojson',
@@ -217,35 +235,42 @@ function createBaseStyle(
         source: 'eox-s2cloudless',
       },
       {
-        id: 'satellite-swaths-fill',
+        id: 'satellite-swaths-wide-fill',
         type: 'fill',
-        source: 'satellite-swaths',
+        source: 'satellite-swaths-wide',
         paint: {
-          'fill-color': ['get', 'color'],
-          'fill-opacity': ['match', ['get', 'swathRole'], 'nadir', 0.14, 0.045],
+          'fill-color': WIDE_SWATH_COLOR,
+          'fill-opacity': WIDE_SWATH_FILL_OPACITY,
         },
       },
       {
         id: 'satellite-swaths-wide-outline',
         type: 'line',
-        source: 'satellite-swaths',
-        filter: ['==', ['get', 'swathRole'], 'wide'],
+        source: 'satellite-swaths-wide',
         paint: {
-          'line-color': ['get', 'color'],
+          'line-color': WIDE_SWATH_COLOR,
           'line-width': 1,
-          'line-opacity': 0.28,
-          'line-dasharray': [3, 4],
+          'line-opacity': WIDE_SWATH_STROKE_OPACITY,
+          'line-dasharray': WIDE_SWATH_DASH_ARRAY,
+        },
+      },
+      {
+        id: 'satellite-swaths-nadir-fill',
+        type: 'fill',
+        source: 'satellite-swaths-nadir',
+        paint: {
+          'fill-color': NADIR_SWATH_COLOR,
+          'fill-opacity': NADIR_SWATH_FILL_OPACITY,
         },
       },
       {
         id: 'satellite-swaths-nadir-outline',
         type: 'line',
-        source: 'satellite-swaths',
-        filter: ['==', ['get', 'swathRole'], 'nadir'],
+        source: 'satellite-swaths-nadir',
         paint: {
-          'line-color': ['get', 'color'],
-          'line-width': 1.1,
-          'line-opacity': 0.45,
+          'line-color': NADIR_SWATH_COLOR,
+          'line-width': 1,
+          'line-opacity': NADIR_SWATH_STROKE_OPACITY,
         },
       },
       {
@@ -267,28 +292,6 @@ function createBaseStyle(
           'line-width': 2.2,
           'line-opacity': 0.9,
           'line-dasharray': [2, 2],
-        },
-      },
-      {
-        id: 'satellite-positions-halo',
-        type: 'circle',
-        source: 'satellite-positions',
-        paint: {
-          'circle-radius': 9,
-          'circle-color': ['get', 'color'],
-          'circle-opacity': 0.28,
-          'circle-blur': 0.4,
-        },
-      },
-      {
-        id: 'satellite-positions-core',
-        type: 'circle',
-        source: 'satellite-positions',
-        paint: {
-          'circle-radius': 4,
-          'circle-color': ['get', 'color'],
-          'circle-stroke-width': 1.5,
-          'circle-stroke-color': '#f8fafc',
         },
       },
       {
@@ -367,10 +370,10 @@ function setGeoJsonSourceData(
 }
 
 function syncOrbitalSources(map: MapLibreMap, state: LiveOrbitalState): void {
-  setGeoJsonSourceData(map, 'satellite-swaths', state.swathsGeoJson)
+  setGeoJsonSourceData(map, 'satellite-swaths-wide', state.wideSwathsGeoJson)
+  setGeoJsonSourceData(map, 'satellite-swaths-nadir', state.nadirSwathsGeoJson)
   setGeoJsonSourceData(map, 'satellite-tracks-past', state.pastTracksGeoJson)
   setGeoJsonSourceData(map, 'satellite-tracks-future', state.futureTracksGeoJson)
-  setGeoJsonSourceData(map, 'satellite-positions', state.positionsGeoJson)
 }
 
 export function EarthMapStage({
@@ -382,6 +385,7 @@ export function EarthMapStage({
   onProjectionModeChange,
   initialViewport,
   onViewportChange,
+  onBoundsChange,
   cameraFocusRequest,
   autoLocateOnMount,
   geolocationMaxZoom = DEFAULT_GEOLOCATION_MAX_ZOOM,
@@ -391,6 +395,7 @@ export function EarthMapStage({
   onShowCloudsChange,
   cloudRefreshNonce = 0,
   orbitalState,
+  satelliteHudSection,
   showOrbits,
   onShowOrbitsChange,
   selectedSatelliteId,
@@ -403,6 +408,7 @@ export function EarthMapStage({
   const satMarkersRef = useRef<Map<string, SatelliteMarkerEntry>>(new Map())
   const initialViewportRef = useRef<MapViewportState>(initialViewport)
   const latestOnViewportChangeRef = useRef(onViewportChange)
+  const latestOnBoundsChangeRef = useRef(onBoundsChange)
   const userInteractedRef = useRef(false)
   const isMountedRef = useRef(false)
 
@@ -439,11 +445,22 @@ export function EarthMapStage({
 
   useEffect(() => {
     latestOnViewportChangeRef.current = onViewportChange
-  }, [onViewportChange])
+    latestOnBoundsChangeRef.current = onBoundsChange
+  }, [onViewportChange, onBoundsChange])
 
   useEffect(() => {
     isMountedRef.current = true
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return
+      }
+      for (const entry of satMarkersRef.current.values()) {
+        delete entry.wrap.dataset.tooltipOpen
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
     return () => {
+      document.removeEventListener('keydown', handleKeyDown)
       isMountedRef.current = false
     }
   }, [])
@@ -475,16 +492,45 @@ export function EarthMapStage({
     for (const sat of snapshots) {
       let entry = entries.get(sat.id)
       if (!entry) {
+        const tooltipId = `sat-tooltip-${sat.id}`
+        const wrap = document.createElement('div')
+        wrap.className = 'sat-marker-wrap'
+
         const button = document.createElement('button')
         button.type = 'button'
         button.className = 'sat-marker-badge'
         button.dataset.satId = sat.id
+        button.setAttribute('aria-describedby', tooltipId)
 
         const iconSvg = createSpacecraftIconSvg()
         const labelSpan = document.createElement('span')
         labelSpan.className = 'sat-marker-label'
 
+        const tooltipSpan = document.createElement('span')
+        tooltipSpan.id = tooltipId
+        tooltipSpan.setAttribute('role', 'tooltip')
+        tooltipSpan.className = 'sat-marker-tooltip'
+
         button.append(iconSvg, labelSpan)
+        wrap.append(button, tooltipSpan)
+
+        const showTooltip = () => {
+          wrap.dataset.tooltipOpen = 'true'
+        }
+        const hideTooltip = () => {
+          delete wrap.dataset.tooltipOpen
+        }
+
+        wrap.addEventListener('pointerenter', showTooltip)
+        wrap.addEventListener('pointerleave', hideTooltip)
+        button.addEventListener('focus', showTooltip)
+        wrap.addEventListener('focusout', (event) => {
+          const related = event.relatedTarget as Node | null
+          if (!related || !wrap.contains(related)) {
+            hideTooltip()
+          }
+        })
+
         button.addEventListener('click', (event) => {
           event.stopPropagation()
           userInteractedRef.current = true
@@ -495,28 +541,24 @@ export function EarthMapStage({
         })
 
         const marker = new Marker({
-          element: button,
+          element: wrap,
           anchor: 'left',
-          offset: [10, 0],
+          offset: [-11, 0],
           subpixelPositioning: true,
           opacityWhenCovered: '0.12',
         })
           .setLngLat([sat.lng, sat.lat])
           .addTo(map)
 
-        entry = { marker, button, iconSvg, labelSpan }
+        entry = { marker, wrap, button, iconSvg, labelSpan, tooltipSpan }
         entries.set(sat.id, entry)
       }
 
       entry.marker.setLngLat([sat.lng, sat.lat])
-      entry.button.style.setProperty('--sat-color', sat.color)
       entry.button.setAttribute('aria-pressed', activeSatId === sat.id ? 'true' : 'false')
-      entry.button.setAttribute(
-        'aria-label',
-        `Focus ${sat.name} (${sat.instrumentLabel}) at ${sat.lat.toFixed(1)} degrees latitude, ${sat.lng.toFixed(1)} degrees longitude`,
-      )
       entry.iconSvg.style.transform = `rotate(${sat.headingDeg.toFixed(1)}deg)`
-      entry.labelSpan.textContent = `${sat.glyph} ${sat.shortBadge}`
+      entry.labelSpan.textContent = sat.name
+      entry.tooltipSpan.textContent = getSatelliteTooltip(sat)
     }
   }
 
@@ -557,6 +599,22 @@ export function EarthMapStage({
 
       mapInstanceRef.current = map
 
+      const emitClampedBounds = (targetMap: MapLibreMap) => {
+        const bounds = targetMap.getBounds()
+        const clamped = clampViewportBounds(
+          {
+            west: bounds.getWest(),
+            south: bounds.getSouth(),
+            east: bounds.getEast(),
+            north: bounds.getNorth(),
+          },
+          { satelliteOnly: true },
+        )
+        if (clamped) {
+          latestOnBoundsChangeRef.current?.(clamped)
+        }
+      }
+
       map.on('style.load', () => {
         if (!map) {
           return
@@ -570,7 +628,7 @@ export function EarthMapStage({
           })
           cloudLayerRef.current = cloudLayer
           // Insert directly below satellite swaths/tracks so spacecraft & swaths stay above clouds.
-          map.addLayer(cloudLayer, 'satellite-swaths-fill')
+          map.addLayer(cloudLayer, 'satellite-swaths-wide-fill')
         }
         setGeoJsonSourceData(map, 'fire-anomalies', latestGeoJsonRef.current)
         syncOrbitalSources(map, latestOrbitalStateRef.current)
@@ -582,6 +640,7 @@ export function EarthMapStage({
           latestShowOrbitsRef.current,
           latestSelectedSatIdRef.current,
         )
+        emitClampedBounds(map)
       })
 
       map.on('movestart', (event: MapMovementEvent) => {
@@ -602,6 +661,7 @@ export function EarthMapStage({
         }
         setViewport(nextViewport)
         latestOnViewportChangeRef.current(nextViewport)
+        emitClampedBounds(map)
       })
 
       map.on('error', (event: ErrorEvent) => {
@@ -962,16 +1022,28 @@ export function EarthMapStage({
             <span className="legend-glyph legend-glyph-below" aria-hidden="true">&#9660;</span>
             <span>Below Typical</span>
           </li>
+          {showOrbits && orbitalState.snapshots.length > 0 && (
+            <>
+              <li>
+                <span className="legend-glyph legend-glyph-swath-nadir" aria-hidden="true" />
+                <span>Nadir Swath (400 km)</span>
+              </li>
+              <li>
+                <span className="legend-glyph legend-glyph-swath-wide" aria-hidden="true" />
+                <span>Wide Swath (2,330&ndash;3,040 km dashed)</span>
+              </li>
+            </>
+          )}
           {showOrbits && orbitalState.snapshots.length > 0 && sensorFilter !== 'viirs' && (
             <li>
               <span className="legend-glyph legend-glyph-modis" aria-hidden="true">&#9670;</span>
-              <span>MODIS Orbits (Terra, Aqua &middot; 2,330 km swath)</span>
+              <span>MODIS Tracks (Terra, Aqua &middot; Solid past / Dashed +90m)</span>
             </li>
           )}
           {showOrbits && orbitalState.snapshots.length > 0 && sensorFilter !== 'modis' && (
             <li>
               <span className="legend-glyph legend-glyph-viirs" aria-hidden="true">&#9679;</span>
-              <span>VIIRS Orbits (NOAA-20, NOAA-21 &middot; Solid past / Dashed +90m)</span>
+              <span>VIIRS Tracks (NOAA-20, NOAA-21 &middot; Solid past / Dashed +90m)</span>
             </li>
           )}
           {userLocation && (
@@ -987,6 +1059,31 @@ export function EarthMapStage({
           </p>
         )}
       </div>
+
+      {satelliteHudSection && (
+        <div
+          className="map-hud map-hud-bottom-end"
+          data-testid="sat-hud"
+          aria-label="Satellite overpass freshness"
+        >
+          <div className="sat-hud-header">
+            <span className="sat-hud-title">{satelliteHudSection.title}</span>
+          </div>
+          <div className="sat-hud-list" role="list">
+            {satelliteHudSection.items.map((item) => (
+              <div key={item.id} className="sat-hud-item" data-tone={item.tone} role="listitem">
+                <span className="sat-hud-label">{item.label}</span>
+                <span className="sat-hud-value">{item.value}</span>
+                {item.detail && <span className="sat-hud-detail">{item.detail}</span>}
+                <span className="sat-hud-badge">{item.badge}</span>
+              </div>
+            ))}
+          </div>
+          {satelliteHudSection.summary && (
+            <div className="sat-hud-summary">{satelliteHudSection.summary}</div>
+          )}
+        </div>
+      )}
     </main>
   )
 }

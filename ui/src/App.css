@@ -176,21 +176,26 @@
 }
 
 /* Live satellite badge rendered inside MapLibre Marker over the globe */
+.sat-marker-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
 .sat-marker-badge {
-  --sat-color: #38bdf8;
   appearance: none;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  min-block-size: 1.55rem;
-  padding: 0.2rem 0.5rem;
+  min-block-size: 1.5rem;
+  padding: 0.18rem 0.45rem 0.18rem 0.25rem;
   border-radius: 999px;
-  border: 1.5px solid var(--sat-color);
-  background-color: rgb(9 15 29 / 0.88);
+  border: 1px solid rgb(146 180 222 / 0.55);
+  background-color: rgb(9 15 29 / 0.86);
   color: #f8fafc;
   font-family: inherit;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
   line-height: 1;
   white-space: nowrap;
@@ -210,11 +215,39 @@
 }
 
 .sat-svg-wing {
-  fill: var(--sat-color);
+  fill: #92b4de;
 }
 
 .sat-svg-body {
-  fill: #f8fafc;
+  fill: #b0b0b0;
+}
+
+.sat-marker-tooltip {
+  position: absolute;
+  inset-block-end: calc(100% + 0.35rem);
+  inset-inline-start: 0;
+  z-index: 4;
+  padding: 0.28rem 0.5rem;
+  border-radius: 0.4rem;
+  border: 1px solid rgb(148 163 184 / 0.45);
+  background-color: rgb(9 15 29 / 0.94);
+  color: #f8fafc;
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgb(2 6 23 / 0.45);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s ease-out;
+}
+
+.sat-marker-wrap[data-tooltip-open='true'] .sat-marker-tooltip,
+.sat-marker-wrap:hover .sat-marker-tooltip,
+.sat-marker-badge:focus-visible + .sat-marker-tooltip {
+  opacity: 1;
+  visibility: visible;
 }
 
 .map-fallback-banner {
@@ -271,20 +304,91 @@
   gap: 0.4rem;
 }
 
+.map-hud-bottom-end {
+  grid-area: hud-bottom-end;
+  align-self: end;
+  justify-self: end;
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  max-inline-size: min(22rem, 80vw);
+}
+
+.sat-hud-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sat-hud-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+}
+
+.sat-hud-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.sat-hud-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.sat-hud-label {
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.sat-hud-value {
+  color: #e2e8f0;
+}
+
+.sat-hud-detail {
+  color: #94a3b8;
+}
+
+.sat-hud-badge {
+  margin-inline-start: auto;
+  font-weight: 600;
+  color: #92b4de;
+}
+
+.sat-hud-item[data-tone='pending'] .sat-hud-badge {
+  color: #f49a74;
+  font-weight: 500;
+}
+
+.sat-hud-summary {
+  color: #cbd5e1;
+  font-size: 0.72rem;
+}
+
 @container mapstage (inline-size < 36rem) {
   .map-stage {
     grid-template-columns: 0.5rem minmax(0, 1fr) 0.5rem;
-    grid-template-rows: 0.5rem auto auto minmax(0, 1fr) auto 0.5rem;
+    grid-template-rows: 0.5rem auto auto minmax(0, 1fr) auto auto 0.5rem;
     grid-template-areas:
       ". .                ."
       ". hud-top-start    ."
       ". hud-top-end      ."
       ". .                ."
+      ". hud-bottom-end   ."
       ". hud-bottom-start ."
       ". .                .";
   }
 
-  .map-hud-top-end {
+  .map-hud-top-end,
+  .map-hud-bottom-end {
     justify-self: start;
   }
 }
@@ -382,6 +486,24 @@
 
 .legend-glyph-viirs {
   color: #34d399;
+}
+
+.legend-glyph-swath-nadir {
+  display: inline-block;
+  inline-size: 0.85rem;
+  block-size: 0.65rem;
+  border-radius: 0.125rem;
+  background-color: rgb(146 180 222 / 0.25);
+  border: 1px solid rgb(146 180 222 / 0.65);
+}
+
+.legend-glyph-swath-wide {
+  display: inline-block;
+  inline-size: 0.85rem;
+  block-size: 0.65rem;
+  border-radius: 0.125rem;
+  background-color: rgb(244 154 116 / 0.12);
+  border: 1px dashed rgb(244 154 116 / 0.55);
 }
 
 .legend-glyph-user {
