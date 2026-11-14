@@ -27,6 +27,7 @@ public sealed record SatelliteOrbitDto(
     double NadirSwathKm,
     double WideSwathKm,
     int TypicalIngestionLagMinutes,
+    IReadOnlyList<string> LayerVariantIds,
     string TleSource,
     DateTimeOffset TleEpochUtc,
     double InclinationDeg,
@@ -34,19 +35,33 @@ public sealed record SatelliteOrbitDto(
     SatellitePositionDto CurrentPosition,
     IReadOnlyList<OrbitTrackPointDto> Track);
 
+public sealed record SatelliteSwathDto(
+    string Id,
+    string SatelliteId,
+    string SwathRole,
+    double SwathWidthKm,
+    IReadOnlyList<double[]> Coordinates);
+
 public sealed record SatelliteOrbitsResponse(
     DateTimeOffset GeneratedAtUtc,
     long WindowStartUnixMs,
     long WindowEndUnixMs,
     int StepSeconds,
-    IReadOnlyList<SatelliteOrbitDto> Satellites);
+    IReadOnlyList<SatelliteOrbitDto> Satellites,
+    IReadOnlyList<SatelliteSwathDto> Swaths,
+    IReadOnlyList<SatelliteHudFreshnessEntry> SatelliteHud);
 
 public sealed class SatelliteOrbitService(CelesTrakTleDownloader tleDownloader)
 {
+    private const double DefaultNadirAlongTrackKm = 180.0;
+    private const double DefaultWideAlongTrackKm = 280.0;
+
     public async Task<SatelliteOrbitsResponse> GetOrbitsAsync(
         int pastMinutes = 45,
         int futureMinutes = 90,
         int stepSeconds = 30,
+        double targetLat = 0.0,
+        double targetLng = 0.0,
         CancellationToken cancellationToken = default)
     {
         var clampedPastMinutes = Math.Clamp(pastMinutes, 5, 180);
@@ -54,6 +69,7 @@ public sealed class SatelliteOrbitService(CelesTrakTleDownloader tleDownloader)
         var clampedStepSeconds = Math.Clamp(stepSeconds, 10, 120);
 
         var fleetTles = await tleDownloader.GetFleetTlesAsync(cancellationToken).ConfigureAwait(false);
+        var activeTles = fleetTles.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Tle);
 
         var nowUnixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var generatedAtUtc = DateTimeOffset.FromUnixTimeSeconds(nowUnixSeconds);
@@ -67,6 +83,7 @@ public sealed class SatelliteOrbitService(CelesTrakTleDownloader tleDownloader)
         var step = TimeSpan.FromSeconds(clampedStepSeconds);
 
         var satellites = new List<SatelliteOrbitDto>(SatelliteCatalog.Default.Count);
+        var swaths = new List<SatelliteSwathDto>(SatelliteCatalog.Default.Count * 2);
         foreach (var meta in SatelliteCatalog.Default)
         {
             if (!fleetTles.TryGetValue(meta.NoradId, out var resolved))
@@ -109,19 +126,56 @@ public sealed class SatelliteOrbitService(CelesTrakTleDownloader tleDownloader)
                 NadirSwathKm: meta.NadirSwathKm,
                 WideSwathKm: meta.WideSwathKm,
                 TypicalIngestionLagMinutes: meta.TypicalIngestionLagMinutes,
+                LayerVariantIds: meta.LayerVariantIds,
                 TleSource: resolved.Source,
                 TleEpochUtc: new DateTimeOffset(DateTime.SpecifyKind(tle.EpochUtc, DateTimeKind.Utc)),
                 InclinationDeg: Math.Round(tle.InclinationDegrees, 2),
                 PeriodMinutes: Math.Round(1440.0 / tle.MeanMotionRevPerDay, 2),
                 CurrentPosition: currentPosition,
                 Track: trackDtos));
+
+            if (meta.WideSwathKm > meta.NadirSwathKm)
+            {
+                var wideRing = SatelliteSwathBuilder.BuildInstantaneousSwathPolygon(
+                    currentState,
+                    currentState,
+                    meta.WideSwathKm,
+                    DefaultWideAlongTrackKm);
+                swaths.Add(new SatelliteSwathDto(
+                    Id: $"{meta.Id}-swath-wide",
+                    SatelliteId: meta.Id,
+                    SwathRole: "wide",
+                    SwathWidthKm: meta.WideSwathKm,
+                    Coordinates: wideRing.Select(v => new[] { v.Longitude, v.Latitude }).ToList()));
+            }
+
+            var nadirRing = SatelliteSwathBuilder.BuildInstantaneousSwathPolygon(
+                currentState,
+                currentState,
+                meta.NadirSwathKm,
+                DefaultNadirAlongTrackKm);
+            swaths.Add(new SatelliteSwathDto(
+                Id: $"{meta.Id}-swath-nadir",
+                SatelliteId: meta.Id,
+                SwathRole: "nadir",
+                SwathWidthKm: meta.NadirSwathKm,
+                Coordinates: nadirRing.Select(v => new[] { v.Longitude, v.Latitude }).ToList()));
         }
+
+        var hudFreshness = SatelliteOverpassEvaluator.EvaluateFleetFreshness(
+            SatelliteCatalog.Default,
+            activeTles,
+            targetLat,
+            targetLng,
+            generatedAtUtc.UtcDateTime);
 
         return new SatelliteOrbitsResponse(
             GeneratedAtUtc: generatedAtUtc,
             WindowStartUnixMs: windowStartMs,
             WindowEndUnixMs: windowEndMs,
             StepSeconds: clampedStepSeconds,
-            Satellites: satellites);
+            Satellites: satellites,
+            Swaths: swaths,
+            SatelliteHud: hudFreshness);
     }
 }

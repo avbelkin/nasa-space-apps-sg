@@ -3,3 +3,4 @@
 **/obj
 **/*.user
 *.slnx
+NasaSpaceApps.Api.Tests/

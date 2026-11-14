@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FeatureCollection, MultiLineString, Point, Polygon } from 'geojson'
 import { LngLat, LngLatBounds, Map as MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl'
-import type { ErrorEvent, GeoJSONSource, MapMovementEvent, StyleSpecification } from 'maplibre-gl'
-import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
+import type {
+  ErrorEvent,
+  GeoJSONSource,
+  MapGeoJSONFeature,
+  MapMovementEvent,
+  PointLike,
+  StyleSpecification,
+} from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import {
   buildStubGeoJson,
-  MONTH_LABELS,
   type ProjectionMode,
   type SensorFilter,
   type ViewMode,
@@ -31,7 +37,44 @@ import {
   SATELLITE_CLOUDS_LAYER_ID,
   type SatelliteCloudLayerController,
 } from '../utils/satelliteCloudLayer'
-import type { LiveOrbitalState, LiveSatelliteSnapshot } from '../utils/satelliteOrbits'
+import {
+  NADIR_SWATH_COLOR,
+  NADIR_SWATH_FILL_OPACITY,
+  NADIR_SWATH_STROKE_OPACITY,
+  WIDE_SWATH_COLOR,
+  WIDE_SWATH_DASH_ARRAY,
+  WIDE_SWATH_FILL_OPACITY,
+  WIDE_SWATH_STROKE_OPACITY,
+  type LiveOrbitalState,
+  type LiveSatelliteSnapshot,
+  type SatelliteHudSection,
+} from '../utils/satelliteOrbits'
+import {
+  buildFireSpotsGeoJson,
+  compareMatchedFireSpots,
+  formatFireSpotsTooltip,
+  MIN_FIRE_SPOT_ZOOM,
+  type BuiltFireSpotsData,
+  type FireSpotFeatureProperties,
+  type FireSpotTooltipInput,
+  type FirmsLiveSpotsResponse,
+  type FormattedFireSpotsTooltip,
+  type PhaseCohort,
+} from '../utils/fireSpots'
+import {
+  buildFireSpotLayers,
+  buildFireSpotsCoreFilter,
+  buildFireSpotsPulseFilter,
+  createFireSpotsAnimationController,
+  FIRMS_SPOTS_CORE_LAYER_ID,
+  FIRMS_SPOTS_PULSE_LAYER_IDS,
+  FIRMS_SPOTS_SOURCE_ID,
+  getFireSpotColorExpression,
+  type FireSpotsAnimationController,
+} from '../utils/fireSpotsAnimation'
+
+// Point MapLibre to the self-contained worker asset so Vite dev/prod bundling never breaks GeoJSON tiling.
+setWorkerUrl(maplibreWorkerUrl)
 
 export interface CameraFocusRequest {
   lng: number
@@ -39,6 +82,11 @@ export interface CameraFocusRequest {
   zoom: number
   animate: boolean
   requestId: number
+}
+
+export interface GeolocationLegendState {
+  hasUserLocation: boolean
+  errorMessage: string | null
 }
 
 interface EarthMapStageProps {
@@ -59,10 +107,18 @@ interface EarthMapStageProps {
   onShowCloudsChange: (next: boolean) => void
   cloudRefreshNonce?: number
   orbitalState: LiveOrbitalState
+  satelliteHudSection: SatelliteHudSection | null
   showOrbits: boolean
   onShowOrbitsChange: (next: boolean) => void
   selectedSatelliteId: string | null
   onSelectSatellite: (satellite: LiveSatelliteSnapshot) => void
+  onGeolocationStateChange?: (state: GeolocationLegendState) => void
+  onReducedMotionChange?: (reduced: boolean) => void
+  fireSpotsPayload: FirmsLiveSpotsResponse | null
+  showFires: boolean
+  onShowFiresChange: (next: boolean) => void
+  pulsePaused: boolean
+  onPulsePausedChange: (next: boolean) => void
 }
 
 interface SatelliteMarkerEntry {
@@ -73,12 +129,6 @@ interface SatelliteMarkerEntry {
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
-
-const VIEW_MODE_LABELS: Record<ViewMode, string> = {
-  anomaly: 'Anomaly vs. Typical Calendar',
-  seasonal: 'Seasonal Climatology Dynamic',
-  sensors: 'MODIS 1km vs. VIIRS 375m Coverage',
-}
 
 const GEOLOCATION_POSITION_OPTIONS: PositionOptions = {
   enableHighAccuracy: false,
@@ -170,11 +220,118 @@ function createSpacecraftIconSvg(): SVGSVGElement {
   return svg
 }
 
+interface SpotTooltipCardState {
+  tooltip: FormattedFireSpotsTooltip
+  anchorLngLat: [number, number]
+  sensorFilter: SensorFilter
+}
+
+const EMPTY_FIRE_SPOTS: BuiltFireSpotsData = {
+  featureCollection: {
+    type: 'FeatureCollection',
+    features: [],
+  },
+  cohortAgeSeconds: [0, 0, 0, 0],
+  cohortCounts: [0, 0, 0, 0],
+  activeSpotCount: 0,
+  referenceNowMs: 0,
+}
+
+function buildFireSpotFocusGeoJson(coords: [number, number] | null): FeatureCollection<Point> {
+  if (!coords) {
+    return {
+      type: 'FeatureCollection',
+      features: [],
+    }
+  }
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: coords,
+        },
+        properties: {},
+      },
+    ],
+  }
+}
+
+function setFireLayerVisibility(map: MapLibreMap, layerId: string, visible: boolean): void {
+  if (map.getLayer(layerId)) {
+    map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none')
+  }
+}
+
+function toFireSpotTooltipInput(feature: MapGeoJSONFeature): FireSpotTooltipInput {
+  const props = (feature.properties ?? {}) as Record<string, unknown>
+  const coords = feature.geometry.type === 'Point' ? feature.geometry.coordinates : null
+  const lng = coords && Number.isFinite(Number(coords[0])) ? Number(coords[0]) : undefined
+  const lat = coords && Number.isFinite(Number(coords[1])) ? Number(coords[1]) : undefined
+  const rawInstrument = String(props.instrument ?? '')
+
+  return {
+    lng,
+    lat,
+    timestamp: Number(props.timestamp ?? 0),
+    frp: Number(props.frp ?? 0),
+    brightnessK: props.brightnessK !== undefined ? Number(props.brightnessK) : undefined,
+    confidence: props.confidence !== undefined ? Number(props.confidence) : undefined,
+    instrument: rawInstrument === 'modis' ? 'modis' : 'viirs',
+    source: String(props.source ?? ''),
+    satellite: props.satellite !== undefined ? String(props.satellite) : undefined,
+    dayNight: props.dayNight !== undefined ? String(props.dayNight) : undefined,
+  }
+}
+
+function querySpotTooltipAtPoint(
+  map: MapLibreMap,
+  point: { x: number; y: number },
+  sensorFilter: SensorFilter,
+): SpotTooltipCardState | null {
+  if (map.getZoom() < MIN_FIRE_SPOT_ZOOM || !map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
+    return null
+  }
+  const bbox: [PointLike, PointLike] = [
+    [point.x - 8, point.y - 8],
+    [point.x + 8, point.y + 8],
+  ]
+  const rendered = map.queryRenderedFeatures(bbox, {
+    layers: [FIRMS_SPOTS_CORE_LAYER_ID],
+  })
+  if (rendered.length === 0) {
+    return null
+  }
+
+  const inputs = rendered.map(toFireSpotTooltipInput)
+  const tooltip = formatFireSpotsTooltip(inputs, Date.now())
+  if (!tooltip) {
+    return null
+  }
+
+  const sorted = [...inputs].sort(compareMatchedFireSpots)
+  const topSpot = sorted[0]
+  const anchorLngLat: [number, number] =
+    topSpot && Number.isFinite(topSpot.lng) && Number.isFinite(topSpot.lat)
+      ? [topSpot.lng!, topSpot.lat!]
+      : [0, 0]
+
+  return { tooltip, anchorLngLat, sensorFilter }
+}
+
 function createBaseStyle(
   projection: ProjectionMode,
   initialFireData: FeatureCollection<Point>,
   initialOrbitalState: LiveOrbitalState,
   initialUserData: FeatureCollection<Point>,
+  initialLiveFiresData: FeatureCollection<Point, FireSpotFeatureProperties>,
+  initialFocusData: FeatureCollection<Point>,
+  initialViewMode: ViewMode,
+  initialSensorFilter: SensorFilter,
+  initialShowLiveFires: boolean,
+  initialShowStubAnomalies: boolean,
 ): StyleSpecification {
   return {
     version: 8,
@@ -190,9 +347,13 @@ function createBaseStyle(
         attribution:
           'Sentinel-2 cloudless — <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer">s2maps.eu</a> by <a href="https://eox.at" target="_blank" rel="noopener noreferrer">EOX IT Services GmbH</a> (Contains modified Copernicus Sentinel data 2025)',
       },
-      'satellite-swaths': {
+      'satellite-swaths-wide': {
         type: 'geojson',
-        data: initialOrbitalState.swathsGeoJson,
+        data: initialOrbitalState.wideSwathsGeoJson,
+      },
+      'satellite-swaths-nadir': {
+        type: 'geojson',
+        data: initialOrbitalState.nadirSwathsGeoJson,
       },
       'satellite-tracks-past': {
         type: 'geojson',
@@ -205,6 +366,14 @@ function createBaseStyle(
       'satellite-positions': {
         type: 'geojson',
         data: initialOrbitalState.positionsGeoJson,
+      },
+      [FIRMS_SPOTS_SOURCE_ID]: {
+        type: 'geojson',
+        data: initialLiveFiresData,
+      },
+      'fire-spot-focus': {
+        type: 'geojson',
+        data: initialFocusData,
       },
       'fire-anomalies': {
         type: 'geojson',
@@ -222,35 +391,42 @@ function createBaseStyle(
         source: 'eox-s2cloudless',
       },
       {
-        id: 'satellite-swaths-fill',
+        id: 'satellite-swaths-wide-fill',
         type: 'fill',
-        source: 'satellite-swaths',
+        source: 'satellite-swaths-wide',
         paint: {
-          'fill-color': ['get', 'color'],
-          'fill-opacity': ['match', ['get', 'swathRole'], 'nadir', 0.14, 0.045],
+          'fill-color': WIDE_SWATH_COLOR,
+          'fill-opacity': WIDE_SWATH_FILL_OPACITY,
         },
       },
       {
         id: 'satellite-swaths-wide-outline',
         type: 'line',
-        source: 'satellite-swaths',
-        filter: ['==', ['get', 'swathRole'], 'wide'],
+        source: 'satellite-swaths-wide',
         paint: {
-          'line-color': ['get', 'color'],
+          'line-color': WIDE_SWATH_COLOR,
           'line-width': 1,
-          'line-opacity': 0.28,
-          'line-dasharray': [3, 4],
+          'line-opacity': WIDE_SWATH_STROKE_OPACITY,
+          'line-dasharray': WIDE_SWATH_DASH_ARRAY,
+        },
+      },
+      {
+        id: 'satellite-swaths-nadir-fill',
+        type: 'fill',
+        source: 'satellite-swaths-nadir',
+        paint: {
+          'fill-color': NADIR_SWATH_COLOR,
+          'fill-opacity': NADIR_SWATH_FILL_OPACITY,
         },
       },
       {
         id: 'satellite-swaths-nadir-outline',
         type: 'line',
-        source: 'satellite-swaths',
-        filter: ['==', ['get', 'swathRole'], 'nadir'],
+        source: 'satellite-swaths-nadir',
         paint: {
-          'line-color': ['get', 'color'],
-          'line-width': 1.1,
-          'line-opacity': 0.45,
+          'line-color': NADIR_SWATH_COLOR,
+          'line-width': 1,
+          'line-opacity': NADIR_SWATH_STROKE_OPACITY,
         },
       },
       {
@@ -272,6 +448,23 @@ function createBaseStyle(
           'line-width': 2.2,
           'line-opacity': 0.9,
           'line-dasharray': [2, 2],
+        },
+      },
+      ...buildFireSpotLayers(initialViewMode, initialSensorFilter, initialShowLiveFires),
+      {
+        id: 'fire-spot-focus-ring',
+        type: 'circle',
+        source: 'fire-spot-focus',
+        layout: {
+          visibility: initialShowLiveFires ? 'visible' : 'none',
+        },
+        paint: {
+          'circle-radius': 14,
+          'circle-color': '#ffffff',
+          'circle-opacity': ['step', ['zoom'], 0, 1, 0.12],
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-opacity': ['step', ['zoom'], 0, 1, 1],
         },
       },
       {
@@ -300,6 +493,9 @@ function createBaseStyle(
         id: 'fire-anomaly-halo',
         type: 'circle',
         source: 'fire-anomalies',
+        layout: {
+          visibility: initialShowStubAnomalies ? 'visible' : 'none',
+        },
         paint: {
           'circle-radius': ['+', ['get', 'radius'], 8],
           'circle-color': [
@@ -319,6 +515,9 @@ function createBaseStyle(
         id: 'fire-anomaly-core',
         type: 'circle',
         source: 'fire-anomalies',
+        layout: {
+          visibility: initialShowStubAnomalies ? 'visible' : 'none',
+        },
         paint: {
           'circle-radius': ['get', 'radius'],
           'circle-color': [
@@ -365,17 +564,26 @@ function setGeoJsonSourceData(
   sourceId: string,
   data: FeatureCollection<Point | MultiLineString | Polygon>,
 ): void {
-  const source = map.getSource(sourceId) as GeoJSONSource | undefined
-  if (source) {
-    source.setData(data)
+  try {
+    const source = map.getSource(sourceId) as GeoJSONSource | undefined
+    if (source && typeof source.setData === 'function') {
+      source.setData(data)
+    }
+  } catch {
+    // Style may still be initializing; map.on('load') syncs initial sources.
   }
 }
 
 function syncOrbitalSources(map: MapLibreMap, state: LiveOrbitalState): void {
-  setGeoJsonSourceData(map, 'satellite-swaths', state.swathsGeoJson)
+  setGeoJsonSourceData(map, 'satellite-swaths-wide', state.wideSwathsGeoJson)
+  setGeoJsonSourceData(map, 'satellite-swaths-nadir', state.nadirSwathsGeoJson)
   setGeoJsonSourceData(map, 'satellite-tracks-past', state.pastTracksGeoJson)
   setGeoJsonSourceData(map, 'satellite-tracks-future', state.futureTracksGeoJson)
   setGeoJsonSourceData(map, 'satellite-positions', state.positionsGeoJson)
+}
+
+function isMapStyleReady(map: MapLibreMap | null, styleReady = true): map is MapLibreMap {
+  return Boolean(styleReady && map && map.getSource(FIRMS_SPOTS_SOURCE_ID))
 }
 
 export function EarthMapStage({
@@ -396,10 +604,18 @@ export function EarthMapStage({
   onShowCloudsChange,
   cloudRefreshNonce = 0,
   orbitalState,
+  satelliteHudSection,
   showOrbits,
   onShowOrbitsChange,
   selectedSatelliteId,
   onSelectSatellite,
+  onGeolocationStateChange,
+  onReducedMotionChange,
+  fireSpotsPayload,
+  showFires,
+  onShowFiresChange,
+  pulsePaused,
+  onPulsePausedChange,
 }: EarthMapStageProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<MapLibreMap | null>(null)
@@ -409,6 +625,8 @@ export function EarthMapStage({
   const satMarkersRef = useRef<Map<string, SatelliteMarkerEntry>>(new Map())
   const initialViewportRef = useRef<MapViewportState>(initialViewport)
   const latestOnViewportChangeRef = useRef(onViewportChange)
+  const latestOnGeolocationStateChangeRef = useRef(onGeolocationStateChange)
+  const latestOnReducedMotionChangeRef = useRef(onReducedMotionChange)
   const userInteractedRef = useRef(false)
   const isMountedRef = useRef(false)
 
@@ -422,6 +640,28 @@ export function EarthMapStage({
     zoom: clampZoom(initialViewport.zoom),
   }))
 
+  const hasLiveFires = fireSpotsPayload !== null
+  const showStubAnomalies = !hasLiveFires
+
+  const builtFireSpots = useMemo(
+    () => (fireSpotsPayload ? buildFireSpotsGeoJson(fireSpotsPayload) : EMPTY_FIRE_SPOTS),
+    [fireSpotsPayload],
+  )
+
+  const [hoverSpotCard, setHoverSpotCard] = useState<SpotTooltipCardState | null>(null)
+  const [pinnedSpotCard, setPinnedSpotCard] = useState<SpotTooltipCardState | null>(null)
+  const [reducedMotion, setReducedMotion] = useState(false)
+  const visibleHoverSpotCard =
+    showFires && hoverSpotCard && hoverSpotCard.sensorFilter === sensorFilter
+      ? hoverSpotCard
+      : null
+  const visiblePinnedSpotCard =
+    showFires && pinnedSpotCard && pinnedSpotCard.sensorFilter === sensorFilter
+      ? pinnedSpotCard
+      : null
+  const activeSpotCard = visiblePinnedSpotCard ?? visibleHoverSpotCard
+  const isPinned = visiblePinnedSpotCard !== null
+
   const geoJson = useMemo(
     () => buildStubGeoJson(selectedMonth, sensorFilter),
     [selectedMonth, sensorFilter],
@@ -429,6 +669,11 @@ export function EarthMapStage({
   const userLocationGeoJson = useMemo(
     () => buildUserLocationGeoJson(userLocation),
     [userLocation],
+  )
+  const focusSpotGeoJson = useMemo(
+    () =>
+      buildFireSpotFocusGeoJson(visiblePinnedSpotCard ? visiblePinnedSpotCard.anchorLngLat : null),
+    [visiblePinnedSpotCard],
   )
 
   const latestGeoJsonRef = useRef(geoJson)
@@ -442,10 +687,145 @@ export function EarthMapStage({
   const latestSelectedSatIdRef = useRef(selectedSatelliteId)
   const onSelectSatelliteRef = useRef(onSelectSatellite)
   const lastCloudRefreshNonceRef = useRef(cloudRefreshNonce)
+  const latestBuiltFireSpotsRef = useRef(builtFireSpots)
+  const latestShowFiresRef = useRef(showFires)
+  const latestPulsePausedRef = useRef(pulsePaused)
+  const latestFocusSpotGeoJsonRef = useRef(focusSpotGeoJson)
+  const latestViewModeRef = useRef(viewMode)
+  const latestSensorFilterRef = useRef(sensorFilter)
+  const latestShowStubAnomaliesRef = useRef(showStubAnomalies)
+  const fireAnimControllerRef = useRef<FireSpotsAnimationController | null>(null)
+  const firePointerCleanupRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    latestBuiltFireSpotsRef.current = builtFireSpots
+    latestShowFiresRef.current = showFires
+    latestPulsePausedRef.current = pulsePaused
+    latestFocusSpotGeoJsonRef.current = focusSpotGeoJson
+    latestViewModeRef.current = viewMode
+    latestSensorFilterRef.current = sensorFilter
+    latestShowStubAnomaliesRef.current = showStubAnomalies
+  }, [
+    builtFireSpots,
+    showFires,
+    pulsePaused,
+    focusSpotGeoJson,
+    viewMode,
+    sensorFilter,
+    showStubAnomalies,
+  ])
+
+  useEffect(() => {
+    if (!visiblePinnedSpotCard) {
+      return
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setPinnedSpotCard(null)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [visiblePinnedSpotCard])
+
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!isMapStyleReady(map)) {
+      return
+    }
+    setGeoJsonSourceData(map, FIRMS_SPOTS_SOURCE_ID, builtFireSpots.featureCollection)
+    fireAnimControllerRef.current?.sync()
+  }, [builtFireSpots])
+
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!isMapStyleReady(map)) {
+      return
+    }
+    setGeoJsonSourceData(map, 'fire-spot-focus', focusSpotGeoJson)
+  }, [focusSpotGeoJson])
+
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!isMapStyleReady(map)) {
+      return
+    }
+    setFireLayerVisibility(map, FIRMS_SPOTS_CORE_LAYER_ID, showFires)
+    for (const layerId of FIRMS_SPOTS_PULSE_LAYER_IDS) {
+      setFireLayerVisibility(map, layerId, showFires)
+    }
+    setFireLayerVisibility(map, 'fire-spot-focus-ring', showFires)
+    if (!showFires) {
+      map.getCanvas().style.cursor = ''
+    }
+    fireAnimControllerRef.current?.sync()
+  }, [showFires])
+
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!isMapStyleReady(map)) {
+      return
+    }
+    setFireLayerVisibility(map, 'fire-anomaly-halo', showStubAnomalies)
+    setFireLayerVisibility(map, 'fire-anomaly-core', showStubAnomalies)
+  }, [showStubAnomalies])
+
+  useEffect(() => {
+    fireAnimControllerRef.current?.sync()
+  }, [pulsePaused])
+
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!isMapStyleReady(map)) {
+      return
+    }
+    if (map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
+      map.setFilter(FIRMS_SPOTS_CORE_LAYER_ID, buildFireSpotsCoreFilter(sensorFilter))
+    }
+    for (let idx = 0; idx < FIRMS_SPOTS_PULSE_LAYER_IDS.length; idx++) {
+      const layerId = FIRMS_SPOTS_PULSE_LAYER_IDS[idx]
+      if (map.getLayer(layerId)) {
+        map.setFilter(layerId, buildFireSpotsPulseFilter(sensorFilter, idx as PhaseCohort))
+      }
+    }
+    fireAnimControllerRef.current?.sync()
+  }, [sensorFilter])
+
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!isMapStyleReady(map)) {
+      return
+    }
+    const colorExpr = getFireSpotColorExpression(viewMode)
+    for (const layerId of [FIRMS_SPOTS_CORE_LAYER_ID, ...FIRMS_SPOTS_PULSE_LAYER_IDS]) {
+      if (map.getLayer(layerId)) {
+        map.setPaintProperty(layerId, 'circle-color', colorExpr)
+      }
+    }
+  }, [viewMode])
 
   useEffect(() => {
     latestOnViewportChangeRef.current = onViewportChange
   }, [onViewportChange])
+
+  useEffect(() => {
+    latestOnGeolocationStateChangeRef.current = onGeolocationStateChange
+  }, [onGeolocationStateChange])
+
+  useEffect(() => {
+    latestOnGeolocationStateChangeRef.current?.({
+      hasUserLocation: userLocation !== null,
+      errorMessage: geoErrorMessage,
+    })
+  }, [userLocation, geoErrorMessage])
+
+  useEffect(() => {
+    latestOnReducedMotionChangeRef.current = onReducedMotionChange
+  }, [onReducedMotionChange])
+
+  useEffect(() => {
+    latestOnReducedMotionChangeRef.current?.(reducedMotion)
+  }, [reducedMotion])
 
   useEffect(() => {
     isMountedRef.current = true
@@ -537,7 +917,6 @@ export function EarthMapStage({
     const startViewport = initialViewportRef.current
 
     try {
-      setWorkerUrl(maplibreWorkerUrl)
       styleReadyRef.current = false
       map = new MapLibreMap({
         container,
@@ -546,6 +925,12 @@ export function EarthMapStage({
           latestGeoJsonRef.current,
           latestOrbitalStateRef.current,
           latestUserGeoJsonRef.current,
+          latestBuiltFireSpotsRef.current.featureCollection,
+          latestFocusSpotGeoJsonRef.current,
+          latestViewModeRef.current,
+          latestSensorFilterRef.current,
+          latestShowFiresRef.current,
+          latestShowStubAnomaliesRef.current,
         ),
         center: [normalizeLng(startViewport.lng), clampLat(startViewport.lat)],
         zoom: clampZoom(startViewport.zoom),
@@ -554,7 +939,7 @@ export function EarthMapStage({
         attributionControl: {
           compact: true,
           customAttribution: [
-            'Fire/sensor reference: <a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener noreferrer">NASA FIRMS</a> (NASA EOS MODIS, NOAA/NASA VIIRS; illustrative baseline)',
+            'Active fire hotspots (24h): <a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener noreferrer">NASA FIRMS</a> (MODIS 1 km, NOAA/NASA VIIRS 375 m)',
             'Orbits: <a href="https://celestrak.org/" target="_blank" rel="noopener noreferrer">CelesTrak</a>',
             'Clouds: <a href="https://layers.extremum.org" target="_blank" rel="noopener noreferrer">Extremum</a> (EUMETSAT / NOAA / JMA VIS-IR)',
             'Nighttime lights: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener noreferrer">NASA GIBS / Earthdata</a> (NOAA-20 VIIRS Black Marble)',
@@ -563,6 +948,38 @@ export function EarthMapStage({
       })
 
       mapInstanceRef.current = map
+
+      const canvas = map.getCanvas()
+      const handleCanvasMouseLeave = () => {
+        canvas.style.cursor = ''
+        setHoverSpotCard((prev) => (prev === null ? prev : null))
+      }
+      canvas.addEventListener('mouseleave', handleCanvasMouseLeave)
+      firePointerCleanupRef.current = () => {
+        canvas.removeEventListener('mouseleave', handleCanvasMouseLeave)
+      }
+
+      map.on('mousemove', (event) => {
+        if (!map || !latestShowFiresRef.current || map.isMoving() || map.isZooming() || map.isRotating()) {
+          return
+        }
+        const hit = querySpotTooltipAtPoint(map, event.point, latestSensorFilterRef.current)
+        map.getCanvas().style.cursor = hit ? 'pointer' : ''
+        setHoverSpotCard((prev) => {
+          if (!prev && !hit) {
+            return prev
+          }
+          return hit
+        })
+      })
+
+      map.on('click', (event) => {
+        if (!map || !latestShowFiresRef.current) {
+          return
+        }
+        const hit = querySpotTooltipAtPoint(map, event.point, latestSensorFilterRef.current)
+        setPinnedSpotCard(hit)
+      })
 
       map.on('style.load', () => {
         if (!map) {
@@ -573,7 +990,7 @@ export function EarthMapStage({
           const nightLightsLayer = createNightLightsLayer()
           nightLightsLayerRef.current = nightLightsLayer
           // Insert above basemap and below clouds/swaths for low-zoom night hemisphere rendering.
-          map.addLayer(nightLightsLayer, 'satellite-swaths-fill')
+          map.addLayer(nightLightsLayer, 'satellite-swaths-wide-fill')
         }
         if (!map.getLayer(SATELLITE_CLOUDS_LAYER_ID)) {
           const cloudLayer = createSatelliteCloudLayer({
@@ -583,11 +1000,43 @@ export function EarthMapStage({
           })
           cloudLayerRef.current = cloudLayer
           // Insert directly below satellite swaths/tracks so spacecraft & swaths stay above clouds.
-          map.addLayer(cloudLayer, 'satellite-swaths-fill')
+          map.addLayer(cloudLayer, 'satellite-swaths-wide-fill')
         }
         setGeoJsonSourceData(map, 'fire-anomalies', latestGeoJsonRef.current)
         syncOrbitalSources(map, latestOrbitalStateRef.current)
         setGeoJsonSourceData(map, 'user-geolocation', latestUserGeoJsonRef.current)
+        setGeoJsonSourceData(
+          map,
+          FIRMS_SPOTS_SOURCE_ID,
+          latestBuiltFireSpotsRef.current.featureCollection,
+        )
+        setGeoJsonSourceData(map, 'fire-spot-focus', latestFocusSpotGeoJsonRef.current)
+
+        setFireLayerVisibility(map, 'fire-anomaly-halo', latestShowStubAnomaliesRef.current)
+        setFireLayerVisibility(map, 'fire-anomaly-core', latestShowStubAnomaliesRef.current)
+
+        const colorExpr = getFireSpotColorExpression(latestViewModeRef.current)
+        if (map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
+          setFireLayerVisibility(map, FIRMS_SPOTS_CORE_LAYER_ID, latestShowFiresRef.current)
+          map.setFilter(
+            FIRMS_SPOTS_CORE_LAYER_ID,
+            buildFireSpotsCoreFilter(latestSensorFilterRef.current),
+          )
+          map.setPaintProperty(FIRMS_SPOTS_CORE_LAYER_ID, 'circle-color', colorExpr)
+        }
+        for (let idx = 0; idx < FIRMS_SPOTS_PULSE_LAYER_IDS.length; idx++) {
+          const layerId = FIRMS_SPOTS_PULSE_LAYER_IDS[idx]
+          if (map.getLayer(layerId)) {
+            setFireLayerVisibility(map, layerId, latestShowFiresRef.current)
+            map.setFilter(
+              layerId,
+              buildFireSpotsPulseFilter(latestSensorFilterRef.current, idx as PhaseCohort),
+            )
+            map.setPaintProperty(layerId, 'circle-color', colorExpr)
+          }
+        }
+        setFireLayerVisibility(map, 'fire-spot-focus-ring', latestShowFiresRef.current)
+
         map.setProjection({ type: latestProjectionRef.current })
         syncSatelliteMarkers(
           map,
@@ -595,6 +1044,17 @@ export function EarthMapStage({
           latestShowOrbitsRef.current,
           latestSelectedSatIdRef.current,
         )
+
+        fireAnimControllerRef.current?.dispose()
+        fireAnimControllerRef.current = createFireSpotsAnimationController({
+          map,
+          getCohortAgeSeconds: () => latestBuiltFireSpotsRef.current.cohortAgeSeconds,
+          getReferenceNowMs: () => latestBuiltFireSpotsRef.current.referenceNowMs,
+          getActiveSpotCount: () => latestBuiltFireSpotsRef.current.activeSpotCount,
+          isVisible: () => latestShowFiresRef.current,
+          isPaused: () => latestPulsePausedRef.current,
+          onReducedMotionChange: setReducedMotion,
+        })
       })
 
       map.on('movestart', (event: MapMovementEvent) => {
@@ -636,6 +1096,10 @@ export function EarthMapStage({
     const markerMap = satMarkersRef.current
     return () => {
       styleReadyRef.current = false
+      fireAnimControllerRef.current?.dispose()
+      fireAnimControllerRef.current = null
+      firePointerCleanupRef.current?.()
+      firePointerCleanupRef.current = null
       for (const entry of markerMap.values()) {
         entry.marker.remove()
       }
@@ -651,7 +1115,7 @@ export function EarthMapStage({
   useEffect(() => {
     latestGeoJsonRef.current = geoJson
     const map = mapInstanceRef.current
-    if (!map || !styleReadyRef.current) {
+    if (!isMapStyleReady(map, styleReadyRef.current)) {
       return
     }
     setGeoJsonSourceData(map, 'fire-anomalies', geoJson)
@@ -660,7 +1124,7 @@ export function EarthMapStage({
   useEffect(() => {
     latestUserGeoJsonRef.current = userLocationGeoJson
     const map = mapInstanceRef.current
-    if (!map || !styleReadyRef.current) {
+    if (!isMapStyleReady(map, styleReadyRef.current)) {
       return
     }
     setGeoJsonSourceData(map, 'user-geolocation', userLocationGeoJson)
@@ -676,7 +1140,7 @@ export function EarthMapStage({
     if (!map) {
       return
     }
-    if (styleReadyRef.current) {
+    if (isMapStyleReady(map, styleReadyRef.current)) {
       syncOrbitalSources(map, orbitalState)
     }
     syncSatelliteMarkers(map, orbitalState.snapshots, showOrbits, selectedSatelliteId)
@@ -704,7 +1168,7 @@ export function EarthMapStage({
   useEffect(() => {
     latestProjectionRef.current = projectionMode
     const map = mapInstanceRef.current
-    if (!map || !styleReadyRef.current) {
+    if (!isMapStyleReady(map, styleReadyRef.current)) {
       return
     }
     map.setProjection({ type: projectionMode })
@@ -909,8 +1373,31 @@ export function EarthMapStage({
       <div
         className="map-hud map-hud-top-end"
         role="group"
-        aria-label="Map projection, clouds, orbits, location, and zoom controls"
+        aria-label="Map active fires, clouds, orbits, projection, location, and zoom controls"
       >
+        <button
+          type="button"
+          className="hud-btn"
+          aria-pressed={showFires}
+          onClick={() => {
+            if (showFires) {
+              setHoverSpotCard(null)
+              setPinnedSpotCard(null)
+            }
+            onShowFiresChange(!showFires)
+          }}
+        >
+          Fires
+        </button>
+        {hasLiveFires && showFires && !reducedMotion && (
+          <button
+            type="button"
+            className="hud-btn"
+            onClick={() => onPulsePausedChange(!pulsePaused)}
+          >
+            {pulsePaused ? 'Resume Pulse' : 'Pause Pulse'}
+          </button>
+        )}
         <button
           type="button"
           className="hud-btn"
@@ -956,51 +1443,65 @@ export function EarthMapStage({
         </button>
       </div>
 
-      <div className="map-hud map-hud-bottom-start" aria-label="Map anomaly and orbit legend">
-        <div className="hud-legend-header">
-          <span className="hud-kicker">{MONTH_LABELS[selectedMonth]} &middot; {VIEW_MODE_LABELS[viewMode]}</span>
-          <span className="hud-coords">
-            Lat {viewport.lat.toFixed(2)}&deg;, Lon {viewport.lng.toFixed(2)}&deg; &middot; z{viewport.zoom}
-          </span>
+      {showFires && activeSpotCard && (
+        <div
+          className="map-hud map-hud-bottom-start fire-tooltip-card"
+          data-pinned={isPinned ? 'true' : 'false'}
+          role={isPinned ? 'region' : undefined}
+          aria-label={isPinned ? 'Pinned fire spot details' : undefined}
+        >
+          <div className="fire-tooltip-header">
+            <div className="fire-tooltip-title-group">
+              <span className="hud-kicker">{activeSpotCard.tooltip.header}</span>
+              <span className="fire-tooltip-coords">
+                Lat {activeSpotCard.anchorLngLat[1].toFixed(3)}&deg;, Lon{' '}
+                {activeSpotCard.anchorLngLat[0].toFixed(3)}&deg;
+              </span>
+            </div>
+            {isPinned && (
+              <button
+                type="button"
+                className="hud-close-btn"
+                aria-label="Unpin fire spot details"
+                onClick={() => setPinnedSpotCard(null)}
+              >
+                &times;
+              </button>
+            )}
+          </div>
+          <ul className="fire-tooltip-list" role="list">
+            {activeSpotCard.tooltip.lines.map((line, index) => (
+              <li key={`${index}-${line}`}>{line}</li>
+            ))}
+          </ul>
+          {!isPinned && <p className="fire-tooltip-hint">Click spot to pin details</p>}
         </div>
-        <ul className="hud-legend-list" role="list">
-          <li>
-            <span className="legend-glyph legend-glyph-anomaly" aria-hidden="true">&#9650;</span>
-            <span>Positive Anomaly (above typical)</span>
-          </li>
-          <li>
-            <span className="legend-glyph legend-glyph-typical" aria-hidden="true">&#9679;</span>
-            <span>Fits Typical Season</span>
-          </li>
-          <li>
-            <span className="legend-glyph legend-glyph-below" aria-hidden="true">&#9660;</span>
-            <span>Below Typical</span>
-          </li>
-          {showOrbits && orbitalState.snapshots.length > 0 && sensorFilter !== 'viirs' && (
-            <li>
-              <span className="legend-glyph legend-glyph-modis" aria-hidden="true">&#9670;</span>
-              <span>MODIS Orbits (Terra, Aqua &middot; 2,330 km swath)</span>
-            </li>
+      )}
+
+      {satelliteHudSection && (
+        <div
+          className="map-hud map-hud-bottom-end"
+          data-testid="sat-hud"
+          aria-label="Satellite overpass freshness"
+        >
+          <div className="sat-hud-header">
+            <span className="sat-hud-title">{satelliteHudSection.title}</span>
+          </div>
+          <div className="sat-hud-list" role="list">
+            {satelliteHudSection.items.map((item) => (
+              <div key={item.id} className="sat-hud-item" data-tone={item.tone} role="listitem">
+                <span className="sat-hud-label">{item.label}</span>
+                <span className="sat-hud-value">{item.value}</span>
+                {item.detail && <span className="sat-hud-detail">{item.detail}</span>}
+                <span className="sat-hud-badge">{item.badge}</span>
+              </div>
+            ))}
+          </div>
+          {satelliteHudSection.summary && (
+            <div className="sat-hud-summary">{satelliteHudSection.summary}</div>
           )}
-          {showOrbits && orbitalState.snapshots.length > 0 && sensorFilter !== 'modis' && (
-            <li>
-              <span className="legend-glyph legend-glyph-viirs" aria-hidden="true">&#9679;</span>
-              <span>VIIRS Orbits (NOAA-20, NOAA-21 &middot; Solid past / Dashed +90m)</span>
-            </li>
-          )}
-          {userLocation && (
-            <li>
-              <span className="legend-glyph legend-glyph-user" aria-hidden="true">&#9673;</span>
-              <span>Your Location</span>
-            </li>
-          )}
-        </ul>
-        {geoErrorMessage && (
-          <p className="hud-geo-status" role="status">
-            {geoErrorMessage}
-          </p>
-        )}
-      </div>
+        </div>
+      )}
     </main>
   )
 }

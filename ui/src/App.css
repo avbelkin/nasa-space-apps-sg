@@ -1,15 +1,16 @@
-/* Outer Controls Wrapper: wraps topbar, timeline, and side inspector around the map stage */
+/* Outer Controls Wrapper: wraps topbar, timeline, side inspector, and bottom legend around the map stage */
 .app-frame {
   display: grid;
   inline-size: 100%;
   min-block-size: 100dvh;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(56dvh, 1fr) auto auto;
+  grid-template-rows: auto minmax(56dvh, 1fr) auto auto auto;
   grid-template-areas:
     "topbar"
     "mapstage"
     "timeline"
-    "sidepanel";
+    "sidepanel"
+    "legend";
   gap: 0.75rem;
   padding: 0.75rem;
 }
@@ -18,11 +19,12 @@
   .app-frame {
     block-size: 100dvh;
     grid-template-columns: minmax(0, 1fr) minmax(19rem, 23rem);
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
     grid-template-areas:
       "topbar   topbar"
       "mapstage sidepanel"
-      "timeline sidepanel";
+      "timeline sidepanel"
+      "legend   legend";
   }
 }
 
@@ -263,29 +265,180 @@
   gap: 0.35rem;
 }
 
+.map-hud-bottom-end {
+  grid-area: hud-bottom-end;
+  align-self: end;
+  justify-self: end;
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  max-inline-size: min(22rem, 80vw);
+}
+
+.sat-hud-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sat-hud-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+}
+
+.sat-hud-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.sat-hud-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.sat-hud-label {
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.sat-hud-value {
+  color: #e2e8f0;
+}
+
+.sat-hud-detail {
+  color: #94a3b8;
+}
+
+.sat-hud-badge {
+  margin-inline-start: auto;
+  font-weight: 600;
+  color: #92b4de;
+}
+
+.sat-hud-item[data-tone='pending'] .sat-hud-badge {
+  color: #f49a74;
+  font-weight: 500;
+}
+
+.sat-hud-summary {
+  color: #cbd5e1;
+  font-size: 0.72rem;
+}
+
 .map-hud-bottom-start {
   grid-area: hud-bottom-start;
   align-self: end;
   justify-self: start;
+  max-inline-size: min(24rem, 100%);
+}
+
+.fire-tooltip-card {
   display: grid;
   gap: 0.4rem;
+}
+
+.fire-tooltip-card[data-pinned='false'] {
+  pointer-events: none;
+}
+
+.fire-tooltip-card[data-pinned='true'] {
+  pointer-events: auto;
+  border-color: rgba(251, 146, 60, 0.55);
+}
+
+.fire-tooltip-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.fire-tooltip-title-group {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.fire-tooltip-coords {
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: #cbd5e1;
+}
+
+.fire-tooltip-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.28rem;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: #f8fafc;
+}
+
+.fire-tooltip-hint {
+  margin: 0;
+  font-size: 0.68rem;
+  color: #94a3b8;
+}
+
+.hud-close-btn {
+  appearance: none;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 0.4rem;
+  background: rgba(15, 23, 42, 0.75);
+  color: #f8fafc;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  min-inline-size: 1.75rem;
+  min-block-size: 1.75rem;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.hud-close-btn:hover {
+  background: rgba(30, 41, 59, 0.92);
+  border-color: rgba(248, 250, 252, 0.55);
+}
+
+.hud-close-btn:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
 }
 
 @container mapstage (inline-size < 36rem) {
   .map-stage {
     grid-template-columns: 0.5rem minmax(0, 1fr) 0.5rem;
-    grid-template-rows: 0.5rem auto auto minmax(0, 1fr) auto 0.5rem;
+    grid-template-rows: 0.5rem auto auto minmax(0, 1fr) auto auto 0.5rem;
     grid-template-areas:
       ". .                ."
       ". hud-top-start    ."
       ". hud-top-end      ."
       ". .                ."
       ". hud-bottom-start ."
+      ". hud-bottom-end   ."
       ". .                .";
   }
 
-  .map-hud-top-end {
+  .map-hud-top-end,
+  .map-hud-bottom-start,
+  .map-hud-bottom-end {
     justify-self: start;
+  }
+
+  .map-hud-bottom-start {
+    justify-self: stretch;
+    max-inline-size: none;
   }
 }
 
@@ -329,7 +482,55 @@
   color: #ffffff;
 }
 
-.hud-legend-header {
+/* Outer Bottom Map Anomaly & Orbit Legend */
+.legend-bar {
+  --legend-anomaly: #ea580c;
+  --legend-typical: #ca8a04;
+  --legend-below: #0284c7;
+  --legend-modis: #0891b2;
+  --legend-viirs: #059669;
+  --legend-user: #2563eb;
+  --legend-nadir-bg: rgb(146 180 222 / 0.35);
+  --legend-nadir-border: #3b6998;
+  --legend-wide-bg: rgb(244 154 116 / 0.22);
+  --legend-wide-border: #c25929;
+  --legend-geo-text: #92400e;
+
+  @media (prefers-color-scheme: dark) {
+    --legend-anomaly: #fb923c;
+    --legend-typical: #facc15;
+    --legend-below: #38bdf8;
+    --legend-modis: #22d3ee;
+    --legend-viirs: #34d399;
+    --legend-user: #60a5fa;
+    --legend-nadir-bg: rgb(146 180 222 / 0.28);
+    --legend-nadir-border: #92b4de;
+    --legend-wide-bg: rgb(244 154 116 / 0.16);
+    --legend-wide-border: #f49a74;
+    --legend-geo-text: #fde68a;
+  }
+
+  @supports (color: light-dark(white, black)) {
+    --legend-anomaly: light-dark(#ea580c, #fb923c);
+    --legend-typical: light-dark(#ca8a04, #facc15);
+    --legend-below: light-dark(#0284c7, #38bdf8);
+    --legend-modis: light-dark(#0891b2, #22d3ee);
+    --legend-viirs: light-dark(#059669, #34d399);
+    --legend-user: light-dark(#2563eb, #60a5fa);
+    --legend-nadir-bg: light-dark(rgb(146 180 222 / 0.35), rgb(146 180 222 / 0.28));
+    --legend-nadir-border: light-dark(#3b6998, #92b4de);
+    --legend-wide-bg: light-dark(rgb(244 154 116 / 0.22), rgb(244 154 116 / 0.16));
+    --legend-wide-border: light-dark(#c25929, #f49a74);
+    --legend-geo-text: light-dark(#92400e, #fde68a);
+  }
+
+  grid-area: legend;
+  padding: 0.6rem 1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.legend-header {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -337,23 +538,33 @@
   gap: 0.4rem 0.9rem;
 }
 
-.hud-coords {
-  font-size: 0.78rem;
-  font-variant-numeric: tabular-nums;
-  color: #cbd5e1;
+.legend-heading {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
-.hud-legend-list {
+.legend-coords {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.legend-list {
   margin: 0;
   padding: 0;
   list-style: none;
   display: flex;
   flex-wrap: wrap;
+  flex-wrap: balance;
   gap: 0.4rem 0.85rem;
   font-size: 0.78rem;
 }
 
-.hud-legend-list li {
+.legend-list li {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -365,33 +576,71 @@
 }
 
 .legend-glyph-anomaly {
-  color: #fb923c;
+  color: var(--legend-anomaly);
 }
 
 .legend-glyph-typical {
-  color: #facc15;
+  color: var(--legend-typical);
 }
 
 .legend-glyph-below {
-  color: #38bdf8;
+  color: var(--legend-below);
 }
 
 .legend-glyph-modis {
-  color: #22d3ee;
+  color: var(--legend-modis);
 }
 
 .legend-glyph-viirs {
-  color: #34d399;
+  color: var(--legend-viirs);
+}
+
+.legend-glyph-swath-nadir {
+  display: inline-block;
+  inline-size: 0.85rem;
+  block-size: 0.65rem;
+  border-radius: 0.125rem;
+  background-color: var(--legend-nadir-bg);
+  border: 1.5px solid var(--legend-nadir-border);
+}
+
+.legend-glyph-swath-wide {
+  display: inline-block;
+  inline-size: 0.85rem;
+  block-size: 0.65rem;
+  border-radius: 0.125rem;
+  background-color: var(--legend-wide-bg);
+  border: 1.5px dashed var(--legend-wide-border);
 }
 
 .legend-glyph-user {
-  color: #60a5fa;
+  color: var(--legend-user);
 }
 
-.hud-geo-status {
+.legend-glyph-frp-high {
+  color: #ff1744;
+}
+
+.legend-glyph-frp-mid {
+  color: #ff9100;
+}
+
+.legend-glyph-frp-low {
+  color: #fbbf24;
+}
+
+.legend-glyph-modis-fire {
+  color: #22d3ee;
+}
+
+.legend-glyph-viirs-fire {
+  color: #fb923c;
+}
+
+.legend-geo-status {
   margin: 0;
   font-size: 0.76rem;
-  color: #fde68a;
+  color: var(--legend-geo-text);
 }
 
 /* Outer Bottom Seasonal / Calendar Timeline Scrubber */
@@ -649,7 +898,8 @@
 @media (pointer: coarse) {
   .pill-button,
   .api-check-btn,
-  .hud-btn {
+  .hud-btn,
+  .hud-close-btn {
     min-inline-size: 2.5rem;
     min-block-size: 2.5rem;
   }

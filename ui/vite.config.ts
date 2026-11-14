@@ -8,6 +8,7 @@ import {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '')
   const base = env.VITE_BASE_PATH || '/'
+  const apiProxyTarget = env.VITE_API_PROXY_TARGET || 'http://localhost:5180'
   const linkPreviewUrls = resolveLinkPreviewUrls({
     siteUrl: env.VITE_SITE_URL,
     basePath: base,
@@ -33,15 +34,18 @@ export default defineConfig(({ mode }) => {
     build: {
       chunkSizeWarningLimit: 1400,
     },
+    optimizeDeps: {
+      exclude: ['maplibre-gl'],
+    },
     server: {
       port: 5173,
       proxy: {
         '/api': {
-          target: 'http://localhost:5180',
+          target: apiProxyTarget,
           changeOrigin: true,
         },
         '/health': {
-          target: 'http://localhost:5180',
+          target: apiProxyTarget,
           changeOrigin: true,
         },
       },
