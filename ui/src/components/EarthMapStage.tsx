@@ -372,9 +372,13 @@ function setGeoJsonSourceData(
   sourceId: string,
   data: FeatureCollection<Point | MultiLineString | Polygon>,
 ): void {
-  const source = map.getSource(sourceId) as GeoJSONSource | undefined
-  if (source) {
-    source.setData(data)
+  try {
+    const source = map.getSource(sourceId) as GeoJSONSource | undefined
+    if (source && typeof source.setData === 'function') {
+      source.setData(data)
+    }
+  } catch {
+    // Style may still be initializing; map.on('load') syncs initial sources.
   }
 }
 
@@ -624,7 +628,7 @@ export function EarthMapStage({
   useEffect(() => {
     latestGeoJsonRef.current = geoJson
     const map = mapInstanceRef.current
-    if (!map || !map.isStyleLoaded()) {
+    if (!map) {
       return
     }
     setGeoJsonSourceData(map, 'fire-anomalies', geoJson)
@@ -633,7 +637,7 @@ export function EarthMapStage({
   useEffect(() => {
     latestUserGeoJsonRef.current = userLocationGeoJson
     const map = mapInstanceRef.current
-    if (!map || !map.isStyleLoaded()) {
+    if (!map) {
       return
     }
     setGeoJsonSourceData(map, 'user-geolocation', userLocationGeoJson)
@@ -649,9 +653,7 @@ export function EarthMapStage({
     if (!map) {
       return
     }
-    if (map.isStyleLoaded()) {
-      syncOrbitalSources(map, orbitalState)
-    }
+    syncOrbitalSources(map, orbitalState)
     syncSatelliteMarkers(map, orbitalState.snapshots, showOrbits, selectedSatelliteId)
   }, [orbitalState, showOrbits, selectedSatelliteId, onSelectSatellite])
 
