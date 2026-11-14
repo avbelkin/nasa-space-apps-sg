@@ -122,6 +122,7 @@ export type OrbitalFeatureKind =
   | 'wide-swath'
   | 'nadir-swath'
   | 'past-track'
+  | 'past-lag-track'
   | 'future-track'
   | 'position'
 
@@ -130,6 +131,7 @@ export interface LiveOrbitalState {
   wideSwathsGeoJson: FeatureCollection<Polygon>
   nadirSwathsGeoJson: FeatureCollection<Polygon>
   pastTracksGeoJson: FeatureCollection<MultiLineString>
+  pastLagTracksGeoJson: FeatureCollection<MultiLineString>
   futureTracksGeoJson: FeatureCollection<MultiLineString>
   positionsGeoJson: FeatureCollection<Point>
   combinedGeoJson: FeatureCollection<Point | MultiLineString | Polygon>
@@ -156,6 +158,13 @@ const DEFAULT_SATELLITE_STYLE: SatelliteVisualStyle = {
 
 export const SATELLITE_ANIMATION_FPS = 30
 export const SATELLITE_ANIMATION_INTERVAL_MS = 1000 / SATELLITE_ANIMATION_FPS
+export const SATELLITE_ORBIT_PAST_MINUTES = 180
+export const SATELLITE_ORBIT_FUTURE_MINUTES = 90
+export const SATELLITE_ORBIT_STEP_SECONDS = 30
+export const DEFAULT_VIIRS_INGESTION_LAG_MINUTES = 90
+export const DEFAULT_MODIS_INGESTION_LAG_MINUTES = 120
+export const SATELLITE_TRACK_LAG_DASH_ARRAY: [number, number] = [2, 2]
+export const SATELLITE_TRACK_FUTURE_DOT_ARRAY: [number, number] = [0, 2.4]
 export const SATELLITE_ORBITS_REFRESH_INTERVAL_MS = 60_000
 export const SATELLITE_ORBITS_IDLE_REFRESH_INTERVAL_MS = 20 * 60 * 1000
 export const SATELLITE_HUD_VIEWPORT_DEBOUNCE_MS = 350
@@ -192,9 +201,9 @@ export async function fetchSatelliteOrbits(
 ): Promise<SatelliteOrbitsResponse> {
   const endpoint = apiBaseUrl ? `${apiBaseUrl}/api/satellites/orbits` : '/api/satellites/orbits'
   const params = new URLSearchParams({
-    pastMinutes: '45',
-    futureMinutes: '90',
-    stepSeconds: '30',
+    pastMinutes: String(SATELLITE_ORBIT_PAST_MINUTES),
+    futureMinutes: String(SATELLITE_ORBIT_FUTURE_MINUTES),
+    stepSeconds: String(SATELLITE_ORBIT_STEP_SECONDS),
   })
   if (center && Number.isFinite(center.lat) && Number.isFinite(center.lng)) {
     params.set('lat', String(Number(Math.max(-90, Math.min(90, center.lat)).toFixed(4))))
@@ -387,7 +396,7 @@ export function splitAntimeridianCoordinates(
       const dLng = lng2 > lng1 ? lng2 - 360 - lng1 : lng2 + 360 - lng1
       const boundary1 = dLng >= 0 ? 180 : -180
       const frac = dLng !== 0 ? Math.min(1, Math.max(0, (boundary1 - lng1) / dLng)) : 0.5
-      const crossLat = Number((lat1 + (lat2 - lat1) * frac).toFixed(4))
+      const crossLat = lat1 + (lat2 - lat1) * frac
 
       currentSegment.push([boundary1, crossLat])
       if (currentSegment.length >= 2) {
@@ -692,6 +701,67 @@ export function formatSatelliteHudSection(
   }
 }
 
+/** Returns the per-satellite NRT data processing lag in minutes, matching overpass tooltip cutoffs. */
+export function resolveSatelliteProcessingLagMinutes(
+  sat: Pick<SatelliteOrbit, 'instrument' | 'typicalIngestionLagMinutes'>,
+): number {
+  if (
+    typeof sat.typicalIngestionLagMinutes === 'number' &&
+    Number.isFinite(sat.typicalIngestionLagMinutes) &&
+    sat.typicalIngestionLagMinutes > 0
+  ) {
+    return sat.typicalIngestionLagMinutes
+  }
+  return sat.instrument === 'viirs'
+    ? DEFAULT_VIIRS_INGESTION_LAG_MINUTES
+    : DEFAULT_MODIS_INGESTION_LAG_MINUTES
+}
+
+interface TrackEndpoint {
+  unixMs: number
+  coord: readonly [number, number]
+}
+
+function sliceOrbitTrackWindow(
+  sat: SatelliteOrbit,
+  startUnixMs: number,
+  endUnixMs: number,
+  endpointA?: TrackEndpoint,
+  endpointB?: TrackEndpoint,
+): Array<readonly [number, number]> {
+  const { track } = sat
+  if (track.length < 2 || endUnixMs <= startUnixMs) {
+    return []
+  }
+  const firstMs = track[0].timestampUnixMs
+  const lastMs = track[track.length - 1].timestampUnixMs
+  const clampedStart = Math.max(startUnixMs, firstMs)
+  const clampedEnd = Math.min(endUnixMs, lastMs)
+  if (clampedEnd <= clampedStart) {
+    return []
+  }
+
+  const resolveEndpoint = (unixMs: number): readonly [number, number] => {
+    if (endpointA && endpointA.unixMs === unixMs) {
+      return endpointA.coord
+    }
+    if (endpointB && endpointB.unixMs === unixMs) {
+      return endpointB.coord
+    }
+    const interp = interpolateTrackAtTime(sat, unixMs)
+    return [interp.lng, interp.lat]
+  }
+
+  const points: Array<readonly [number, number]> = [resolveEndpoint(clampedStart)]
+  for (const pt of track) {
+    if (pt.timestampUnixMs > clampedStart && pt.timestampUnixMs < clampedEnd) {
+      points.push([normalizeLng(pt.lng), pt.lat])
+    }
+  }
+  points.push(resolveEndpoint(clampedEnd))
+  return points
+}
+
 export function computeLiveOrbitalState(
   satellites: readonly SatelliteOrbit[],
   sensorFilter: SensorFilter,
@@ -706,8 +776,37 @@ export function computeLiveOrbitalState(
   const wideSwathFeatures: Array<Feature<Polygon>> = []
   const nadirSwathFeatures: Array<Feature<Polygon>> = []
   const pastTrackFeatures: Array<Feature<MultiLineString>> = []
+  const pastLagTrackFeatures: Array<Feature<MultiLineString>> = []
   const futureTrackFeatures: Array<Feature<MultiLineString>> = []
   const positionFeatures: Array<Feature<Point>> = []
+
+  const pushTrackFeature = (
+    target: Array<Feature<MultiLineString>>,
+    sat: SatelliteOrbit,
+    style: SatelliteVisualStyle,
+    kind: Extract<OrbitalFeatureKind, 'past-track' | 'past-lag-track' | 'future-track'>,
+    idSuffix: string,
+    points: ReadonlyArray<readonly [number, number]>,
+    ingestionLagMinutes?: number,
+  ) => {
+    const segments = splitAntimeridianCoordinates(points)
+    if (segments.length === 0) {
+      return
+    }
+    target.push({
+      type: 'Feature',
+      id: `${sat.id}-${idSuffix}`,
+      geometry: { type: 'MultiLineString', coordinates: segments },
+      properties: {
+        orbitalFeatureKind: kind,
+        id: sat.id,
+        name: sat.name,
+        instrument: sat.instrument,
+        color: style.color,
+        ...(ingestionLagMinutes !== undefined ? { ingestionLagMinutes } : {}),
+      },
+    })
+  }
 
   for (const sat of visibleSatellites) {
     const style = SATELLITE_STYLES[sat.id] ?? {
@@ -762,50 +861,44 @@ export function computeLiveOrbitalState(
       },
     })
 
-    const pastRaw: Array<readonly [number, number]> = []
-    const futureRaw: Array<readonly [number, number]> = []
-    for (const pt of sat.track) {
-      if (pt.timestampUnixMs < nowUnixMs) {
-        pastRaw.push([pt.lng, pt.lat])
-      } else if (pt.timestampUnixMs > nowUnixMs) {
-        futureRaw.push([pt.lng, pt.lat])
-      }
+    const lagMinutes = resolveSatelliteProcessingLagMinutes(sat)
+    const cutoffUnixMs = nowUnixMs - lagMinutes * 60_000
+    const liveEndpoint: TrackEndpoint = { unixMs: nowUnixMs, coord: liveCoord }
+    let cutoffEndpoint: TrackEndpoint | undefined
+    if (
+      sat.track.length >= 2 &&
+      cutoffUnixMs > sat.track[0].timestampUnixMs &&
+      cutoffUnixMs < sat.track[sat.track.length - 1].timestampUnixMs
+    ) {
+      const cutoffPos = interpolateTrackAtTime(sat, cutoffUnixMs)
+      cutoffEndpoint = { unixMs: cutoffUnixMs, coord: [cutoffPos.lng, cutoffPos.lat] }
     }
 
-    const pastPoints = pastRaw.length > 0 ? [...pastRaw, liveCoord] : []
-    const futurePoints = futureRaw.length > 0 ? [liveCoord, ...futureRaw] : []
-
-    const pastSegments = splitAntimeridianCoordinates(pastPoints)
-    if (pastSegments.length > 0) {
-      pastTrackFeatures.push({
-        type: 'Feature',
-        id: `${sat.id}-past`,
-        geometry: { type: 'MultiLineString', coordinates: pastSegments },
-        properties: {
-          orbitalFeatureKind: 'past-track' satisfies OrbitalFeatureKind,
-          id: sat.id,
-          name: sat.name,
-          instrument: sat.instrument,
-          color: style.color,
-        },
-      })
-    }
-
-    const futureSegments = splitAntimeridianCoordinates(futurePoints)
-    if (futureSegments.length > 0) {
-      futureTrackFeatures.push({
-        type: 'Feature',
-        id: `${sat.id}-future`,
-        geometry: { type: 'MultiLineString', coordinates: futureSegments },
-        properties: {
-          orbitalFeatureKind: 'future-track' satisfies OrbitalFeatureKind,
-          id: sat.id,
-          name: sat.name,
-          instrument: sat.instrument,
-          color: style.color,
-        },
-      })
-    }
+    pushTrackFeature(
+      pastTrackFeatures,
+      sat,
+      style,
+      'past-track',
+      'past',
+      sliceOrbitTrackWindow(sat, Number.NEGATIVE_INFINITY, cutoffUnixMs, cutoffEndpoint),
+    )
+    pushTrackFeature(
+      pastLagTrackFeatures,
+      sat,
+      style,
+      'past-lag-track',
+      'past-lag',
+      sliceOrbitTrackWindow(sat, cutoffUnixMs, nowUnixMs, cutoffEndpoint, liveEndpoint),
+      lagMinutes,
+    )
+    pushTrackFeature(
+      futureTrackFeatures,
+      sat,
+      style,
+      'future-track',
+      'future',
+      sliceOrbitTrackWindow(sat, nowUnixMs, Number.POSITIVE_INFINITY, liveEndpoint),
+    )
 
     if (sat.wideSwathKm > sat.nadirSwathKm) {
       const wideRing = buildInstantaneousSwathPolygon(
@@ -855,6 +948,7 @@ export function computeLiveOrbitalState(
     wideSwathsGeoJson: { type: 'FeatureCollection', features: wideSwathFeatures },
     nadirSwathsGeoJson: { type: 'FeatureCollection', features: nadirSwathFeatures },
     pastTracksGeoJson: { type: 'FeatureCollection', features: pastTrackFeatures },
+    pastLagTracksGeoJson: { type: 'FeatureCollection', features: pastLagTrackFeatures },
     futureTracksGeoJson: { type: 'FeatureCollection', features: futureTrackFeatures },
     positionsGeoJson: { type: 'FeatureCollection', features: positionFeatures },
     combinedGeoJson: {
@@ -863,6 +957,7 @@ export function computeLiveOrbitalState(
         ...wideSwathFeatures,
         ...nadirSwathFeatures,
         ...pastTrackFeatures,
+        ...pastLagTrackFeatures,
         ...futureTrackFeatures,
         ...positionFeatures,
       ],
