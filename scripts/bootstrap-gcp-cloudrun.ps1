@@ -58,6 +58,10 @@ Creates ProjectId if it does not already exist.
 Creates a regional Cloud Storage bucket (<ProjectId>-fire-harmonization) with uniform
 bucket-level access and grants objectViewer to the Cloud Run runtime service account.
 
+.PARAMETER EnableVertexAi
+Enables aiplatform.googleapis.com (Vertex AI) and grants roles/aiplatform.user to the
+Cloud Run runtime service account so Gemini models can be called via IAM without API keys.
+
 .PARAMETER MonthlyBudgetAmount
 Optional monthly Cloud Billing budget alert amount in the billing account's currency
 (creates alerts at 50%, 80%, 100%). Alias: MonthlyBudgetUsd.
@@ -66,7 +70,7 @@ Optional monthly Cloud Billing budget alert amount in the billing account's curr
 Pushes the computed GCP_* repository variables directly to GitHubRepo using the gh CLI.
 
 .EXAMPLE
-.\scripts\bootstrap-gcp-cloudrun.ps1 -PromptForSecrets -CreateStorageBucket -MonthlyBudgetAmount 100 -SyncGitHubVars
+.\scripts\bootstrap-gcp-cloudrun.ps1 -PromptForSecrets -CreateStorageBucket -EnableVertexAi -MonthlyBudgetAmount 100 -SyncGitHubVars
 
 .EXAMPLE
 .\scripts\bootstrap-gcp-cloudrun.ps1 -ProjectId earth-fire-calendar-sg -BillingAccountId 012345-6789AB-CDEF01 -CreateProject -CreateStorageBucket -SyncGitHubVars
@@ -103,6 +107,8 @@ param(
     [switch]$CreateProject,
 
     [switch]$CreateStorageBucket,
+
+    [switch]$EnableVertexAi,
 
     [Alias("MonthlyBudgetUsd")]
     [ValidateRange(0, 1000000)]
@@ -467,6 +473,9 @@ $apisToEnable = @(
 if ($CreateStorageBucket) {
     $apisToEnable += "storage.googleapis.com"
 }
+if ($EnableVertexAi) {
+    $apisToEnable += "aiplatform.googleapis.com"
+}
 if ($MonthlyBudgetAmount -gt 0) {
     $apisToEnable += "billingbudgets.googleapis.com"
 }
@@ -522,6 +531,17 @@ $null = Invoke-GcloudWithRetry -Arguments @(
     "--condition=None",
     "--quiet"
 )
+
+if ($EnableVertexAi) {
+    Write-Host "    Granting roles/aiplatform.user to $runtimeSaEmail on $ProjectId"
+    $null = Invoke-GcloudWithRetry -Arguments @(
+        "projects", "add-iam-policy-binding", $ProjectId,
+        "--member=serviceAccount:$runtimeSaEmail",
+        "--role=roles/aiplatform.user",
+        "--condition=None",
+        "--quiet"
+    )
+}
 
 # 5. Workload Identity Pool & GitHub OIDC Provider
 Write-Step "Configuring GitHub Actions Workload Identity Federation (OIDC)"
@@ -725,6 +745,7 @@ if ($MonthlyBudgetAmount -gt 0) {
         $existingBudgetsRaw = Get-GcloudValue -Arguments @(
             "billing", "budgets", "list",
             "--billing-account=$resolvedBillingAccountId",
+            "--billing-project=$ProjectId",
             "--format=value(displayName)",
             "--quiet"
         )
@@ -738,6 +759,7 @@ if ($MonthlyBudgetAmount -gt 0) {
             $null = Invoke-Gcloud -Arguments @(
                 "billing", "budgets", "create",
                 "--billing-account=$resolvedBillingAccountId",
+                "--billing-project=$ProjectId",
                 "--display-name=$budgetDisplayName",
                 "--filter-projects=projects/$ProjectId",
                 "--budget-amount=${MonthlyBudgetAmount}${currencyCode}",

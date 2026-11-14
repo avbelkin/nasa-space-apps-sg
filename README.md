@@ -6,6 +6,7 @@
 
 - [doc/README.md](doc/README.md) — Challenge background, Earth-first seasonal & anomaly approach, target users, and NASA FIRMS data sources.
 - [doc/architecture-and-harmonization.md](doc/architecture-and-harmonization.md) — MapLibre two-tier CSS Grid layout, UI/backend split, and harmonization pipeline design notes.
+- [doc/cloud-run-and-credits.md](doc/cloud-run-and-credits.md) — Google Cloud Run scaling/hibernation modes, Vertex AI & Secret Manager setup, and Google AI Ultra credits guide.
 
 ## Stack
 
@@ -68,21 +69,32 @@ Repository variables under **Settings -> Secrets and variables -> Actions -> Var
 
 ### Backend (`deploy-backend.yml` -> Google Cloud Run)
 
-Always runs a `.NET 10` Release build check on pushes to `backend/**`.
+Always runs a `.NET 10` Release build check on pushes to `backend/**`. See [doc/cloud-run-and-credits.md](doc/cloud-run-and-credits.md) for scaling details, Vertex AI setup, and credit management.
 
 #### One-Shot Google Cloud Bootstrap (Google AI Ultra / Cloud Credits)
 
-Run [scripts/bootstrap-gcp-cloudrun.ps1](scripts/bootstrap-gcp-cloudrun.ps1) against a Google Cloud project linked to the Cloud Billing account holding your Google AI Ultra / Google Developer Program monthly credits (or pass `-BillingAccountId <ACCOUNT_ID>` and optionally `-CreateProject` / `-CreateStorageBucket`):
+Run [scripts/bootstrap-gcp-cloudrun.ps1](scripts/bootstrap-gcp-cloudrun.ps1) against a Google Cloud project linked to the Cloud Billing account holding your Google AI Ultra / Google Developer Program monthly credits (or pass `-BillingAccountId <ACCOUNT_ID>` and optionally `-CreateProject`):
 
 ```powershell
 .\scripts\bootstrap-gcp-cloudrun.ps1 `
   -PromptForSecrets `
   -CreateStorageBucket `
+  -EnableVertexAi `
   -MonthlyBudgetAmount 100 `
   -SyncGitHubVars
 ```
 
-This idempotently enables required GCP APIs, creates the Artifact Registry Docker repository, provisions Workload Identity Federation (GitHub OIDC) and least-privilege deployer/runtime service accounts, sets up Secret Manager (`firms-map-key`, `gemini-api-key`), optionally creates a monthly billing budget alert, and syncs the `GCP_*` variables below to GitHub Actions.
+This idempotently enables required GCP APIs (including Vertex AI when `-EnableVertexAi` is passed), creates the Artifact Registry Docker repository and optional GCS bucket, provisions Workload Identity Federation (GitHub OIDC) and least-privilege deployer/runtime service accounts, sets up Secret Manager (`firms-map-key`, `gemini-api-key`), optionally creates a monthly billing budget alert, and syncs the `GCP_*` variables below to GitHub Actions.
+
+#### Switching Cloud Run Between Warm & Hibernate Modes
+
+```powershell
+# After hackathon submission (scales to zero when idle; $0 idle cost before final checks):
+.\scripts\set-cloudrun-mode.ps1 -Mode hibernate
+
+# Before final checks or live demos (keeps 1 warm instance & in-memory TLE/FIRMS caches):
+.\scripts\set-cloudrun-mode.ps1 -Mode warm
+```
 
 #### GitHub Actions Variables
 
