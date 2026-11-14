@@ -1171,6 +1171,10 @@ export function EarthMapStage({
         if (!map || !latestShowFiresRef.current || map.isMoving() || map.isZooming() || map.isRotating()) {
           return
         }
+        // No live spots: leave the cursor to the sample region marks
+        if (latestBuiltFireSpotsRef.current.featureCollection.features.length === 0) {
+          return
+        }
         const hit = querySpotTooltipAtPoint(map, event.point, latestSensorFilterRef.current)
         map.getCanvas().style.cursor = hit ? 'pointer' : ''
         setHoverSpotCard((prev) => {

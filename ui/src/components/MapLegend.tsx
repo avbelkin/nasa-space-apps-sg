@@ -82,26 +82,18 @@ export function MapLegend({
             </li>
           </>
         ) : (
-          <>
-            <li>
-              <span className="legend-glyph" aria-hidden="true">
-                <FireDot color={FIRE_SPOT_COLORS.frpHigh} />
-              </span>
-              <span>Active spot &middot; high FRP (&ge;100 MW)</span>
-            </li>
-            <li>
-              <span className="legend-glyph" aria-hidden="true">
-                <FireDot color={FIRE_SPOT_COLORS.frpMid} />
-              </span>
-              <span>Active spot &middot; moderate FRP (~20 MW)</span>
-            </li>
-            <li>
-              <span className="legend-glyph" aria-hidden="true">
-                <FireDot color={FIRE_SPOT_COLORS.frpLow} />
-              </span>
-              <span>Active spot &middot; low FRP (&lt;20 MW)</span>
-            </li>
-          </>
+          // One key for the FRP ramp keeps the row at two lines on a laptop
+          <li>
+            <span>Active spots by FRP:</span>
+            <span className="legend-ramp">
+              <FireDot color={FIRE_SPOT_COLORS.frpLow} />
+              &lt;20
+              <FireDot color={FIRE_SPOT_COLORS.frpMid} />
+              ~20
+              <FireDot color={FIRE_SPOT_COLORS.frpHigh} />
+              &ge;100 MW
+            </span>
+          </li>
         )}
         {showSwaths && (
           <>
