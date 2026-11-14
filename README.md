@@ -64,6 +64,7 @@ Repository variables under **Settings -> Secrets and variables -> Actions -> Var
 | :--- | :--- | :--- |
 | `VITE_API_BASE_URL` | Public HTTPS URL of the Cloud Run backend service | `https://nasa-space-apps-api-xxxx.asia-southeast1.run.app` |
 | `VITE_BASE_PATH` | Optional base path override (defaults to `/<repo-name>/` in workflow) | `/nasa-space-apps-sg/` |
+| `VITE_SITE_URL` | Optional canonical public site URL for Open Graph / X link preview tags (defaults to GitHub Pages `base_url`) | `https://avbelkin.github.io/nasa-space-apps-sg` |
 
 ### Backend (`deploy-backend.yml` -> Google Cloud Run)
 
