@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import { EarthMapStage, type CameraFocusRequest } from './components/EarthMapStage'
+import {
+  EarthMapStage,
+  type CameraFocusRequest,
+  type GeolocationLegendState,
+} from './components/EarthMapStage'
 import {
   evaluateRegionsForMonth,
   MONTHLY_PROFILE,
@@ -47,6 +51,12 @@ const STATUS_LABELS: Record<ConnectionState, string> = {
   unconfigured: 'Not Configured',
 }
 
+const VIEW_MODE_LABELS: Record<ViewMode, string> = {
+  anomaly: 'Anomaly vs. Typical Calendar',
+  seasonal: 'Seasonal Climatology Dynamic',
+  sensors: 'MODIS 1km vs. VIIRS 375m Coverage',
+}
+
 async function fetchApiStatus(signal?: AbortSignal): Promise<ApiStatusResponse> {
   const response = await fetch(statusEndpoint, {
     headers: { Accept: 'application/json' },
@@ -86,6 +96,10 @@ function App() {
   )
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
   const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null)
+  const [geolocationState, setGeolocationState] = useState<GeolocationLegendState>({
+    hasUserLocation: false,
+    errorMessage: null,
+  })
   const [cameraFocusRequest, setCameraFocusRequest] = useState<CameraFocusRequest | null>(null)
   const focusRequestSeqRef = useRef(0)
   const lastSyncedHashRef = useRef('')
@@ -353,7 +367,6 @@ function App() {
 
       <EarthMapStage
         selectedMonth={selectedMonth}
-        viewMode={viewMode}
         sensorFilter={sensorFilter}
         onSensorFilterChange={setSensorFilter}
         projectionMode={projectionMode}
@@ -374,6 +387,7 @@ function App() {
         }}
         selectedSatelliteId={selectedSatelliteId}
         onSelectSatellite={handleSelectSatellite}
+        onGeolocationStateChange={setGeolocationState}
       />
 
       <section className="timeline-bar wrapper-surface" aria-labelledby="timeline-heading">
@@ -606,6 +620,70 @@ function App() {
           </p>
         </footer>
       </aside>
+
+      <section
+        className="legend-bar wrapper-surface"
+        data-testid="map-legend"
+        aria-labelledby="legend-heading"
+      >
+        <div className="legend-header">
+          <h2 id="legend-heading" className="legend-heading">
+            {monthProfile.label} &middot; {VIEW_MODE_LABELS[viewMode]}
+          </h2>
+          <span className="legend-coords">
+            Lat {viewport.lat.toFixed(2)}&deg;, Lon {viewport.lng.toFixed(2)}&deg; &middot; z{viewport.zoom}
+          </span>
+        </div>
+        <ul className="legend-list" role="list">
+          <li>
+            <span className="legend-glyph legend-glyph-anomaly" aria-hidden="true">&#9650;</span>
+            <span>Positive Anomaly (above typical)</span>
+          </li>
+          <li>
+            <span className="legend-glyph legend-glyph-typical" aria-hidden="true">&#9679;</span>
+            <span>Fits Typical Season</span>
+          </li>
+          <li>
+            <span className="legend-glyph legend-glyph-below" aria-hidden="true">&#9660;</span>
+            <span>Below Typical</span>
+          </li>
+          {showOrbits && orbitalState.snapshots.length > 0 && (
+            <>
+              <li>
+                <span className="legend-glyph legend-glyph-swath-nadir" aria-hidden="true" />
+                <span>Nadir Swath (400 km)</span>
+              </li>
+              <li>
+                <span className="legend-glyph legend-glyph-swath-wide" aria-hidden="true" />
+                <span>Wide Swath (2,330&ndash;3,040 km dashed)</span>
+              </li>
+            </>
+          )}
+          {showOrbits && orbitalState.snapshots.length > 0 && sensorFilter !== 'viirs' && (
+            <li>
+              <span className="legend-glyph legend-glyph-modis" aria-hidden="true">&#9670;</span>
+              <span>MODIS Tracks (Terra, Aqua &middot; Solid past / Dashed +90m)</span>
+            </li>
+          )}
+          {showOrbits && orbitalState.snapshots.length > 0 && sensorFilter !== 'modis' && (
+            <li>
+              <span className="legend-glyph legend-glyph-viirs" aria-hidden="true">&#9679;</span>
+              <span>VIIRS Tracks (NOAA-20, NOAA-21 &middot; Solid past / Dashed +90m)</span>
+            </li>
+          )}
+          {geolocationState.hasUserLocation && (
+            <li>
+              <span className="legend-glyph legend-glyph-user" aria-hidden="true">&#9673;</span>
+              <span>Your Location</span>
+            </li>
+          )}
+        </ul>
+        {geolocationState.errorMessage && (
+          <p className="legend-geo-status" role="status">
+            {geolocationState.errorMessage}
+          </p>
+        )}
+      </section>
     </div>
   )
 }
