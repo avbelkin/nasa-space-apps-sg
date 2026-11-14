@@ -1,9 +1,10 @@
 import type { MonthlyBaselinePoint, RegionalFireRegime, StatusCategory } from './stubSeasonalData'
 
-// User-facing wording and glyphs for the status categories, shared by the map legend and the panel.
+// User-facing wording and text glyphs for the status categories in the panel; the glyphs follow the
+// map marks (see statusMarks.ts), where "typical" is a ring.
 export const STATUS_GLYPHS: Record<StatusCategory, string> = {
   'anomaly-high': '▲',
-  'fits-typical': '●',
+  'fits-typical': '○',
   'below-typical': '▼',
 }
 

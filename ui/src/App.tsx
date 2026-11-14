@@ -59,7 +59,9 @@ function App() {
   const [extraParams, setExtraParams] = useState<Record<string, string> | undefined>(
     initialResolution.state.extraParams,
   )
-  const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
+  const [selectedRegionId, setSelectedRegionId] = useState<string | null>(
+    initialResolution.state.selectedRegionId ?? null,
+  )
   const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null)
   const [cameraFocusRequest, setCameraFocusRequest] = useState<CameraFocusRequest | null>(null)
   const focusRequestSeqRef = useRef(0)
@@ -84,9 +86,19 @@ function App() {
       projectionMode,
       selectedMonth,
       showOrbits,
+      ...(selectedRegionId ? { selectedRegionId } : {}),
       extraParams,
     })
-  }, [viewport, viewMode, sensorFilter, projectionMode, selectedMonth, showOrbits, extraParams])
+  }, [
+    viewport,
+    viewMode,
+    sensorFilter,
+    projectionMode,
+    selectedMonth,
+    showOrbits,
+    selectedRegionId,
+    extraParams,
+  ])
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -102,6 +114,7 @@ function App() {
       setProjectionMode(parsed.projectionMode)
       setSelectedMonth(parsed.selectedMonth)
       setShowOrbits(parsed.showOrbits)
+      setSelectedRegionId(parsed.selectedRegionId ?? null)
       setExtraParams(parsed.extraParams)
       setViewport({
         zoom: parsed.zoom,
@@ -252,6 +265,11 @@ function App() {
     })
   }
 
+  // A map click selects in place: the user is already looking at the mark, so the camera stays.
+  const handleSelectRegionOnMap = (regionId: string) => {
+    setSelectedRegionId(regionId)
+  }
+
   const satelliteFeedState: SatelliteFeedState =
     isProdUnconfigured || (orbitsError && !orbitsPayload)
       ? 'unavailable'
@@ -294,6 +312,8 @@ function App() {
         }}
         selectedSatelliteId={selectedSatelliteId}
         onSelectSatellite={handleSelectSatellite}
+        selectedRegionId={selectedRegionId}
+        onSelectRegion={handleSelectRegionOnMap}
       />
 
       <MonthStrip selectedMonth={selectedMonth} onSelectMonth={setSelectedMonth} />

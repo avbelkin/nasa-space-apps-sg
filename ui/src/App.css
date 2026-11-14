@@ -423,24 +423,11 @@
   line-height: 1;
 }
 
-/* Status glyphs carry the same light outline as the map marks */
-.legend-glyph-anomaly,
-.legend-glyph-typical,
-.legend-glyph-below {
-  -webkit-text-stroke: 1.5px var(--data-mark-stroke);
-  paint-order: stroke fill;
-}
-
-.legend-glyph-anomaly {
-  color: var(--data-above);
-}
-
-.legend-glyph-typical {
-  color: var(--data-typical);
-}
-
-.legend-glyph-below {
-  color: var(--data-below);
+/* Status marks are the map's own marks (see StatusMark.tsx): keep their data colors in forced colors too */
+.status-mark {
+  display: block;
+  flex: none;
+  forced-color-adjust: none;
 }
 
 .legend-glyph-terra {

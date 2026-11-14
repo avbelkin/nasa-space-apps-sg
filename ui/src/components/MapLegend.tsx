@@ -1,13 +1,12 @@
 import { useState } from 'react'
-import { MONTH_LABELS, type StatusCategory } from '../data/stubSeasonalData'
-import { STATUS_GLYPHS, STATUS_TEXT } from '../data/statusDisplay'
+import { MONTH_LABELS } from '../data/stubSeasonalData'
+import { STATUS_TEXT } from '../data/statusDisplay'
+import { STATUS_CATEGORIES } from '../data/statusMarks'
 import { ChevronDownIcon } from './icons'
+import { StatusMark } from './StatusMark'
 
-const LEGEND_STATUS_ROWS: readonly { category: StatusCategory; glyphClass: string }[] = [
-  { category: 'anomaly-high', glyphClass: 'legend-glyph-anomaly' },
-  { category: 'fits-typical', glyphClass: 'legend-glyph-typical' },
-  { category: 'below-typical', glyphClass: 'legend-glyph-below' },
-]
+// Legend marks are drawn a little smaller than the smallest map mark (radius 8) to fit a text row.
+const LEGEND_MARK_RADIUS = 6
 
 interface MapLegendProps {
   selectedMonth: number
@@ -47,10 +46,10 @@ export function MapLegend({
       <div className="map-legend-body">
         <p className="hud-kicker">{MONTH_LABELS[selectedMonth]} &middot; fire activity</p>
         <ul className="hud-legend-list" role="list">
-          {LEGEND_STATUS_ROWS.map(({ category, glyphClass }) => (
+          {STATUS_CATEGORIES.map((category) => (
             <li key={category}>
-              <span className={`legend-glyph ${glyphClass}`} aria-hidden="true">
-                {STATUS_GLYPHS[category]}
+              <span className="legend-glyph" aria-hidden="true">
+                <StatusMark category={category} radius={LEGEND_MARK_RADIUS} />
               </span>
               <span>{STATUS_TEXT[category]}</span>
             </li>

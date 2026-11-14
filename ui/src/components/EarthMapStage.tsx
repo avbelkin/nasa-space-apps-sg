@@ -4,13 +4,28 @@ import { LngLat, LngLatBounds, Map as MapLibreMap, Marker, setWorkerUrl } from '
 import type {
   ErrorEvent,
   ExpressionSpecification,
+  FilterSpecification,
   GeoJSONSource,
+  LngLatLike,
+  MapLayerMouseEvent,
   MapMovementEvent,
   StyleSpecification,
+  SymbolLayerSpecification,
 } from 'maplibre-gl'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { MARK_STROKE_COLOR, STATUS_COLORS, USER_LOCATION_COLORS } from '../data/dataPalette'
+import {
+  MARK_EDGE_COLOR,
+  MARK_STROKE_COLOR,
+  STATUS_COLORS,
+  USER_LOCATION_COLORS,
+} from '../data/dataPalette'
+import {
+  STATUS_CATEGORIES,
+  STATUS_MARK_STYLES,
+  statusMarkExtent,
+  statusMarkPath,
+} from '../data/statusMarks'
 import {
   buildStubGeoJson,
   type ProjectionMode,
@@ -58,6 +73,8 @@ interface EarthMapStageProps {
   onShowOrbitsChange: (next: boolean) => void
   selectedSatelliteId: string | null
   onSelectSatellite: (satellite: LiveSatelliteSnapshot) => void
+  selectedRegionId: string | null
+  onSelectRegion: (regionId: string) => void
 }
 
 interface SatelliteMarkerEntry {
@@ -83,6 +100,117 @@ const STATUS_COLOR_EXPRESSION = [
   STATUS_COLORS['fits-typical'],
   STATUS_COLORS['below-typical'],
 ] as ExpressionSpecification
+
+const STATUS_MARK_LAYER_ID = 'fire-anomaly-marks'
+const SELECTION_LAYER_IDS = ['fire-anomaly-selection-edge', 'fire-anomaly-selection-ring'] as const
+
+// Marks are rasterized at a few design radii; each feature uses the nearest one, scaled by
+// icon-size to its own radius (8–26 px), so outlines stay crisp and about the same width.
+const MARK_DESIGN_RADII = [10, 16, 22] as const
+const MARK_DESIGN_RADIUS_EXPRESSION = [
+  'step',
+  ['get', 'radius'],
+  MARK_DESIGN_RADII[0],
+  13,
+  MARK_DESIGN_RADII[1],
+  19,
+  MARK_DESIGN_RADII[2],
+] as ExpressionSpecification
+
+const STATUS_MARK_LAYER: SymbolLayerSpecification = {
+  id: STATUS_MARK_LAYER_ID,
+  type: 'symbol',
+  source: 'fire-anomalies',
+  layout: {
+    'icon-image': [
+      'concat',
+      'status-mark-',
+      ['get', 'statusCategory'],
+      '-',
+      ['to-string', MARK_DESIGN_RADIUS_EXPRESSION],
+    ],
+    'icon-size': ['/', ['get', 'radius'], MARK_DESIGN_RADIUS_EXPRESSION],
+    'icon-allow-overlap': true,
+    'icon-ignore-placement': true,
+    // Larger marks underneath, so a smaller neighbour stays visible
+    'symbol-sort-key': ['-', ['get', 'radius']],
+  },
+}
+
+// Clear of the triangles' corners (1.15 x radius) with a small gap
+const SELECTION_RING_RADIUS = ['+', ['*', ['get', 'radius'], 1.3], 5] as ExpressionSpecification
+
+function selectionFilter(regionId: string | null): FilterSpecification {
+  return ['==', ['get', 'id'], regionId ?? '']
+}
+
+function rasterizeStatusMark(
+  category: StatusCategory,
+  radius: number,
+  pixelRatio: number,
+): ImageData | null {
+  const half = Math.ceil(statusMarkExtent(category, radius)) + 1
+  const side = half * 2 * pixelRatio
+  const canvas = document.createElement('canvas')
+  canvas.width = side
+  canvas.height = side
+  const context = canvas.getContext('2d')
+  if (!context) {
+    return null
+  }
+  const style = STATUS_MARK_STYLES[category]
+  const path = new Path2D(statusMarkPath(category, radius))
+  context.scale(pixelRatio, pixelRatio)
+  context.translate(half, half)
+  context.lineJoin = 'round'
+  for (const stroke of style.strokes) {
+    context.strokeStyle = stroke.color
+    context.lineWidth = stroke.width
+    context.stroke(path)
+  }
+  context.fillStyle = style.fill
+  context.fill(path, style.fillRule)
+  return context.getImageData(0, 0, side, side)
+}
+
+// Must run before the symbol layer is added: in MapLibre v6 a styleimagemissing listener can no
+// longer supply the image.
+function addStatusMarkImages(map: MapLibreMap): void {
+  // At least 2x, so marks scaled up by icon-size stay sharp on 1x screens too
+  const pixelRatio = Math.max(2, Math.ceil(window.devicePixelRatio || 1))
+  for (const category of STATUS_CATEGORIES) {
+    for (const radius of MARK_DESIGN_RADII) {
+      const imageId = `status-mark-${category}-${radius}`
+      if (map.hasImage(imageId)) {
+        continue
+      }
+      const image = rasterizeStatusMark(category, radius, pixelRatio)
+      if (image) {
+        map.addImage(imageId, image, { pixelRatio })
+      }
+    }
+  }
+}
+
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
+
+// MapLibre skips non-essential animations under this preference too; checking it here keeps that
+// promise explicit for every camera move the app starts.
+function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia(REDUCED_MOTION_QUERY).matches
+}
+
+function moveCamera(
+  map: MapLibreMap,
+  target: { center: LngLatLike; zoom: number },
+  durationMs: number,
+): void {
+  if (prefersReducedMotion()) {
+    map.jumpTo(target)
+    return
+  }
+  map.flyTo({ ...target, duration: durationMs })
+}
 
 const GEOLOCATION_POSITION_OPTIONS: PositionOptions = {
   enableHighAccuracy: false,
@@ -179,6 +307,7 @@ function createBaseStyle(
   initialFireData: FeatureCollection<Point>,
   initialOrbitalState: LiveOrbitalState,
   initialUserData: FeatureCollection<Point>,
+  initialSelectedRegionId: string | null,
 ): StyleSpecification {
   return {
     version: 8,
@@ -224,6 +353,10 @@ function createBaseStyle(
         id: 'basemap-layer',
         type: 'raster',
         source: 'eox-s2cloudless',
+        // A quieter background, so warm marks do not sink into desert and savanna
+        paint: {
+          'raster-saturation': -0.5,
+        },
       },
       {
         id: 'satellite-swaths-fill',
@@ -311,15 +444,29 @@ function createBaseStyle(
           'circle-blur': 0.5,
         },
       },
+      // Selection ring: a light ring with dark edges (circle strokes sit outside the radius).
+      // The status marks themselves are a symbol layer added once their images exist.
       {
-        id: 'fire-anomaly-core',
+        id: SELECTION_LAYER_IDS[0],
         type: 'circle',
         source: 'fire-anomalies',
+        filter: selectionFilter(initialSelectedRegionId),
         paint: {
-          'circle-radius': ['get', 'radius'],
-          'circle-color': STATUS_COLOR_EXPRESSION,
-          'circle-opacity': 0.9,
-          'circle-stroke-width': 2,
+          'circle-radius': ['-', SELECTION_RING_RADIUS, 1],
+          'circle-opacity': 0,
+          'circle-stroke-width': 5,
+          'circle-stroke-color': MARK_EDGE_COLOR,
+        },
+      },
+      {
+        id: SELECTION_LAYER_IDS[1],
+        type: 'circle',
+        source: 'fire-anomalies',
+        filter: selectionFilter(initialSelectedRegionId),
+        paint: {
+          'circle-radius': SELECTION_RING_RADIUS,
+          'circle-opacity': 0,
+          'circle-stroke-width': 3,
           'circle-stroke-color': MARK_STROKE_COLOR,
         },
       },
@@ -381,6 +528,8 @@ export function EarthMapStage({
   onShowOrbitsChange,
   selectedSatelliteId,
   onSelectSatellite,
+  selectedRegionId,
+  onSelectRegion,
 }: EarthMapStageProps) {
   const stageRef = useRef<HTMLElement | null>(null)
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
@@ -418,10 +567,16 @@ export function EarthMapStage({
   const latestShowOrbitsRef = useRef(showOrbits)
   const latestSelectedSatIdRef = useRef(selectedSatelliteId)
   const onSelectSatelliteRef = useRef(onSelectSatellite)
+  const latestSelectedRegionIdRef = useRef(selectedRegionId)
+  const onSelectRegionRef = useRef(onSelectRegion)
 
   useEffect(() => {
     latestOnViewportChangeRef.current = onViewportChange
   }, [onViewportChange])
+
+  useEffect(() => {
+    onSelectRegionRef.current = onSelectRegion
+  }, [onSelectRegion])
 
   useLayoutEffect(() => {
     const stage = stageRef.current
@@ -543,6 +698,7 @@ export function EarthMapStage({
           latestGeoJsonRef.current,
           latestOrbitalStateRef.current,
           latestUserGeoJsonRef.current,
+          latestSelectedRegionIdRef.current,
         ),
         center: [normalizeLng(startViewport.lng), clampLat(startViewport.lat)],
         zoom: clampZoom(startViewport.zoom),
@@ -598,6 +754,29 @@ export function EarthMapStage({
       let styleLoaded = false
       map.once('style.load', () => {
         styleLoaded = true
+        if (!map) {
+          return
+        }
+        addStatusMarkImages(map)
+        map.addLayer(STATUS_MARK_LAYER, 'user-geolocation-halo')
+        for (const layerId of SELECTION_LAYER_IDS) {
+          map.setFilter(layerId, selectionFilter(latestSelectedRegionIdRef.current))
+        }
+
+        // A map click selects the region in place; the list stays the keyboard path to regions.
+        map.on('click', STATUS_MARK_LAYER_ID, (event: MapLayerMouseEvent) => {
+          const regionId: unknown = event.features?.[0]?.properties?.id
+          if (typeof regionId === 'string') {
+            userInteractedRef.current = true
+            onSelectRegionRef.current(regionId)
+          }
+        })
+        map.on('mouseenter', STATUS_MARK_LAYER_ID, () => {
+          map?.getCanvas().style.setProperty('cursor', 'pointer')
+        })
+        map.on('mouseleave', STATUS_MARK_LAYER_ID, () => {
+          map?.getCanvas().style.removeProperty('cursor')
+        })
       })
 
       map.on('error', (event: ErrorEvent & { sourceId?: string; tile?: unknown }) => {
@@ -635,19 +814,32 @@ export function EarthMapStage({
   useEffect(() => {
     latestGeoJsonRef.current = geoJson
     const map = mapInstanceRef.current
-    if (!map || !map.isStyleLoaded()) {
+    // Not gated on isStyleLoaded(), which stays false while tiles load (e.g. during a fly-to) and
+    // would drop the update; before the style is parsed the source is missing and 'load' syncs.
+    if (map) {
+      setGeoJsonSourceData(map, 'fire-anomalies', geoJson)
+    }
+  }, [geoJson])
+
+  useEffect(() => {
+    latestSelectedRegionIdRef.current = selectedRegionId
+    const map = mapInstanceRef.current
+    if (!map) {
       return
     }
-    setGeoJsonSourceData(map, 'fire-anomalies', geoJson)
-  }, [geoJson])
+    for (const layerId of SELECTION_LAYER_IDS) {
+      if (map.getLayer(layerId)) {
+        map.setFilter(layerId, selectionFilter(selectedRegionId))
+      }
+    }
+  }, [selectedRegionId])
 
   useEffect(() => {
     latestUserGeoJsonRef.current = userLocationGeoJson
     const map = mapInstanceRef.current
-    if (!map || !map.isStyleLoaded()) {
-      return
+    if (map) {
+      setGeoJsonSourceData(map, 'user-geolocation', userLocationGeoJson)
     }
-    setGeoJsonSourceData(map, 'user-geolocation', userLocationGeoJson)
   }, [userLocationGeoJson])
 
   useEffect(() => {
@@ -701,17 +893,14 @@ export function EarthMapStage({
       return
     }
 
+    const target = {
+      center: [cameraFocusRequest.lng, cameraFocusRequest.lat] as [number, number],
+      zoom: cameraFocusRequest.zoom,
+    }
     if (cameraFocusRequest.animate) {
-      map.flyTo({
-        center: [cameraFocusRequest.lng, cameraFocusRequest.lat],
-        zoom: cameraFocusRequest.zoom,
-        duration: 900,
-      })
+      moveCamera(map, target, 900)
     } else {
-      map.jumpTo({
-        center: [cameraFocusRequest.lng, cameraFocusRequest.lat],
-        zoom: cameraFocusRequest.zoom,
-      })
+      map.jumpTo(target)
     }
   }, [cameraFocusRequest])
 
@@ -765,11 +954,7 @@ export function EarthMapStage({
             },
           )
           const targetZoom = clampGeolocationTargetZoom(fitted?.zoom, geolocationMaxZoom)
-          map.flyTo({
-            center: fitted?.center ?? [lng, lat],
-            zoom: targetZoom,
-            duration: 900,
-          })
+          moveCamera(map, { center: fitted?.center ?? [lng, lat], zoom: targetZoom }, 900)
         })
         .catch((error: unknown) => {
           if (!isMountedRef.current || isCancelled?.()) {
@@ -815,7 +1000,7 @@ export function EarthMapStage({
       latestOnViewportChangeRef.current(nextViewport)
       return
     }
-    map.zoomTo(map.getZoom() + delta, { duration: 250 })
+    map.zoomTo(map.getZoom() + delta, { duration: prefersReducedMotion() ? 0 : 250 })
   }
 
   const handleResetView = () => {
@@ -831,11 +1016,7 @@ export function EarthMapStage({
       latestOnViewportChangeRef.current(nextViewport)
       return
     }
-    map.flyTo({
-      center: DEFAULT_CENTER,
-      zoom: DEFAULT_ZOOM,
-      duration: 600,
-    })
+    moveCamera(map, { center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM }, 600)
   }
 
   const hasOrbitSnapshots = showOrbits && orbitalState.snapshots.length > 0

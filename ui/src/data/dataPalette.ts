@@ -15,6 +15,10 @@ export const STATUS_COLORS: Record<StatusCategory, string> = {
 // Outline drawn around data marks so dark and light fills both separate from the basemap.
 export const MARK_STROKE_COLOR = '#f8fafc'
 
+// Dark edge outside the light outline, so marks also separate from bright desert and cloud;
+// the "typical" ring uses it as its only outline.
+export const MARK_EDGE_COLOR = '#0f172a'
+
 export type KnownSatelliteId = 'terra' | 'aqua' | 'noaa-20' | 'noaa-21'
 
 export const SATELLITE_COLORS: Record<KnownSatelliteId, string> = {
