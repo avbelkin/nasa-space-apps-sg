@@ -147,11 +147,11 @@
   grid-template-columns: 0.75rem auto minmax(0, 1fr) auto 0.75rem;
   grid-template-rows: 0.75rem auto minmax(0, 1fr) auto 0.75rem;
   grid-template-areas:
-    ". .             . .              ."
-    ". hud-top-start . hud-top-end    ."
-    ". .             . .              ."
-    ". .             . hud-bottom-end ."
-    ". .             . .              .";
+    ". .                . .              ."
+    ". hud-top-start    . hud-top-end    ."
+    ". .                . .              ."
+    ". hud-bottom-start . hud-bottom-end ."
+    ". .                . .              .";
   gap: 0.5rem;
   border-radius: 0.75rem;
   border: 1px solid var(--border-subtle);
@@ -334,22 +334,111 @@
   font-size: 0.72rem;
 }
 
+.map-hud-bottom-start {
+  grid-area: hud-bottom-start;
+  align-self: end;
+  justify-self: start;
+  max-inline-size: min(24rem, 100%);
+}
+
+.fire-tooltip-card {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.fire-tooltip-card[data-pinned='false'] {
+  pointer-events: none;
+}
+
+.fire-tooltip-card[data-pinned='true'] {
+  pointer-events: auto;
+  border-color: rgba(251, 146, 60, 0.55);
+}
+
+.fire-tooltip-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.fire-tooltip-title-group {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.fire-tooltip-coords {
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: #cbd5e1;
+}
+
+.fire-tooltip-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.28rem;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: #f8fafc;
+}
+
+.fire-tooltip-hint {
+  margin: 0;
+  font-size: 0.68rem;
+  color: #94a3b8;
+}
+
+.hud-close-btn {
+  appearance: none;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 0.4rem;
+  background: rgba(15, 23, 42, 0.75);
+  color: #f8fafc;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  min-inline-size: 1.75rem;
+  min-block-size: 1.75rem;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.hud-close-btn:hover {
+  background: rgba(30, 41, 59, 0.92);
+  border-color: rgba(248, 250, 252, 0.55);
+}
+
+.hud-close-btn:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
+}
+
 @container mapstage (inline-size < 36rem) {
   .map-stage {
     grid-template-columns: 0.5rem minmax(0, 1fr) 0.5rem;
-    grid-template-rows: 0.5rem auto auto minmax(0, 1fr) auto 0.5rem;
+    grid-template-rows: 0.5rem auto auto minmax(0, 1fr) auto auto 0.5rem;
     grid-template-areas:
-      ". .              ."
-      ". hud-top-start  ."
-      ". hud-top-end    ."
-      ". .              ."
-      ". hud-bottom-end ."
-      ". .              .";
+      ". .                ."
+      ". hud-top-start    ."
+      ". hud-top-end      ."
+      ". .                ."
+      ". hud-bottom-start ."
+      ". hud-bottom-end   ."
+      ". .                .";
   }
 
   .map-hud-top-end,
+  .map-hud-bottom-start,
   .map-hud-bottom-end {
     justify-self: start;
+  }
+
+  .map-hud-bottom-start {
+    justify-self: stretch;
+    max-inline-size: none;
   }
 }
 
@@ -526,6 +615,26 @@
 
 .legend-glyph-user {
   color: var(--legend-user);
+}
+
+.legend-glyph-frp-high {
+  color: #ff1744;
+}
+
+.legend-glyph-frp-mid {
+  color: #ff9100;
+}
+
+.legend-glyph-frp-low {
+  color: #fbbf24;
+}
+
+.legend-glyph-modis-fire {
+  color: #22d3ee;
+}
+
+.legend-glyph-viirs-fire {
+  color: #fb923c;
 }
 
 .legend-geo-status {
@@ -789,7 +898,8 @@
 @media (pointer: coarse) {
   .pill-button,
   .api-check-btn,
-  .hud-btn {
+  .hud-btn,
+  .hud-close-btn {
     min-inline-size: 2.5rem;
     min-block-size: 2.5rem;
   }
