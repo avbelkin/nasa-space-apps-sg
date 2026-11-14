@@ -110,6 +110,8 @@ function createSyntheticIndexedPng(
 test('computeRainCloudLayerOpacity stays hidden at z<=6 and blends smoothly across z6..z14.5', () => {
   const soloPeak = Math.min(1, DEFAULT_RAIN_BASE_OPACITY * RAIN_SOLO_OPACITY_MULTIPLIER)
 
+  assert.equal(DEFAULT_RAIN_BASE_OPACITY, 1)
+  assert.equal(soloPeak, 1)
   assert.equal(RAIN_FADE_IN_START_ZOOM, 6)
   assert.equal(RAIN_FADE_IN_END_ZOOM, 9)
   assert.equal(computeRainCloudLayerOpacity(0), 0)
@@ -117,13 +119,13 @@ test('computeRainCloudLayerOpacity stays hidden at z<=6 and blends smoothly acro
   assert.equal(computeRainCloudLayerOpacity(RAIN_FADE_IN_START_ZOOM), 0)
 
   const midRamp = computeRainCloudLayerOpacity(7.5)
-  assert.ok(Math.abs(midRamp - soloPeak * 0.5) < 1e-9)
+  assert.ok(Math.abs(midRamp - 0.5) < 1e-9)
 
-  assert.ok(Math.abs(computeRainCloudLayerOpacity(RAIN_FADE_IN_END_ZOOM) - soloPeak) < 1e-9)
-  assert.ok(Math.abs(computeRainCloudLayerOpacity(RAIN_FADE_START_ZOOM) - soloPeak) < 1e-9)
+  assert.ok(Math.abs(computeRainCloudLayerOpacity(RAIN_FADE_IN_END_ZOOM) - 1) < 1e-9)
+  assert.ok(Math.abs(computeRainCloudLayerOpacity(RAIN_FADE_START_ZOOM) - 1) < 1e-9)
 
   const midFade = computeRainCloudLayerOpacity(12.75)
-  assert.ok(Math.abs(midFade - soloPeak * 0.5) < 1e-9)
+  assert.ok(Math.abs(midFade - 0.5) < 1e-9)
 
   assert.equal(computeRainCloudLayerOpacity(RAIN_FADE_END_ZOOM), 0)
   assert.equal(computeRainCloudLayerOpacity(18), 0)
@@ -367,6 +369,8 @@ test('normalizeRainCoveringTiles locks source tiles to z=3 and WebGL2 shaders ma
     define: '#define GLOBE',
   })
   assert.match(vertexSource, /^#version 300 es/)
+  assert.match(vertexSource, /uniform vec2 u_tileOrigin;/)
+  assert.match(vertexSource, /out vec2 v_worldMercator;/)
   assert.match(
     vertexSource,
     new RegExp(
@@ -380,7 +384,32 @@ test('normalizeRainCoveringTiles locks source tiles to z=3 and WebGL2 shaders ma
   })
   assert.match(fragmentSource, /^#version 300 es/)
   assert.match(fragmentSource, /sampleCubicBSpline/)
+  assert.match(fragmentSource, /evaluateZoomOctaveDots/)
+  assert.match(fragmentSource, /evaluateRainbowDotColor/)
+  assert.match(fragmentSource, /evaluateExperimentalCloudBackdrop/)
   assert.match(fragmentSource, /uniform float u_zoom;/)
   assert.match(fragmentSource, /smoothstep\(6\.00,\s*9\.00,\s*u_zoom\)/)
   assert.match(fragmentSource, /if \(v_depth > 1\.0\) discard;/)
+
+  const dFdxIndex = fragmentSource.indexOf('dFdx(v_worldMercator)')
+  const dFdyIndex = fragmentSource.indexOf('dFdy(v_worldMercator)')
+  const firstDiscardIndex = fragmentSource.indexOf('discard;')
+  assert.ok(dFdxIndex > 0 && dFdyIndex > 0 && firstDiscardIndex > 0)
+  assert.ok(dFdxIndex < firstDiscardIndex && dFdyIndex < firstDiscardIndex)
+
+  const whiteNoBackdropSource = buildRainCloudFragmentShaderSource(
+    {
+      vertexShaderPrelude: '',
+      define: '#define GLOBE',
+    },
+    {
+      colorMode: 'white',
+      intensityCutoff: 0.55,
+      enableCloudBackdrop: false,
+    },
+  )
+  assert.match(whiteNoBackdropSource, /vec3\(0\.973,\s*0\.980,\s*0\.988\)/)
+  assert.match(whiteNoBackdropSource, /0\.5500/)
+  assert.doesNotMatch(whiteNoBackdropSource, /evaluateRainbowDotColor/)
+  assert.doesNotMatch(whiteNoBackdropSource, /evaluateExperimentalCloudBackdrop/)
 })

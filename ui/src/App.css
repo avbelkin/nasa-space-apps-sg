@@ -722,6 +722,36 @@
   forced-color-adjust: none;
 }
 
+.legend-list li.legend-rain-item {
+  flex-wrap: wrap;
+  white-space: normal;
+}
+
+.legend-rain-ramp {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.legend-rain-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.legend-rain-dot {
+  display: inline-block;
+  inline-size: 0.5625rem;
+  block-size: 0.5625rem;
+  border-radius: 50%;
+  border: 1px solid rgb(15 23 42 / 0.7);
+  box-shadow: 0 0 0 1px rgb(248 250 252 / 0.32);
+  forced-color-adjust: none;
+}
+
 /* Top-end rain cloud lookback bar beside MapControls; wraps cleanly down to 320px viewports */
 .map-hud-rain-time {
   grid-column: 2;

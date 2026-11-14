@@ -68,6 +68,17 @@ export const RAIN_CLOUD_COLORS = {
   high: '#a855f7',
 } as const
 
+export const RAIN_DOT_RAINBOW_STOPS = [
+  { threshold: 0.15, label: '0.15', color: '#3b82f6' },
+  { threshold: 0.35, label: '0.35', color: '#06b6d4' },
+  { threshold: 0.5, label: '0.50', color: '#22c55e' },
+  { threshold: 0.62, label: '0.62', color: '#eab308' },
+  { threshold: 0.75, label: '0.75', color: '#ef4444' },
+  { threshold: 0.88, label: '0.88+', color: '#e879f9' },
+] as const
+
+export const RAIN_DOT_WHITE_COLOR = '#f8fafc'
+
 // Exposes the palette to CSS consumers (legend glyphs, satellite badges) as custom properties,
 // so stylesheets never repeat a hex value. Applied once on the app root.
 export const DATA_PALETTE_CSS_VARIABLES: CSSProperties & Record<`--${string}`, string> = {
@@ -87,4 +98,5 @@ export const DATA_PALETTE_CSS_VARIABLES: CSSProperties & Record<`--${string}`, s
   '--data-rain-low': RAIN_CLOUD_COLORS.low,
   '--data-rain-mid': RAIN_CLOUD_COLORS.mid,
   '--data-rain-high': RAIN_CLOUD_COLORS.high,
+  '--data-rain-dot-white': RAIN_DOT_WHITE_COLOR,
 }

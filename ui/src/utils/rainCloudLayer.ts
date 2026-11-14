@@ -15,6 +15,7 @@ import {
   computeTileSubUv,
   decodeGibsIndexedPng,
   DEFAULT_RAIN_BASE_OPACITY,
+  ENABLE_RAIN_CLOUD_BACKDROP,
   formatGibsIsoTimestamp,
   mapRgbaToRainSnow,
   MAX_RAIN_TILE_ZOOM,
@@ -50,9 +51,12 @@ interface CompiledProgramEntry {
   uProjectionFallbackMatrix: WebGLUniformLocation | null
   uUvOffset: WebGLUniformLocation | null
   uUvScale: WebGLUniformLocation | null
+  uTileOrigin: WebGLUniformLocation | null
   uTileTexture: WebGLUniformLocation | null
   uOpacity: WebGLUniformLocation | null
   uZoom: WebGLUniformLocation | null
+  uPixelRatio: WebGLUniformLocation | null
+  uEnableCloudBackdrop: WebGLUniformLocation | null
 }
 
 interface TileMeshEntry {
@@ -81,6 +85,7 @@ interface RainTileCacheEntry {
 export interface RainCloudLayerController extends CustomLayerInterface {
   setVisible: (visible: boolean) => void
   setLookbackMinutes: (minutes: number) => void
+  setCloudBackdropEnabled: (enabled: boolean) => void
   refreshNow: () => void
 }
 
@@ -88,6 +93,7 @@ export interface CreateRainCloudLayerOptions {
   initialVisible?: boolean
   initialLookbackMinutes?: number
   baseOpacity?: number
+  enableCloudBackdrop?: boolean
   onMetadataChange?: (metadata: RainLayerMetadata) => void
 }
 
@@ -148,9 +154,12 @@ function createProgramEntry(
     uProjectionFallbackMatrix: gl.getUniformLocation(program, 'u_projection_fallback_matrix'),
     uUvOffset: gl.getUniformLocation(program, 'u_uv_offset'),
     uUvScale: gl.getUniformLocation(program, 'u_uv_scale'),
+    uTileOrigin: gl.getUniformLocation(program, 'u_tileOrigin'),
     uTileTexture: gl.getUniformLocation(program, 'u_tileTexture'),
     uOpacity: gl.getUniformLocation(program, 'u_opacity'),
     uZoom: gl.getUniformLocation(program, 'u_zoom'),
+    uPixelRatio: gl.getUniformLocation(program, 'u_pixelRatio'),
+    uEnableCloudBackdrop: gl.getUniformLocation(program, 'u_enableCloudBackdrop'),
   }
 }
 
@@ -209,12 +218,14 @@ export function createRainCloudLayer({
   initialVisible = true,
   initialLookbackMinutes = 0,
   baseOpacity = DEFAULT_RAIN_BASE_OPACITY,
+  enableCloudBackdrop = ENABLE_RAIN_CLOUD_BACKDROP,
   onMetadataChange,
 }: CreateRainCloudLayerOptions = {}): RainCloudLayerController {
   let mapRef: MapLibreMap | null = null
   let glRef: WebGL2RenderingContext | null = null
   let visible = initialVisible
   let lookbackMinutes = snapRainLookbackMinutes(initialLookbackMinutes)
+  let cloudBackdropEnabled = enableCloudBackdrop
   let contextLost = false
   let disposed = false
 
@@ -858,6 +869,20 @@ export function createRainCloudLayer({
       if (programEntry.uZoom !== null) {
         gl.uniform1f(programEntry.uZoom, zoom)
       }
+      if (programEntry.uPixelRatio !== null) {
+        const canvas = mapRef.getCanvas()
+        const clientWidth = canvas?.clientWidth ?? 0
+        const pixelRatio =
+          clientWidth > 0 && gl.drawingBufferWidth > 0
+            ? gl.drawingBufferWidth / clientWidth
+            : typeof window !== 'undefined' && window.devicePixelRatio > 0
+              ? window.devicePixelRatio
+              : 1
+        gl.uniform1f(programEntry.uPixelRatio, pixelRatio)
+      }
+      if (programEntry.uEnableCloudBackdrop !== null) {
+        gl.uniform1f(programEntry.uEnableCloudBackdrop, cloudBackdropEnabled ? 1 : 0)
+      }
 
       for (const tileID of coveringTiles) {
         const { z, x, y } = tileID.canonical
@@ -918,6 +943,9 @@ export function createRainCloudLayer({
         if (programEntry.uUvScale !== null) {
           gl.uniform1f(programEntry.uUvScale, resolved.uvScale)
         }
+        if (programEntry.uTileOrigin !== null) {
+          gl.uniform2f(programEntry.uTileOrigin, x, y)
+        }
 
         const mesh = getOrCreateMesh(gl, z, y, isGlobe)
         gl.bindTexture(gl.TEXTURE_2D, resolved.texture)
@@ -962,6 +990,14 @@ export function createRainCloudLayer({
         )
         void ensureDomainsMetadata()
       }
+    },
+
+    setCloudBackdropEnabled(enabled) {
+      if (cloudBackdropEnabled === enabled) {
+        return
+      }
+      cloudBackdropEnabled = enabled
+      mapRef?.triggerRepaint()
     },
 
     refreshNow() {

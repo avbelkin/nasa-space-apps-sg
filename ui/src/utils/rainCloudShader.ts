@@ -19,12 +19,29 @@ export const RAIN_TEXTURE_SIZE = RAIN_TILE_INNER_SIZE + RAIN_TILE_GUTTER * 2
 export const RAIN_BLUR_RADIUS = 5
 export const RAIN_BLUR_PASSES = 3
 
-export const DEFAULT_RAIN_BASE_OPACITY = 0.78
+export const DEFAULT_RAIN_BASE_OPACITY = 1
 export const RAIN_FADE_IN_START_ZOOM = 6
 export const RAIN_FADE_IN_END_ZOOM = 9
-export const RAIN_SOLO_OPACITY_MULTIPLIER = 1.12
+export const RAIN_SOLO_OPACITY_MULTIPLIER = 1
 export const RAIN_FADE_START_ZOOM = 11
 export const RAIN_FADE_END_ZOOM = 14.5
+
+export type RainDotColorMode = 'rainbow' | 'white'
+export const RAIN_DOT_COLOR_MODE: RainDotColorMode = 'rainbow'
+export const RAIN_DOT_INTENSITY_CUTOFF = 0.02
+export const RAIN_DOT_FULL_OPACITY_INTENSITY = 0.72
+export const ENABLE_RAIN_CLOUD_BACKDROP = true
+export const RAIN_CLOUD_BACKDROP_MAX_OPACITY = 0.22
+export const RAIN_DOT_BASE_GRID_CELLS = 48
+export const RAIN_DOT_BASE_SPACING_CSS_PX = 11.5
+export const RAIN_DOT_RADIUS_CSS_PX = 2.6
+
+export interface RainShaderBuildOptions {
+  colorMode?: RainDotColorMode
+  intensityCutoff?: number
+  fullOpacityIntensity?: number
+  enableCloudBackdrop?: boolean
+}
 
 export const RAIN_REFRESH_INTERVAL_MS = 10 * 60 * 1000
 export const RAIN_TIME_STEP_MINUTES = 30
@@ -740,13 +757,16 @@ export function blurRainTileTexture(
 }
 
 export function buildRainCloudVertexShaderSource(shaderData: CloudShaderVariantData): string {
+  const sourceTileGrid = 1 << MIN_RAIN_TILE_ZOOM
   return `#version 300 es
 ${shaderData.vertexShaderPrelude}
 ${shaderData.define}
 layout(location = 0) in vec2 a_pos;
 uniform vec2 u_uv_offset;
 uniform float u_uv_scale;
+uniform vec2 u_tileOrigin;
 out vec2 v_textureCoord;
+out vec2 v_worldMercator;
 #ifdef GLOBE
 out float v_depth;
 #endif
@@ -758,6 +778,7 @@ void main() {
 #endif
   vec2 inSourceTile = u_uv_offset + inTile * u_uv_scale;
   v_textureCoord = (${RAIN_TILE_GUTTER.toFixed(1)} + inSourceTile * ${RAIN_TILE_INNER_SIZE.toFixed(1)}) / ${RAIN_TEXTURE_SIZE.toFixed(1)};
+  v_worldMercator = (u_tileOrigin + inSourceTile) / ${sourceTileGrid.toFixed(1)};
   gl_Position = projectTile(a_pos, a_pos);
 #ifdef GLOBE
   v_depth = gl_Position.z / gl_Position.w;
@@ -769,16 +790,28 @@ void main() {
 /**
  * WebGL2 rain cloud shader using a 9-point isotropic ring of 4-tap hardware-bilinear
  * C2 Cubic B-Spline samples over 304x304 pre-blurred neighbor-stitched RG16F tiles,
- * fire-safe cool precipitation ramps, soft cloud relief, and solo zoom presence across z5.25..z14.5.
+ * rendering map-anchored zoom-octave staggered hex rain dots (rainbow calibration or white)
+ * composited over an easily removable neutral overcast cloud backdrop across z6..z14.5.
  */
-export function buildRainCloudFragmentShaderSource(shaderData: CloudShaderVariantData): string {
+export function buildRainCloudFragmentShaderSource(
+  shaderData: CloudShaderVariantData,
+  options: RainShaderBuildOptions = {},
+): string {
+  const colorMode = options.colorMode ?? RAIN_DOT_COLOR_MODE
+  const intensityCutoff = options.intensityCutoff ?? RAIN_DOT_INTENSITY_CUTOFF
+  const fullOpacityIntensity = options.fullOpacityIntensity ?? RAIN_DOT_FULL_OPACITY_INTENSITY
+  const enableCloudBackdrop = options.enableCloudBackdrop ?? ENABLE_RAIN_CLOUD_BACKDROP
+
   return `#version 300 es
 precision highp float;
 ${shaderData.define}
 uniform sampler2D u_tileTexture;
 uniform float u_opacity;
 uniform float u_zoom;
+uniform float u_pixelRatio;
+uniform float u_enableCloudBackdrop;
 in vec2 v_textureCoord;
+in vec2 v_worldMercator;
 #ifdef GLOBE
 in float v_depth;
 #endif
@@ -788,6 +821,8 @@ const float TEXTURE_PIXEL_SIZE = ${RAIN_TEXTURE_SIZE.toFixed(1)};
 const float MIN_PRECIP_SIGNAL = 0.002;
 const float BLUR_RING_RADIUS = 3.2;
 const float DIAG_OFFSET = 2.2627417;
+const vec2 HEX_STEP = vec2(1.0, 1.73205081);
+const vec2 HEX_HALF = HEX_STEP * 0.5;
 
 vec2 sampleCubicBSpline(vec2 uv) {
   vec2 coord = uv * TEXTURE_PIXEL_SIZE - 0.5;
@@ -813,36 +848,83 @@ vec2 sampleCubicBSpline(vec2 uv) {
   return mix(sy1, sy0, g0.y);
 }
 
-vec3 evaluateRainRamp(float v) {
-  vec3 c0 = vec3(0.52, 0.67, 0.84);
-  vec3 c1 = vec3(0.22, 0.66, 0.96);
-  vec3 c2 = vec3(0.15, 0.39, 0.92);
-  vec3 c3 = vec3(0.49, 0.23, 0.93);
-  vec3 c4 = vec3(0.88, 0.24, 0.82);
+float sampleHexLatticeMask(vec2 worldMercator, float freq, float worldPerCssPx, float radiusCssPx) {
+  vec2 p = worldMercator * freq;
+  vec2 a = mod(p + HEX_HALF, HEX_STEP) - HEX_HALF;
+  vec2 b = mod(p, HEX_STEP) - HEX_HALF;
+  vec2 nearest = (dot(a, a) < dot(b, b)) ? a : b;
+  float distCells = length(nearest);
+  float cellsPerCssPx = freq * worldPerCssPx;
+  float radiusCells = min(0.38, radiusCssPx * cellsPerCssPx);
+  float aaCells = max(1.15 * cellsPerCssPx, 1e-5);
+  return 1.0 - smoothstep(radiusCells - aaCells * 0.5, radiusCells + aaCells * 0.5, distCells);
+}
 
-  if (v < 0.22) {
-    return mix(c0, c1, smoothstep(0.0, 0.22, v));
+float evaluateZoomOctaveDots(vec2 worldMercator, float worldPerCssPx, float radiusCssPx) {
+  float idealScale = 1.0 / (${RAIN_DOT_BASE_SPACING_CSS_PX.toFixed(2)} * ${RAIN_DOT_BASE_GRID_CELLS.toFixed(1)} * worldPerCssPx);
+  float octave = clamp(log2(max(idealScale, 1.0)), 0.0, 18.0);
+  float k0 = floor(octave);
+  float fracOctave = octave - k0;
+  float freq0 = ${RAIN_DOT_BASE_GRID_CELLS.toFixed(1)} * exp2(k0);
+  float freq1 = freq0 * 2.0;
+  float mask0 = sampleHexLatticeMask(worldMercator, freq0, worldPerCssPx, radiusCssPx);
+  float subFade = smoothstep(0.42, 0.90, fracOctave);
+  if (subFade <= 0.001) {
+    return mask0;
   }
-  if (v < 0.48) {
-    return mix(c1, c2, smoothstep(0.22, 0.48, v));
+  float mask1 = sampleHexLatticeMask(worldMercator, freq1, worldPerCssPx, radiusCssPx);
+  return max(mask0, mask1 * subFade);
+}
+${
+  colorMode === 'rainbow'
+    ? `
+vec3 evaluateRainbowDotColor(float v) {
+  vec3 c0 = vec3(0.231, 0.510, 0.965);
+  vec3 c1 = vec3(0.024, 0.714, 0.831);
+  vec3 c2 = vec3(0.133, 0.773, 0.369);
+  vec3 c3 = vec3(0.918, 0.702, 0.031);
+  vec3 c4 = vec3(0.937, 0.267, 0.267);
+  vec3 c5 = vec3(0.910, 0.475, 0.976);
+
+  if (v < 0.15) {
+    return c0;
+  }
+  if (v < 0.35) {
+    return mix(c0, c1, smoothstep(0.15, 0.35, v));
+  }
+  if (v < 0.50) {
+    return mix(c1, c2, smoothstep(0.35, 0.50, v));
+  }
+  if (v < 0.62) {
+    return mix(c2, c3, smoothstep(0.50, 0.62, v));
   }
   if (v < 0.75) {
-    return mix(c2, c3, smoothstep(0.48, 0.75, v));
+    return mix(c3, c4, smoothstep(0.62, 0.75, v));
   }
-  return mix(c3, c4, smoothstep(0.75, 1.0, v));
+  return mix(c4, c5, smoothstep(0.75, 0.88, v));
 }
-
-vec3 evaluateSnowRamp(float v) {
-  vec3 c0 = vec3(0.76, 0.94, 0.99);
-  vec3 c1 = vec3(0.51, 0.68, 0.98);
-  vec3 c2 = vec3(0.67, 0.56, 0.96);
-  if (v < 0.45) {
-    return mix(c0, c1, smoothstep(0.0, 0.45, v));
-  }
-  return mix(c1, c2, smoothstep(0.45, 1.0, v));
+`
+    : ''
+}${
+  enableCloudBackdrop
+    ? `
+vec4 evaluateExperimentalCloudBackdrop(float total, float relief, float soloMode) {
+  vec3 neutralCloud = mix(vec3(0.48, 0.53, 0.60), vec3(0.74, 0.79, 0.85), relief);
+  float feather = smoothstep(MIN_PRECIP_SIGNAL, 0.24, total);
+  float alpha = feather * mix(0.05, ${RAIN_CLOUD_BACKDROP_MAX_OPACITY.toFixed(3)}, pow(total, 0.85)) * mix(0.65, 1.0, soloMode);
+  return vec4(neutralCloud, clamp(alpha, 0.0, 1.0));
 }
-
+`
+    : ''
+}
 void main() {
+  // Derivatives must be evaluated in uniform control flow before any discard.
+  vec2 dxW = dFdx(v_worldMercator);
+  vec2 dyW = dFdy(v_worldMercator);
+  float worldPerDevicePx = sqrt(0.5 * (dot(dxW, dxW) + dot(dyW, dyW)));
+  float safePixelRatio = max(u_pixelRatio, 0.5);
+  float worldPerCssPx = max(worldPerDevicePx * safePixelRatio, 1e-8);
+
 #ifdef GLOBE
   if (v_depth > 1.0) discard;
 #endif
@@ -882,24 +964,29 @@ void main() {
   float relief = clamp(0.5 + dX * 0.65 + dY * 0.85, 0.0, 1.0);
 
   float soloMode = smoothstep(${RAIN_FADE_IN_START_ZOOM.toFixed(2)}, ${RAIN_FADE_IN_END_ZOOM.toFixed(2)}, u_zoom);
-  float snowMix = snow / max(rain + snow, 0.0001);
-  vec3 precipColor = mix(evaluateRainRamp(rain), evaluateSnowRamp(snow), snowMix);
 
-  vec3 nimbusTint = mix(vec3(0.68, 0.78, 0.90), vec3(0.92, 0.96, 1.0), relief);
-  float canopyWeight = mix(0.28, 0.05, smoothstep(0.02, 0.35, total)) * soloMode;
-  vec3 shadedColor = mix(precipColor, nimbusTint, canopyWeight);
-  shadedColor = clamp(shadedColor * mix(0.93, 1.07, relief), 0.0, 1.0);
-
-  float edgeFeather = smoothstep(MIN_PRECIP_SIGNAL, 0.18, total);
-  float bodyOpacity = mix(
-    mix(0.26, 0.38, soloMode),
-    0.90,
-    pow(total, 0.72)
+  float normIntensity = clamp(
+    (total - ${intensityCutoff.toFixed(4)}) / max(1e-4, ${(fullOpacityIntensity - intensityCutoff).toFixed(4)}),
+    0.0,
+    1.0
   );
-  float finalAlpha = clamp(edgeFeather * bodyOpacity * u_opacity, 0.0, 1.0);
-  if (finalAlpha <= 0.001) discard;
+  float dotStrength = smoothstep(0.0, 1.0, normIntensity);
+  float radiusCssPx = mix(2.15, ${RAIN_DOT_RADIUS_CSS_PX.toFixed(2)}, dotStrength);
+  float dotMask = (dotStrength > 0.001) ? evaluateZoomOctaveDots(v_worldMercator, worldPerCssPx, radiusCssPx) : 0.0;
+  vec3 dotColor = ${colorMode === 'white' ? 'vec3(0.973, 0.980, 0.988)' : 'evaluateRainbowDotColor(total)'};
+  float dotA = clamp(dotStrength * dotMask * u_opacity, 0.0, 1.0);
 
-  fragColor = vec4(shadedColor * finalAlpha, finalAlpha);
+  ${
+    enableCloudBackdrop
+      ? 'vec4 backdrop = (u_enableCloudBackdrop > 0.5) ? evaluateExperimentalCloudBackdrop(total, relief, soloMode) : vec4(0.0);'
+      : 'vec4 backdrop = vec4(0.0);'
+  }
+  float backA = clamp(backdrop.a * u_opacity, 0.0, 1.0);
+  float outAlpha = dotA + backA * (1.0 - dotA);
+  if (outAlpha <= 0.001) discard;
+
+  vec3 outPremul = dotColor * dotA + backdrop.rgb * backA * (1.0 - dotA);
+  fragColor = vec4(outPremul, outAlpha);
 }
 `
 }
