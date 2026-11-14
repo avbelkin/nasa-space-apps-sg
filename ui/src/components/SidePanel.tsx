@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react'
 import type { SensorFilter } from '../data/mapTypes'
-import type { ApiStatusResponse, ConnectionState } from '../state/apiStatus'
+import type { ConnectionState } from '../state/apiStatus'
 import type { LiveSatelliteSnapshot } from '../utils/satelliteOrbits'
 import { AttributionFooter } from './panel/AttributionFooter'
-import { DiagnosticsDetails } from './panel/DiagnosticsDetails'
 import { LiveFiresSection, type LiveFiresInfo } from './panel/LiveFiresSection'
 import { SatelliteDetails, type SatelliteFeedState } from './panel/SatelliteDetails'
 import { SegmentedControl, type SegmentedOption } from './SegmentedControl'
@@ -22,12 +21,6 @@ interface SidePanelProps {
   selectedSatelliteId: string | null
   onSelectSatellite: (satellite: LiveSatelliteSnapshot) => void
   connectionState: ConnectionState
-  apiPayload: ApiStatusResponse | null
-  apiErrorMessage: string | null
-  lastChecked: string
-  onCheckApi: () => void
-  tleSourceSummary: string | null
-  orbitsError: string | null
   liveFires: LiveFiresInfo
   pinnedDetails: ReactNode
   legend: ReactNode
@@ -41,12 +34,6 @@ export function SidePanel({
   selectedSatelliteId,
   onSelectSatellite,
   connectionState,
-  apiPayload,
-  apiErrorMessage,
-  lastChecked,
-  onCheckApi,
-  tleSourceSummary,
-  orbitsError,
   liveFires,
   pinnedDetails,
   legend,
@@ -67,23 +54,12 @@ export function SidePanel({
 
       {pinnedDetails}
 
-      <div className="panel-details-group">
-        <SatelliteDetails
-          feedState={satelliteFeedState}
-          snapshots={satellites}
-          selectedSatelliteId={selectedSatelliteId}
-          onSelectSatellite={onSelectSatellite}
-        />
-        <DiagnosticsDetails
-          connectionState={connectionState}
-          payload={apiPayload}
-          errorMessage={apiErrorMessage}
-          lastChecked={lastChecked}
-          onCheckApi={onCheckApi}
-          tleSourceSummary={tleSourceSummary}
-          orbitsError={orbitsError}
-        />
-      </div>
+      <SatelliteDetails
+        feedState={satelliteFeedState}
+        snapshots={satellites}
+        selectedSatelliteId={selectedSatelliteId}
+        onSelectSatellite={onSelectSatellite}
+      />
 
       <div className="panel-bottom">
         <LiveFiresSection info={liveFires} />

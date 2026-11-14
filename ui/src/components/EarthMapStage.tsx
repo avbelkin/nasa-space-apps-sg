@@ -140,7 +140,6 @@ interface EarthMapStageProps {
   onRainBackMinutesChange: (next: number) => void
   rainMetadata: RainLayerMetadata | null
   onRainMetadataChange?: (metadata: RainLayerMetadata) => void
-  cloudRefreshNonce?: number
   showNightLights: boolean
   onShowNightLightsChange: (next: boolean) => void
   satellites: readonly SatelliteOrbit[]
@@ -645,7 +644,6 @@ export function EarthMapStage({
   onRainBackMinutesChange,
   rainMetadata,
   onRainMetadataChange,
-  cloudRefreshNonce = 0,
   showNightLights,
   onShowNightLightsChange,
   satellites,
@@ -706,7 +704,6 @@ export function EarthMapStage({
   const latestShowRainRef = useRef(showRain)
   const latestRainBackMinutesRef = useRef(rainBackMinutes)
   const latestOnRainMetadataChangeRef = useRef(onRainMetadataChange)
-  const lastCloudRefreshNonceRef = useRef(cloudRefreshNonce)
   const latestShowNightLightsRef = useRef(showNightLights)
   const latestSatellitesRef = useRef(satellites)
   const latestOrbitalStateRef = useRef(orbitalState)
@@ -1319,15 +1316,6 @@ export function EarthMapStage({
     latestShowNightLightsRef.current = showNightLights
     nightLightsLayerRef.current?.setVisible(showNightLights)
   }, [showNightLights])
-
-  useEffect(() => {
-    if (cloudRefreshNonce === lastCloudRefreshNonceRef.current) {
-      return
-    }
-    lastCloudRefreshNonceRef.current = cloudRefreshNonce
-    cloudLayerRef.current?.refreshNow()
-    rainLayerRef.current?.refreshNow()
-  }, [cloudRefreshNonce])
 
   useEffect(() => {
     latestProjectionRef.current = projectionMode

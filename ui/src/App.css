@@ -1204,12 +1204,6 @@
   color: var(--text-muted);
 }
 
-/* Collapsed secondary blocks */
-.panel-details-group {
-  display: grid;
-  gap: 0.4rem;
-}
-
 .panel-details {
   border: 1px solid var(--border-subtle);
   border-radius: 0.5rem;

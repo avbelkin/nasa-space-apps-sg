@@ -15,7 +15,6 @@ import {
   apiBaseUrl,
   fetchApiStatus,
   isProdUnconfigured,
-  type ApiStatusResponse,
   type ConnectionState,
 } from './state/apiStatus'
 import {
@@ -61,7 +60,6 @@ function App() {
   )
   const [showOrbits, setShowOrbits] = useState<boolean>(initialResolution.state.showOrbits)
   const [showClouds, setShowClouds] = useState<boolean>(initialResolution.state.showClouds)
-  const [cloudRefreshNonce, setCloudRefreshNonce] = useState<number>(0)
   const [showRain, setShowRain] = useState<boolean>(initialResolution.state.showRain)
   const [rainBackMinutes, setRainBackMinutes] = useState<number>(
     initialResolution.state.rainBackMinutes,
@@ -98,9 +96,6 @@ function App() {
   const [connectionState, setConnectionState] = useState<ConnectionState>(() =>
     isProdUnconfigured ? 'unconfigured' : 'checking',
   )
-  const [payload, setPayload] = useState<ApiStatusResponse | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [lastChecked, setLastChecked] = useState<string>('Never')
 
   const [orbitsPayload, setOrbitsPayload] = useState<SatelliteOrbitsResponse | null>(null)
   const [orbitsError, setOrbitsError] = useState<string | null>(null)
@@ -193,20 +188,6 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
-  const applySuccess = (data: ApiStatusResponse) => {
-    setPayload(data)
-    setConnectionState('connected')
-    setErrorMessage(null)
-    setLastChecked(new Date().toLocaleTimeString())
-  }
-
-  const applyFailure = (error: unknown) => {
-    setPayload(null)
-    setConnectionState('unreachable')
-    setLastChecked(new Date().toLocaleTimeString())
-    setErrorMessage(error instanceof Error ? error.message : 'Request failed')
-  }
-
   const applyFiresSuccess = (data: FirmsLiveSpotsResponse) => {
     setFireSpotsPayload(data)
     setFireSpotsError(null)
@@ -249,38 +230,20 @@ function App() {
     )
   }, [])
 
-  const handleCheckBackend = () => {
-    if (isProdUnconfigured) {
-      setConnectionState('unconfigured')
-      setPayload(null)
-      setErrorMessage(null)
-      return
-    }
-    setConnectionState('checking')
-    setErrorMessage(null)
-    setOrbitsError(null)
-    setCloudRefreshNonce((value) => value + 1)
-    setFireSpotsError(null)
-    setFireSpotsLoading(true)
-    void fetchApiStatus().then(applySuccess, applyFailure)
-    requestSatelliteOrbits(viewportRef.current)
-    void fetchLiveFireSpots(apiBaseUrl).then(applyFiresSuccess, applyFiresFailure)
-  }
-
   useEffect(() => {
     if (isProdUnconfigured) {
       return
     }
     const controller = new AbortController()
     void fetchApiStatus(controller.signal).then(
-      (data) => {
+      () => {
         if (!controller.signal.aborted) {
-          applySuccess(data)
+          setConnectionState('connected')
         }
       },
-      (error: unknown) => {
+      () => {
         if (!controller.signal.aborted) {
-          applyFailure(error)
+          setConnectionState('unreachable')
         }
       },
     )
@@ -437,14 +400,6 @@ function App() {
     [fireSpotsPayload, sensorFilter],
   )
 
-  const tleSourceSummary = useMemo(() => {
-    if (!orbitsPayload || orbitsPayload.satellites.length === 0) {
-      return null
-    }
-    const sources = new Set(orbitsPayload.satellites.map((sat) => sat.tleSource))
-    return [...sources].join(', ')
-  }, [orbitsPayload])
-
   const rainSummaryLabel = useMemo(() => {
     let utcHhMm = ''
     if (rainMetadata.effectiveTimeIso) {
@@ -506,7 +461,6 @@ function App() {
         onRainBackMinutesChange={setRainBackMinutes}
         rainMetadata={rainMetadata}
         onRainMetadataChange={setRainMetadata}
-        cloudRefreshNonce={cloudRefreshNonce}
         showNightLights={showNightLights}
         onShowNightLightsChange={setShowNightLights}
         satellites={satellites}
@@ -571,12 +525,6 @@ function App() {
         selectedSatelliteId={selectedSatelliteId}
         onSelectSatellite={handleSelectSatellite}
         connectionState={connectionState}
-        apiPayload={payload}
-        apiErrorMessage={errorMessage}
-        lastChecked={lastChecked}
-        onCheckApi={handleCheckBackend}
-        tleSourceSummary={tleSourceSummary}
-        orbitsError={orbitsError}
         liveFires={{
           state: isProdUnconfigured
             ? 'unconfigured'
