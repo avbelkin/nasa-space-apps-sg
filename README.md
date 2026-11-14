@@ -9,12 +9,27 @@ Built for the **2026 NASA Space Apps Challenge — [Harmonization of MODIS and V
 
 ## Stack
 
-- **`ui/`** — Pure React + TypeScript + Vite + **MapLibre GL JS** (`maplibre-gl`) static SPA published to **GitHub Pages**, using an outer CSS Grid wrapper around a nested CSS Grid map stage with over-map controls.
+- **`ui/`** — Pure React + TypeScript + Vite + **MapLibre GL JS** (`maplibre-gl`) static SPA published to **GitHub Pages**, defaulting to a **3D Globe** view over **EOX Sentinel-2 Cloudless** imagery inside an outer CSS Grid wrapper and nested CSS Grid map stage with over-map controls.
 - **`backend/`** — ASP.NET Core (`.NET 10`) Minimal API containerized for **Google Cloud Run**.
 
 ## Team Git Workflow
 
 - Commit and push intermediate milestones promptly to `origin/main` so all team members stay synced with the latest working changes (see [AGENTS.md](AGENTS.md)).
+
+### Parallel Development with Git Worktrees
+
+Start independent features in separate sibling worktrees so multiple tasks (or team/agent sessions) can be edited, built, and verified in parallel:
+
+```powershell
+# Create an isolated sibling worktree on a new feature branch
+git worktree add ..\nasa-space-apps-sg-wt-<feature> -b feat/<feature> main
+
+# List active worktrees
+git worktree list
+
+# Remove the worktree after merging into main
+git worktree remove ..\nasa-space-apps-sg-wt-<feature>
+```
 
 ## Local Development
 

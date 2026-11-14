@@ -6,7 +6,7 @@ This repository implements the [Harmonization of MODIS and VIIRS Hot Spots](./RE
 
 ### 1. Frontend (`ui/` — Pure React + TypeScript + Vite on GitHub Pages)
 
-- **Earth-First Mapping Engine (`maplibre-gl`)**: Keyless **MapLibre GL JS** canvas supporting both 3D `globe` and 2D `mercator` projections to visualize active-fire hotspots, typical seasonal activity bands, and current calendar anomaly departures directly on Earth.
+- **Earth-First Mapping Engine (`maplibre-gl`)**: Keyless **MapLibre GL JS** canvas defaulting to a **3D `globe` projection** (with an optional 2D `mercator` toggle) over **EOX Sentinel-2 Cloudless (`s2cloudless-2025_3857`)** raster WMTS imagery (`{z}/{y}/{x}.jpg` with required EOX/Copernicus attribution) to visualize active-fire hotspots, typical seasonal activity bands, and current calendar anomaly departures directly on Earth.
 - **Two-Tier CSS Grid Layout**:
   - **Outer Controls Wrapper (`.app-frame`)**: CSS Grid page shell wrapping perimeter controls *around* the map:
     - `topbar` (`<header>`) — Application title, view mode switcher (`Anomaly vs. Typical`, `Seasonal Dynamics`, `Sensor Harmonization`), and Cloud Run backend API health badge/trigger.
