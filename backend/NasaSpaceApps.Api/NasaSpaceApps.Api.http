@@ -25,6 +25,21 @@ Accept: application/json
 
 ###
 
+GET {{NasaSpaceApps.Api_HostAddress}}/api/fires/spots?hours=24&sensor=harmonized
+Accept: application/json
+
+###
+
+GET {{NasaSpaceApps.Api_HostAddress}}/api/fires/spots.geojson?hours=24&sensor=harmonized&bbox=95,-11,141,20
+Accept: application/json
+
+###
+
+GET {{NasaSpaceApps.Api_HostAddress}}/api/fires/spots/5/25/15.geojson?hours=24&sensor=harmonized
+Accept: application/json
+
+###
+
 GET {{NasaSpaceApps.Api_HostAddress}}/api/nasa/status
 Accept: application/json
 
