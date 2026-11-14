@@ -673,6 +673,14 @@ if ($PromptForSecrets) {
     }
 }
 
+if (-not [string]::IsNullOrWhiteSpace($FirmsMapKey)) {
+    $trimmedFirmsKey = $FirmsMapKey.Trim()
+    if ($trimmedFirmsKey -notmatch '^[0-9a-fA-F]{32}$') {
+        throw "Invalid NASA FIRMS MAP_KEY format (received $($trimmedFirmsKey.Length) chars; expected 32 hexadecimal characters). Check your clipboard and re-run."
+    }
+    $FirmsMapKey = $trimmedFirmsKey
+}
+
 $secretSpecs = @(
     @{ Name = "firms-map-key"; EnvVar = "FIRMS_MAP_KEY"; Value = $FirmsMapKey },
     @{ Name = "gemini-api-key"; EnvVar = "GEMINI_API_KEY"; Value = $GeminiApiKey }
