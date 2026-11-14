@@ -1,4 +1,10 @@
 :root {
+  /* Type scale: 12 only for kickers, metric/meta labels and on-map badges; readable text >= 14 */
+  --fs-12: 0.75rem;
+  --fs-14: 0.875rem;
+  --fs-16: 1rem;
+  --fs-20: 1.25rem;
+
   --surface-bg-light: #f1f5f9;
   --surface-bg-dark: #090f1d;
   --surface-card-light: #ffffff;
@@ -17,6 +23,11 @@
   --accent-text-dark: #082f49;
   --code-bg-light: #e2e8f0;
   --code-bg-dark: #1e293b;
+  /* Delta text in the panels: >= 4.5:1 on card, page, hovered and pressed card surfaces in both themes */
+  --delta-up-light: #9a3412;
+  --delta-up-dark: #fdba74;
+  --delta-down-light: #1e40af;
+  --delta-down-dark: #93c5fd;
 
   --surface-bg: var(--surface-bg-light);
   --surface-card: var(--surface-card-light);
@@ -27,6 +38,8 @@
   --accent: var(--accent-light);
   --accent-text: var(--accent-text-light);
   --code-bg: var(--code-bg-light);
+  --delta-up: var(--delta-up-light);
+  --delta-down: var(--delta-down-light);
 
   @media (prefers-color-scheme: dark) {
     --surface-bg: var(--surface-bg-dark);
@@ -38,6 +51,8 @@
     --accent: var(--accent-dark);
     --accent-text: var(--accent-text-dark);
     --code-bg: var(--code-bg-dark);
+    --delta-up: var(--delta-up-dark);
+    --delta-down: var(--delta-down-dark);
   }
 
   @supports (color: light-dark(white, black)) {
@@ -50,6 +65,8 @@
     --accent: light-dark(var(--accent-light), var(--accent-dark));
     --accent-text: light-dark(var(--accent-text-light), var(--accent-text-dark));
     --code-bg: light-dark(var(--code-bg-light), var(--code-bg-dark));
+    --delta-up: light-dark(var(--delta-up-light), var(--delta-up-dark));
+    --delta-down: light-dark(var(--delta-down-light), var(--delta-down-dark));
   }
 
   color-scheme: light dark;
@@ -73,7 +90,8 @@ body {
 
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.85em;
+  /* Same size as the surrounding text: a relative em size would add an off-scale step */
+  font-size: inherit;
   background-color: var(--code-bg);
   padding: 0.1rem 0.35rem;
   border-radius: 0.25rem;

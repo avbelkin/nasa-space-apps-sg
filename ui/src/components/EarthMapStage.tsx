@@ -1,14 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FeatureCollection, MultiLineString, Point, Polygon } from 'geojson'
 import { LngLat, LngLatBounds, Map as MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl'
-import type { ErrorEvent, GeoJSONSource, MapMovementEvent, StyleSpecification } from 'maplibre-gl'
+import type {
+  ErrorEvent,
+  ExpressionSpecification,
+  GeoJSONSource,
+  MapMovementEvent,
+  StyleSpecification,
+} from 'maplibre-gl'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import { MARK_STROKE_COLOR, STATUS_COLORS, USER_LOCATION_COLORS } from '../data/dataPalette'
 import {
   buildStubGeoJson,
   MONTH_LABELS,
   type ProjectionMode,
   type SensorFilter,
+  type StatusCategory,
   type ViewMode,
 } from '../data/stubSeasonalData'
 import {
@@ -22,6 +30,7 @@ import {
   type MapViewportState,
 } from '../state/urlHashState'
 import type { LiveOrbitalState, LiveSatelliteSnapshot } from '../utils/satelliteOrbits'
+import { SegmentedControl, type SegmentedOption } from './SegmentedControl'
 
 // MapLibre v6 is ESM-only: when bundled it resolves its worker next to the chunk via
 // import.meta.url, a file Vite never emits. Point it at a Vite-emitted worker asset instead.
@@ -68,6 +77,28 @@ const VIEW_MODE_LABELS: Record<ViewMode, string> = {
   seasonal: 'Seasonal Climatology Dynamic',
   sensors: 'MODIS 1km vs. VIIRS 375m Coverage',
 }
+
+const SENSOR_FILTER_OPTIONS: readonly SegmentedOption<SensorFilter>[] = [
+  { value: 'harmonized', label: 'Harmonized' },
+  { value: 'modis', label: 'MODIS 1km' },
+  { value: 'viirs', label: 'VIIRS 375m' },
+]
+
+const PROJECTION_OPTIONS: readonly SegmentedOption<ProjectionMode>[] = [
+  { value: 'mercator', label: '2D', ariaLabel: '2D map' },
+  { value: 'globe', label: '3D', ariaLabel: '3D globe' },
+]
+
+// MapLibre match expression: statusCategory -> palette color (below-typical is the fallback)
+const STATUS_COLOR_EXPRESSION = [
+  'match',
+  ['get', 'statusCategory'],
+  'anomaly-high' satisfies StatusCategory,
+  STATUS_COLORS['anomaly-high'],
+  'fits-typical' satisfies StatusCategory,
+  STATUS_COLORS['fits-typical'],
+  STATUS_COLORS['below-typical'],
+] as ExpressionSpecification
 
 const GEOLOCATION_POSITION_OPTIONS: PositionOptions = {
   enableHighAccuracy: false,
@@ -282,7 +313,7 @@ function createBaseStyle(
           'circle-radius': 4,
           'circle-color': ['get', 'color'],
           'circle-stroke-width': 1.5,
-          'circle-stroke-color': '#f8fafc',
+          'circle-stroke-color': MARK_STROKE_COLOR,
         },
       },
       {
@@ -291,15 +322,7 @@ function createBaseStyle(
         source: 'fire-anomalies',
         paint: {
           'circle-radius': ['+', ['get', 'radius'], 8],
-          'circle-color': [
-            'match',
-            ['get', 'statusCategory'],
-            'anomaly-high',
-            '#ef4444',
-            'fits-typical',
-            '#f59e0b',
-            '#38bdf8',
-          ],
+          'circle-color': STATUS_COLOR_EXPRESSION,
           'circle-opacity': 0.25,
           'circle-blur': 0.5,
         },
@@ -310,18 +333,10 @@ function createBaseStyle(
         source: 'fire-anomalies',
         paint: {
           'circle-radius': ['get', 'radius'],
-          'circle-color': [
-            'match',
-            ['get', 'statusCategory'],
-            'anomaly-high',
-            '#f97316',
-            'fits-typical',
-            '#facc15',
-            '#38bdf8',
-          ],
+          'circle-color': STATUS_COLOR_EXPRESSION,
           'circle-opacity': 0.9,
           'circle-stroke-width': 2,
-          'circle-stroke-color': '#f8fafc',
+          'circle-stroke-color': MARK_STROKE_COLOR,
         },
       },
       {
@@ -330,8 +345,8 @@ function createBaseStyle(
         source: 'user-geolocation',
         paint: {
           'circle-radius': 14,
-          'circle-color': '#3b82f6',
-          'circle-opacity': 0.28,
+          'circle-color': USER_LOCATION_COLORS.halo,
+          'circle-opacity': 0.3,
         },
       },
       {
@@ -340,9 +355,9 @@ function createBaseStyle(
         source: 'user-geolocation',
         paint: {
           'circle-radius': 6,
-          'circle-color': '#60a5fa',
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#ffffff',
+          'circle-color': USER_LOCATION_COLORS.fill,
+          'circle-stroke-width': 2.5,
+          'circle-stroke-color': USER_LOCATION_COLORS.ring,
         },
       },
     ],
@@ -826,34 +841,15 @@ export function EarthMapStage({
         </div>
       )}
 
-      <div className="map-hud map-hud-top-start" role="group" aria-label="Sensor layer filter">
-        <span className="hud-kicker">Sensor Feed</span>
-        <div className="hud-pill-row">
-          <button
-            type="button"
-            className="hud-btn"
-            aria-pressed={sensorFilter === 'harmonized'}
-            onClick={() => onSensorFilterChange('harmonized')}
-          >
-            Harmonized
-          </button>
-          <button
-            type="button"
-            className="hud-btn"
-            aria-pressed={sensorFilter === 'modis'}
-            onClick={() => onSensorFilterChange('modis')}
-          >
-            MODIS 1km
-          </button>
-          <button
-            type="button"
-            className="hud-btn"
-            aria-pressed={sensorFilter === 'viirs'}
-            onClick={() => onSensorFilterChange('viirs')}
-          >
-            VIIRS 375m
-          </button>
-        </div>
+      <div className="map-hud map-hud-top-start">
+        <span className="hud-kicker" aria-hidden="true">Sensor Feed</span>
+        <SegmentedControl
+          label="Sensor layer filter"
+          options={SENSOR_FILTER_OPTIONS}
+          value={sensorFilter}
+          onChange={onSensorFilterChange}
+          className="segmented-stack-narrow"
+        />
       </div>
 
       <div
@@ -869,16 +865,12 @@ export function EarthMapStage({
         >
           Orbits
         </button>
-        <button
-          type="button"
-          className="hud-btn"
-          aria-pressed={projectionMode === 'globe'}
-          onClick={() =>
-            onProjectionModeChange(projectionMode === 'globe' ? 'mercator' : 'globe')
-          }
-        >
-          {projectionMode === 'globe' ? '3D Globe' : '2D Map'}
-        </button>
+        <SegmentedControl
+          label="Map projection"
+          options={PROJECTION_OPTIONS}
+          value={projectionMode}
+          onChange={onProjectionModeChange}
+        />
         <button
           type="button"
           className="hud-btn"
@@ -920,13 +912,19 @@ export function EarthMapStage({
           </li>
           {showOrbits && orbitalState.snapshots.length > 0 && sensorFilter !== 'viirs' && (
             <li>
-              <span className="legend-glyph legend-glyph-modis" aria-hidden="true">&#9670;</span>
+              <span className="legend-glyph" aria-hidden="true">
+                <span className="legend-glyph-terra">&#9670;</span>
+                <span className="legend-glyph-aqua">&#9670;</span>
+              </span>
               <span>MODIS Orbits (Terra, Aqua &middot; 2,330 km swath)</span>
             </li>
           )}
           {showOrbits && orbitalState.snapshots.length > 0 && sensorFilter !== 'modis' && (
             <li>
-              <span className="legend-glyph legend-glyph-viirs" aria-hidden="true">&#9679;</span>
+              <span className="legend-glyph" aria-hidden="true">
+                <span className="legend-glyph-noaa-20">&#9679;</span>
+                <span className="legend-glyph-noaa-21">&#9679;</span>
+              </span>
               <span>VIIRS Orbits (NOAA-20, NOAA-21 &middot; Solid past / Dashed +90m)</span>
             </li>
           )}

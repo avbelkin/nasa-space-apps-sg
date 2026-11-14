@@ -1,4 +1,5 @@
 import type { Feature, FeatureCollection, MultiLineString, Point, Polygon } from 'geojson'
+import { DEFAULT_SATELLITE_COLOR, SATELLITE_COLORS } from '../data/dataPalette'
 import type { SensorFilter } from '../data/stubSeasonalData'
 
 export interface OrbitTrackPoint {
@@ -86,14 +87,14 @@ interface SatelliteVisualStyle {
 }
 
 const SATELLITE_STYLES: Record<string, SatelliteVisualStyle> = {
-  terra: { color: '#22d3ee', glyph: '◆', shortBadge: 'TERRA · MODIS' },
-  aqua: { color: '#60a5fa', glyph: '◆', shortBadge: 'AQUA · MODIS' },
-  'noaa-20': { color: '#34d399', glyph: '●', shortBadge: 'NOAA-20 · VIIRS' },
-  'noaa-21': { color: '#c084fc', glyph: '●', shortBadge: 'NOAA-21 · VIIRS' },
+  terra: { color: SATELLITE_COLORS.terra, glyph: '◆', shortBadge: 'TERRA · MODIS' },
+  aqua: { color: SATELLITE_COLORS.aqua, glyph: '◆', shortBadge: 'AQUA · MODIS' },
+  'noaa-20': { color: SATELLITE_COLORS['noaa-20'], glyph: '●', shortBadge: 'NOAA-20 · VIIRS' },
+  'noaa-21': { color: SATELLITE_COLORS['noaa-21'], glyph: '●', shortBadge: 'NOAA-21 · VIIRS' },
 }
 
 const DEFAULT_SATELLITE_STYLE: SatelliteVisualStyle = {
-  color: '#38bdf8',
+  color: DEFAULT_SATELLITE_COLOR,
   glyph: '●',
   shortBadge: 'SAT',
 }

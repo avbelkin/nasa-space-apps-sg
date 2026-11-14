@@ -51,13 +51,13 @@
 
 .brand-group h1 {
   margin: 0;
-  font-size: clamp(1.05rem, 0.9rem + 0.6vw, 1.4rem);
+  font-size: var(--fs-20);
   line-height: 1.2;
 }
 
 .brand-subtitle {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: var(--fs-14);
   color: var(--text-muted);
 }
 
@@ -69,34 +69,37 @@
 }
 
 .pill-button {
+  --tap-bg: var(--surface-subtle);
   appearance: none;
   border: 1px solid var(--border-subtle);
   border-radius: 999px;
   min-block-size: 2rem;
   padding: 0.4rem 0.8rem;
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--fs-14);
   font-weight: 600;
   cursor: pointer;
-  background-color: var(--surface-subtle);
+  background-color: var(--tap-bg);
   color: var(--text-primary);
 }
 
+/* Accent fill means "selected" and nothing else */
 .pill-button[aria-pressed='true'] {
-  background-color: var(--accent);
+  --tap-bg: var(--accent);
   color: var(--accent-text);
   border-color: transparent;
 }
 
 .pill-button:focus-visible,
 .hud-btn:focus-visible,
+.segmented-option:focus-visible,
 .month-btn:focus-visible,
 .region-card-btn:focus-visible,
 .satellite-card-btn:focus-visible,
 .sat-marker-badge:focus-visible,
 .api-check-btn:focus-visible,
 .side-panel a:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring, var(--accent));
   outline-offset: 2px;
 }
 
@@ -105,7 +108,7 @@
   flex-wrap: wrap;
   align-items: safe center;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-14);
 }
 
 .api-status-badge {
@@ -116,18 +119,20 @@
   font-weight: 600;
 }
 
+/* Secondary (outlined) action: the accent fill is reserved for the selected state */
 .api-check-btn {
+  --tap-bg: transparent;
   appearance: none;
-  border: 1px solid transparent;
+  border: 1px solid var(--border-subtle);
   border-radius: 0.5rem;
   min-block-size: 2rem;
   padding: 0.4rem 0.75rem;
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--fs-14);
   font-weight: 600;
   cursor: pointer;
-  background-color: var(--accent);
-  color: var(--accent-text);
+  background-color: var(--tap-bg);
+  color: var(--text-primary);
 }
 
 .api-check-btn:disabled {
@@ -137,6 +142,8 @@
 
 /* Inner Map CSS Grid Container: holds MapLibre canvas + over-map HUD grid areas */
 .map-stage {
+  /* Focus ring over the map stays neutral: on the map, blue means "below typical" only */
+  --focus-ring: #f8fafc;
   grid-area: mapstage;
   container: mapstage / inline-size;
   display: grid;
@@ -177,7 +184,8 @@
 
 /* Live satellite badge rendered inside MapLibre Marker over the globe */
 .sat-marker-badge {
-  --sat-color: #38bdf8;
+  --sat-color: var(--data-sat-default);
+  --tap-bg: rgb(9 15 29 / 0.88);
   appearance: none;
   display: inline-flex;
   align-items: center;
@@ -186,10 +194,10 @@
   padding: 0.2rem 0.5rem;
   border-radius: 999px;
   border: 1.5px solid var(--sat-color);
-  background-color: rgb(9 15 29 / 0.88);
+  background-color: var(--tap-bg);
   color: #f8fafc;
   font-family: inherit;
-  font-size: 0.72rem;
+  font-size: var(--fs-12);
   font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1;
@@ -198,10 +206,14 @@
   backdrop-filter: blur(4px);
 }
 
+/* Selection ring as a shadow so the focus outline can still sit outside it */
 .sat-marker-badge[aria-pressed='true'] {
-  background-color: #0f172a;
-  outline: 2px solid #f8fafc;
-  outline-offset: 1px;
+  --tap-bg: #0f172a;
+  box-shadow: 0 0 0 1px #0f172a, 0 0 0 3px #f8fafc;
+}
+
+.sat-marker-badge:focus-visible {
+  outline-offset: 4px;
 }
 
 .sat-marker-icon {
@@ -236,6 +248,8 @@
 
 /* Over-map HUD clusters always render on a dark translucent surface over the dark Earth basemap */
 .map-hud {
+  --hud-selected-bg: #f8fafc;
+  --hud-selected-text: #0f172a;
   z-index: 2;
   color-scheme: dark;
   background-color: rgb(9 15 29 / 0.84);
@@ -287,23 +301,27 @@
   .map-hud-top-end {
     justify-self: start;
   }
+
+  .map-hud .segmented-option {
+    padding-inline: 0.5rem;
+  }
+
+  /* A long joined control cannot share a row with the other HUD cluster: stack its segments */
+  .map-hud .segmented-stack-narrow {
+    flex-direction: column;
+  }
 }
 
 .hud-kicker {
-  font-size: 0.72rem;
+  font-size: var(--fs-12);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #cbd5e1;
 }
 
-.hud-pill-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
 .hud-btn {
+  --tap-bg: rgb(30 41 59 / 0.85);
   appearance: none;
   border: 1px solid rgb(148 163 184 / 0.4);
   border-radius: 0.45rem;
@@ -311,10 +329,10 @@
   min-block-size: 1.85rem;
   padding: 0.3rem 0.6rem;
   font: inherit;
-  font-size: 0.8rem;
+  font-size: var(--fs-14);
   font-weight: 600;
   cursor: pointer;
-  background-color: rgb(30 41 59 / 0.85);
+  background-color: var(--tap-bg);
   color: #f8fafc;
 }
 
@@ -323,10 +341,11 @@
   cursor: wait;
 }
 
+/* Neutral light fill instead of blue: on the map, blue means "below typical" only */
 .hud-btn[aria-pressed='true'] {
-  background-color: #2563eb;
-  border-color: #93c5fd;
-  color: #ffffff;
+  --tap-bg: var(--hud-selected-bg);
+  border-color: var(--hud-selected-bg);
+  color: var(--hud-selected-text);
 }
 
 .hud-legend-header {
@@ -338,7 +357,7 @@
 }
 
 .hud-coords {
-  font-size: 0.78rem;
+  font-size: var(--fs-12);
   font-variant-numeric: tabular-nums;
   color: #cbd5e1;
 }
@@ -350,7 +369,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem 0.85rem;
-  font-size: 0.78rem;
+  font-size: var(--fs-14);
 }
 
 .hud-legend-list li {
@@ -359,38 +378,57 @@
   gap: 0.35rem;
 }
 
+/* Glyph colors come from ui/src/data/dataPalette.ts via --data-* custom properties */
 .legend-glyph {
-  font-size: 0.85rem;
+  display: inline-flex;
+  gap: 0.1rem;
+  font-size: var(--fs-14);
   line-height: 1;
 }
 
+/* Status glyphs carry the same light outline as the map marks */
+.legend-glyph-anomaly,
+.legend-glyph-typical,
+.legend-glyph-below {
+  -webkit-text-stroke: 1.5px var(--data-mark-stroke);
+  paint-order: stroke fill;
+}
+
 .legend-glyph-anomaly {
-  color: #fb923c;
+  color: var(--data-above);
 }
 
 .legend-glyph-typical {
-  color: #facc15;
+  color: var(--data-typical);
 }
 
 .legend-glyph-below {
-  color: #38bdf8;
+  color: var(--data-below);
 }
 
-.legend-glyph-modis {
-  color: #22d3ee;
+.legend-glyph-terra {
+  color: var(--data-sat-terra);
 }
 
-.legend-glyph-viirs {
-  color: #34d399;
+.legend-glyph-aqua {
+  color: var(--data-sat-aqua);
+}
+
+.legend-glyph-noaa-20 {
+  color: var(--data-sat-noaa-20);
+}
+
+.legend-glyph-noaa-21 {
+  color: var(--data-sat-noaa-21);
 }
 
 .legend-glyph-user {
-  color: #60a5fa;
+  color: var(--data-user-fill);
 }
 
 .hud-geo-status {
   margin: 0;
-  font-size: 0.76rem;
+  font-size: var(--fs-14);
   color: #fde68a;
 }
 
@@ -412,11 +450,11 @@
 
 .timeline-header h2 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: var(--fs-16);
 }
 
 .timeline-status {
-  font-size: 0.82rem;
+  font-size: var(--fs-14);
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -428,13 +466,14 @@
 }
 
 .month-btn {
+  --tap-bg: var(--surface-subtle);
   appearance: none;
   border: 1px solid var(--border-subtle);
   border-radius: 0.5rem;
   padding: 0.35rem 0.25rem;
   font: inherit;
   cursor: pointer;
-  background-color: var(--surface-subtle);
+  background-color: var(--tap-bg);
   color: var(--text-primary);
   display: grid;
   gap: 0.25rem;
@@ -442,13 +481,13 @@
 }
 
 .month-btn[aria-pressed='true'] {
-  background-color: var(--accent);
+  --tap-bg: var(--accent);
   color: var(--accent-text);
   border-color: transparent;
 }
 
 .month-label {
-  font-size: 0.78rem;
+  font-size: var(--fs-14);
   font-weight: 700;
 }
 
@@ -491,19 +530,15 @@
   gap: 0.6rem;
 }
 
-.panel-section h2 {
-  margin: 0;
-  font-size: 1rem;
-}
-
+.panel-section h2,
 .panel-section h3 {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: var(--fs-16);
 }
 
 .panel-note {
   margin: 0;
-  font-size: 0.88rem;
+  font-size: var(--fs-14);
   color: var(--text-muted);
 }
 
@@ -522,12 +557,12 @@
 }
 
 .metric-label {
-  font-size: 0.75rem;
+  font-size: var(--fs-12);
   color: var(--text-muted);
 }
 
 .metric-value {
-  font-size: 1.15rem;
+  font-size: var(--fs-20);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -543,6 +578,7 @@
 
 .satellite-card-btn,
 .region-card-btn {
+  --tap-bg: var(--surface-bg);
   inline-size: 100%;
   text-align: start;
   appearance: none;
@@ -551,7 +587,7 @@
   padding: 0.65rem 0.75rem;
   font: inherit;
   cursor: pointer;
-  background-color: var(--surface-bg);
+  background-color: var(--tap-bg);
   color: var(--text-primary);
   display: grid;
   gap: 0.25rem;
@@ -569,7 +605,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
-  font-size: 0.88rem;
+  font-size: var(--fs-14);
   font-weight: 700;
 }
 
@@ -585,31 +621,44 @@
   inline-size: 1.25rem;
   block-size: 1.25rem;
   border-radius: 999px;
-  font-size: 0.68rem;
+  font-size: var(--fs-12);
   line-height: 1;
   color: #090f1d;
   border: 1px solid rgb(15 23 42 / 0.35);
 }
 
 .satellite-sensor-tag {
-  font-size: 0.74rem;
+  font-size: var(--fs-12);
   font-weight: 600;
   color: var(--text-muted);
 }
 
 .satellite-coords {
-  font-size: 0.8rem;
+  font-size: var(--fs-14);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
 .region-delta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  flex-shrink: 0;
   font-variant-numeric: tabular-nums;
-  font-size: 0.8rem;
+  font-size: var(--fs-14);
+}
+
+/* Same category as the map mark, in a text-safe tone; the arrow carries the direction */
+.region-delta-above {
+  color: var(--delta-up);
+}
+
+.region-delta-below {
+  color: var(--delta-down);
 }
 
 .region-meta {
-  font-size: 0.78rem;
+  font-size: var(--fs-14);
   color: var(--text-muted);
 }
 
@@ -625,14 +674,14 @@
 }
 
 .meta-row dt {
-  font-size: 0.75rem;
+  font-size: var(--fs-12);
   font-weight: 600;
   color: var(--text-muted);
 }
 
 .meta-row dd {
   margin: 0;
-  font-size: 0.83rem;
+  font-size: var(--fs-14);
   overflow-wrap: anywhere;
 }
 
@@ -646,6 +695,126 @@
   text-underline-offset: 0.15em;
 }
 
+/* Joined control for one-of-many choices; themed panel colors by default, dark HUD variant below */
+.segmented {
+  --seg-track: var(--surface-subtle);
+  --seg-border: var(--border-subtle);
+  --seg-text: var(--text-primary);
+  --seg-selected-bg: var(--accent);
+  --seg-selected-text: var(--accent-text);
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--seg-border);
+  border-radius: 0.5rem;
+  background-color: var(--seg-track);
+}
+
+.map-hud .segmented {
+  --seg-track: rgb(15 23 42 / 0.6);
+  --seg-border: rgb(148 163 184 / 0.4);
+  --seg-text: #f8fafc;
+  --seg-selected-bg: var(--hud-selected-bg);
+  --seg-selected-text: var(--hud-selected-text);
+}
+
+/* Segments may shrink to their longest word (flex automatic minimum) rather than overflow;
+   no explicit min-inline-size, which would let a long label shrink below its text */
+.segmented-option {
+  --tap-bg: transparent;
+  appearance: none;
+  flex: 0 1 auto;
+  min-block-size: 1.75rem;
+  padding: 0.2rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  font: inherit;
+  font-size: var(--fs-14);
+  font-weight: 600;
+  line-height: 1.2;
+  text-wrap: balance;
+  cursor: pointer;
+  background-color: var(--tap-bg);
+  color: var(--seg-text);
+}
+
+.segmented-option[aria-checked='true'] {
+  --tap-bg: var(--seg-selected-bg);
+  color: var(--seg-selected-text);
+  cursor: default;
+}
+
+/* Keep the focus ring above the neighbouring segments */
+.segmented-option:focus-visible {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hover and press feedback: tint the control's own background toward its text color */
+@media (hover: hover) {
+  .pill-button:hover,
+  .api-check-btn:not(:disabled):hover,
+  .hud-btn:not(:disabled):hover,
+  .segmented-option[aria-checked='false']:hover,
+  .month-btn:hover,
+  .region-card-btn:hover,
+  .satellite-card-btn:hover,
+  .sat-marker-badge:hover {
+    background-color: color-mix(in srgb, var(--tap-bg), currentColor 10%);
+  }
+
+  .pill-button:not([aria-pressed='true']):hover,
+  .api-check-btn:not(:disabled):hover,
+  .month-btn:not([aria-pressed='true']):hover,
+  .region-card-btn:not([aria-pressed='true']):hover,
+  .satellite-card-btn:not([aria-pressed='true']):hover {
+    border-color: var(--text-muted);
+  }
+
+  .hud-btn:not(:disabled, [aria-pressed='true']):hover {
+    border-color: rgb(203 213 225 / 0.75);
+  }
+
+  .side-panel a:hover {
+    text-decoration-thickness: 2px;
+  }
+}
+
+.pill-button:active,
+.api-check-btn:not(:disabled):active,
+.hud-btn:not(:disabled):active,
+.segmented-option[aria-checked='false']:active,
+.month-btn:active,
+.region-card-btn:active,
+.satellite-card-btn:active,
+.sat-marker-badge:active {
+  background-color: color-mix(in srgb, var(--tap-bg), currentColor 18%);
+}
+
+.side-panel a:active {
+  color: var(--text-primary);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pill-button,
+  .api-check-btn,
+  .hud-btn,
+  .segmented-option,
+  .month-btn,
+  .region-card-btn,
+  .satellite-card-btn,
+  .sat-marker-badge,
+  .side-panel a {
+    transition:
+      background-color 120ms ease-out,
+      border-color 120ms ease-out,
+      color 120ms ease-out,
+      text-decoration-thickness 120ms ease-out;
+  }
+}
+
 @media (pointer: coarse) {
   .pill-button,
   .api-check-btn,
@@ -653,16 +822,30 @@
     min-inline-size: 2.5rem;
     min-block-size: 2.5rem;
   }
+
+  /* Width from padding (a "2D" segment is >= 2.5rem) so labels keep their content minimum */
+  .segmented-option,
+  .map-hud .segmented-option {
+    min-block-size: 2.5rem;
+    padding-inline: 0.8rem;
+  }
 }
 
 @media (forced-colors: active) {
   .pill-button[aria-pressed='true'],
   .hud-btn[aria-pressed='true'],
+  .segmented-option[aria-checked='true'],
   .month-btn[aria-pressed='true'],
   .sat-marker-badge[aria-pressed='true'] {
+    /* Already system colors: opt out so no Canvas backplate hides the HighlightText label */
+    forced-color-adjust: none;
     background-color: Highlight;
     color: HighlightText;
     border-color: Highlight;
+  }
+
+  .segmented {
+    border-color: ButtonBorder;
   }
 
   .satellite-card-btn[aria-pressed='true'],

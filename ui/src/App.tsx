@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { EarthMapStage, type CameraFocusRequest } from './components/EarthMapStage'
+import { DATA_PALETTE_CSS_VARIABLES } from './data/dataPalette'
 import {
   evaluateRegionsForMonth,
   MONTHLY_PROFILE,
   type ProjectionMode,
   type SensorFilter,
+  type StatusCategory,
   type ViewMode,
 } from './data/stubSeasonalData'
 import {
@@ -54,6 +56,13 @@ async function fetchApiStatus(signal?: AbortSignal): Promise<ApiStatusResponse> 
     throw new Error(`HTTP ${response.status} ${response.statusText}`)
   }
   return (await response.json()) as ApiStatusResponse
+}
+
+// Delta text color follows the same status category as the map mark; the arrow carries direction.
+const REGION_DELTA_CLASS: Record<StatusCategory, string> = {
+  'anomaly-high': 'region-delta region-delta-above',
+  'fits-typical': 'region-delta',
+  'below-typical': 'region-delta region-delta-below',
 }
 
 function formatDeg(value: number, posHemisphere: string, negHemisphere: string): string {
@@ -274,7 +283,7 @@ function App() {
   }, [orbitsPayload])
 
   return (
-    <div className="app-frame">
+    <div className="app-frame" style={DATA_PALETTE_CSS_VARIABLES}>
       <header className="top-bar wrapper-surface">
         <div className="brand-group">
           <h1>Earth Fire Calendar</h1>
@@ -478,7 +487,12 @@ function App() {
                 >
                   <span className="region-card-top">
                     <span>{regime.region}</span>
-                    <span className="region-delta">
+                    <span className={REGION_DELTA_CLASS[regime.statusCategory]}>
+                      {regime.delta !== 0 && (
+                        <span className="region-delta-arrow" aria-hidden="true">
+                          {regime.delta > 0 ? '\u25b2' : '\u25bc'}
+                        </span>
+                      )}
                       {regime.delta >= 0 ? `+${regime.delta}` : regime.delta}
                     </span>
                   </span>
