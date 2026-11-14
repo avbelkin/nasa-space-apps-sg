@@ -32,8 +32,8 @@ export const RAIN_DOT_INTENSITY_CUTOFF = 0.02
 export const RAIN_DOT_FULL_OPACITY_INTENSITY = 0.72
 export const ENABLE_RAIN_CLOUD_BACKDROP = true
 export const RAIN_CLOUD_BACKDROP_MAX_OPACITY = 0.22
-export const RAIN_DOT_BASE_GRID_CELLS = 48
-export const RAIN_DOT_BASE_SPACING_CSS_PX = 11.5
+export const RAIN_DOT_BASE_GRID_CELLS = 32
+export const RAIN_DOT_BASE_SPACING_CSS_PX = 21.5
 export const RAIN_DOT_RADIUS_CSS_PX = 2.6
 
 export interface RainShaderBuildOptions {
@@ -868,7 +868,7 @@ float evaluateZoomOctaveDots(vec2 worldMercator, float worldPerCssPx, float radi
   float freq0 = ${RAIN_DOT_BASE_GRID_CELLS.toFixed(1)} * exp2(k0);
   float freq1 = freq0 * 2.0;
   float mask0 = sampleHexLatticeMask(worldMercator, freq0, worldPerCssPx, radiusCssPx);
-  float subFade = smoothstep(0.42, 0.90, fracOctave);
+  float subFade = smoothstep(0.48, 0.92, fracOctave);
   if (subFade <= 0.001) {
     return mask0;
   }

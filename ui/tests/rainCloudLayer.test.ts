@@ -20,6 +20,8 @@ import {
   RAIN_FADE_IN_END_ZOOM,
   RAIN_FADE_IN_START_ZOOM,
   RAIN_FADE_START_ZOOM,
+  RAIN_DOT_BASE_GRID_CELLS,
+  RAIN_DOT_BASE_SPACING_CSS_PX,
   RAIN_SOLO_OPACITY_MULTIPLIER,
   RAIN_TEXTURE_SIZE,
   RAIN_TILE_GUTTER,
@@ -355,6 +357,8 @@ test('blurRainTileTexture creates a wide monotonic gradient and exact agreement 
 test('normalizeRainCoveringTiles locks source tiles to z=3 and WebGL2 shaders match wide-gutter B-spline spec', () => {
   assert.equal(MIN_RAIN_TILE_ZOOM, 3)
   assert.equal(MAX_RAIN_TILE_ZOOM, 3)
+  assert.ok(RAIN_DOT_BASE_SPACING_CSS_PX >= 18.5)
+  assert.equal(RAIN_DOT_BASE_GRID_CELLS % 8, 0)
   const expanded = normalizeRainCoveringTiles([
     { canonical: { z: 2, x: 0, y: 0 }, wrap: 0 },
     { canonical: { z: 3, x: 6, y: 3 }, wrap: 0 },
