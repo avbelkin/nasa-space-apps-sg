@@ -212,9 +212,9 @@ export function computeGlobeHaloUniforms(
   }
 
   const apparentRadiusPx = globeRadius / viewUnitsPerCssPx
-  const outerHaloCssPx = clamp(0.28 * apparentRadiusPx, 44, 155)
-  const innerGrazingCssPx = clamp(0.10 * apparentRadiusPx, 14, 48)
-  const scaleHeightCssPx = clamp(0.055 * apparentRadiusPx, 8, 28)
+  const outerHaloCssPx = clamp(0.036 * apparentRadiusPx, 8.0, 34.0)
+  const innerGrazingCssPx = clamp(0.010 * apparentRadiusPx, 2.0, 6.5)
+  const scaleHeightCssPx = clamp(0.012 * apparentRadiusPx, 2.5, 11.0)
 
   // MapLibre unit-sphere Solar direction (matching projectTileCoordinatesToSphere):
   // vec = [cos(lat) * sin(lon), sin(lat), cos(lat) * cos(lon)].
@@ -297,6 +297,44 @@ float interleavedGradientNoise(vec2 pixelCoord) {
   return fract(magic.z * fract(dot(pixelCoord, magic.xy))) - 0.5;
 }
 
+// Evaluates a C^2-continuous uniform cubic B-spline across 7 real-photo altitude stops
+// (powder-periwinkle troposphere -> dusty cornflower -> steel-cerulean -> Rayleigh royal
+// ultramarine -> midnight indigo -> mesosphere indigo -> black space) with zero Mach bands.
+vec3 sampleOrbitalAtmosphereRadiance(float u, float backlitBoost) {
+  vec3 stop0 = mix(vec3(0.55, 0.65, 0.78), vec3(0.64, 0.72, 0.83), backlitBoost);
+  vec3 stop1 = vec3(0.506, 0.678, 0.827);
+  vec3 stop2 = vec3(0.318, 0.561, 0.780);
+  vec3 stop3 = vec3(0.141, 0.298, 0.737);
+  vec3 stop4 = vec3(0.043, 0.106, 0.435);
+  vec3 stop5 = vec3(0.018, 0.039, 0.165);
+  vec3 zero3 = vec3(0.0);
+
+  vec3 knots[10] = vec3[10](
+    stop0,
+    stop0,
+    stop1,
+    stop2,
+    stop3,
+    stop4,
+    stop5,
+    zero3,
+    zero3,
+    zero3
+  );
+
+  float t = clamp(u, 0.0, 1.0) * 7.0;
+  int idx = min(int(floor(t)), 6);
+  float f = t - float(idx);
+  float invF = 1.0 - f;
+
+  float w0 = (invF * invF * invF) / 6.0;
+  float w1 = (3.0 * f * f * f - 6.0 * f * f + 4.0) / 6.0;
+  float w2 = (-3.0 * f * f * f + 3.0 * f * f + 3.0 * f + 1.0) / 6.0;
+  float w3 = (f * f * f) / 6.0;
+
+  return w0 * knots[idx] + w1 * knots[idx + 1] + w2 * knots[idx + 2] + w3 * knots[idx + 3];
+}
+
 void main() {
   float centerDist = length(u_globeCenter);
   if (centerDist <= u_globeRadius * 1.0005) {
@@ -331,14 +369,13 @@ void main() {
 
   float outerScalePx = max(u_scalesCssPx.x, 1.0);
   float innerScalePx = max(u_scalesCssPx.y, 1.0);
-  float scaleHeightPx = max(u_scalesCssPx.z, 2.0);
 
   vec3 sunDir = normalize(u_sunDirView);
   float cosForward = dot(rayDir, sunDir);
   float backlitBoost = smoothstep(-0.18, 0.78, cosForward);
-  float effectiveOuterPx = outerScalePx * mix(0.68, 1.18, backlitBoost);
+  float effectiveOuterPx = outerScalePx * mix(0.82, 1.10, backlitBoost);
 
-  if (signedPx > effectiveOuterPx * 1.95 || signedPx < -innerScalePx * 2.4) {
+  if (signedPx > effectiveOuterPx * 1.02 || signedPx < -innerScalePx * 1.05) {
     discard;
   }
 
@@ -350,57 +387,34 @@ void main() {
   float camTilt = min(u_globeRadius / centerDist, 0.14);
   vec3 limbNormal = normalize(toCam * camTilt + perpDir * sqrt(max(1.0 - camTilt * camTilt, 0.0)));
 
-  float highAltRelief = clamp(max(signedPx, 0.0) / effectiveOuterPx, 0.0, 1.0) * 0.08;
+  float highAltRelief = clamp(max(signedPx, 0.0) / effectiveOuterPx, 0.0, 1.0) * 0.06;
   float muSun = dot(limbNormal, sunDir) + highAltRelief;
-  float twilight = smoothstep(-0.26, 0.30, muSun);
-  float eclipseBridge = smoothstep(-0.24, 0.06, muSun) * backlitBoost * 0.24;
-  float sunIntensity = clamp(twilight * mix(0.22, 1.0, backlitBoost) + eclipseBridge, 0.0, 1.12);
+  float twilight = smoothstep(-0.24, 0.28, muSun);
+  float eclipseBridge = smoothstep(-0.22, 0.05, muSun) * backlitBoost * 0.12;
+  float sunIntensity = clamp(twilight * mix(0.28, 0.68, backlitBoost) + eclipseBridge, 0.0, 0.72);
   if (sunIntensity <= 0.002) {
     discard;
   }
 
-  // Smooth C^inf barometric scale-height transition across the horizon (no hard rim edge or Mach band).
-  float softAltPx = 0.5 * (signedPx + sqrt(signedPx * signedPx + 9.0));
-  float innerDepthPx = 0.5 * (-signedPx + sqrt(signedPx * signedPx + 9.0));
-  float innerEnvelope = 1.0 - smoothstep(innerScalePx * 1.35, innerScalePx * 2.35, innerDepthPx);
-  float outerEnvelope = 1.0 - smoothstep(effectiveOuterPx * 0.88, effectiveOuterPx * 1.90, softAltPx);
+  // Tight C^1 inner limb ramp (2..6.5 px) so dark continents & city lights stay crisp,
+  // paired with C^inf optical horizon rounding into the 7-stop orbital gradient.
+  float innerRamp = smoothstep(-innerScalePx, 0.5, signedPx);
+  innerRamp *= innerRamp;
+  float softAltPx = 0.5 * (signedPx + sqrt(signedPx * signedPx + 2.25));
+  float normAlt = clamp(softAltPx / effectiveOuterPx, 0.0, 1.0);
 
-  float tauLow =
-    exp(-softAltPx / (scaleHeightPx * 0.52)) *
-    exp(-innerDepthPx / (scaleHeightPx * 0.65)) *
-    innerEnvelope *
-    outerEnvelope *
-    (0.20 + 0.34 * backlitBoost) *
-    sunIntensity;
+  vec3 photoRadiance = sampleOrbitalAtmosphereRadiance(normAlt, backlitBoost);
+  float peakChannel = max(photoRadiance.r, max(photoRadiance.g, photoRadiance.b));
+  if (peakChannel <= 0.0005) {
+    discard;
+  }
 
-  float tauMid =
-    exp(-softAltPx / (scaleHeightPx * 1.55)) *
-    exp(-innerDepthPx / (innerScalePx * 0.62)) *
-    innerEnvelope *
-    outerEnvelope *
-    (0.26 + 0.14 * backlitBoost) *
-    sunIntensity;
-
-  float tauHigh =
-    exp(-softAltPx / (effectiveOuterPx * 0.46)) *
-    exp(-innerDepthPx / (innerScalePx * 1.05)) *
-    innerEnvelope *
-    outerEnvelope *
-    (0.14 + 0.12 * backlitBoost) *
-    sunIntensity;
-
-  float tauTotal = tauLow + tauMid + tauHigh;
-  float rawAlpha = 1.0 - exp(-tauTotal);
-
-  vec3 lowColor = mix(vec3(0.32, 0.72, 0.98), vec3(0.76, 0.93, 1.00), backlitBoost);
-  vec3 midColor = vec3(0.15, 0.54, 0.96);
-  vec3 highColor = vec3(0.04, 0.18, 0.58);
-  vec3 scatterColor =
-    (lowColor * tauLow + midColor * tauMid + highColor * tauHigh) / max(tauTotal, 1e-5);
-  vec3 premulRgb = scatterColor * rawAlpha;
+  float envelope = innerRamp * sunIntensity;
+  vec3 premulRgb = photoRadiance * envelope;
+  float rawAlpha = clamp(peakChannel * 1.04 * envelope, 0.0, 1.0);
 
   float dither = interleavedGradientNoise(gl_FragCoord.xy) / 255.0;
-  float finalAlpha = clamp((rawAlpha + dither * 0.6) * u_strength, 0.0, 1.0);
+  float finalAlpha = clamp((rawAlpha + dither * 0.5) * u_strength, 0.0, 1.0);
   vec3 finalRgb = clamp((premulRgb + vec3(dither * 0.35)) * u_strength, vec3(0.0), vec3(finalAlpha));
 
   if (finalAlpha <= 0.001) {

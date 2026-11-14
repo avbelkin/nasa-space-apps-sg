@@ -118,7 +118,7 @@ function createQuadBuffers(gl: WebGL2RenderingContext): HaloQuadBuffers {
 
 /**
  * Creates a MapLibre WebGL2 custom layer rendering an unloaded-tile silhouette occluder
- * and a luminous cyan-to-sapphire atmospheric limb halo around the 3D globe.
+ * and a solar-illuminated orbital atmospheric limb halo around the 3D globe.
  */
 export function createGlobeHaloLayer({
   nowProvider = Date.now,

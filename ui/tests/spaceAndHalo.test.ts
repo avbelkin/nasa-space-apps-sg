@@ -378,9 +378,9 @@ describe('globeHaloShader solar-backlit Beer-Lambert math and GLSL sources', () 
     assert.ok(frontLit !== null)
     assert.ok(frontLit.sunDirView[2] > 0.95)
     assert.ok(Math.abs(frontLit.globeCenterView[2] + centerDist) < 0.05)
-    assert.ok(frontLit.scalesCssPx[0] >= 44 && frontLit.scalesCssPx[0] <= 155)
-    assert.ok(frontLit.scalesCssPx[1] >= 14 && frontLit.scalesCssPx[1] <= 48)
-    assert.ok(frontLit.scalesCssPx[2] >= 8 && frontLit.scalesCssPx[2] <= 28)
+    assert.ok(frontLit.scalesCssPx[0] >= 8 && frontLit.scalesCssPx[0] <= 34)
+    assert.ok(frontLit.scalesCssPx[1] >= 2 && frontLit.scalesCssPx[1] <= 6.5)
+    assert.ok(frontLit.scalesCssPx[2] >= 2.5 && frontLit.scalesCssPx[2] <= 11)
 
     // 2. Facing antisolar point (Sun behind Earth) -> sunDirView points away (-Z, forward scatter)
     const backlit = computeGlobeHaloUniforms({
@@ -450,7 +450,7 @@ describe('globeHaloShader solar-backlit Beer-Lambert math and GLSL sources', () 
     )
   })
 
-  it('builds WebGL2 ES 3.00 shaders using solar direction and Beer-Lambert altitude gradient', () => {
+  it('builds WebGL2 ES 3.00 shaders using solar direction and real-photo orbital B-spline gradient', () => {
     const vert = buildGlobeHaloVertexShaderSource()
     const frag = buildGlobeHaloFragmentShaderSource()
 
@@ -459,9 +459,9 @@ describe('globeHaloShader solar-backlit Beer-Lambert math and GLSL sources', () 
     assert.match(vert, /out vec3 v_viewDir/)
 
     assert.match(frag, /^#version 300 es/)
+    assert.match(frag, /sampleOrbitalAtmosphereRadiance/)
     assert.match(frag, /uniform vec3 u_sunDirView/)
     assert.match(frag, /backlitBoost/)
-    assert.match(frag, /1\.0 - exp\(-tauTotal\)/)
     assert.match(frag, /interleavedGradientNoise/)
     assert.match(frag, /clamp\(\(premulRgb \+ vec3\(dither \* 0\.35\)\) \* u_strength, vec3\(0\.0\), vec3\(finalAlpha\)\)/)
     assert.doesNotMatch(frag, /rimCore/)
