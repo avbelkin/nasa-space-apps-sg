@@ -456,14 +456,14 @@ test('lights sits in the same registry: on by default and absent, lights=0 when 
   assert.equal(restored.state.showNightLights, false)
 })
 
-test('default viewport centers on Singapore at globe zoom z1.75', () => {
+test('default viewport centers on Singapore at globe zoom z3', () => {
   assert.deepEqual(SINGAPORE_CENTER, [103.8198, 1.3521])
   assert.deepEqual(DEFAULT_CENTER, [103.8198, 1.3521])
-  assert.equal(DEFAULT_ZOOM, 1.75)
+  assert.equal(DEFAULT_ZOOM, 3)
 
   assert.equal(DEFAULT_URL_HASH_STATE.lat, 1.3521)
   assert.equal(DEFAULT_URL_HASH_STATE.lng, 103.8198)
-  assert.equal(DEFAULT_URL_HASH_STATE.zoom, 1.75)
+  assert.equal(DEFAULT_URL_HASH_STATE.zoom, 3)
 
   assert.equal(clampLat(Number.NaN), 1.3521)
   assert.equal(normalizeLng(Number.NaN), 103.8198)
