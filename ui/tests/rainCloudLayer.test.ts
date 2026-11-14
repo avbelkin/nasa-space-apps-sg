@@ -22,6 +22,8 @@ import {
   RAIN_FADE_START_ZOOM,
   RAIN_DOT_BASE_GRID_CELLS,
   RAIN_DOT_BASE_SPACING_CSS_PX,
+  RAIN_DOT_COLOR_MODE,
+  RAIN_DOT_INTENSITY_CUTOFF,
   RAIN_DOT_MIN_RADIUS_CSS_PX,
   RAIN_DOT_RADIUS_CSS_PX,
   RAIN_SOLO_OPACITY_MULTIPLIER,
@@ -386,6 +388,9 @@ test('normalizeRainCoveringTiles locks source tiles to z=3 and WebGL2 shaders ma
     ),
   )
 
+  assert.equal(RAIN_DOT_COLOR_MODE, 'solid')
+  assert.equal(RAIN_DOT_INTENSITY_CUTOFF, 0.3)
+
   const fragmentSource = buildRainCloudFragmentShaderSource({
     vertexShaderPrelude: '',
     define: '#define GLOBE',
@@ -393,7 +398,9 @@ test('normalizeRainCoveringTiles locks source tiles to z=3 and WebGL2 shaders ma
   assert.match(fragmentSource, /^#version 300 es/)
   assert.match(fragmentSource, /sampleCubicBSpline/)
   assert.match(fragmentSource, /evaluateZoomOctaveDots/)
-  assert.match(fragmentSource, /evaluateRainbowDotColor/)
+  assert.match(fragmentSource, /vec3\(0\.220,\s*0\.741,\s*0\.973\)/)
+  assert.match(fragmentSource, /0\.3000/)
+  assert.doesNotMatch(fragmentSource, /evaluateRainbowDotColor/)
   assert.match(fragmentSource, /evaluateExperimentalCloudBackdrop/)
   assert.match(fragmentSource, /uniform float u_zoom;/)
   assert.match(fragmentSource, /smoothstep\(6\.00,\s*9\.00,\s*u_zoom\)/)
@@ -404,6 +411,15 @@ test('normalizeRainCoveringTiles locks source tiles to z=3 and WebGL2 shaders ma
   const firstDiscardIndex = fragmentSource.indexOf('discard;')
   assert.ok(dFdxIndex > 0 && dFdyIndex > 0 && firstDiscardIndex > 0)
   assert.ok(dFdxIndex < firstDiscardIndex && dFdyIndex < firstDiscardIndex)
+
+  const rainbowSource = buildRainCloudFragmentShaderSource(
+    {
+      vertexShaderPrelude: '',
+      define: '#define GLOBE',
+    },
+    { colorMode: 'rainbow' },
+  )
+  assert.match(rainbowSource, /evaluateRainbowDotColor/)
 
   const whiteNoBackdropSource = buildRainCloudFragmentShaderSource(
     {

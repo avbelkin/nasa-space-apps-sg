@@ -1,6 +1,7 @@
 import {
   FIRE_SPOT_COLORS,
   RAIN_DOT_RAINBOW_STOPS,
+  RAIN_DOT_SOLID_COLOR,
   RAIN_DOT_WHITE_COLOR,
   SATELLITE_COLORS,
   USER_LOCATION_COLORS,
@@ -139,10 +140,16 @@ export function MapLegend({
             <li className="legend-rain-item">
               <span
                 className="legend-rain-dot"
-                style={{ backgroundColor: RAIN_DOT_WHITE_COLOR }}
+                style={{
+                  backgroundColor:
+                    RAIN_DOT_COLOR_MODE === 'white' ? RAIN_DOT_WHITE_COLOR : RAIN_DOT_SOLID_COLOR,
+                }}
                 aria-hidden="true"
               />
-              <span>Intense rain ({rainSummaryLabel ?? 'IMERG 30m'})</span>
+              <span>
+                {RAIN_DOT_COLOR_MODE === 'white' ? 'Intense rain' : 'Rain'} (
+                {rainSummaryLabel ?? 'IMERG 30m'})
+              </span>
             </li>
           ))}
         {showModisOrbits && (

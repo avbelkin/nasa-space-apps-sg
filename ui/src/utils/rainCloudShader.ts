@@ -26,9 +26,11 @@ export const RAIN_SOLO_OPACITY_MULTIPLIER = 1
 export const RAIN_FADE_START_ZOOM = 11
 export const RAIN_FADE_END_ZOOM = 14.5
 
-export type RainDotColorMode = 'rainbow' | 'white'
-export const RAIN_DOT_COLOR_MODE: RainDotColorMode = 'rainbow'
-export const RAIN_DOT_INTENSITY_CUTOFF = 0.02
+export type RainDotColorMode = 'solid' | 'rainbow' | 'white'
+// Experimental dot color mode and intensity cutoff (subject to tuning).
+export const RAIN_DOT_COLOR_MODE: RainDotColorMode = 'solid'
+export const RAIN_DOT_SOLID_RGB: readonly [number, number, number] = [0.22, 0.741, 0.973]
+export const RAIN_DOT_INTENSITY_CUTOFF = 0.3
 export const RAIN_DOT_FULL_OPACITY_INTENSITY = 0.72
 export const ENABLE_RAIN_CLOUD_BACKDROP = true
 export const RAIN_CLOUD_BACKDROP_MAX_OPACITY = 0.22
@@ -39,6 +41,7 @@ export const RAIN_DOT_RADIUS_CSS_PX = 1.75
 
 export interface RainShaderBuildOptions {
   colorMode?: RainDotColorMode
+  solidRgb?: readonly [number, number, number]
   intensityCutoff?: number
   fullOpacityIntensity?: number
   enableCloudBackdrop?: boolean
@@ -791,17 +794,24 @@ void main() {
 /**
  * WebGL2 rain cloud shader using a 9-point isotropic ring of 4-tap hardware-bilinear
  * C2 Cubic B-Spline samples over 304x304 pre-blurred neighbor-stitched RG16F tiles,
- * rendering map-anchored zoom-octave staggered hex rain dots (rainbow calibration or white)
- * composited over an easily removable neutral overcast cloud backdrop across z6..z14.5.
+ * rendering map-anchored zoom-octave staggered hex rain dots (`solid` bright blue, `rainbow`
+ * calibration, or `white`) composited over an easily removable neutral overcast cloud backdrop across z6..z14.5.
  */
 export function buildRainCloudFragmentShaderSource(
   shaderData: CloudShaderVariantData,
   options: RainShaderBuildOptions = {},
 ): string {
   const colorMode = options.colorMode ?? RAIN_DOT_COLOR_MODE
+  const solidRgb = options.solidRgb ?? RAIN_DOT_SOLID_RGB
   const intensityCutoff = options.intensityCutoff ?? RAIN_DOT_INTENSITY_CUTOFF
   const fullOpacityIntensity = options.fullOpacityIntensity ?? RAIN_DOT_FULL_OPACITY_INTENSITY
   const enableCloudBackdrop = options.enableCloudBackdrop ?? ENABLE_RAIN_CLOUD_BACKDROP
+  const dotColorExpr =
+    colorMode === 'white'
+      ? 'vec3(0.973, 0.980, 0.988)'
+      : colorMode === 'solid'
+        ? `vec3(${solidRgb[0].toFixed(3)}, ${solidRgb[1].toFixed(3)}, ${solidRgb[2].toFixed(3)})`
+        : 'evaluateRainbowDotColor(total)'
 
   return `#version 300 es
 precision highp float;
@@ -974,7 +984,7 @@ void main() {
   float dotStrength = smoothstep(0.0, 1.0, normIntensity);
   float radiusCssPx = mix(${RAIN_DOT_MIN_RADIUS_CSS_PX.toFixed(2)}, ${RAIN_DOT_RADIUS_CSS_PX.toFixed(2)}, dotStrength);
   float dotMask = (dotStrength > 0.001) ? evaluateZoomOctaveDots(v_worldMercator, worldPerCssPx, radiusCssPx) : 0.0;
-  vec3 dotColor = ${colorMode === 'white' ? 'vec3(0.973, 0.980, 0.988)' : 'evaluateRainbowDotColor(total)'};
+  vec3 dotColor = ${dotColorExpr};
   float dotA = clamp(dotStrength * dotMask * u_opacity, 0.0, 1.0);
 
   ${
