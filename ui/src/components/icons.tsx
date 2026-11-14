@@ -118,6 +118,31 @@ export function CloseIcon(props: IconProps) {
   )
 }
 
+export function RainCloudIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M7 15.5h9.5a3.5 3.5 0 0 0 .4-7 5.2 5.2 0 0 0-10.1-1.1A4.1 4.1 0 0 0 7 15.5Z" />
+      <path d="M8.5 18.5l-1 2.5M12.5 18.5l-1 2.5M16.5 18.5l-1 2.5" />
+    </SvgIcon>
+  )
+}
+
+export function ChevronLeftIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="m15 18-6-6 6-6" />
+    </SvgIcon>
+  )
+}
+
+export function ChevronRightIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="m9 18 6-6-6-6" />
+    </SvgIcon>
+  )
+}
+
 export function SunriseIcon(props: IconProps) {
   return (
     <SvgIcon {...props}>

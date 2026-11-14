@@ -1,5 +1,5 @@
 import type { Feature, FeatureCollection, Point } from 'geojson'
-import type { SensorFilter, ViewMode } from '../data/stubSeasonalData.ts'
+import type { SensorFilter } from '../data/stubSeasonalData.ts'
 import {
   buildFireDetectionsTimeline,
   compareMatchedFireSpots,
@@ -147,7 +147,6 @@ export interface FormattedFireSpotsTooltip {
 }
 
 export interface FormatFireSpotsTooltipOptions {
-  viewMode?: ViewMode
   sensorFilter?: SensorFilter
   timeZone?: string
   overpassIndex?: SatelliteOverpassIndex | null
@@ -612,7 +611,6 @@ export function formatFireSpotsTooltip(
 
   const timeline = buildFireDetectionsTimeline(uniqueSpots, {
     nowMs,
-    viewMode: options.viewMode ?? 'anomaly',
     sensorFilter,
     timeZone: options.timeZone,
     negativePasses,

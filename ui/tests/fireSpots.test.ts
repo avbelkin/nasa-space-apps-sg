@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
+import { FIRE_SPOT_COLORS } from '../src/data/dataPalette.ts'
 import {
   ACTIVE_AGE_SECONDS,
   buildFireSpotsGeoJson,
@@ -17,6 +18,11 @@ import {
   type FireSpotTooltipInput,
   type FirmsLiveSpotsResponse,
 } from '../src/utils/fireSpots.ts'
+import {
+  buildFireSpotLayers,
+  FIRMS_SPOTS_CORE_LAYER_ID,
+  FIRMS_SPOTS_PULSE_LAYER_IDS,
+} from '../src/utils/fireSpotsAnimation.ts'
 
 describe('wildfire activity and pulse math', () => {
   it('computes 24h linear activity decay and respects motionEnabled flag', () => {
@@ -452,5 +458,34 @@ describe('hierarchical z1..z7 spatial decluttering', () => {
       z1Modis.map((s) => ({ frp: s.frp, instrument: s.instrument })),
       [{ frp: 90, instrument: 'modis' }],
     )
+  })
+})
+
+describe('active fire spot palette and MapLibre layers', () => {
+  it('uses uniform saturated non-pink red across core and pulse layers', () => {
+    assert.equal(FIRE_SPOT_COLORS.fill, '#ff1a00')
+    assert.equal(FIRE_SPOT_COLORS.pulse, '#ff1a00')
+
+    for (const hex of [FIRE_SPOT_COLORS.fill, FIRE_SPOT_COLORS.pulse]) {
+      const r = Number.parseInt(hex.slice(1, 3), 16)
+      const g = Number.parseInt(hex.slice(3, 5), 16)
+      const b = Number.parseInt(hex.slice(5, 7), 16)
+      assert.equal(r, 0xff)
+      assert.equal(b, 0x00)
+      assert.ok(g <= 0x26, `expected low green channel for true red, got ${g}`)
+    }
+
+    const layers = buildFireSpotLayers('harmonized', true)
+    assert.equal(layers.length, FIRMS_SPOTS_PULSE_LAYER_IDS.length + 1)
+
+    for (const pulseId of FIRMS_SPOTS_PULSE_LAYER_IDS) {
+      const pulseLayer = layers.find((layer) => layer.id === pulseId)
+      assert.ok(pulseLayer, `missing pulse layer ${pulseId}`)
+      assert.equal(pulseLayer.paint?.['circle-color'], FIRE_SPOT_COLORS.pulse)
+    }
+
+    const coreLayer = layers.find((layer) => layer.id === FIRMS_SPOTS_CORE_LAYER_ID)
+    assert.ok(coreLayer, 'missing core layer')
+    assert.equal(coreLayer.paint?.['circle-color'], FIRE_SPOT_COLORS.fill)
   })
 })

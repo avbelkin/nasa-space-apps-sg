@@ -4,8 +4,8 @@ import {
   SINGAPORE_REGION_ID,
   type ProjectionMode,
   type SensorFilter,
-  type ViewMode,
 } from '../data/stubSeasonalData.ts'
+import { snapRainLookbackMinutes } from '../utils/rainCloudShader.ts'
 
 // Versioned: the first key was written on every load (with a hard-coded September) by earlier
 // builds, so its values say nothing about a visitor's choice and are ignored.
@@ -26,12 +26,15 @@ export interface MapViewportState {
 }
 
 export interface UrlHashState extends MapViewportState {
-  viewMode: ViewMode
   sensorFilter: SensorFilter
   projectionMode: ProjectionMode
   selectedMonth: number
   showOrbits: boolean
   showClouds: boolean
+  // NASA GIBS IMERG 30-min rain clouds (z6+); hash carries only the off state (rain=0)
+  showRain: boolean
+  // 30-min stepped lookback offset in minutes; hash carries rainBack=<minutes> when > 0
+  rainBackMinutes: number
   // Night-hemisphere VIIRS Black Marble blending; the hash carries only the off state (lights=0)
   showNightLights: boolean
   // Live NASA FIRMS fire spots; the hash carries only the off state (fires=0)
@@ -54,18 +57,18 @@ export function createDefaultUrlHashState(now: Date = new Date()): UrlHashState 
     zoom: DEFAULT_ZOOM,
     lat: DEFAULT_CENTER[1],
     lng: DEFAULT_CENTER[0],
-    viewMode: 'anomaly',
     sensorFilter: 'harmonized',
     projectionMode: 'globe',
     selectedMonth: now.getMonth(),
     showOrbits: true,
     showClouds: true,
+    showRain: true,
+    rainBackMinutes: 0,
     showNightLights: true,
     showFires: true,
   }
 }
 
-const VALID_VIEW_MODES: readonly ViewMode[] = ['anomaly', 'seasonal', 'sensors']
 const VALID_SENSOR_FILTERS: readonly SensorFilter[] = ['harmonized', 'modis', 'viirs']
 const VALID_PROJECTION_MODES: readonly ProjectionMode[] = ['globe', 'mercator']
 const VALID_REGION_IDS: readonly string[] = REGIONAL_FIRE_REGIMES.map((regime) => regime.id)
@@ -220,17 +223,6 @@ function parseMonthValue(raw: string): number | null {
  */
 const HASH_FEATURE_CODECS: readonly HashFeatureCodec[] = [
   {
-    key: 'mode',
-    serialize: (state) => state.viewMode,
-    parse: (raw, draft) => {
-      if (!isOneOf(raw, VALID_VIEW_MODES)) {
-        return false
-      }
-      draft.viewMode = raw
-      return true
-    },
-  },
-  {
     key: 'sensor',
     serialize: (state) => state.sensorFilter,
     parse: (raw, draft) => {
@@ -304,6 +296,33 @@ const HASH_FEATURE_CODECS: readonly HashFeatureCodec[] = [
     },
   },
   {
+    key: 'rain',
+    serialize: (state) => (state.showRain ? null : '0'),
+    parse: (raw, draft) => {
+      const parsed = parseBooleanHashFlag(raw)
+      if (parsed === null) {
+        return false
+      }
+      draft.showRain = parsed
+      return true
+    },
+  },
+  {
+    key: 'rainBack',
+    serialize: (state) => {
+      const snapped = snapRainLookbackMinutes(state.rainBackMinutes)
+      return snapped > 0 ? String(snapped) : null
+    },
+    parse: (raw, draft) => {
+      const parsed = parseFiniteNumber(raw)
+      if (parsed === null || parsed < 0) {
+        return false
+      }
+      draft.rainBackMinutes = snapRainLookbackMinutes(parsed)
+      return true
+    },
+  },
+  {
     key: 'fires',
     serialize: (state) => (state.showFires ? null : '0'),
     parse: (raw, draft) => {
@@ -334,6 +353,8 @@ const RESERVED_CORE_KEYS = new Set<string>([
   'lat',
   'lng',
   'lon',
+  // Ignore retired `mode` key from earlier builds so it is dropped instead of preserved in extraParams.
+  'mode',
   ...HASH_FEATURE_CODECS.map((codec) => codec.key),
 ])
 
@@ -380,12 +401,13 @@ function cloneFallbackState(fallback: UrlHashState): UrlHashState {
     zoom: clampZoom(fallback.zoom),
     lat: clampLat(fallback.lat),
     lng: normalizeLng(fallback.lng),
-    viewMode: fallback.viewMode,
     sensorFilter: fallback.sensorFilter,
     projectionMode: fallback.projectionMode,
     selectedMonth: fallback.selectedMonth,
     showOrbits: fallback.showOrbits,
     showClouds: fallback.showClouds,
+    showRain: fallback.showRain,
+    rainBackMinutes: snapRainLookbackMinutes(fallback.rainBackMinutes),
     showNightLights: fallback.showNightLights,
     showFires: fallback.showFires,
     ...(fallback.selectedRegionId ? { selectedRegionId: fallback.selectedRegionId } : {}),

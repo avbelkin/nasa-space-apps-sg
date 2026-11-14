@@ -78,6 +78,7 @@
 }
 
 .hud-btn:focus-visible,
+.hud-rain-select:focus-visible,
 .segmented-option:focus-visible,
 .month-btn:focus-visible,
 .region-row:focus-visible,
@@ -327,8 +328,13 @@
   block-size: 1.125rem;
 }
 
-.hud-btn[aria-disabled='true'] {
+.map-controls-locate .hud-btn[aria-disabled='true'] {
   cursor: progress;
+}
+
+.hud-rain-step-btn[aria-disabled='true'] {
+  opacity: 0.42;
+  cursor: not-allowed;
 }
 
 /* Neutral light fill instead of blue: on the map, blue means "below typical" only */
@@ -532,8 +538,8 @@
 }
 
 /* A narrow or short map folds the control column into two, so it stays clear of the attribution
-   line (with the night-lights, fire and pulse toggles the single column is about 25rem tall) */
-@container mapstage (inline-size < 36rem) or (block-size < 32rem) {
+   line (with the rain, night-lights, fire and pulse toggles the single column is ~27.25rem tall) */
+@container mapstage (inline-size < 36rem) or (block-size < 34rem) {
   .map-controls {
     grid-template-columns: repeat(2, var(--hud-btn-size));
     gap: 0.25rem;
@@ -1010,12 +1016,6 @@
   white-space: nowrap;
 }
 
-.legend-ramp {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
 .legend-fire-dot {
   display: block;
   inline-size: 0.625rem;
@@ -1046,6 +1046,89 @@
   border-style: dashed;
   border-color: color-mix(in srgb, var(--data-swath-wide) 55%, var(--text-primary));
   background-color: color-mix(in srgb, var(--data-swath-wide) 22%, transparent);
+}
+
+.legend-glyph-rain {
+  inline-size: 0.95rem;
+  block-size: 0.65rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--data-rain-low, #38a8f5),
+    var(--data-rain-mid, #3b6df6) 55%,
+    var(--data-rain-high, #a855f7)
+  );
+  border: 1px solid rgb(148 163 184 / 0.45);
+  forced-color-adjust: none;
+}
+
+.legend-list li.legend-rain-item {
+  flex-wrap: wrap;
+  white-space: normal;
+}
+
+.legend-rain-ramp {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.legend-rain-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.legend-rain-dot {
+  display: inline-block;
+  inline-size: 0.5625rem;
+  block-size: 0.5625rem;
+  border-radius: 50%;
+  border: 1px solid rgb(15 23 42 / 0.7);
+  box-shadow: 0 0 0 1px rgb(248 250 252 / 0.32);
+  forced-color-adjust: none;
+}
+
+/* Top-end rain cloud lookback bar beside MapControls; wraps cleanly down to 320px viewports */
+.map-hud-rain-time {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  justify-self: end;
+  margin-inline-end: 0.375rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  max-inline-size: 100%;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.35);
+}
+
+.hud-rain-select {
+  appearance: none;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  block-size: var(--hud-btn-size);
+  padding-inline: 0.55rem;
+  border: 1px solid var(--hud-border);
+  border-radius: 0.45rem;
+  background-color: var(--hud-surface);
+  color: #f8fafc;
+  font: inherit;
+  font-size: var(--fs-12, 0.75rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.hud-rain-select option {
+  background-color: #0f172a;
+  color: #f8fafc;
 }
 
 /* Bottom timeline: worldwide index by month, "typical" band vs "this year" bar on one 0-100 scale */
@@ -1898,7 +1981,7 @@
     padding-inline: 0;
   }
 
-  @container mapstage (26rem <= block-size < 36rem) {
+  @container mapstage (26rem <= block-size < 39rem) {
     .map-controls {
       grid-template-columns: repeat(2, var(--hud-btn-size));
       gap: 0.25rem;
@@ -1922,7 +2005,8 @@
     border-color: Highlight;
   }
 
-  .segmented {
+  .segmented,
+  .hud-rain-select {
     border-color: ButtonBorder;
   }
 

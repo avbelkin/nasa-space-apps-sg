@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { FeatureCollection, MultiLineString, Point, Polygon } from 'geojson'
 import { LngLat, LngLatBounds, Map as MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl'
 import type {
@@ -35,7 +35,6 @@ import {
   type ProjectionMode,
   type SensorFilter,
   type StatusCategory,
-  type ViewMode,
 } from '../data/stubSeasonalData'
 import {
   clampGeolocationTargetZoom,
@@ -58,6 +57,20 @@ import {
   SATELLITE_CLOUDS_LAYER_ID,
   type SatelliteCloudLayerController,
 } from '../utils/satelliteCloudLayer'
+import {
+  createRainCloudLayer,
+  RAIN_CLOUDS_LAYER_ID,
+  type RainCloudLayerController,
+} from '../utils/rainCloudLayer'
+import {
+  formatRainLookbackLabel,
+  MAX_RAIN_LOOKBACK_MINUTES,
+  RAIN_FADE_IN_START_ZOOM,
+  RAIN_LOOKBACK_PRESETS,
+  RAIN_TIME_STEP_MINUTES,
+  snapRainLookbackMinutes,
+  type RainLayerMetadata,
+} from '../utils/rainCloudShader'
 import {
   createGlobeHaloLayer,
   GLOBE_HALO_LAYER_ID,
@@ -101,11 +114,10 @@ import {
   FIRMS_SPOTS_CORE_LAYER_ID,
   FIRMS_SPOTS_PULSE_LAYER_IDS,
   FIRMS_SPOTS_SOURCE_ID,
-  getFireSpotColorExpression,
   type FireSpotsAnimationController,
 } from '../utils/fireSpotsAnimation'
 import { FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
-import { CloseIcon } from './icons'
+import { ChevronLeftIcon, ChevronRightIcon, CloseIcon } from './icons'
 import { MapControls } from './MapControls'
 import { SatelliteHud } from './SatelliteHud'
 
@@ -127,7 +139,6 @@ export interface GeolocationLegendState {
 
 interface EarthMapStageProps {
   selectedMonth: number
-  viewMode: ViewMode
   sensorFilter: SensorFilter
   projectionMode: ProjectionMode
   onProjectionModeChange: (next: ProjectionMode) => void
@@ -140,6 +151,12 @@ interface EarthMapStageProps {
   cloudsDisabled?: boolean
   showClouds: boolean
   onShowCloudsChange: (next: boolean) => void
+  showRain: boolean
+  onShowRainChange: (next: boolean) => void
+  rainBackMinutes: number
+  onRainBackMinutesChange: (next: number) => void
+  rainMetadata: RainLayerMetadata | null
+  onRainMetadataChange?: (metadata: RainLayerMetadata) => void
   cloudRefreshNonce?: number
   showNightLights: boolean
   onShowNightLightsChange: (next: boolean) => void
@@ -537,7 +554,6 @@ function createBaseStyle(
   initialSelectedRegionId: string | null,
   initialLiveFiresData: FeatureCollection<Point, FireSpotFeatureProperties>,
   initialFocusData: FeatureCollection<Point>,
-  initialViewMode: ViewMode,
   initialSensorFilter: SensorFilter,
   initialShowLiveFires: boolean,
   initialShowStubAnomalies: boolean,
@@ -666,7 +682,7 @@ function createBaseStyle(
           'line-dasharray': [2, 2],
         },
       },
-      ...buildFireSpotLayers(initialViewMode, initialSensorFilter, initialShowLiveFires),
+      ...buildFireSpotLayers(initialSensorFilter, initialShowLiveFires),
       {
         id: 'fire-spot-focus-ring',
         type: 'circle',
@@ -799,7 +815,6 @@ function isMapStyleReady(map: MapLibreMap | null, styleReady = true): map is Map
 
 export function EarthMapStage({
   selectedMonth,
-  viewMode,
   sensorFilter,
   projectionMode,
   onProjectionModeChange,
@@ -812,6 +827,12 @@ export function EarthMapStage({
   cloudsDisabled = false,
   showClouds,
   onShowCloudsChange,
+  showRain,
+  onShowRainChange,
+  rainBackMinutes,
+  onRainBackMinutesChange,
+  rainMetadata,
+  onRainMetadataChange,
   cloudRefreshNonce = 0,
   showNightLights,
   onShowNightLightsChange,
@@ -840,7 +861,9 @@ export function EarthMapStage({
   const mapInstanceRef = useRef<MapLibreMap | null>(null)
   const nightLightsLayerRef = useRef<NightLightsLayerController | null>(null)
   const cloudLayerRef = useRef<SatelliteCloudLayerController | null>(null)
+  const rainLayerRef = useRef<RainCloudLayerController | null>(null)
   const globeHaloLayerRef = useRef<GlobeHaloLayerController | null>(null)
+  const rainSelectId = useId()
   const satMarkersRef = useRef<Map<string, SatelliteMarkerEntry>>(new Map())
   const initialViewportRef = useRef<MapViewportState>(initialViewport)
   const userInteractedRef = useRef(false)
@@ -876,6 +899,9 @@ export function EarthMapStage({
   const liveFiresConfiguredRef = useRef(liveFiresConfigured)
   const latestCloudsDisabledRef = useRef(cloudsDisabled)
   const latestShowCloudsRef = useRef(showClouds)
+  const latestShowRainRef = useRef(showRain)
+  const latestRainBackMinutesRef = useRef(rainBackMinutes)
+  const latestOnRainMetadataChangeRef = useRef(onRainMetadataChange)
   const lastCloudRefreshNonceRef = useRef(cloudRefreshNonce)
   const latestShowNightLightsRef = useRef(showNightLights)
   const latestOrbitalStateRef = useRef(orbitalState)
@@ -911,11 +937,10 @@ export function EarthMapStage({
       return null
     }
     return formatFireSpotsTooltip(activeSpotCard.inputs, activeSpotCard.nowMs, {
-      viewMode,
       sensorFilter,
       overpassIndex,
     })
-  }, [activeSpotCard, viewMode, sensorFilter, overpassIndex])
+  }, [activeSpotCard, sensorFilter, overpassIndex])
   const focusSpotGeoJson = useMemo(
     () =>
       buildFireSpotFocusGeoJson(visiblePinnedSpotCard ? visiblePinnedSpotCard.anchorLngLat : null),
@@ -926,7 +951,6 @@ export function EarthMapStage({
   const latestShowFiresRef = useRef(showFires)
   const latestPulsePausedRef = useRef(pulsePaused)
   const latestFocusSpotGeoJsonRef = useRef(focusSpotGeoJson)
-  const latestViewModeRef = useRef(viewMode)
   const latestSensorFilterRef = useRef(sensorFilter)
   const latestShowStubAnomaliesRef = useRef(showStubAnomalies)
   const latestOnReducedMotionChangeRef = useRef(onReducedMotionChange)
@@ -938,7 +962,6 @@ export function EarthMapStage({
     latestShowFiresRef.current = showFires
     latestPulsePausedRef.current = pulsePaused
     latestFocusSpotGeoJsonRef.current = focusSpotGeoJson
-    latestViewModeRef.current = viewMode
     latestSensorFilterRef.current = sensorFilter
     latestShowStubAnomaliesRef.current = showStubAnomalies
   }, [
@@ -946,7 +969,6 @@ export function EarthMapStage({
     showFires,
     pulsePaused,
     focusSpotGeoJson,
-    viewMode,
     sensorFilter,
     showStubAnomalies,
   ])
@@ -1030,19 +1052,6 @@ export function EarthMapStage({
     }
     fireAnimControllerRef.current?.sync()
   }, [sensorFilter])
-
-  useEffect(() => {
-    const map = mapInstanceRef.current
-    if (!isMapStyleReady(map)) {
-      return
-    }
-    const colorExpr = getFireSpotColorExpression(viewMode)
-    for (const layerId of [FIRMS_SPOTS_CORE_LAYER_ID, ...FIRMS_SPOTS_PULSE_LAYER_IDS]) {
-      if (map.getLayer(layerId)) {
-        map.setPaintProperty(layerId, 'circle-color', colorExpr)
-      }
-    }
-  }, [viewMode])
 
   useEffect(() => {
     latestOnReducedMotionChangeRef.current = onReducedMotionChange
@@ -1223,7 +1232,6 @@ export function EarthMapStage({
           latestSelectedRegionIdRef.current,
           latestBuiltFireSpotsRef.current.featureCollection,
           latestFocusSpotGeoJsonRef.current,
-          latestViewModeRef.current,
           latestSensorFilterRef.current,
           latestShowFiresRef.current,
           latestShowStubAnomaliesRef.current,
@@ -1243,6 +1251,7 @@ export function EarthMapStage({
               : '<a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener noreferrer">NASA FIRMS</a> (sample data)',
             '<a href="https://celestrak.org/" target="_blank" rel="noopener noreferrer">CelesTrak</a>',
             'Clouds: <a href="https://layers.extremum.org" target="_blank" rel="noopener noreferrer">Extremum</a> (EUMETSAT, NOAA, JMA)',
+            'Precipitation (30m): <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener noreferrer">NASA GIBS</a> (GPM IMERG)',
             'Night lights: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener noreferrer">NASA GIBS</a>',
           ].join(' &middot; '),
         },
@@ -1358,14 +1367,12 @@ export function EarthMapStage({
           setFireLayerVisibility(map, layerId, latestShowStubAnomaliesRef.current)
         }
 
-        const colorExpr = getFireSpotColorExpression(latestViewModeRef.current)
         if (map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
           setFireLayerVisibility(map, FIRMS_SPOTS_CORE_LAYER_ID, latestShowFiresRef.current)
           map.setFilter(
             FIRMS_SPOTS_CORE_LAYER_ID,
             buildFireSpotsCoreFilter(latestSensorFilterRef.current),
           )
-          map.setPaintProperty(FIRMS_SPOTS_CORE_LAYER_ID, 'circle-color', colorExpr)
         }
         for (let idx = 0; idx < FIRMS_SPOTS_PULSE_LAYER_IDS.length; idx++) {
           const layerId = FIRMS_SPOTS_PULSE_LAYER_IDS[idx]
@@ -1375,7 +1382,6 @@ export function EarthMapStage({
               layerId,
               buildFireSpotsPulseFilter(latestSensorFilterRef.current, idx as PhaseCohort),
             )
-            map.setPaintProperty(layerId, 'circle-color', colorExpr)
           }
         }
         setFireLayerVisibility(map, 'fire-spot-focus-ring', latestShowFiresRef.current)
@@ -1417,6 +1423,20 @@ export function EarthMapStage({
             cloudLayerRef.current = cloudLayer
           } catch {
             cloudLayerRef.current = null
+          }
+        }
+
+        if (!map.getLayer(RAIN_CLOUDS_LAYER_ID)) {
+          try {
+            const rainLayer = createRainCloudLayer({
+              initialVisible: latestShowRainRef.current,
+              initialLookbackMinutes: latestRainBackMinutesRef.current,
+              onMetadataChange: (metadata) => latestOnRainMetadataChangeRef.current?.(metadata),
+            })
+            map.addLayer(rainLayer, 'satellite-swaths-wide-fill')
+            rainLayerRef.current = rainLayer
+          } catch {
+            rainLayerRef.current = null
           }
         }
 
@@ -1514,6 +1534,7 @@ export function EarthMapStage({
       map?.remove()
       nightLightsLayerRef.current = null
       cloudLayerRef.current = null
+      rainLayerRef.current = null
       globeHaloLayerRef.current = null
       mapInstanceRef.current = null
     }
@@ -1578,6 +1599,20 @@ export function EarthMapStage({
   }, [showClouds, cloudsDisabled])
 
   useEffect(() => {
+    latestOnRainMetadataChangeRef.current = onRainMetadataChange
+  }, [onRainMetadataChange])
+
+  useEffect(() => {
+    latestShowRainRef.current = showRain
+    rainLayerRef.current?.setVisible(showRain)
+  }, [showRain])
+
+  useEffect(() => {
+    latestRainBackMinutesRef.current = rainBackMinutes
+    rainLayerRef.current?.setLookbackMinutes(rainBackMinutes)
+  }, [rainBackMinutes])
+
+  useEffect(() => {
     latestShowNightLightsRef.current = showNightLights
     nightLightsLayerRef.current?.setVisible(showNightLights)
   }, [showNightLights])
@@ -1588,6 +1623,7 @@ export function EarthMapStage({
     }
     lastCloudRefreshNonceRef.current = cloudRefreshNonce
     cloudLayerRef.current?.refreshNow()
+    rainLayerRef.current?.refreshNow()
   }, [cloudRefreshNonce])
 
   useEffect(() => {
@@ -1785,6 +1821,30 @@ export function EarthMapStage({
     moveCamera(map, { center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM }, 600)
   }
 
+  const snappedRainBack = snapRainLookbackMinutes(rainBackMinutes)
+  const canStepRainOlder = snappedRainBack < MAX_RAIN_LOOKBACK_MINUTES
+  const canStepRainNewer = snappedRainBack > 0
+  const effectiveUtcHhMm = rainMetadata?.effectiveTimeIso
+    ? `${rainMetadata.effectiveTimeIso.slice(11, 16)}Z`
+    : null
+  const showRainTimeBar =
+    showRain && (viewport.zoom > RAIN_FADE_IN_START_ZOOM || snappedRainBack > 0)
+  const rainOffsetOptions = useMemo(() => {
+    const hasExactPreset = RAIN_LOOKBACK_PRESETS.some(
+      (preset) => preset.minutes === snappedRainBack,
+    )
+    if (hasExactPreset) {
+      return RAIN_LOOKBACK_PRESETS
+    }
+    return [
+      ...RAIN_LOOKBACK_PRESETS,
+      {
+        minutes: snappedRainBack,
+        label: formatRainLookbackLabel(snappedRainBack),
+      },
+    ].sort((a, b) => a.minutes - b.minutes)
+  }, [snappedRainBack])
+
   // HUD before the canvas in DOM order, so Tab reaches the map controls before MapLibre's own.
   return (
     <main ref={stageRef} className="map-stage" aria-label="Fire activity map">
@@ -1801,6 +1861,8 @@ export function EarthMapStage({
         onShowOrbitsChange={onShowOrbitsChange}
         showClouds={showClouds}
         onShowCloudsChange={onShowCloudsChange}
+        showRain={showRain}
+        onShowRainChange={onShowRainChange}
         showNightLights={showNightLights}
         onShowNightLightsChange={onShowNightLightsChange}
         showFires={showFires}
@@ -1815,6 +1877,58 @@ export function EarthMapStage({
         pulsePaused={pulsePaused}
         onPulsePausedChange={onPulsePausedChange}
       />
+
+      {showRainTimeBar && (
+        <div className="map-hud map-hud-rain-time" role="group" aria-label="Rain cloud time">
+          <button
+            type="button"
+            className="hud-btn hud-icon-btn hud-rain-step-btn"
+            aria-label="Step rain back 30 minutes"
+            title="Older (-30m)"
+            aria-disabled={!canStepRainOlder}
+            onClick={() => {
+              if (canStepRainOlder) {
+                onRainBackMinutesChange(snappedRainBack + RAIN_TIME_STEP_MINUTES)
+              }
+            }}
+          >
+            <ChevronLeftIcon />
+          </button>
+          <label htmlFor={rainSelectId} className="visually-hidden">
+            Rain observation time
+          </label>
+          <select
+            id={rainSelectId}
+            className="hud-rain-select"
+            value={snappedRainBack}
+            onChange={(event) => {
+              onRainBackMinutesChange(snapRainLookbackMinutes(Number(event.target.value)))
+            }}
+          >
+            {rainOffsetOptions.map((option) => (
+              <option key={option.minutes} value={option.minutes}>
+                {option.minutes === snappedRainBack && effectiveUtcHhMm
+                  ? `${option.label} · ${effectiveUtcHhMm}`
+                  : option.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="hud-btn hud-icon-btn hud-rain-step-btn"
+            aria-label="Step rain forward 30 minutes"
+            title="Newer (+30m)"
+            aria-disabled={!canStepRainNewer}
+            onClick={() => {
+              if (canStepRainNewer) {
+                onRainBackMinutesChange(Math.max(0, snappedRainBack - RAIN_TIME_STEP_MINUTES))
+              }
+            }}
+          >
+            <ChevronRightIcon />
+          </button>
+        </div>
+      )}
 
       {/* Bottom of the map: fire spot card (start) and satellite pass card (end), one row that
           wraps when both do not fit, kept above MapLibre's attribution */}

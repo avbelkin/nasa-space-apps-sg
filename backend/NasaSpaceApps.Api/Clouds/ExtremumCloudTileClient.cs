@@ -38,6 +38,22 @@ public sealed class ExtremumCloudTileClient(
     public static bool IsValidCoords(int z, int x, int y) =>
         IsValidZoom(z) && x >= 0 && y >= 0 && x < (1 << z) && y < (1 << z);
 
+    public static bool TryNormalizePole(string? pole, out string normalizedPole)
+    {
+        if (string.Equals(pole, "north", StringComparison.OrdinalIgnoreCase))
+        {
+            normalizedPole = "north";
+            return true;
+        }
+        if (string.Equals(pole, "south", StringComparison.OrdinalIgnoreCase))
+        {
+            normalizedPole = "south";
+            return true;
+        }
+        normalizedPole = string.Empty;
+        return false;
+    }
+
     public async Task<CloudTileResult> GetTileAsync(
         int z,
         int x,
@@ -51,26 +67,59 @@ public sealed class ExtremumCloudTileClient(
                 $"Satellite cloud tile coordinates z={z}, x={x}, y={y} are outside valid bounds.");
         }
 
-        var cacheKey = BuildCacheKey(z, x, y);
+        return await GetOrFetchAsync(
+            BuildCacheKey(z, x, y),
+            $"v3/weather/satellite/{z}/{x}/{y}.png",
+            treatNotFoundAsEmpty: false,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<CloudTileResult> GetPolarCapAsync(
+        string pole,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryNormalizePole(pole, out var normalizedPole))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(pole),
+                $"Polar cap hemisphere '{pole}' must be 'north' or 'south'.");
+        }
+
+        return await GetOrFetchAsync(
+            BuildPolarCacheKey(normalizedPole),
+            $"v3/weather/satellite/polar/{normalizedPole}.png",
+            treatNotFoundAsEmpty: true,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private Task<CloudTileResult> GetOrFetchAsync(
+        string cacheKey,
+        string relativePath,
+        bool treatNotFoundAsEmpty,
+        CancellationToken cancellationToken)
+    {
         if (cache.TryGetValue(cacheKey, out CloudTileResult? cached) && cached is not null)
         {
-            return cached;
+            return Task.FromResult(cached);
         }
 
         var sharedFetch = _inFlightFetches.GetOrAdd(
             cacheKey,
             key => new Lazy<Task<CloudTileResult>>(
-                () => FetchAndCleanupAsync(key, z, x, y),
+                () => FetchAndCleanupAsync(key, relativePath, treatNotFoundAsEmpty),
                 LazyThreadSafetyMode.ExecutionAndPublication));
 
-        return await sharedFetch.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
+        return sharedFetch.Value.WaitAsync(cancellationToken);
     }
 
-    private async Task<CloudTileResult> FetchAndCleanupAsync(string cacheKey, int z, int x, int y)
+    private async Task<CloudTileResult> FetchAndCleanupAsync(
+        string cacheKey,
+        string relativePath,
+        bool treatNotFoundAsEmpty)
     {
         try
         {
-            return await FetchFromUpstreamAsync(cacheKey, z, x, y).ConfigureAwait(false);
+            return await FetchFromUpstreamAsync(cacheKey, relativePath, treatNotFoundAsEmpty).ConfigureAwait(false);
         }
         finally
         {
@@ -78,7 +127,10 @@ public sealed class ExtremumCloudTileClient(
         }
     }
 
-    private async Task<CloudTileResult> FetchFromUpstreamAsync(string cacheKey, int z, int x, int y)
+    private async Task<CloudTileResult> FetchFromUpstreamAsync(
+        string cacheKey,
+        string relativePath,
+        bool treatNotFoundAsEmpty)
     {
         if (cache.TryGetValue(cacheKey, out CloudTileResult? cached) && cached is not null)
         {
@@ -87,7 +139,7 @@ public sealed class ExtremumCloudTileClient(
 
         using var timeoutCts = new CancellationTokenSource(options.UpstreamTimeout);
         using var client = httpClientFactory.CreateClient(ExtremumCloudOptions.HttpClientName);
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"v3/weather/satellite/{z}/{x}/{y}.png");
+        using var request = new HttpRequestMessage(HttpMethod.Get, relativePath);
 
         // Use TryAddWithoutValidation so exact header values (no trailing slash rewrite or extra UA comments) are preserved.
         request.Headers.TryAddWithoutValidation("Referer", options.Referer);
@@ -98,7 +150,8 @@ public sealed class ExtremumCloudTileClient(
             .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token)
             .ConfigureAwait(false);
 
-        if (response.StatusCode == HttpStatusCode.NoContent)
+        if (response.StatusCode == HttpStatusCode.NoContent ||
+            (treatNotFoundAsEmpty && response.StatusCode == HttpStatusCode.NotFound))
         {
             cache.Set(cacheKey, CloudTileResult.Empty, options.EmptyTileCacheDuration);
             return CloudTileResult.Empty;
@@ -119,10 +172,8 @@ public sealed class ExtremumCloudTileClient(
         }
 
         logger.LogWarning(
-            "Upstream satellite cloud request v3/weather/satellite/{Z}/{X}/{Y}.png returned HTTP {StatusCode}.",
-            z,
-            x,
-            y,
+            "Upstream satellite cloud request {RelativePath} returned HTTP {StatusCode}.",
+            relativePath,
             (int)response.StatusCode);
 
         throw new HttpRequestException(
@@ -132,4 +183,6 @@ public sealed class ExtremumCloudTileClient(
     }
 
     private static string BuildCacheKey(int z, int x, int y) => $"extremum-cloud:{z}:{x}:{y}";
+
+    private static string BuildPolarCacheKey(string normalizedPole) => $"extremum-cloud:polar:{normalizedPole}";
 }

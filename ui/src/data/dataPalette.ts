@@ -42,16 +42,12 @@ export const SWATH_COLORS = {
   wide: '#f49a74',
 } as const
 
-// Live NASA FIRMS fire spots (the team's colors): a warm ramp by Fire Radiative Power, or one hue
-// per instrument in the 'sensors' view mode. While live spots are shown, the sample status marks
-// are hidden, so the warm ramp never sits next to the 'above typical' orange on the map.
+// Live NASA FIRMS fire spots: one high-saturation true red (zero blue channel so blurred pulses
+// never drift into pink/magenta, and low green so spots stand apart from amber/gold VIIRS
+// night-time lights on dark backgrounds). FRP is encoded by spot radius rather than hue.
 export const FIRE_SPOT_COLORS = {
-  frpLow: '#fbbf24',
-  frpMid: '#ff9100',
-  frpHigh: '#ff1744',
-  modis: '#22d3ee',
-  viirs: '#fb923c',
-  otherInstrument: '#f59e0b',
+  fill: '#ff1a00',
+  pulse: '#ff1a00',
   stroke: 'rgba(15, 23, 42, 0.65)',
   focusRing: '#ffffff',
 } as const
@@ -61,6 +57,25 @@ export const USER_LOCATION_COLORS = {
   ring: '#0f172a',
   halo: '#ffffff',
 } as const
+
+export const RAIN_CLOUD_COLORS = {
+  low: '#38a8f5',
+  mid: '#3b6df6',
+  high: '#a855f7',
+} as const
+
+export const RAIN_DOT_RAINBOW_STOPS = [
+  { threshold: 0.15, label: '0.15', color: '#3b82f6' },
+  { threshold: 0.35, label: '0.35', color: '#06b6d4' },
+  { threshold: 0.5, label: '0.50', color: '#22c55e' },
+  { threshold: 0.62, label: '0.62', color: '#eab308' },
+  { threshold: 0.75, label: '0.75', color: '#ef4444' },
+  { threshold: 0.88, label: '0.88+', color: '#e879f9' },
+] as const
+
+export const RAIN_DOT_WHITE_COLOR = '#f8fafc'
+// Experimental pure-azure dot fill (#4d96ff) for high contrast over dark basemaps and clean blue separation over green terrain, distinct from #1e40af below-typical.
+export const RAIN_DOT_SOLID_COLOR = '#4d96ff'
 
 // Exposes the palette to CSS consumers (legend glyphs, satellite badges) as custom properties,
 // so stylesheets never repeat a hex value. Applied once on the app root.
@@ -78,4 +93,9 @@ export const DATA_PALETTE_CSS_VARIABLES: CSSProperties & Record<`--${string}`, s
   '--data-swath-wide': SWATH_COLORS.wide,
   '--data-user-fill': USER_LOCATION_COLORS.fill,
   '--data-user-ring': USER_LOCATION_COLORS.ring,
+  '--data-rain-low': RAIN_CLOUD_COLORS.low,
+  '--data-rain-mid': RAIN_CLOUD_COLORS.mid,
+  '--data-rain-high': RAIN_CLOUD_COLORS.high,
+  '--data-rain-dot-solid': RAIN_DOT_SOLID_COLOR,
+  '--data-rain-dot-white': RAIN_DOT_WHITE_COLOR,
 }

@@ -19,9 +19,10 @@ export function AttributionFooter({ connectionState, liveFiresConfigured }: Attr
           ? '(live fire spots; the regional index is sample values)'
           : '(sample values)'}{' '}
         &middot; <a href="https://celestrak.org/" {...EXTERNAL}>CelesTrak</a> &middot;
-        clouds <a href="https://layers.extremum.org" {...EXTERNAL}>Extremum</a> &middot; night lights{' '}
-        <a href="https://earthdata.nasa.gov/gibs" {...EXTERNAL}>NASA GIBS</a> &middot; basemap <a href="https://s2maps.eu" {...EXTERNAL}>EOX</a> / Copernicus Sentinel-2. Not
-        affiliated with NASA.
+        clouds <a href="https://layers.extremum.org" {...EXTERNAL}>Extremum</a> &middot; rain
+        &amp; night lights <a href="https://earthdata.nasa.gov/gibs" {...EXTERNAL}>NASA GIBS</a>{' '}
+        &middot; basemap <a href="https://s2maps.eu" {...EXTERNAL}>EOX</a> / Copernicus Sentinel-2.
+        Not affiliated with NASA.
       </p>
 
       <div className="footer-meta">
@@ -59,11 +60,26 @@ export function AttributionFooter({ connectionState, liveFiresConfigured }: Attr
               <div className="meta-row">
                 <dt>Satellite clouds</dt>
                 <dd>
-                  Live geostationary visible and infrared cloud images (EUMETSAT, NOAA, JMA) via{' '}
+                  Live geostationary visible and infrared cloud images (EUMETSAT, NOAA, JMA) blended at high latitudes
+                  with NOAA/NASA Suomi NPP &amp; JPSS VIIRS imagery from{' '}
+                  <a href="https://earthdata.nasa.gov/eosdis/science-system-description/eosdis-components/gibs" {...EXTERNAL}>
+                    NASA GIBS / EOSDIS Earthdata
+                  </a>{' '}
+                  via{' '}
                   <a href="https://layers.extremum.org" {...EXTERNAL}>
                     layers.extremum.org
                   </a>
                   .
+                </dd>
+              </div>
+              <div className="meta-row">
+                <dt>Precipitation</dt>
+                <dd>
+                  30-minute global rain and snow rates (GPM IMERG) from{' '}
+                  <a href="https://earthdata.nasa.gov/gibs" {...EXTERNAL}>
+                    NASA GIBS / Earthdata
+                  </a>
+                  , smoothly interpolated from z6 upward.
                 </dd>
               </div>
               <div className="meta-row">

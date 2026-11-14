@@ -1,5 +1,5 @@
 import { DEFAULT_SATELLITE_COLOR, SATELLITE_COLORS } from '../data/dataPalette.ts'
-import type { SensorFilter, ViewMode } from '../data/stubSeasonalData.ts'
+import type { SensorFilter } from '../data/stubSeasonalData.ts'
 import type { FireInstrument, FireSpotTooltipInput } from './fireSpots.ts'
 import { computeSubsolarPoint } from './nightLightsShader.ts'
 
@@ -353,16 +353,6 @@ export function resolveSatellitePaletteColor(
   }
 }
 
-export function computeTimelineBarColor(
-  _frpMw: number,
-  _viewMode: ViewMode,
-  instrument: FireInstrument,
-  satellite?: string,
-  source?: string,
-): string {
-  return resolveSatellitePaletteColor(satellite, source, instrument)
-}
-
 export function computeTimelineConfidenceOpacity(confidence?: number): number {
   const safeConfidence =
     typeof confidence === 'number' && Number.isFinite(confidence) ? clamp(confidence, 0, 100) : 50
@@ -519,7 +509,6 @@ export interface FireDetectionsTimeline {
 
 export interface BuildFireTimelineOptions {
   nowMs?: number
-  viewMode?: ViewMode
   sensorFilter?: SensorFilter
   timeZone?: string
   negativePasses?: readonly NegativePassInput[]

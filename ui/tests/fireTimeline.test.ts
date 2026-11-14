@@ -145,7 +145,6 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
 
     const timeline = buildFireDetectionsTimeline(spots, {
       nowMs,
-      viewMode: 'anomaly',
       timeZone: 'Asia/Singapore',
     })
 
@@ -183,7 +182,7 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
     assert.ok(slot22.opacity < slot20.opacity)
     assert.ok(slot22.opacity >= MIN_TIMELINE_CONFIDENCE_OPACITY)
 
-    // Satellite colors match SATELLITE_COLORS / DEFAULT_SATELLITE_COLOR across all view modes
+    // Satellite colors match SATELLITE_COLORS / DEFAULT_SATELLITE_COLOR across all satellites
     assert.equal(resolveSatellitePaletteColor('T', undefined, 'modis'), SATELLITE_COLORS.terra)
     assert.equal(resolveSatellitePaletteColor('A', undefined, 'modis'), SATELLITE_COLORS.aqua)
     assert.equal(resolveSatellitePaletteColor('1', undefined, 'viirs'), SATELLITE_COLORS['noaa-20'])
@@ -192,18 +191,6 @@ describe('24h fire detections timeline bucketing and Stage-2 readiness', () => {
 
     assert.equal(slot20.color, SATELLITE_COLORS.terra)
     assert.equal(slot22.color, DEFAULT_SATELLITE_COLOR)
-
-    const sensorTimeline = buildFireDetectionsTimeline(spots, {
-      nowMs,
-      viewMode: 'sensors',
-      timeZone: 'Asia/Singapore',
-    })
-    const sensorSlot20 = sensorTimeline.slots[20]
-    const sensorSlot22 = sensorTimeline.slots[22]
-    assert.ok(sensorSlot20 && sensorSlot20.kind === 'detection')
-    assert.ok(sensorSlot22 && sensorSlot22.kind === 'detection')
-    assert.equal(sensorSlot20.color, SATELLITE_COLORS.terra)
-    assert.equal(sensorSlot22.color, DEFAULT_SATELLITE_COLOR)
   })
 
   it('places negative/pending passes side-by-side in 1h slots, configures processing cutoff, and builds accessible rows', () => {
