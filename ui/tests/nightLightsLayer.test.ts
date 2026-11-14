@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { createNightLightsLayer } from '../src/utils/nightLightsLayer.ts'
 import {
   buildNightLightsFragmentShaderSource,
   buildNightLightsTileUrl,
@@ -160,4 +161,63 @@ test('generated GLSL shaders enforce solar terminator masking, pole mapping, oce
   assert.match(fragmentSource, /smoothstep\(0\.125, 0\.94, raw\.r\) \* raw\.a/)
   assert.match(fragmentSource, /if \(v_depth > 1\.0\) discard;/)
   assert.match(fragmentSource, /fragColor = vec4\(premulRgb, finalAlpha\);/)
+})
+
+test('createNightLightsLayer toggles visibility and requests repaint only on visibility changes', () => {
+  let coveringTilesCalls = 0
+  let repaintCalls = 0
+  const mockCanvas = {
+    addEventListener() {},
+    removeEventListener() {},
+  }
+  const mockMap = {
+    getCanvas: () => mockCanvas,
+    getZoom: () => 1.75,
+    coveringTiles: () => {
+      coveringTilesCalls += 1
+      return []
+    },
+    triggerRepaint: () => {
+      repaintCalls += 1
+    },
+  } as unknown as Parameters<NonNullable<ReturnType<typeof createNightLightsLayer>['onAdd']>>[0]
+  const mockGl = {} as WebGL2RenderingContext
+  const mockRenderOptions = {
+    shaderData: { variantName: 'globe', vertexShaderPrelude: '', define: '' },
+  } as unknown as Parameters<ReturnType<typeof createNightLightsLayer>['render']>[1]
+
+  // Default: visible on load
+  const defaultLayer = createNightLightsLayer()
+  defaultLayer.onAdd?.(mockMap, mockGl)
+  defaultLayer.render(mockGl, mockRenderOptions)
+  assert.equal(coveringTilesCalls, 1)
+  assert.equal(repaintCalls, 0)
+
+  defaultLayer.setVisible(false)
+  assert.equal(repaintCalls, 1)
+  defaultLayer.render(mockGl, mockRenderOptions)
+  assert.equal(coveringTilesCalls, 1)
+
+  // Setting the same visibility again is a no-op
+  defaultLayer.setVisible(false)
+  assert.equal(repaintCalls, 1)
+
+  defaultLayer.setVisible(true)
+  assert.equal(repaintCalls, 2)
+  defaultLayer.render(mockGl, mockRenderOptions)
+  assert.equal(coveringTilesCalls, 2)
+  defaultLayer.onRemove?.(mockMap, mockGl)
+
+  // Explicit initialVisible: false skips rendering until enabled
+  coveringTilesCalls = 0
+  repaintCalls = 0
+  const hiddenLayer = createNightLightsLayer({ initialVisible: false })
+  hiddenLayer.onAdd?.(mockMap, mockGl)
+  hiddenLayer.render(mockGl, mockRenderOptions)
+  assert.equal(coveringTilesCalls, 0)
+  hiddenLayer.setVisible(true)
+  assert.equal(repaintCalls, 1)
+  hiddenLayer.render(mockGl, mockRenderOptions)
+  assert.equal(coveringTilesCalls, 1)
+  hiddenLayer.onRemove?.(mockMap, mockGl)
 })

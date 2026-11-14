@@ -1,6 +1,7 @@
 import {
   MONTH_LABELS,
   REGIONAL_FIRE_REGIMES,
+  SINGAPORE_REGION_ID,
   type ProjectionMode,
   type SensorFilter,
   type ViewMode,
@@ -31,6 +32,8 @@ export interface UrlHashState extends MapViewportState {
   selectedMonth: number
   showOrbits: boolean
   showClouds: boolean
+  // Night-hemisphere VIIRS Black Marble blending; the hash carries only the off state (lights=0)
+  showNightLights: boolean
   // Live NASA FIRMS fire spots; the hash carries only the off state (fires=0)
   showFires: boolean
   // Absent when no region is selected
@@ -57,6 +60,7 @@ export function createDefaultUrlHashState(now: Date = new Date()): UrlHashState 
     selectedMonth: now.getMonth(),
     showOrbits: true,
     showClouds: true,
+    showNightLights: true,
     showFires: true,
   }
 }
@@ -65,6 +69,9 @@ const VALID_VIEW_MODES: readonly ViewMode[] = ['anomaly', 'seasonal', 'sensors']
 const VALID_SENSOR_FILTERS: readonly SensorFilter[] = ['harmonized', 'modis', 'viirs']
 const VALID_PROJECTION_MODES: readonly ProjectionMode[] = ['globe', 'mercator']
 const VALID_REGION_IDS: readonly string[] = REGIONAL_FIRE_REGIMES.map((regime) => regime.id)
+const LEGACY_REGION_ID_ALIASES: Readonly<Record<string, string>> = {
+  'sea-equatorial': SINGAPORE_REGION_ID,
+}
 
 function normalizeZero(value: number): number {
   return value === 0 ? 0 : value
@@ -285,6 +292,18 @@ const HASH_FEATURE_CODECS: readonly HashFeatureCodec[] = [
     },
   },
   {
+    key: 'lights',
+    serialize: (state) => (state.showNightLights ? null : '0'),
+    parse: (raw, draft) => {
+      const parsed = parseBooleanHashFlag(raw)
+      if (parsed === null) {
+        return false
+      }
+      draft.showNightLights = parsed
+      return true
+    },
+  },
+  {
     key: 'fires',
     serialize: (state) => (state.showFires ? null : '0'),
     parse: (raw, draft) => {
@@ -300,10 +319,11 @@ const HASH_FEATURE_CODECS: readonly HashFeatureCodec[] = [
     key: 'region',
     serialize: (state) => state.selectedRegionId ?? null,
     parse: (raw, draft) => {
-      if (!VALID_REGION_IDS.includes(raw)) {
+      const resolved = LEGACY_REGION_ID_ALIASES[raw] ?? raw
+      if (!VALID_REGION_IDS.includes(resolved)) {
         return false
       }
-      draft.selectedRegionId = raw
+      draft.selectedRegionId = resolved
       return true
     },
   },
@@ -366,6 +386,7 @@ function cloneFallbackState(fallback: UrlHashState): UrlHashState {
     selectedMonth: fallback.selectedMonth,
     showOrbits: fallback.showOrbits,
     showClouds: fallback.showClouds,
+    showNightLights: fallback.showNightLights,
     showFires: fallback.showFires,
     ...(fallback.selectedRegionId ? { selectedRegionId: fallback.selectedRegionId } : {}),
     ...(fallback.extraParams ? { extraParams: { ...fallback.extraParams } } : {}),

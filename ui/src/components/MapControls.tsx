@@ -5,6 +5,7 @@ import {
   FlameIcon,
   LocateIcon,
   MinusIcon,
+  NightLightsIcon,
   OrbitIcon,
   PauseIcon,
   PlusIcon,
@@ -30,6 +31,8 @@ interface MapControlsProps {
   onShowOrbitsChange: (next: boolean) => void
   showClouds: boolean
   onShowCloudsChange: (next: boolean) => void
+  showNightLights: boolean
+  onShowNightLightsChange: (next: boolean) => void
   showFires: boolean
   onShowFiresChange: (next: boolean) => void
   // Only while live fire spots pulse (none under reduced motion)
@@ -53,6 +56,8 @@ export function MapControls({
   onShowOrbitsChange,
   showClouds,
   onShowCloudsChange,
+  showNightLights,
+  onShowNightLightsChange,
   showFires,
   onShowFiresChange,
   showPulseToggle,
@@ -128,6 +133,17 @@ export function MapControls({
         onClick={() => onShowCloudsChange(!showClouds)}
       >
         <CloudIcon />
+      </button>
+
+      <button
+        type="button"
+        className="hud-btn hud-icon-btn"
+        aria-label="Night-time lights"
+        title="Night-time lights"
+        aria-pressed={showNightLights}
+        onClick={() => onShowNightLightsChange(!showNightLights)}
+      >
+        <NightLightsIcon />
       </button>
 
       <button

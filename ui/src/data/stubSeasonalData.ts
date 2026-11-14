@@ -14,10 +14,15 @@ export interface MonthlyBaselinePoint {
   summary: string
 }
 
+export const SINGAPORE_REGION_ID = 'singapore'
+export const SINGAPORE_FOCUS_ZOOM = 8.5
+
 export interface RegionalFireRegime {
   id: string
   region: string
   coordinates: [number, number]
+  focusZoom?: number
+  pinnedFirst?: boolean
   peakMonths: number[]
   typicalIntensity: number
   currentIntensity: number
@@ -153,15 +158,17 @@ export const MONTHLY_PROFILE: MonthlyBaselinePoint[] = [
 
 export const REGIONAL_FIRE_REGIMES: RegionalFireRegime[] = [
   {
-    id: 'sea-equatorial',
-    region: 'Equatorial Southeast Asia',
-    coordinates: [103.8, 1.35],
+    id: SINGAPORE_REGION_ID,
+    region: 'Singapore',
+    coordinates: [103.8198, 1.3521],
+    focusZoom: SINGAPORE_FOCUS_ZOOM,
+    pinnedFirst: true,
     peakMonths: [7, 8, 9],
     typicalIntensity: 68,
     currentIntensity: 84,
     anomalyDelta: 16,
     sensorAgreement: 'both',
-    note: 'Peatland and plantation edge hotspots; VIIRS 375 m resolves smaller smoldering clusters.',
+    note: 'Singapore Strait and nearby transboundary peatland hotspots; VIIRS 375 m resolves smaller smoldering clusters.',
   },
   {
     id: 'amazon-arc',
@@ -279,6 +286,19 @@ export function evaluateRegionsForMonth(
       statusCategory: status.category,
       statusLabel: status.label,
     }
+  })
+}
+
+export function sortRegionsForList<
+  T extends Pick<RegionalEvaluatedRegime, 'id' | 'region' | 'delta' | 'pinnedFirst'>,
+>(regions: readonly T[]): T[] {
+  return [...regions].sort((a, b) => {
+    const aPinned = Boolean(a.pinnedFirst || a.id === SINGAPORE_REGION_ID)
+    const bPinned = Boolean(b.pinnedFirst || b.id === SINGAPORE_REGION_ID)
+    if (aPinned !== bPinned) {
+      return aPinned ? -1 : 1
+    }
+    return Math.abs(b.delta) - Math.abs(a.delta) || a.region.localeCompare(b.region)
   })
 }
 

@@ -1,5 +1,5 @@
 import { useMemo, type RefObject } from 'react'
-import type { RegionalEvaluatedRegime } from '../../data/stubSeasonalData'
+import { sortRegionsForList, type RegionalEvaluatedRegime } from '../../data/stubSeasonalData'
 import {
   formatSignedDelta,
   STATUS_GLYPHS,
@@ -14,19 +14,13 @@ interface RegionListProps {
   rowRefs: RefObject<Map<string, HTMLButtonElement>>
 }
 
-// Compact rows sorted by the size of the departure, so the largest change reads first.
+// Compact rows with Singapore pinned first, and the remaining locations sorted by size of departure.
 export function RegionList({ regions, selectedRegionId, onSelectRegion, rowRefs }: RegionListProps) {
-  const sorted = useMemo(
-    () =>
-      [...regions].sort(
-        (a, b) => Math.abs(b.delta) - Math.abs(a.delta) || a.region.localeCompare(b.region),
-      ),
-    [regions],
-  )
+  const sorted = useMemo(() => sortRegionsForList(regions), [regions])
 
   return (
-    <section className="panel-section" aria-labelledby="regions-heading">
-      <h2 id="regions-heading">Regions</h2>
+    <section className="panel-section" aria-labelledby="locations-heading">
+      <h2 id="locations-heading">Locations</h2>
       <ul className="region-list" role="list">
         {sorted.map((region) => (
           <li key={region.id}>

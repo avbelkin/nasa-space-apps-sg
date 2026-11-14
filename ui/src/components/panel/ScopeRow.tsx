@@ -20,8 +20,8 @@ export function ScopeRow({ regionName, monthName, onClearRegion, scopeRef }: Sco
             <button
               type="button"
               className="icon-btn"
-              aria-label={`Clear region ${regionName}`}
-              title="Clear region (Esc)"
+              aria-label={`Clear location ${regionName}`}
+              title="Clear location (Esc)"
               onClick={onClearRegion}
             >
               <CloseIcon />

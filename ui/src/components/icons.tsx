@@ -76,6 +76,15 @@ export function CloudIcon(props: IconProps) {
   )
 }
 
+export function NightLightsIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+      <path d="M19 3v4M17 5h4" />
+    </SvgIcon>
+  )
+}
+
 export function FlameIcon(props: IconProps) {
   return (
     <SvgIcon {...props}>

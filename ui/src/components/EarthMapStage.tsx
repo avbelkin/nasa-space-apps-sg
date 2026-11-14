@@ -129,6 +129,8 @@ interface EarthMapStageProps {
   showClouds: boolean
   onShowCloudsChange: (next: boolean) => void
   cloudRefreshNonce?: number
+  showNightLights: boolean
+  onShowNightLightsChange: (next: boolean) => void
   orbitalState: LiveOrbitalState
   satelliteHudSection: SatelliteHudSection | null
   showOrbits: boolean
@@ -774,6 +776,8 @@ export function EarthMapStage({
   showClouds,
   onShowCloudsChange,
   cloudRefreshNonce = 0,
+  showNightLights,
+  onShowNightLightsChange,
   orbitalState,
   satelliteHudSection,
   showOrbits,
@@ -832,6 +836,7 @@ export function EarthMapStage({
   const latestCloudsDisabledRef = useRef(cloudsDisabled)
   const latestShowCloudsRef = useRef(showClouds)
   const lastCloudRefreshNonceRef = useRef(cloudRefreshNonce)
+  const latestShowNightLightsRef = useRef(showNightLights)
   const latestOrbitalStateRef = useRef(orbitalState)
   const latestShowOrbitsRef = useRef(showOrbits)
   const latestSelectedSatIdRef = useRef(selectedSatelliteId)
@@ -1298,7 +1303,9 @@ export function EarthMapStage({
         // keep the marks off the map.
         if (!map.getLayer(NIGHT_LIGHTS_LAYER_ID)) {
           try {
-            const nightLightsLayer = createNightLightsLayer()
+            const nightLightsLayer = createNightLightsLayer({
+              initialVisible: latestShowNightLightsRef.current,
+            })
             map.addLayer(nightLightsLayer, 'satellite-swaths-wide-fill')
             nightLightsLayerRef.current = nightLightsLayer
           } catch {
@@ -1447,6 +1454,11 @@ export function EarthMapStage({
     cloudLayer.setDisabled(cloudsDisabled)
     cloudLayer.setVisible(showClouds)
   }, [showClouds, cloudsDisabled])
+
+  useEffect(() => {
+    latestShowNightLightsRef.current = showNightLights
+    nightLightsLayerRef.current?.setVisible(showNightLights)
+  }, [showNightLights])
 
   useEffect(() => {
     if (cloudRefreshNonce === lastCloudRefreshNonceRef.current) {
@@ -1667,6 +1679,8 @@ export function EarthMapStage({
         onShowOrbitsChange={onShowOrbitsChange}
         showClouds={showClouds}
         onShowCloudsChange={onShowCloudsChange}
+        showNightLights={showNightLights}
+        onShowNightLightsChange={onShowNightLightsChange}
         showFires={showFires}
         onShowFiresChange={(next) => {
           if (!next) {
