@@ -64,10 +64,64 @@ jobs:
           echo "REGION=$GCP_REGION" >> "$GITHUB_ENV"
           echo "SERVICE=$GCP_SERVICE_NAME" >> "$GITHUB_ENV"
 
+      - name: Prepare Cloud Run configuration
+        env:
+          GCP_MIN_INSTANCES: ${{ vars.GCP_MIN_INSTANCES }}
+          GCP_MAX_INSTANCES: ${{ vars.GCP_MAX_INSTANCES }}
+          GCP_CPU: ${{ vars.GCP_CPU }}
+          GCP_MEMORY: ${{ vars.GCP_MEMORY }}
+          GCP_CONCURRENCY: ${{ vars.GCP_CONCURRENCY }}
+          GCP_RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}
+        run: |
+          MIN_INSTANCES="${GCP_MIN_INSTANCES:-1}"
+          MAX_INSTANCES="${GCP_MAX_INSTANCES:-4}"
+          CPU="${GCP_CPU:-1}"
+          MEMORY="${GCP_MEMORY:-1Gi}"
+          CONCURRENCY="${GCP_CONCURRENCY:-80}"
+
+          DEPLOY_FLAGS="--allow-unauthenticated --cpu-boost --min-instances=${MIN_INSTANCES} --max-instances=${MAX_INSTANCES} --cpu=${CPU} --memory=${MEMORY} --concurrency=${CONCURRENCY}"
+          if [ -n "${GCP_RUNTIME_SERVICE_ACCOUNT}" ]; then
+            DEPLOY_FLAGS="${DEPLOY_FLAGS} --service-account=${GCP_RUNTIME_SERVICE_ACCOUNT}"
+          fi
+
+          echo "DEPLOY_FLAGS=${DEPLOY_FLAGS}" >> "$GITHUB_ENV"
+          echo "MIN_INSTANCES=${MIN_INSTANCES}" >> "$GITHUB_ENV"
+          echo "MAX_INSTANCES=${MAX_INSTANCES}" >> "$GITHUB_ENV"
+          echo "CPU=${CPU}" >> "$GITHUB_ENV"
+          echo "MEMORY=${MEMORY}" >> "$GITHUB_ENV"
+          echo "CONCURRENCY=${CONCURRENCY}" >> "$GITHUB_ENV"
+
       - name: Deploy to Cloud Run
+        id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
         with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
           service: ${{ env.SERVICE }}
           region: ${{ env.REGION }}
           image: ${{ env.IMAGE }}
-          flags: '--allow-unauthenticated'
+          secrets: ${{ vars.GCP_CLOUDRUN_SECRETS || '' }}
+          flags: ${{ env.DEPLOY_FLAGS }}
+
+      - name: Verify /health & write deployment summary
+        env:
+          SERVICE_URL: ${{ steps.deploy.outputs.url }}
+          RUNTIME_SA: ${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT || 'default' }}
+          SECRETS_CONFIG: ${{ vars.GCP_CLOUDRUN_SECRETS || 'none' }}
+        run: |
+          curl --fail --silent --show-error --retry 5 --retry-delay 2 "${SERVICE_URL}/health"
+          echo ""
+          {
+            echo "## Cloud Run Deployment Summary"
+            echo ""
+            echo "| Setting | Value |"
+            echo "| :--- | :--- |"
+            echo "| Service URL | \`${SERVICE_URL}\` |"
+            echo "| Image | \`${IMAGE}\` |"
+            echo "| Min / Max Instances | \`${MIN_INSTANCES}\` / \`${MAX_INSTANCES}\` |"
+            echo "| CPU / Memory | \`${CPU}\` / \`${MEMORY}\` |"
+            echo "| Concurrency | \`${CONCURRENCY}\` |"
+            echo "| Runtime Service Account | \`${RUNTIME_SA}\` |"
+            echo "| Secret Bindings | \`${SECRETS_CONFIG}\` |"
+            echo ""
+            echo "> Set GitHub repository variable \`VITE_API_BASE_URL=${SERVICE_URL}\` for the GitHub Pages UI build."
+          } >> "$GITHUB_STEP_SUMMARY"
