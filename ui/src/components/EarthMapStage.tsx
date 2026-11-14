@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FeatureCollection, MultiLineString, Point, Polygon } from 'geojson'
-import { LngLat, LngLatBounds, Map as MapLibreMap, Marker } from 'maplibre-gl'
+import { LngLat, LngLatBounds, Map as MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl'
 import type { ErrorEvent, GeoJSONSource, MapMovementEvent, StyleSpecification } from 'maplibre-gl'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import {
   buildStubGeoJson,
@@ -21,6 +22,10 @@ import {
   type MapViewportState,
 } from '../state/urlHashState'
 import type { LiveOrbitalState, LiveSatelliteSnapshot } from '../utils/satelliteOrbits'
+
+// MapLibre v6 is ESM-only: when bundled it resolves its worker next to the chunk via
+// import.meta.url, a file Vite never emits. Point it at a Vite-emitted worker asset instead.
+setWorkerUrl(maplibreWorkerUrl)
 
 export interface CameraFocusRequest {
   lng: number
@@ -568,10 +573,19 @@ export function EarthMapStage({
         latestOnViewportChangeRef.current(nextViewport)
       })
 
-      map.on('error', (event: ErrorEvent) => {
+      let styleLoaded = false
+      map.once('style.load', () => {
+        styleLoaded = true
+      })
+
+      map.on('error', (event: ErrorEvent & { sourceId?: string; tile?: unknown }) => {
         const message = event.error instanceof Error ? event.error.message : null
-        if (message && /webgl/i.test(message)) {
-          setMapError(message)
+        // Errors scoped to a source or tile (e.g. a single basemap tile 404/abort) are routine.
+        const isSourceScoped = event.sourceId !== undefined || event.tile !== undefined
+        const isFatal =
+          (message !== null && /webgl|worker/i.test(message)) || (!isSourceScoped && !styleLoaded)
+        if (isFatal) {
+          setMapError(message ?? 'Map style failed to load.')
         }
       })
 
@@ -801,7 +815,7 @@ export function EarthMapStage({
 
       {mapError && (
         <div className="map-fallback-banner" role="status">
-          <p>MapLibre WebGL preview unavailable here ({mapError}).</p>
+          <p>Map layers unavailable here ({mapError}).</p>
         </div>
       )}
 
