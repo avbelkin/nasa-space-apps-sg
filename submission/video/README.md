@@ -11,8 +11,8 @@ The full film targets **29 seconds, 1920×1080, 30 fps — 870 frames**. The cur
 | Opening | 1.4-second full-width close-up of the real toy in profile; no side panels |
 | Transition | New rough jump test: controlled flight into the monitor and landing; generated empty background, visible watermark. Transformation/body performance still need review; final timing deferred |
 | Title | Earth Fire Calendar and Harmonization of MODIS and VIIRS Hot Spots; add the exact team name to the final edit when supplied |
-| Narration | Proposed 48-word text in the [script](demo-video.md#narration), revised on 15 November: the closing line names the first models. On hold until the user supplies or approves the text; scene timing follows, within the final 30-second limit |
-| Voice | Adult female performer voicing a little, smart, lively boy; ElevenLabs Eleven v4 through OpenRouter. After the Jessica/Bella/Laura auditions the user selected Flicker, with no local pitch shift; see [`voice-selection.json`](voice-selection.json) |
+| Narration | Temporary audition copy; wording and scene timing will be revised later, within the final 30-second limit |
+| Voice | Adult female performer voicing a little, smart, lively boy; ElevenLabs Eleven v4 through OpenRouter. Jessica/Bella/Laura auditions with no local pitch shift; selection pending |
 | Character | Living animated interpretation of the toy: cream fur, copper ears, expressive face, orange/navy/ivory scarf, soft two-toed feet |
 | Performance | Weather-presenter staging: greet, step, turn to the display, point, look back at the viewer, nod |
 | Composition | Large presenter in the left foreground; real app display behind and to his right; protect the important data from his gestures |
@@ -53,7 +53,7 @@ Under `lama/prepared/presenter-v2/`:
 
 The old `draft/lama-draft.mp4`, `review.html`, `intro-centered.mp4` and `lama-presenter.png` remain historical material. Do not treat them as the latest creative direction.
 
-Temporary UI captures remain under `prepared/ui/`. MODIS and VIIRS screenshots share one earlier snapshot. The populated context rows are a separate, later capture of a group near −14.906°, 126.865° with 123 detections. `05-context.json` records that example. These are screen-proximity groups, not confirmed matched fires. Show only Sat. off-nadir, Land cover and selected Weather at acquisition rows; exclude the FRP estimate, the GWIS or CAMS context line, pass predictions, the **Expected detection, no match** flag and totals. These captures predate the basemap change of 15 November, 21:01 SGT, and must be retaken.
+Temporary UI captures remain under `prepared/ui/`. MODIS and VIIRS screenshots share one earlier snapshot. The populated context rows are a separate, later capture of a group near −14.906°, 126.865° with 123 detections. `05-context.json` records that example. These are screen-proximity groups, not confirmed matched fires. Show only Sat. off-nadir, Land cover and selected Weather at acquisition rows; exclude FRP forecast, pass predictions, the **Expected detection, no match** flag and totals.
 
 ## Review blocks and deadline
 
