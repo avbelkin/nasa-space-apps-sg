@@ -1,4 +1,5 @@
 import type { SensorFilter } from '../../data/mapTypes'
+import { CONNECTION_SHORT_LABELS, type ConnectionState } from '../../state/apiStatus'
 import { downloadFireSlice } from '../../utils/exportSlice'
 import type { FireSpotsSensorSummary, FirmsLiveSpotsResponse } from '../../utils/fireSpots'
 import { SurfaceSensorTable } from './SurfaceSensorTable'
@@ -12,7 +13,7 @@ export interface LiveFiresInfo {
   sensorFilter: SensorFilter
   // A later refresh failed while an earlier snapshot is still shown
   refreshFailed: boolean
-  enrichmentStopped: boolean
+  enrichmentCheck: { checkedAt: number; delayed: boolean } | null
   onRetry?: () => void
   retrying?: boolean
 }
@@ -37,11 +38,13 @@ function formatUtcTimestamp(iso: string | null): string {
 }
 
 // Live NASA FIRMS detections of the last 24 hours.
-export function LiveFiresSection({ info }: { info: LiveFiresInfo }) {
-  const { state, payload, summary, sensorFilter, refreshFailed, enrichmentStopped, onRetry, retrying } = info
-  const enrichmentStatus = enrichmentStopped ? 'incomplete' : payload?.enrichmentStatus
+export function LiveFiresSection({ info, connectionState }: { info: LiveFiresInfo; connectionState: ConnectionState }) {
+  const { state, payload, summary, sensorFilter, refreshFailed, enrichmentCheck, onRetry, retrying } = info
+  const geometry = payload?.geometryProgress
+  const weather = payload?.weather
+  const weatherPending = weather ? weather.pendingCount ?? weather.targetCount - weather.sampledCount : 0
   const classifiedCount = payload
-    ? payload.spots.reduce((count, spot) => (spot[9] ? count + 1 : count), 0)
+    ? payload.spots.reduce((total, spot) => (spot[9] ? total + 1 : total), 0)
     : 0
 
   return (
@@ -121,6 +124,11 @@ export function LiveFiresSection({ info }: { info: LiveFiresInfo }) {
         </p>
       ) : (
         <>
+          <p className="panel-note">
+            Global &middot; last 24 h &middot; Filter: {SENSOR_FILTER_LABELS[sensorFilter]}
+            {sensorFilter !== 'harmonized' &&
+              ` · ${count(summary.totalCount)} of ${count(payload.count)} shown`}
+          </p>
           <div className="baseline-compare live-fire-metrics">
             <div className="metric-tile">
               <span className="metric-label">Peak FRP</span>
@@ -143,8 +151,8 @@ export function LiveFiresSection({ info }: { info: LiveFiresInfo }) {
             {payload.stale ? ' (cached fallback)' : ''}.
           </p>
           <p className="panel-note">
-            Surface classified for {classifiedCount.toLocaleString('en-US')} of{' '}
-            {payload.spots.length.toLocaleString('en-US')} detections (ESA CCI Land Cover 2019)
+            Surface classified for {count(classifiedCount)} of {count(payload.spots.length)}{' '}
+            detections (ESA CCI Land Cover 2019)
             {payload.landCoverPending ? ' — still loading…' : ''}.
           </p>
           <p className="panel-note">

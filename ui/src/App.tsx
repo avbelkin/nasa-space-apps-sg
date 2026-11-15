@@ -664,7 +664,7 @@ function App() {
           summary: fireSummary,
           sensorFilter,
           refreshFailed: fireSpotsPayload !== null && fireSpotsError !== null,
-          enrichmentStopped: fireEnrichmentStopped,
+          enrichmentCheck: fireEnrichmentCheck,
           onRetry: isProdUnconfigured ? undefined : handleRetryFires,
           retrying: firesRetrying,
         }}
