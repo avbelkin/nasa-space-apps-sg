@@ -96,6 +96,7 @@ export interface FirmsLiveSpotsResponse {
   columns: string[]
   spots: FirmsSpotTuple[]
   landCoverDataset?: LandCoverDataset
+  landCoverPending?: boolean
 }
 
 export interface FireSpotFeatureProperties {
@@ -245,9 +246,12 @@ export function computeSpatialPhaseCohort(lng: number, lat: number): PhaseCohort
 export async function fetchLiveFireSpots(
   apiBaseUrl: string,
   signal?: AbortSignal,
+  enrichLandCover = false,
 ): Promise<FirmsLiveSpotsResponse> {
   const endpoint = apiBaseUrl ? `${apiBaseUrl}/api/fires/spots` : '/api/fires/spots'
-  const url = `${endpoint}?hours=24&sensor=harmonized`
+  const search = new URLSearchParams({ hours: '24', sensor: 'harmonized' })
+  if (enrichLandCover) search.set('enrichLandCover', 'true')
+  const url = `${endpoint}?${search}`
   const response = await fetch(url, {
     headers: { Accept: 'application/json' },
     signal,

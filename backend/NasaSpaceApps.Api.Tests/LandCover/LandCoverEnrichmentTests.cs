@@ -21,13 +21,25 @@ public sealed class LandCoverEnrichmentTests
         var spot = new FirmsHotspot(0, -180, 350, null, 0.4, 0.4,
             DateTimeOffset.UtcNow, "NOAA-20", "viirs", "VIIRS_NOAA20_NRT", "n", 65, "2", 25, "D");
 
-        var results = await service.EnrichAsync([spot], CancellationToken.None);
-        var enrichment = Assert.Single(results).LandCover;
+        var pending = await service.EnrichAsync([spot], fetchMissing: false, CancellationToken.None);
+        Assert.True(pending.Pending);
+        Assert.Null(Assert.Single(pending.Spots).LandCover);
+        Assert.Equal(0, factory.SourceRequests);
+
+        var results = await service.EnrichAsync([spot], fetchMissing: true, CancellationToken.None);
+        var enrichment = Assert.Single(results.Spots).LandCover;
         if (missingBlock)
         {
             Assert.Null(enrichment);
             return;
         }
+
+        Assert.False(results.Pending);
+        var firstPassRequests = factory.SourceRequests;
+        var nearby = spot with { Latitude = 0.00001 };
+        var nextPass = await service.EnrichAsync([nearby], fetchMissing: true, CancellationToken.None);
+        Assert.NotNull(Assert.Single(nextPass.Spots).LandCover);
+        Assert.Equal(firstPassRequests, factory.SourceRequests);
 
         Assert.NotNull(enrichment);
         Assert.Equal(50, enrichment.DominantCode);
@@ -37,13 +49,18 @@ public sealed class LandCoverEnrichmentTests
 
     private sealed class TileSource(bool missingBlock) : IHttpClientFactory
     {
-        public HttpClient CreateClient(string name) => new(new Handler(missingBlock));
+        public int SourceRequests => Volatile.Read(ref sourceRequests);
+        private int sourceRequests;
+
+        public HttpClient CreateClient(string name) =>
+            new(new Handler(missingBlock, () => Interlocked.Increment(ref sourceRequests)));
     }
 
-    private sealed class Handler(bool missingBlock) : HttpMessageHandler
+    private sealed class Handler(bool missingBlock, Action countRequest) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
+            countRequest();
             var uri = request.RequestUri!;
             if (uri.Host == "planetarycomputer.microsoft.com")
             {

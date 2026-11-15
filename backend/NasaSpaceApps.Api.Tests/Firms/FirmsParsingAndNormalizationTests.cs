@@ -46,12 +46,12 @@ public sealed class FirmsParsingAndNormalizationTests
 
     private sealed class StubLandCover : ILandCoverEnricher
     {
-        public Task<IReadOnlyList<FirmsHotspot>> EnrichAsync(
-            IReadOnlyList<FirmsHotspot> spots, CancellationToken cancellationToken) =>
-            Task.FromResult<IReadOnlyList<FirmsHotspot>>(spots.Select(s => s with
+        public Task<LandCoverResult> EnrichAsync(
+            IReadOnlyList<FirmsHotspot> spots, bool fetchMissing, CancellationToken cancellationToken, bool world = false) =>
+            Task.FromResult(new LandCoverResult(spots.Select(s => s with
             {
                 LandCover = new LandCoverSummary(50, 1, [new(50, 0.75), new(130, 0.25)]),
-            }).ToArray());
+            }).ToArray(), Pending: false));
     }
 
     [Theory]
@@ -160,6 +160,7 @@ public sealed class FirmsParsingAndNormalizationTests
         var response = await client.GetLiveSpotsAsync(sensor: "viirs", hours: 24, bbox: "world");
 
         Assert.Equal(2019, response.LandCoverDataset.Year);
+        Assert.Equal(1200, response.LandCoverDataset.ResolutionMeters);
         Assert.Equal("landCover", response.Columns[9]);
         Assert.Equal(24, response.WindowHours);
         Assert.Equal(TimeSpan.FromHours(24), response.WindowEndUtc - response.WindowStartUtc);

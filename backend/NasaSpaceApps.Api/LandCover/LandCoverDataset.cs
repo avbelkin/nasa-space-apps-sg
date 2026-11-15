@@ -27,4 +27,7 @@ public sealed record LandCoverDataset(
             [200] = "Bare areas", [201] = "Consolidated bare areas", [202] = "Unconsolidated bare areas",
             [210] = "Water bodies", [220] = "Permanent snow and ice",
         });
+
+    public static LandCoverDataset C3s2019World { get; } =
+        C3s2019 with { ResolutionMeters = 300 * LandCoverCog.WorldOverviewScale };
 }

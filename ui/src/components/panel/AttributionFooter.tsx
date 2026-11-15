@@ -94,7 +94,7 @@ export function AttributionFooter({ connectionState }: AttributionFooterProps) {
               <div className="meta-row">
                 <dt>Hotspot land cover</dt>
                 <dd>
-                  Derived from the 2019 global land cover classification (300 m), © ESA Climate
+                  Derived from the 2019 global land cover classification (300 m native grid, 1.2 km world overview), © ESA Climate
                   Change Initiative Land Cover project and{' '}
                   <a href="https://doi.org/10.24381/cds.006f2c9a" {...EXTERNAL}>
                     Copernicus Climate Change Service

@@ -107,6 +107,14 @@ public sealed class FirmsClient(
     }
 
     public async Task<FirmsHotspotsResponse> GetAreaHotspotsAsync(
+        string? bbox, int? days, string? sensor, CancellationToken cancellationToken = default, bool enrichLandCover = false)
+    {
+        var response = await GetCachedAreaHotspotsAsync(bbox, days, sensor, cancellationToken);
+        var landCoverResult = await landCover.EnrichAsync(response.Hotspots, enrichLandCover, cancellationToken);
+        return response with { Hotspots = landCoverResult.Spots, LandCoverPending = landCoverResult.Pending };
+    }
+
+    private async Task<FirmsHotspotsResponse> GetCachedAreaHotspotsAsync(
         string? bbox,
         int? days,
         string? sensor,
@@ -174,7 +182,7 @@ public sealed class FirmsClient(
                 Count: combined.Length,
                 FetchedAtUtc: DateTimeOffset.UtcNow,
                 Attribution: FirmsDefaults.Attribution,
-                Hotspots: await landCover.EnrichAsync(combined, cancellationToken),
+                Hotspots: combined,
                 LandCoverDataset: LandCoverDataset.C3s2019);
 
             cache.Set(cacheKey, response, HotspotsCacheDuration);
@@ -190,7 +198,8 @@ public sealed class FirmsClient(
         string? sensor = null,
         int? hours = null,
         string? bbox = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool enrichLandCover = false)
     {
         var windowHours = Math.Clamp(hours ?? DefaultLiveWindowHours, 1, 48);
         var dayRange = windowHours <= 24 ? 2 : 3;
@@ -206,7 +215,9 @@ public sealed class FirmsClient(
         }
 
         var nowUtc = DateTimeOffset.UtcNow;
-        var filtered = await landCover.EnrichAsync(FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours), cancellationToken);
+        var landCoverResult = await landCover.EnrichAsync(
+            FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours), enrichLandCover, cancellationToken, world: area == "world");
+        var filtered = landCoverResult.Spots;
 
         var sourceCounts = new Dictionary<int, int>();
         var modisCount = 0;
@@ -282,9 +293,11 @@ public sealed class FirmsClient(
             Attribution: FirmsDefaults.Attribution,
             Columns: LiveSpotColumns,
             Spots: rows,
-            LandCoverDataset: LandCoverDataset.C3s2019);
+            LandCoverDataset: LandCoverDatasetFor(area),
+            LandCoverPending: landCoverResult.Pending);
 
-        cache.Set(responseCacheKey, response, LiveResponseCacheDuration);
+        if (!landCoverResult.Pending)
+            cache.Set(responseCacheKey, response, LiveResponseCacheDuration);
         return response;
     }
 
@@ -292,7 +305,8 @@ public sealed class FirmsClient(
         string? sensor = null,
         int? hours = null,
         string? bbox = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool enrichLandCover = false)
     {
         var windowHours = Math.Clamp(hours ?? DefaultLiveWindowHours, 1, 48);
         var dayRange = windowHours <= 24 ? 2 : 3;
@@ -301,9 +315,11 @@ public sealed class FirmsClient(
 
         var snapshot = await GetAreaSnapshotAsync(area, dayRange, sources, cancellationToken).ConfigureAwait(false);
         var nowUtc = DateTimeOffset.UtcNow;
-        var filtered = await landCover.EnrichAsync(FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours), cancellationToken);
+        var landCoverResult = await landCover.EnrichAsync(
+            FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours), enrichLandCover, cancellationToken, world: area == "world");
+        var filtered = landCoverResult.Spots;
 
-        return BuildGeoJsonFeatureCollection(filtered, nowUtc, snapshot, windowHours, sensorFilter);
+        return BuildGeoJsonFeatureCollection(filtered, nowUtc, snapshot, windowHours, sensorFilter, LandCoverDatasetFor(area), landCoverResult.Pending);
     }
 
     private async Task<CachedAreaSnapshot> GetAreaSnapshotAsync(
@@ -394,10 +410,17 @@ public sealed class FirmsClient(
         }
     }
 
-    private static string ResolveLiveArea(string? bbox) =>
-        string.IsNullOrWhiteSpace(bbox) || string.Equals(bbox.Trim(), "world", StringComparison.OrdinalIgnoreCase)
-            ? "world"
-            : ParseBoundingBox(bbox, enforceSpanLimit: false).ToQueryString();
+    private static LandCoverDataset LandCoverDatasetFor(string area) =>
+        area == "world" ? LandCoverDataset.C3s2019World : LandCoverDataset.C3s2019;
+
+    private static string ResolveLiveArea(string? bbox)
+    {
+        if (string.IsNullOrWhiteSpace(bbox) || string.Equals(bbox.Trim(), "world", StringComparison.OrdinalIgnoreCase))
+            return "world";
+
+        var bounds = ParseBoundingBox(bbox, enforceSpanLimit: false);
+        return bounds == new BoundingBox(-180, -90, 180, 90) ? "world" : bounds.ToQueryString();
+    }
 
     private static List<FirmsHotspot> FilterSnapshotSpots(
         IReadOnlyList<FirmsHotspot> spots,
@@ -423,7 +446,9 @@ public sealed class FirmsClient(
         DateTimeOffset nowUtc,
         CachedAreaSnapshot snapshot,
         int windowHours,
-        string sensorFilter)
+        string sensorFilter,
+        LandCoverDataset landCoverDataset,
+        bool landCoverPending)
     {
         var features = new List<FirmsGeoJsonFeature>(spots.Count);
         foreach (var spot in spots)
@@ -457,7 +482,8 @@ public sealed class FirmsClient(
             Count: features.Count,
             Attribution: FirmsDefaults.Attribution,
             Features: features,
-            LandCoverDataset: LandCoverDataset.C3s2019);
+            LandCoverDataset: landCoverDataset,
+            LandCoverPending: landCoverPending);
     }
 
     private async Task<CachedKeyQuota> GetKeyQuotaAsync(CancellationToken cancellationToken)

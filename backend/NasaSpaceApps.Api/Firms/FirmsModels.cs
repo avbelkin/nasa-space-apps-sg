@@ -53,7 +53,8 @@ public sealed record FirmsHotspotsResponse(
     DateTimeOffset FetchedAtUtc,
     string Attribution,
     IReadOnlyList<FirmsHotspot> Hotspots,
-    LandCoverDataset LandCoverDataset);
+    LandCoverDataset LandCoverDataset,
+    bool LandCoverPending = false);
 
 public sealed record FirmsSensorMetadata(
     int SourceCode,
@@ -166,7 +167,8 @@ public sealed record FirmsLiveSpotsResponse(
     string Attribution,
     IReadOnlyList<string> Columns,
     IReadOnlyList<object?[]> Spots,
-    LandCoverDataset LandCoverDataset);
+    LandCoverDataset LandCoverDataset,
+    bool LandCoverPending = false);
 
 public sealed record FirmsGeoJsonPointGeometry(
     string Type,
@@ -199,4 +201,5 @@ public sealed record FirmsGeoJsonFeatureCollection(
     int Count,
     string Attribution,
     IReadOnlyList<FirmsGeoJsonFeature> Features,
-    LandCoverDataset LandCoverDataset);
+    LandCoverDataset LandCoverDataset,
+    bool LandCoverPending = false);
