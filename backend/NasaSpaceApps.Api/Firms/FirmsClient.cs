@@ -42,6 +42,7 @@ public sealed class FirmsClient(
         "dayNight",
         "landCover",
     ];
+    private static readonly string[] EnrichedLiveSpotColumns = [.. LiveSpotColumns, "geometry"];
 
     private readonly SemaphoreSlim _statusLock = new(1, 1);
     private readonly SemaphoreSlim _hotspotsLock = new(1, 1);
@@ -212,7 +213,8 @@ public sealed class FirmsClient(
         string? bbox = null,
         CancellationToken cancellationToken = default,
         bool includeGeometry = false,
-        bool enrichLandCover = false)
+        bool enrichLandCover = false,
+        bool enrichGeometry = false)
     {
         var windowHours = Math.Clamp(hours ?? DefaultLiveWindowHours, 1, 48);
         var dayRange = windowHours <= 24 ? 2 : 3;
@@ -234,8 +236,25 @@ public sealed class FirmsClient(
                 cache.Set(responseCacheKey, cachedResponse, LiveResponseCacheDuration);
         }
         var geometry = await geometryWorker.ObserveAsync(
-            snapshot.Spots, cachedResponse.Selected, includeGeometry, cancellationToken).ConfigureAwait(false);
-        return geometry is null ? cachedResponse.Response : cachedResponse.Response with { Geometry = geometry };
+            snapshot.Spots, cachedResponse.Selected, includeGeometry || enrichGeometry, cancellationToken).ConfigureAwait(false);
+        var liveResponse = cachedResponse.Response;
+        var rows = liveResponse.Spots;
+        if (enrichGeometry && geometry?.Spots is { } observations)
+        {
+            var enrichedRows = new object?[rows.Count][];
+            for (var i = 0; i < rows.Count; i++)
+            {
+                enrichedRows[i] = [.. rows[i], observations[i]];
+            }
+
+            liveResponse = liveResponse with { Columns = EnrichedLiveSpotColumns, Spots = enrichedRows };
+        }
+
+        return liveResponse with
+        {
+            Geometry = includeGeometry ? geometry : null,
+            GeometryStatus = geometry?.Status ?? (rows.Count == 0 ? "ready" : "pending"),
+        };
     }
 
     private static FirmsLiveSpotsResponse BuildLiveSpotsResponse(

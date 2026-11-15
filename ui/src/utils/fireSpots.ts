@@ -1,5 +1,6 @@
 import type { Feature, FeatureCollection, Point } from 'geojson'
 import type { SensorFilter } from '../data/mapTypes.ts'
+import type { FireObservationGeometry } from './fireObservationGeometry.ts'
 import {
   buildFireDetectionsTimeline,
   compareMatchedFireSpots,
@@ -76,6 +77,7 @@ export type FirmsSpotTuple = [
   satellite: string,
   dayNight: string,
   landCover?: LandCoverSummary | null,
+  geometry?: FireObservationGeometry | null,
 ]
 
 export interface FirmsLiveSpotsResponse {
@@ -97,6 +99,8 @@ export interface FirmsLiveSpotsResponse {
   spots: FirmsSpotTuple[]
   landCoverDataset?: LandCoverDataset
   landCoverPending?: boolean
+  geometryStatus?: 'pending' | 'unavailable' | 'ready'
+  enrichmentStatus?: 'pending' | 'complete' | 'incomplete'
 }
 
 export interface FireSpotFeatureProperties {
@@ -250,11 +254,12 @@ export function computeSpatialPhaseCohort(lng: number, lat: number): PhaseCohort
 export async function fetchLiveFireSpots(
   apiBaseUrl: string,
   signal?: AbortSignal,
-  enrichLandCover = false,
+  enrichment?: { landCover: boolean; geometry: boolean },
 ): Promise<FirmsLiveSpotsResponse> {
   const endpoint = apiBaseUrl ? `${apiBaseUrl}/api/fires/spots` : '/api/fires/spots'
   const search = new URLSearchParams({ hours: '24', sensor: 'harmonized' })
-  if (enrichLandCover) search.set('enrichLandCover', 'true')
+  if (enrichment?.landCover) search.set('enrichLandCover', 'true')
+  if (enrichment?.geometry) search.set('enrichGeometry', 'true')
   const url = `${endpoint}?${search}`
   const response = await fetch(url, {
     headers: { Accept: 'application/json' },

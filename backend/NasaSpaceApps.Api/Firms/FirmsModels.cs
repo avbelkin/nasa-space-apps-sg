@@ -181,6 +181,12 @@ public sealed record FirmsLiveSpotsResponse(
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public HotspotGeometryBatch? Geometry { get; init; }
+
+    public string GeometryStatus { get; init; } = "pending";
+
+    public string EnrichmentStatus => LandCoverPending || GeometryStatus == "pending"
+        ? "pending"
+        : GeometryStatus == "ready" ? "complete" : "incomplete";
 }
 
 public sealed record FirmsGeoJsonPointGeometry(

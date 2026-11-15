@@ -45,11 +45,12 @@ import {
   type FirmsLiveSpotsResponse,
 } from './utils/fireSpots'
 import { formatRainLookbackLabel, type RainLayerMetadata } from './utils/rainCloudShader'
+import { readPinnedFireGeometry } from './utils/fireObservationGeometry'
 import { buildSatelliteOverpassIndex } from './utils/satelliteOverpassTimeline'
 
 const FIRES_REFRESH_INTERVAL_MS = 15 * 60 * 1000
-const LAND_COVER_REFRESH_DELAY_MS = 10_000
-const MAX_LAND_COVER_PASSES_PER_REFRESH = 3
+const FIRE_ENRICHMENT_DELAY_MS = 10_000
+const MAX_FIRE_ENRICHMENT_PASSES_PER_REFRESH = 3
 const FOCUS_ZOOM = 3.6
 const EMPTY_SATELLITES: readonly SatelliteOrbit[] = []
 
@@ -125,6 +126,7 @@ function App() {
   }, [showOrbits])
 
   const [fireSpotsPayload, setFireSpotsPayload] = useState<FirmsLiveSpotsResponse | null>(null)
+  const [fireEnrichmentStopped, setFireEnrichmentStopped] = useState(false)
   const [fireSpotsLoading, setFireSpotsLoading] = useState<boolean>(!isProdUnconfigured)
   const [fireSpotsError, setFireSpotsError] = useState<string | null>(null)
 
@@ -254,52 +256,70 @@ function App() {
     )
 
     let firesRefreshId = 0
-    let landCoverTimer: number | undefined
-    let landCoverInProgress = false
+    let enrichmentTimer: number | undefined
+    let enrichmentInProgress = false
     let landCoverPending = false
-    let landCoverPasses = 0
+    let geometryPending = false
+    let requestGeometry = false
+    let enrichmentPasses = 0
 
-    const scheduleLandCover = () => {
-      if (!landCoverPending || landCoverInProgress || landCoverTimer !== undefined ||
-          landCoverPasses >= MAX_LAND_COVER_PASSES_PER_REFRESH || document.visibilityState === 'hidden') {
+    const scheduleFireEnrichment = () => {
+      if ((!landCoverPending && !geometryPending) || enrichmentInProgress || enrichmentTimer !== undefined ||
+          enrichmentPasses >= MAX_FIRE_ENRICHMENT_PASSES_PER_REFRESH || document.visibilityState === 'hidden') {
         return
       }
       const refreshId = firesRefreshId
-      landCoverTimer = window.setTimeout(async () => {
-        landCoverTimer = undefined
+      enrichmentTimer = window.setTimeout(async () => {
+        enrichmentTimer = undefined
         if (controller.signal.aborted || document.visibilityState === 'hidden') return
 
-        landCoverPasses++
-        landCoverInProgress = true
+        enrichmentPasses++
+        enrichmentInProgress = true
         try {
-          const data = await fetchLiveFireSpots(apiBaseUrl, controller.signal, true)
+          const data = await fetchLiveFireSpots(apiBaseUrl, controller.signal, {
+            landCover: landCoverPending,
+            geometry: requestGeometry,
+          })
           if (!controller.signal.aborted && refreshId === firesRefreshId) {
             setFireSpotsPayload(data)
             landCoverPending = data.landCoverPending === true
+            geometryPending = data.geometryStatus === 'pending'
+            setFireEnrichmentStopped(
+              (landCoverPending || geometryPending) && enrichmentPasses >= MAX_FIRE_ENRICHMENT_PASSES_PER_REFRESH,
+            )
           }
         } catch {
-          // A delayed land cover request must not mark the working fire feed as unavailable.
-          if (refreshId === firesRefreshId) landCoverPending = false
+          // Keep the working fire feed when a deferred request fails.
+          if (!controller.signal.aborted && refreshId === firesRefreshId) {
+            landCoverPending = false
+            geometryPending = false
+            setFireEnrichmentStopped(true)
+          }
         } finally {
-          landCoverInProgress = false
-          if (!controller.signal.aborted) scheduleLandCover()
+          enrichmentInProgress = false
+          if (!controller.signal.aborted) scheduleFireEnrichment()
         }
-      }, LAND_COVER_REFRESH_DELAY_MS)
+      }, FIRE_ENRICHMENT_DELAY_MS)
     }
 
     const refreshFires = () => {
       const refreshId = ++firesRefreshId
-      window.clearTimeout(landCoverTimer)
-      landCoverTimer = undefined
+      window.clearTimeout(enrichmentTimer)
+      enrichmentTimer = undefined
       landCoverPending = false
-      landCoverPasses = 0
+      geometryPending = false
+      requestGeometry = false
+      enrichmentPasses = 0
 
       void fetchLiveFireSpots(apiBaseUrl, controller.signal).then(
         (data) => {
           if (!controller.signal.aborted && refreshId === firesRefreshId) {
             applyFiresSuccess(data)
+            setFireEnrichmentStopped(false)
             landCoverPending = data.landCoverPending === true
-            scheduleLandCover()
+            geometryPending = data.geometryStatus === 'pending'
+            requestGeometry = geometryPending
+            scheduleFireEnrichment()
           }
         },
         (error: unknown) => {
@@ -325,7 +345,7 @@ function App() {
       if (typeof document === 'undefined' || document.visibilityState === 'hidden') {
         return
       }
-      scheduleLandCover()
+      scheduleFireEnrichment()
       const now = Date.now()
       setNowUnixMs(now)
       const targetIntervalMs = showOrbitsRef.current
@@ -351,7 +371,7 @@ function App() {
     return () => {
       window.clearInterval(orbitsTimer)
       window.clearInterval(firesTimer)
-      window.clearTimeout(landCoverTimer)
+      window.clearTimeout(enrichmentTimer)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       controller.abort()
       orbitsAbortRef.current?.abort()
@@ -446,6 +466,10 @@ function App() {
   const landCoverBySpot = useMemo(
     () => buildFireSpotLandCoverLookup(fireSpotsPayload),
     [fireSpotsPayload],
+  )
+  const pinnedFeedGeometry = useMemo(
+    () => readPinnedFireGeometry(fireSpotsPayload, pinnedFireSelection?.inputs),
+    [fireSpotsPayload, pinnedFireSelection],
   )
 
   const fireSummary = useMemo(
@@ -551,6 +575,7 @@ function App() {
         pinnedDetails={pinnedFireSelection && (
           <PinnedFireDetails
             selection={pinnedFireSelection}
+            feedGeometry={pinnedFeedGeometry}
             landCoverBySpot={landCoverBySpot}
             overpassIndex={overpassIndex}
             onUnpin={unpinFireSelection}
@@ -598,6 +623,7 @@ function App() {
           payload: fireSpotsPayload,
           summary: fireSummary,
           refreshFailed: fireSpotsPayload !== null && fireSpotsError !== null,
+          enrichmentStopped: fireEnrichmentStopped,
         }}
       />
     </div>

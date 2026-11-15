@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
 import { apiBaseUrl } from '../state/apiStatus'
-import { fetchPinnedFireGeometry, summarizeFireGeometry } from '../utils/fireObservationGeometry'
+import { fetchPinnedFireGeometry, summarizeFireGeometry, type FireObservationGeometry } from '../utils/fireObservationGeometry'
 import { fetchPinnedFireWeather, summarizeFireWeather } from '../utils/fireObservationWeather'
 import type { FireSpotTooltipInput } from '../utils/fireSpots'
 
-export function FireObservationDetails({ inputs }: { inputs: readonly FireSpotTooltipInput[] }) {
+export function FireObservationDetails({ inputs, feedGeometry }: {
+  inputs: readonly FireSpotTooltipInput[]
+  feedGeometry?: readonly (FireObservationGeometry | null)[]
+}) {
   const [result, setResult] = useState<{
     inputs: readonly FireSpotTooltipInput[]
+    feedGeometry: typeof feedGeometry
     summary: ReturnType<typeof summarizeFireGeometry>
   } | null>(null)
   const [weatherResult, setWeatherResult] = useState<{
@@ -17,14 +21,20 @@ export function FireObservationDetails({ inputs }: { inputs: readonly FireSpotTo
   useEffect(() => {
     const controller = new AbortController()
     const { signal } = controller
-    void fetchPinnedFireGeometry(apiBaseUrl, inputs, signal).then(
+    void fetchPinnedFireGeometry(apiBaseUrl, inputs, signal, feedGeometry).then(
       (observations) => {
-        if (!signal.aborted) setResult({ inputs, summary: summarizeFireGeometry(inputs, observations) })
+        if (!signal.aborted) setResult({ inputs, feedGeometry, summary: summarizeFireGeometry(inputs, observations) })
       },
       () => {
-        if (!signal.aborted) setResult({ inputs, summary: null })
+        if (!signal.aborted) setResult({ inputs, feedGeometry, summary: summarizeFireGeometry(inputs, feedGeometry ?? []) })
       },
     )
+    return () => controller.abort()
+  }, [inputs, feedGeometry])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const { signal } = controller
     void fetchPinnedFireWeather(apiBaseUrl, inputs, signal).then(
       (observations) => {
         if (!signal.aborted) setWeatherResult({ inputs, summary: summarizeFireWeather(inputs, observations) })
@@ -36,8 +46,8 @@ export function FireObservationDetails({ inputs }: { inputs: readonly FireSpotTo
     return () => controller.abort()
   }, [inputs])
 
-  const settled = result?.inputs === inputs
-  const summary = settled ? result.summary : null
+  const settled = result?.inputs === inputs && result.feedGeometry === feedGeometry
+  const summary = settled ? result.summary : summarizeFireGeometry(inputs, feedGeometry ?? [])
   const weatherSettled = weatherResult?.inputs === inputs
   const weather = weatherSettled ? weatherResult.summary : null
 
