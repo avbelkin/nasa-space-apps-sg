@@ -60,3 +60,20 @@ Final current-copy acceptance: direction-r10 was independently accepted with no 
 PDF:  4b186206f3e80349c0ab41340e5e9c055f65bfd2f3d0310217d1cea734977ede
 PPTX: b10e76940c4f0925329f973780cf585332d0a6e117653c3b440d060eaefe97cb
 ```
+
+## Complete deck with final copy: complete-r13
+
+All seven slides now use the approved visual direction and the final source text, including Team Plush — Alexey Belkin, Viktoriia Naiman, the one-day GWIS/CAMS findings, rights links and model attribution. No name or image placeholders and no NASA or Space Apps logos are present.
+
+Maps and evidence panels were captured again after the current EOxCloudless 2016 (CC BY 4.0) deployment; capture metadata verifies the actual raster source. The regional and step images are resized, the legend uses the app's exact colours, and the comparison panels have margins. Slide 5 shows the actual 24-hour timeline. The earlier 08:36 UTC count snapshot remains unchanged.
+
+Root inspection covered all seven actual PDF pages rendered by Poppler. Automated verification passed exact source wording, seven pages, twelve URI annotations, three embedded Unicode Overpass faces, all token sizes, nine image/chart descriptions, both native charts and embedded workbooks, fixed 0–100,000 scales, metadata and the finalizer receipt. Microsoft PowerPoint 16.109.3 opened and exported all seven slides; its visual proof is being checked. Independent Codex acceptance is in progress; this is a review checkpoint, not a claim that the review has finished.
+
+The compact PDF is tracked as `earth-fire-calendar.pdf`; full-sized original captures and versioned export history remain ignored. Local PDF/PPTX/overview copies are also in the main checkout.
+
+```text
+PDF:  85aaab71706cb5a9f4cd677031314abe8824853a7214871c4e92300ac9a8018b
+PPTX: bb20e0532a55d4527e9666effade2763be9c6546785372fa95b98e151b6ed730
+```
+
+No LLM API provider/model/route was used; measured API cost is $0. One independent Codex review is running; subscription allowance usage is unavailable.
