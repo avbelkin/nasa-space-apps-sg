@@ -10,11 +10,17 @@ internal static class FireWeatherRaster
     public static float[] ReadValues(ReadOnlySpan<byte> tiff, int size) =>
         FloatWeatherTiff.ReadValues(tiff, size, size);
 
-    public static byte[] ReadCoverage(ReadOnlySpan<byte> png, int size)
+    public static float[] ReadValues(ReadOnlySpan<byte> tiff, int width, int height) =>
+        FloatWeatherTiff.ReadValues(tiff, width, height);
+
+    public static byte[] ReadCoverage(ReadOnlySpan<byte> png, int size) =>
+        ReadCoverage(png, size, size);
+
+    public static byte[] ReadCoverage(ReadOnlySpan<byte> png, int width, int height)
     {
         if (png.Length < 33 || !png[..8].SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }) ||
-            !png.Slice(12, 4).SequenceEqual("IHDR"u8) || BinaryPrimitives.ReadUInt32BigEndian(png[16..]) != size ||
-            BinaryPrimitives.ReadUInt32BigEndian(png[20..]) != size || png[24] != 8 || png[25] != 6 ||
+            !png.Slice(12, 4).SequenceEqual("IHDR"u8) || BinaryPrimitives.ReadUInt32BigEndian(png[16..]) != width ||
+            BinaryPrimitives.ReadUInt32BigEndian(png[20..]) != height || png[24] != 8 || png[25] != 6 ||
             png[26] != 0 || png[27] != 0 || png[28] != 0)
         {
             throw new InvalidDataException("Unexpected fire-weather mask format.");
@@ -37,10 +43,10 @@ internal static class FireWeatherRaster
         compressed.Position = 0;
         using var image = new ZLibStream(compressed, CompressionMode.Decompress);
         const int channels = 4;
-        var alpha = new byte[size * size];
-        var previous = new byte[size * channels];
+        var alpha = new byte[width * height];
+        var previous = new byte[width * channels];
         var row = new byte[previous.Length];
-        for (var y = 0; y < size; y++)
+        for (var y = 0; y < height; y++)
         {
             var filter = image.ReadByte();
             image.ReadExactly(row);
@@ -59,8 +65,8 @@ internal static class FireWeatherRaster
                 })));
             }
 
-            for (var x = 0; x < size; x++)
-                alpha[y * size + x] = row[x * channels + 3];
+            for (var x = 0; x < width; x++)
+                alpha[y * width + x] = row[x * channels + 3];
             (previous, row) = (row, previous);
         }
 

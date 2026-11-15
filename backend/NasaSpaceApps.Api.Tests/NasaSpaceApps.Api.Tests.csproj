@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NasaSpaceApps.Api\NasaSpaceApps.Api.csproj" />
+    <ProjectReference Include="..\NasaSpaceApps.Harmonization\NasaSpaceApps.Harmonization.csproj" />
     <None Update="Weather\Fixtures\*.grb2" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

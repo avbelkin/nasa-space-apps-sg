@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="NasaSpaceApps.Api/NasaSpaceApps.Api.csproj" />
   <Project Path="NasaSpaceApps.Api.Tests/NasaSpaceApps.Api.Tests.csproj" />
+  <Project Path="NasaSpaceApps.Harmonization/NasaSpaceApps.Harmonization.csproj" />
 </Solution>

@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="NasaSpaceApps.Api.Tests" />
+    <InternalsVisibleTo Include="NasaSpaceApps.Harmonization" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
     <PackageReference Include="PureHDF" Version="2.2.0" />
   </ItemGroup>

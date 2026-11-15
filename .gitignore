@@ -25,3 +25,6 @@ Thumbs.db
 
 
 submission/video/lama
+
+# Large exported datasets and caches
+/artifacts/

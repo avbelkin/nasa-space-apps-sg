@@ -25,7 +25,7 @@ internal sealed partial class GfsCloudArchive(IHttpClientFactory clients, TimePr
     private static partial Regex ForecastRangePattern();
 
     internal async Task<CloudHourData?> DownloadHourAsync(
-        DateTimeOffset run, DateTimeOffset valid, bool isSnow, CancellationToken token)
+        DateTimeOffset run, DateTimeOffset valid, bool isSnow, CancellationToken token, bool includePrecipitation = false)
     {
         var relativeGrib = FormattableString.Invariant(
             $"gfs.{run:yyyyMMdd}/{run:HH}/atmos/{NoaaGfsWeather.ObjectFilename(run, valid, isSnow)}");
@@ -36,7 +36,7 @@ internal sealed partial class GfsCloudArchive(IHttpClientFactory clients, TimePr
         if (idxResult is null) return null;
 
         var (idxText, mirrorIndex, modifiedAt) = idxResult.Value;
-        var ranges = SelectByteRanges(idxText, isSnow);
+        var ranges = SelectByteRanges(idxText, isSnow, includePrecipitation);
         if (ranges.Count == 0)
         {
             logger.LogWarning("NOAA cloud index {Path} yielded no matching GRIB2 fields.", relativeIdx);
@@ -99,7 +99,7 @@ internal sealed partial class GfsCloudArchive(IHttpClientFactory clients, TimePr
         return new CloudHourData(selected.Values.ToArray(), clock.GetUtcNow(), finalModifiedAt);
     }
 
-    internal static IReadOnlyList<ByteRange> SelectByteRanges(string idxContent, bool isSnow)
+    internal static IReadOnlyList<ByteRange> SelectByteRanges(string idxContent, bool isSnow, bool includePrecipitation = false)
     {
         var targets = isSnow ? SnowFields : WeatherFields;
         var parsed = new List<(long Offset, string Var, string Level, string TimeSpec)>();
@@ -118,7 +118,9 @@ internal sealed partial class GfsCloudArchive(IHttpClientFactory clients, TimePr
         {
             var item = parsed[i];
             var key = (item.Var, item.Level);
-            if (!targets.Contains(key)) continue;
+            var isTarget = targets.Contains(key) ||
+                (includePrecipitation && !isSnow && key.Level == "surface" && key.Var is "PRATE" or "APCP");
+            if (!isTarget) continue;
 
             long? end = i + 1 < parsed.Count ? parsed[i + 1].Offset - 1 : null;
             if (end is { } endByte && endByte < item.Offset) continue;

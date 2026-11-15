@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
@@ -51,6 +52,10 @@ public sealed class PlanetaryComputerLandCover(
     private TokenResponse? token;
     private DateTimeOffset tokenRetryAfter;
     private int remainingSourceRequests;
+    private string? offlineBlockCacheDir;
+    private bool offlineMode;
+    private ConcurrentDictionary<FootprintKey, LandCoverSummary?>? offlineSummaries;
+    private TimeSpan offlinePassTimeout = PassTimeout;
 
     private sealed record TokenResponse(string Token, [property: JsonPropertyName("msft:expiry")] DateTimeOffset Expires);
     private readonly record struct WeightedPixel(int Spot, int Pixel, ushort Weight);
@@ -101,13 +106,59 @@ public sealed class PlanetaryComputerLandCover(
         return new LandCoverResult(result, pending);
     }
 
+    internal async Task<IReadOnlyList<FirmsHotspot>> EnrichOfflineCompleteAsync(
+        IReadOnlyList<FirmsHotspot> spots,
+        bool world,
+        string? blockCacheDir,
+        CancellationToken cancellationToken)
+    {
+        offlineBlockCacheDir = blockCacheDir;
+        if (!string.IsNullOrEmpty(blockCacheDir))
+            Directory.CreateDirectory(blockCacheDir);
+        offlinePassTimeout = TimeSpan.FromMinutes(20);
+        offlineMode = true;
+        var collected = new ConcurrentDictionary<FootprintKey, LandCoverSummary?>();
+        offlineSummaries = collected;
+        await deferredPass.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var missing = spots.Where(HasValidCoordinates)
+                .DistinctBy(spot => FootprintKey.From(spot, world))
+                .ToArray();
+            if (missing.Length > 0)
+            {
+                remainingSourceRequests = int.MaxValue;
+                await FillCacheAsync(missing, world, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            offlineMode = false;
+            offlineSummaries = null;
+            offlinePassTimeout = PassTimeout;
+            offlineBlockCacheDir = null;
+            deferredPass.Release();
+        }
+
+        var result = new FirmsHotspot[spots.Count];
+        for (var i = 0; i < spots.Count; i++)
+        {
+            var spot = spots[i];
+            if (collected.TryGetValue(FootprintKey.From(spot, world), out var summary) && summary is not null)
+                result[i] = spot with { LandCover = summary };
+            else
+                result[i] = spot;
+        }
+        return result;
+    }
+
     private async Task FillCacheAsync(FirmsHotspot[] spots, bool world, CancellationToken cancellationToken)
     {
         var work = GroupSamples(spots, world, cancellationToken);
         var counts = new ushort[spots.Length][];
         var failedBlocks = 0;
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        deadline.CancelAfter(PassTimeout);
+        deadline.CancelAfter(offlinePassTimeout);
         using var client = clients.CreateClient(HttpClientName);
         try
         {
@@ -116,7 +167,7 @@ public sealed class PlanetaryComputerLandCover(
             await Parallel.ForEachAsync(busiestBlocksFirst, new ParallelOptions
             {
                 CancellationToken = deadline.Token,
-                MaxDegreeOfParallelism = Parallelism,
+                MaxDegreeOfParallelism = offlineMode ? 16 : Parallelism,
             }, async (group, ct) =>
             {
                 var pixels = await GetAvailablePixelsAsync(client, group.Key, ct);
@@ -153,8 +204,11 @@ public sealed class PlanetaryComputerLandCover(
             if (histogram is null || SampleTotal(histogram) != LandCoverFootprint.SampleCount) continue;
 
             var summary = LandCoverFootprint.Summarize(histogram);
-            summaries.Set(FootprintKey.From(spots[i], world), summary,
-                new MemoryCacheEntryOptions { Size = 128 + (summary?.Classes.Count ?? 0) * 32 });
+            var key = FootprintKey.From(spots[i], world);
+            if (offlineSummaries is not null)
+                offlineSummaries[key] = summary;
+            else
+                summaries.Set(key, summary, new MemoryCacheEntryOptions { Size = 128 + (summary?.Classes.Count ?? 0) * 32 });
         }
     }
 
@@ -163,9 +217,22 @@ public sealed class PlanetaryComputerLandCover(
         if (cache.TryGetValue(id, out byte[]? compressed))
             return compressed is null ? null : LandCoverCog.Decode(compressed);
 
+        var diskPath = !string.IsNullOrEmpty(offlineBlockCacheDir)
+            ? Path.Combine(offlineBlockCacheDir, $"{id}.zlib")
+            : null;
+        if (diskPath is not null && File.Exists(diskPath))
+        {
+            var cachedBytes = await File.ReadAllBytesAsync(diskPath, ct).ConfigureAwait(false);
+            cache.Set(id, cachedBytes, new MemoryCacheEntryOptions { Size = cachedBytes.Length + 128 });
+            return LandCoverCog.Decode(cachedBytes);
+        }
+
         try
         {
-            return await FetchPixelsAsync(client, id, ct);
+            var pixels = await FetchPixelsAsync(client, id, ct);
+            if (diskPath is not null && cache.TryGetValue(id, out byte[]? newlyCompressed) && newlyCompressed is not null)
+                await File.WriteAllBytesAsync(diskPath, newlyCompressed, ct).ConfigureAwait(false);
+            return pixels;
         }
         catch (SourceBudgetReachedException)
         {
@@ -252,8 +319,22 @@ public sealed class PlanetaryComputerLandCover(
                 directory = directories[directoryId];
                 if (directory is null)
                 {
-                    var bytes = headers[asset] ??= await ReadRangeAsync(client, path, 0, LandCoverCog.HeaderBytes, ct);
-                    directory = LandCoverCog.Read(bytes, scale);
+                    if (headers[asset] is null)
+                    {
+                        var headerCachePath = !string.IsNullOrEmpty(offlineBlockCacheDir)
+                            ? Path.Combine(offlineBlockCacheDir, $"header_{asset}.bin")
+                            : null;
+                        if (headerCachePath is not null && File.Exists(headerCachePath))
+                            headers[asset] = await File.ReadAllBytesAsync(headerCachePath, ct).ConfigureAwait(false);
+                        else
+                        {
+                            var loaded = await ReadRangeAsync(client, path, 0, LandCoverCog.HeaderBytes, ct);
+                            headers[asset] = loaded;
+                            if (headerCachePath is not null)
+                                await File.WriteAllBytesAsync(headerCachePath, loaded, ct).ConfigureAwait(false);
+                        }
+                    }
+                    directory = LandCoverCog.Read(headers[asset]!, scale);
                     Volatile.Write(ref directories[directoryId], directory);
                 }
             }
@@ -277,7 +358,7 @@ public sealed class PlanetaryComputerLandCover(
         var signed = await GetTokenAsync(client, ct);
         await AcquireSourceRequestAsync(ct);
         using var requestTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        requestTimeout.CancelAfter(TimeSpan.FromSeconds(5));
+        requestTimeout.CancelAfter(TimeSpan.FromSeconds(offlineMode ? 20 : 5));
         var end = (long)offset + length - 1;
         using var request = new HttpRequestMessage(HttpMethod.Get, path + "?" + signed);
         request.Headers.Range = new RangeHeaderValue(offset, end);
@@ -295,6 +376,7 @@ public sealed class PlanetaryComputerLandCover(
 
     private async Task AcquireSourceRequestAsync(CancellationToken ct)
     {
+        if (offlineMode) return;
         if (Interlocked.Decrement(ref remainingSourceRequests) < 0) throw new SourceBudgetReachedException();
         using var permit = await sourceRate.AcquireAsync(1, ct);
         if (!permit.IsAcquired) throw new SourceBudgetReachedException();

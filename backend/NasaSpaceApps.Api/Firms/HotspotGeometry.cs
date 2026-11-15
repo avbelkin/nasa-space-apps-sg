@@ -26,12 +26,13 @@ public sealed record HotspotLightGeometry(
     double? SensorLookSeparationDeg,
     double? GlintAngleDeg);
 
-internal sealed class HotspotGeometryCalculator(IReadOnlyDictionary<int, ResolvedTleEntry> fleet)
+internal sealed class HotspotGeometryCalculator(IReadOnlyDictionary<int, ResolvedTleEntry> fleet, TimeSpan? maxTleAge = null)
 {
     private const int TrackStepSeconds = 15;
     private const int TrackLeadSeconds = 60;
     private const int TrackLagSeconds = 420;
     private static readonly TimeSpan MaxTleAge = TimeSpan.FromDays(5);
+    private readonly TimeSpan _maxTleAge = maxTleAge ?? MaxTleAge;
     private static readonly Dictionary<string, SatelliteMetadata> SatellitesByName =
         SatelliteCatalog.Default.ToDictionary(satellite => satellite.Name);
 
@@ -48,7 +49,7 @@ internal sealed class HotspotGeometryCalculator(IReadOnlyDictionary<int, Resolve
 
         if (SatellitesByName.TryGetValue(name, out var meta) &&
             fleet.TryGetValue(meta.NoradId, out var resolved) &&
-            (observation.UtcDateTime - resolved.Tle.EpochUtc).Duration() <= MaxTleAge)
+            (observation.UtcDateTime - resolved.Tle.EpochUtc).Duration() <= _maxTleAge)
         {
             var match = FindTrackMatch(resolved.Tle, observation, frame.Position);
             if (match is { } candidate)
