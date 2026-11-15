@@ -10,6 +10,7 @@ internal sealed class EncodedWeatherGridCache(FirestoreWeatherGridStore? store, 
 {
     internal static EncodedWeatherGridCache Disabled { get; } = new(null, TimeProvider.System, NullLogger<EncodedWeatherGridCache>.Instance);
     private long backoffUntil;
+    private int reportedHits;
 
     internal async Task<T> GetAsync<T>(string key, DateTimeOffset expires, Func<CancellationToken, Task<EncodedWeatherGrid>> fetch,
         Func<EncodedWeatherGrid, T> decode, CancellationToken token, Func<T, DateTimeOffset>? expiration = null)
@@ -22,7 +23,13 @@ internal sealed class EncodedWeatherGridCache(FirestoreWeatherGridStore? store, 
         {
             cached = await store.ReadAsync(key, token).ConfigureAwait(false);
             if (cached is not null && cached.Expires > clock.GetUtcNow())
-                return decode(cached.Grid);
+            {
+                var decodedGrid = decode(cached.Grid);
+                if (local is null && Volatile.Read(ref reportedHits) < 16 && Interlocked.Increment(ref reportedHits) <= 16)
+                    logger.LogInformation("Reused shared encoded weather grid {Grid} fetched at {FetchedAt:O}.",
+                        FirestoreWeatherGridStore.GridId(key), cached.Grid.FetchedAt);
+                return decodedGrid;
+            }
         }
         catch (InvalidDataException) when (cached is not null)
         {
