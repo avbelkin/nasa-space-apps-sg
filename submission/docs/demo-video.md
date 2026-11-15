@@ -1,24 +1,24 @@
-# Сценарий ролика Earth Fire Calendar с Ламой
+# Earth Fire Calendar video script with Lama
 
-[Слайды](demo-slides.md) · [Съёмка и инструменты](../video/README.md) · [Описание проекта](project-description.md) · [Техническая записка](technical-note.md) · [Требования](formal-requirements.md) · [Рекомендации](advice.md)
+[Slides](demo-slides.md) · [Production plan](../video/README.md) · [Project description](project-description.md) · [Technical note](technical-note.md) · [Requirements](formal-requirements.md) · [Advice](advice.md)
 
-Плюшевый альпака Лама — помощник Алексея. Вступление занимает 1,4 секунды, затем переход внутрь монитора длится 0,6 секунды. Появившийся рядом с интерфейсом Лама начинает рассказ. Реплики и экранные надписи — на английском; указания для монтажа — на русском. В рабочем монтаже используем временные кадры с прода; перед финалом заменяем их записью нужных действий.
+Lama, a plush alpaca, is Alexey's assistant. The opening uses 1.4 seconds of live footage followed by a 0.6-second transition into the monitor. Lama then appears beside the interface and begins narrating. Narration, captions and production instructions are all in English. The working edit uses temporary production-site captures; replace them with recordings of the required actions before the final export.
 
-Монтажный ориентир: **29 секунд, 1920×1080, 30 кадров/с — 870 кадров**. Реплики содержат **46 слов**. Тайминг речи предварительный: после записи голоса подгоняем монтаж и паузы по фактическому звуку, сохраняя общую длительность.
+Editing target: **29 seconds, 1920×1080, 30 fps — 870 frames**. The narration contains **46 words**. Speech timing is provisional: adjust the edit and pauses to the recorded audio while retaining the total duration.
 
-## Раскадровка
+## Storyboard
 
-| Время | Кадры, начало включительно и конец исключительно | Изображение и действие | Реплика Ламы | Надписи помимо субтитров |
+| Time | Frames, start inclusive and end exclusive | Visuals and action | Lama's narration | Captions in addition to subtitles |
 |---|---|---|---|---|
-| 0–1,4 с | 0–42 | Живая съёмка: Алексей за компьютером, игрушка перед монитором. Вертикальный отрезок вписан по высоте в центр размытой увеличенной копии. По решению пользователя используем вариант с Алексеем, участником команды. | — | Earth Fire Calendar |
-| 1,4–2 с | 42–60 | Удерживаем последний кадр. Наезд на нижний монитор длится 8 кадров, смаз и склейка — 4 кадра, переход к интерфейсу — ещё 6 кадров. Игрушка уходит за край при увеличении кадра; фон под ней не дорисовывается. | — | Earth Fire Calendar |
-| 2–5,5 с | 60–165 | Интерфейс занимает основную часть кадра. Лама сразу появляется справа внизу, слегка подпрыгивает, затем на слове Mostly наклоняется. У зрителя сохраняется связь с игрушкой через шерсть и платок. | I’m Lama. I help Alexey. Mostly. | Earth Fire Calendar; AI-edited image |
-| 5,5–11,5 с | 165–345 | Один и тот же ракурс карты: сначала MODIS, затем VIIRS. После переключения даём точкам полностью отрисоваться. Лама наклоняется к карте; переключатель и соответствующий счётчик кратко выделяются. | Same planet. Same day. But MODIS and VIIRS see different hotspots. | NASA FIRMS · last 24 h; MODIS → VIIRS |
-| 11,5–17 с | 345–510 | All sensors; включается Color fire spots by sensor. Показываем заранее выбранный регион и цветовую легенду. Лама короткими подскоками перемещается внутри своей полосы и останавливается. | Earth Fire Calendar compares their detections using NASA FIRMS data. | NASA FIRMS · last 24 h |
-| 17–23 с | 510–690 | Выбираем подготовленную группу. Последовательно приближаем реальные фрагменты одной карточки: строку Sat. off-nadir, строку Land cover, заполненные строки Weather at acquisition. Лама остаётся на месте, внимание направляют подсветки. | We add context: viewing angle, land cover, and weather. | Estimated viewing geometry → Land cover → Weather at acquisition |
-| 23–29 с | 690–870 | Возвращаемся к карте. Лама смотрит на зрителя и слегка кивает. Финальные название, ссылка и следующий шаг остаются на экране до конца. | Next, we’ll use this evidence to make their records comparable. | Earth Fire Calendar; Next: harmonization; avbelkin.github.io/nasa-space-apps-sg |
+| 0–1.4 s | 0–42 | Live footage: Alexey at the computer, the toy in front of the monitor. Fit the portrait clip to the frame height, centered over an enlarged, blurred copy. The user selected the version showing Alexey, a team member. | — | Earth Fire Calendar |
+| 1.4–2 s | 42–60 | Hold the final frame. Push into the lower monitor over 8 frames, use 4 frames for motion blur and the cut, then reveal the interface over 6 frames. The toy leaves the frame as the view enlarges; its background is not reconstructed. | — | Earth Fire Calendar |
+| 2–5.5 s | 60–165 | The interface fills most of the frame. Lama immediately appears at the lower right, bounces gently, then tilts on Mostly. The fur and scarf connect the presenter to the physical toy. | I’m Lama. I help Alexey. Mostly. | Earth Fire Calendar; AI-edited image |
+| 5.5–11.5 s | 165–345 | Keep the same map view: MODIS first, then VIIRS. Let the points finish rendering after the switch. Lama leans toward the map; briefly highlight the switch and the corresponding counter. | Same planet. Same day. But MODIS and VIIRS see different hotspots. | NASA FIRMS · last 24 h; MODIS → VIIRS |
+| 11.5–17 s | 345–510 | Select All sensors and enable Color fire spots by sensor. Show the prepared region and color key. Lama moves in short hops within his own strip, then stops. | Earth Fire Calendar compares their detections using NASA FIRMS data. | NASA FIRMS · last 24 h |
+| 17–23 s | 510–690 | Select the prepared group. Enlarge real excerpts from the same card in sequence: Sat. off-nadir, Land cover, and populated Weather at acquisition rows. Lama stays still while highlights direct attention. | We add context: viewing angle, land cover, and weather. | Estimated viewing geometry → Land cover → Weather at acquisition |
+| 23–29 s | 690–870 | Return to the map. Lama looks toward the viewer and nods slightly. Keep the final title, link and next step visible until the end. | Next, we’ll use this evidence to make their records comparable. | Earth Fire Calendar; Next: harmonization; avbelkin.github.io/nasa-space-apps-sg |
 
-## Текст для озвучки
+## Narration
 
 ```text
 I’m Lama. I help Alexey. Mostly.
@@ -32,26 +32,26 @@ We add context: viewing angle, land cover, and weather.
 Next, we’ll use this evidence to make their records comparable.
 ```
 
-Голос тёплый, любопытный, разговорный; Mostly произносится с короткой комической паузой. Ориентир — около 25 секунд вместе с паузами после начала речи на 2-й секунде. Согласованный 46-словный текст не расширяем: дополнительную реплику Meet Earth Fire Calendar поверх вступления не добавляем. Названия Lama, Alexey, MODIS, VIIRS и NASA FIRMS проверяем на слух до окончательной сборки. При слишком длинном дубле сокращаем паузы или перезаписываем фразу.
+Use a warm, curious, conversational voice, with a short comic pause before Mostly. Aim for about 25 seconds including pauses, starting at the 2-second mark. Keep the agreed 46-word text: do not add Meet Earth Fire Calendar over the opening. Check the pronunciation of Lama, Alexey, MODIS, VIIRS and NASA FIRMS before the final edit. If a take is too long, shorten pauses or rerecord the phrase.
 
-Английские субтитры повторяют реплики дословно. Делим их на короткие смысловые части, максимум две строки; точные моменты появления ставим после получения аудио. Слова Mostly и Next не теряем при разбивке: первое завершает шутку, второе обозначает будущую работу.
+English subtitles repeat the narration verbatim. Split them into short meaningful phrases, at most two lines, and set their timing after receiving the audio. Retain Mostly and Next in the subtitle segmentation: the first completes the joke; the second identifies future work.
 
-## Персонаж и монтаж
+## Character and editing
 
-Используем подготовленную ИИ-версию Ламы на прозрачном фоне. Это перегенерированное изображение по фото: поза, глаз, цвет уха и узор платка немного отличаются от оригинала. Узнаваемость принята для первого монтажа; изображение не зеркалим и не перегенерируем. Отдельные движения лап и рта не заложены.
+Use the prepared AI-generated version of Lama with transparency. It was regenerated from a photograph: the pose, eye, ear color and scarf pattern differ slightly from the original. Its recognizability is accepted for the first edit; do not mirror or regenerate it. Separate paw and mouth movements are not planned.
 
-В кадре 1920×1080 интерфейс вписан в область 1600×900 с началом x=16, y=24. Для Ламы оставлена полоса справа: x≈1640, верх y=700, высота 340 px (максимум 380 px с пересмотром нижних отступов). Он смотрит влево на глобус; счётчики и заголовок NASA FIRMS остаются открыты. Под фигурой постоянно видна подпись AI-edited image, начиная с её появления на 2-й секунде. Субтитры занимают отдельную область снизу слева. Во время чтения таблиц Лама стоит спокойно.
+Within the 1920×1080 frame, fit the interface into a 1600×900 area starting at x=16, y=24. Reserve the right strip for Lama: x≈1640, top y=700, height 340 px (up to 380 px if the bottom spacing is revised). He looks left toward the globe; the counters and NASA FIRMS heading remain visible. Keep AI-edited image visible below the character from his first appearance at 2 seconds. Subtitles occupy a separate area at the lower left. Lama stays still while the viewer reads tables.
 
-Вступление готовится из intro-candidate.mp4: выбран вариант 608×1080 по центру поверх размытой копии. Подготовленный вариант без лица сохранён как технический резерв и в текущий монтаж не входит. without_Lama.MOV и восстановление фона в выбранном переходе не используются.
+Build the opening from intro-candidate.mp4 using the selected 608×1080 centered version over a blurred copy. The version cropped to exclude the face remains a technical fallback and is not part of the current edit. The chosen transition uses neither without_Lama.MOV nor background reconstruction.
 
-На финальном кадре сохраняем краткую атрибуцию NASA FIRMS и пометку Independent project. Not affiliated with or endorsed by NASA. Имя команды добавляется после получения точного написания; имя Ламы его не заменяет.
+The final frame retains a short NASA FIRMS credit and the note Independent project. Not affiliated with or endorsed by NASA. Add the team name once its exact spelling is supplied; Lama's name does not replace it.
 
-Текст раскрытия ИИ для описания, поля про ИИ и метаданных экспорта сохранён в [публикационных подписях](../video/disclosures.md). Синтетическую озвучку указываем после её фактического создания. Принт платка проверяем после первого монтажа; до выяснения принадлежности не объявляем его свободным от чужого бренда.
+Disclosure text for the description, AI-use field and export metadata is in [publication disclosures](../video/disclosures.md). Disclose synthesized narration after it has actually been generated. Check the scarf print after the first edit; do not claim that it contains no third-party branding before its ownership is established.
 
-## Смысловые ограничения
+## Scope of claims
 
-Показываем сравнение настоящих обнаружений за одни и те же 24 часа. All sensors объединяет их для просмотра, а цветовые группы зависят от экранной близости точек: они не доказывают совпадение отдельных пожаров. Геометрия помечается как оценка. Погода и земной покров показываются только там, где значения доступны.
+Compare real detections from the same 24-hour window. All sensors combines them for display, and the colored groups depend on screen-space proximity: they do not establish that individual fires match. Label geometry as estimated. Show weather and land cover only where values are available.
 
-Гармонизация — следующий шаг. Не изображаем готовую калибровку, объединение точек в научно подтверждённое событие, прогноз пожаров или работающий сезонный календарь. Точные количества обнаружений в голосе не называем: на записи остаются реальные счётчики выбранного снимка данных.
+Harmonization is the next step. Do not depict completed calibration, a scientifically verified merging of detections into events, fire forecasting or a working seasonal calendar. Do not read exact detection counts aloud; retain the actual counters from the selected data snapshot on screen.
 
-Подготовка исходников и последовательность записи описаны в [съёмочном плане](../video/README.md).
+Asset preparation and recording steps are in the [production plan](../video/README.md).

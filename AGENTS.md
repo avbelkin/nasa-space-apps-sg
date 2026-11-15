@@ -1,5 +1,10 @@
 # Repository Agent Guidelines
 
+## Language
+
+- All repository content must be in English, including documentation, scripts, comments, review notes, and local review pages. This also applies to authored text in Git-ignored working directories.
+- Respond to the user in Russian. The chat language does not change the repository language.
+
 ## Git & Remote Sync Workflow
 
 - **Parallel feature worktrees**: Start new features in an isolated sibling Git worktree on a dedicated feature branch (for example, `git worktree add ..\nasa-space-apps-sg-wt-<feature> -b feat/<feature> main`) so multiple features or agents can be built, tested, and committed in parallel without branch-switching or dirty-worktree conflicts. Remove the worktree (`git worktree remove ..\nasa-space-apps-sg-wt-<feature>`) once merged.
