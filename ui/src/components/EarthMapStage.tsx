@@ -104,7 +104,7 @@ import {
   setFireSpotSensorColors,
   type FireSpotsAnimationController,
 } from '../utils/fireSpotsAnimation'
-import { FireDetectionPowerSummary, FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
+import { FireDetectionPowerSummary } from './FireDetectionsTimelineCard'
 import { FireHoverTooltip } from './FireHoverTooltip'
 import { MapControls } from './MapControls'
 import type { PinnedFireSelection } from './PinnedFireDetails'
@@ -728,6 +728,21 @@ export function EarthMapStage({
       ? hover
       : null
   const hoveredSelection = visibleHover?.selection
+  // Light hover summary: scanning needs satellites and best confidence, not the full chart.
+  const hoverSummary = useMemo(() => {
+    if (!hoveredSelection) return null
+    const satellites = [...new Set(
+      hoveredSelection.inputs.map((spot) => spot.satellite).filter(Boolean),
+    )]
+    const confidences = hoveredSelection.inputs
+      .map((spot) => spot.confidence)
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
+    const parts = [
+      satellites.join(', '),
+      confidences.length > 0 ? `Conf up to ${Math.round(Math.max(...confidences))}%` : '',
+    ].filter(Boolean)
+    return parts.length > 0 ? parts.join(' · ') : null
+  }, [hoveredSelection])
   const hoverDetails = useMemo(
     () => hoveredSelection && formatFireSpotsTooltip(hoveredSelection.inputs, hoveredSelection.nowMs, {
       sensorFilter: hoveredSelection.sensorFilter,
@@ -750,6 +765,7 @@ export function EarthMapStage({
   const screenGroupsRef = useRef<ReadonlyMap<number, FireSpotScreenGroup> | undefined>(undefined)
   const screenGroupsDirtyRef = useRef(true)
   const onPinFireSelectionRef = useRef(onPinFireSelection)
+  const latestPinnedSelectionRef = useRef(pinnedFireSelection)
   const latestOnReducedMotionChangeRef = useRef(onReducedMotionChange)
   const fireAnimControllerRef = useRef<FireSpotsAnimationController | null>(null)
   const firePointerCleanupRef = useRef<(() => void) | null>(null)
@@ -845,6 +861,10 @@ export function EarthMapStage({
   useEffect(() => {
     onPinFireSelectionRef.current = onPinFireSelection
   }, [onPinFireSelection])
+
+  useEffect(() => {
+    latestPinnedSelectionRef.current = pinnedFireSelection
+  }, [pinnedFireSelection])
 
   useEffect(() => {
     latestOnReducedMotionChangeRef.current?.(reducedMotion)
@@ -1098,6 +1118,9 @@ export function EarthMapStage({
         if (hit) {
           userInteractedRef.current = true
           onPinFireSelectionRef.current(hit)
+        } else if (latestPinnedSelectionRef.current) {
+          // MapLibre click only fires within its click tolerance, so a drag never reaches here.
+          onPinFireSelectionRef.current(null)
         }
       })
 
@@ -1627,8 +1650,8 @@ export function EarthMapStage({
             {hoverDetails.landCoverLabel && (
               <span className="fire-land-cover">Land cover · {hoverDetails.landCoverLabel}</span>
             )}
+            {hoverSummary && <span>{hoverSummary}</span>}
           </div>
-          <FireDetectionsTimelineCard timeline={hoverDetails.timeline} interactive={false} />
           <p>Click spot to pin details</p>
         </FireHoverTooltip>
       )}

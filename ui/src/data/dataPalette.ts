@@ -43,6 +43,21 @@ export const FIRE_SENSOR_GROUP_COLORS = {
   viirs: '#e9b3ff',
 } as const
 
+// Categorical land-cover classes (Okabe-Ito, colorblind-safe). Assigned in the order classes
+// are listed for one footprint; the text label always accompanies the color.
+export const LAND_COVER_PALETTE = [
+  '#e69f00',
+  '#56b4e9',
+  '#009e73',
+  '#f0e442',
+  '#0072b2',
+  '#d55e00',
+  '#cc79a7',
+  '#999999',
+] as const
+
+export const LAND_COVER_OTHER_COLOR = '#6b7280'
+
 export const USER_LOCATION_COLORS = {
   fill: '#ffffff',
   ring: '#0f172a',
