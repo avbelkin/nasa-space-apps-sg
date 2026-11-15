@@ -2,9 +2,13 @@ import { normalizeFullSatelliteLabel, type NegativeTimelineSubBar } from './fire
 import type { FireSpotTooltipInput, FirmsLiveSpotsResponse } from './fireSpots.ts'
 import { POSITIVE_PASS_MATCH_TOLERANCE_MS, type ComputedOverpass } from './satelliteOverpassTimeline.ts'
 import { computeGreatCircleDistanceKm } from './satelliteOrbits.ts'
+import type { FireObservationGeometry } from './fireObservationGeometry.ts'
+import { scoreViirsDetection } from './viirsDetectionScore.ts'
 
 const FOLLOWUP_WINDOW_MS = 6 * 60 * 60_000
 const MATCH_RADIUS_KM = 1
+const EXPECTED_DETECTION_THRESHOLD = 0.7
+type PassFeed = Pick<FirmsLiveSpotsResponse, 'sources' | 'spots' | 'fetchedAtUtc' | 'windowStartUtc' | 'windowEndUtc'>
 
 function isSettledFollowup(
   anchorTime: number, passTime: number, lagMinutes: number | undefined, availableThrough: number,
@@ -49,28 +53,52 @@ export function getSecondPassOutlook(
   return fewer.length || more.length ? { satellite: pass.satellite, fewer, more } : null
 }
 
-export function getCrossFamilyPassOutlook(
+function findUnmatchedFollowupPass(
   spot: FireSpotTooltipInput,
   passes: readonly ComputedOverpass[],
-  feed: Pick<FirmsLiveSpotsResponse, 'sources' | 'spots' | 'fetchedAtUtc' | 'windowStartUtc' | 'windowEndUtc'>,
+  feed: PassFeed,
+  target: ComputedOverpass['instrument'],
+  accepts: (pass: ComputedOverpass) => boolean = () => true,
 ) {
-  const { lat, lng, instrument } = spot
-  if (!instrument || lat === undefined || lng === undefined || !Number.isFinite(lat) || !Number.isFinite(lng)) return null
-  const target = instrument === 'modis' ? 'viirs' : 'modis'
+  const { lat, lng } = spot
+  if (lat === undefined || lng === undefined || !Number.isFinite(lat) || !Number.isFinite(lng)) return undefined
   const sources = feed.sources.filter((source) => source.instrument === target)
   const availableThrough = Math.min(Date.parse(feed.fetchedAtUtc), Date.parse(feed.windowEndUtc ?? ''))
   const availableFrom = Date.parse(feed.windowStartUtc ?? '')
-  if (!sources.length || !Number.isFinite(availableThrough) || !Number.isFinite(availableFrom)) return null
+  if (!sources.length || !Number.isFinite(availableThrough) || !Number.isFinite(availableFrom)) return undefined
 
   const sourceCodes = new Set(sources.map((source) => source.code))
   const tolerance = POSITIVE_PASS_MATCH_TOLERANCE_MS
-  const pass = passes.find((candidate) => candidate.instrument === target &&
+  return passes.find((candidate) => candidate.instrument === target &&
     candidate.timestampMs - tolerance >= availableFrom &&
     isSettledFollowup(spot.timestamp, candidate.timestampMs, candidate.typicalIngestionLagMinutes, availableThrough) &&
+    accepts(candidate) &&
     !feed.spots.some(([spotLng, spotLat, time, , , , sourceCode, satellite]) =>
       sourceCodes.has(sourceCode) && satellite === candidate.satellite &&
       Math.abs(time - candidate.timestampMs) <= tolerance &&
       computeGreatCircleDistanceKm({ lat, lng }, { lat: spotLat, lng: spotLng }) <= MATCH_RADIUS_KM))
+}
+
+export function getExpectedViirsMiss(
+  spot: FireSpotTooltipInput, passes: readonly ComputedOverpass[], feed: PassFeed,
+  geometry?: FireObservationGeometry | null, landCoverCode?: number,
+) {
+  const { satellite } = spot
+  if (spot.instrument !== 'viirs' || (satellite !== 'NOAA-20' && satellite !== 'NOAA-21')) return null
+  const partner = satellite === 'NOAA-20' ? 'NOAA-21' : 'NOAA-20'
+  const score = (pass: ComputedOverpass) => scoreViirsDetection(spot, pass, geometry, landCoverCode)
+  const pass = findUnmatchedFollowupPass(spot, passes, feed, 'viirs', (pass) =>
+    pass.satellite === partner && score(pass) >= EXPECTED_DETECTION_THRESHOLD)
+  return pass ? { pass, score: score(pass) } : null
+}
+
+export function getCrossFamilyPassOutlook(
+  spot: FireSpotTooltipInput, passes: readonly ComputedOverpass[], feed: PassFeed,
+) {
+  const { instrument } = spot
+  if (!instrument) return null
+  const target = instrument === 'modis' ? 'viirs' : 'modis'
+  const pass = findUnmatchedFollowupPass(spot, passes, feed, target)
   if (!pass) return null
 
   const fewer: string[] = []
