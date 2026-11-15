@@ -2,7 +2,7 @@
 
 [Slides](demo-slides.md) · [Video script](demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
 
-Draft text for the **Project** tab, field by field, in the order of the [form](form-fields.md). It describes the app as of commit `3da451f` (15 November 2026, 17:47 SGT). Replace everything in `[square brackets]` before submitting; the items the team still has to confirm are collected in [Before submitting](#before-submitting).
+Draft text for the **Project** tab, field by field, in the order of the [form](form-fields.md). It describes the app as of commit `75f89b8` (15 November 2026, 19:03 SGT). Replace everything in `[square brackets]` before submitting; the items the team still has to confirm are collected in [Before submitting](#before-submitting).
 
 The live numbers come from one snapshot of the app's feed, fetched on 15 November 2026 at 08:36 UTC; its summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](../assets/firms-snapshot-2026-11-15T0836Z.json). If the slides or the video use a different snapshot, use one set of numbers everywhere.
 
@@ -14,14 +14,14 @@ Earth Fire Calendar
 
 ## 2. High-Level Project Summary
 
-170 words; the official video recommends 50–200.
+198 words; the official video recommends 50–200.
 
 ```text
 Earth Fire Calendar shows, on a live 3D globe, every active-fire detection that NASA FIRMS published in the last 24 hours from MODIS (Terra, Aqua) and VIIRS (NOAA-20, NOAA-21), and lets you switch between the two sensors. The same day looks very different: on 15 November 2026 at 08:36 UTC, VIIRS reported 79,349 detections and MODIS 8,127. The two sets of detections overlap only in part, which is why the MODIS record since 2000 and the newer VIIRS record cannot simply be joined.
 
 To explain the gap, not only show it, the app attaches to each detection the conditions under which it was observed: viewing geometry, land cover inside the pixel footprint and weather at acquisition time. This is the evidence a harmonization method needs.
 
-The app is a tool for studying this difference and a source of detection-level data for research. Harmonization rules, and a test of whether fire radiative power can be predicted from weather conditions, are what we explore next; they are not part of this prototype.
+The app is a tool for studying this difference and a source of detection-level data for research. As a first use of that evidence, it notes when another satellite passed over a detection and reported nothing, and gives an experimental estimate of the fire radiative power the next pass would report, fitted on one day of matched passes. A harmonized record is what we explore next; it is not part of this prototype.
 ```
 
 ## 3. Link to Project Demo
@@ -60,13 +60,17 @@ Earth Fire Calendar is a public web app. It works on live NASA FIRMS data, with 
 - land cover inside the pixel footprint, from the 2019 ESA CCI / Copernicus C3S land cover map;
 - weather at the acquisition time: temperature, humidity, wind, cloud over the footprint, precipitation, lightning, snow, aerosol, soil moisture, fire-weather index and dead-fuel moisture, where each source has coverage.
 
-6. Context layers. Satellite ground tracks and scan swaths, cloud imagery, GPM IMERG precipitation and VIIRS Black Marble night lights can be switched on and off.
+6. What the next pass may show. For a single pinned detection the app notes a predicted pass by another satellite, of the same sensor or the other one, that reported nothing there, and says under which conditions our one-day baseline saw fewer or more such misses. It also shows the fire radiative power the next pass would report if it detects the fire. Both are experimental: they are fitted on one 24-hour snapshot and give no probability for an individual detection.
+
+7. Context layers. Satellite ground tracks and scan swaths, cloud imagery, GPM IMERG precipitation and VIIRS Black Marble night lights can be switched on and off.
 
 HOW IT WORKS
 
 The interface is a static React and MapLibre GL JS application on GitHub Pages. A small ASP.NET Core service on Google Cloud Run queries the NASA FIRMS Area API, keeps the FIRMS key on the server, caches a snapshot for 20 minutes and serves a rolling 24-hour window.
 
-The service then enriches the detections in the background. It estimates the viewing geometry of each detection by propagating the satellite's orbit from CelesTrak orbital elements to the acquisition time. It samples the land cover map over a circle with the same area as the FIRMS scan-by-track pixel. It samples weather at the acquisition time from NOAA model and satellite products, Open-Meteo, Copernicus fire-danger and drought services and the US Forest Service, and keeps the source, valid time and unit of every value: model and fire-danger fields in the background for the most recent detections, every field for the detections you pin. Weather samples are shared between service instances and expire 24 hours after the acquisition. Missing values stay empty with no substitute. The side panel shows how far each enrichment stage has progressed.
+The service then enriches the detections in the background. It estimates the viewing geometry of each detection by propagating the satellite's orbit from CelesTrak orbital elements to the acquisition time. It samples the land cover map over a circle with the same area as the FIRMS scan-by-track pixel. It samples weather at the acquisition time from NOAA model and satellite products, Open-Meteo, Copernicus fire-danger and drought services and the US Forest Service, and keeps the source, valid time and unit of every value: model and fire-danger fields in the background for the most recent detections, every field for the detections you pin. The weather grids the service downloads are stored in a shared cache, so every service instance can sample them; a worker the team starts by hand can fill this cache for the whole feed. Missing values stay empty with no substitute. The side panel shows how far each enrichment stage has progressed.
+
+The notes and the estimate in point 6 come from baselines fitted offline on one 24-hour snapshot of the feed (14–15 November 2026): logistic regressions for a missed second pass and, on 15,869 matched pairs of detections, a regression for the change in fire radiative power. They use the detection attributes, the estimated geometry and the land cover, not yet the weather, and were evaluated on held-out geographic blocks. The interface applies the fitted coefficients in the browser. The scores are in the technical note.
 
 WHY THESE FIELDS
 
@@ -74,13 +78,13 @@ Our literature review (82 sources, linked below) shows that existing harmonizati
 
 WHAT IS LIVE AND WHAT IS PLANNED
 
-Working today, on live data: the 24-hour detections, the sensor switch and counters, colouring by sensor, the pinned timeline, the geometry, land-cover and weather enrichment, and the context layers.
+Working today, on live data: the 24-hour detections, the sensor switch and counters, colouring by sensor, the pinned timeline, the geometry, land-cover and weather enrichment, and the context layers. Experimental, from a one-day baseline: the notes on unmatched passes and the estimated fire radiative power on the next pass.
 
 Not built yet: the FIRMS archive since 2000, the harmonized record itself, its validation, free selection of an area and dates, and data export. "All sensors" shows the two sensors together without calibration or removal of duplicates; it is not a harmonized product.
 
 WHAT WE HOPE TO ACHIEVE
 
-The goal is a record in which MODIS and VIIRS are comparable, and a tool that lets researchers see where and under what conditions the two sensors disagree. We also want to test whether a detection's fire radiative power can be predicted from the weather and observation conditions we collect. A seasonal calendar for emergency managers, the original idea behind the name, could be built on such a record later. The next milestone is a harmonized record for one region that passes a hold-out test: hide one sensor during the years when both flew, reconstruct it from the other, and compare with simple baselines using pass criteria fixed in advance. If calibration fails the test, we will show each sensor separately and label the combined view experimental.
+The goal is a record in which MODIS and VIIRS are comparable, and a tool that lets researchers see where and under what conditions the two sensors disagree. We also want to test whether a detection's fire radiative power can be predicted from the weather and observation conditions we collect; the first baseline uses observation conditions only, and the next step is to add weather and check the result on other days. A seasonal calendar for emergency managers, the original idea behind the name, could be built on such a record later. The next milestone is a harmonized record for one region that passes a hold-out test: hide one sensor during the years when both flew, reconstruct it from the other, and compare with simple baselines using pass criteria fixed in advance. If calibration fails the test, we will show each sensor separately and label the combined view experimental.
 
 LIMITATIONS
 
@@ -88,7 +92,8 @@ LIMITATIONS
 - The viewing geometry is our estimate from public orbital elements, not the instruments' own per-pixel geolocation.
 - Land cover is a fixed 2019 map; at the global scale it is sampled from a 1.2 km overview.
 - Weather coverage differs by source: some products cover only the Americas or the contiguous United States, and model values are not observations.
-- The app does not forecast fires and is not an operational alerting tool.
+- The notes on unmatched passes and the estimated fire radiative power rest on one day of data and have not been checked on other days. A pass without a detection is inferred from predicted orbits.
+- The app does not forecast fire behaviour or spread and is not an operational alerting tool.
 
 WHAT WE CONSIDERED
 
@@ -98,11 +103,11 @@ WHAT WE CONSIDERED
 
 TOOLS
 
-TypeScript, React, Vite, MapLibre GL JS and WebGL2 shaders for the interface; C# on .NET 10 with ASP.NET Core for the service; GitHub Actions, GitHub Pages, Google Cloud Run and Firestore for build, hosting and the shared weather cache. Automated tests cover FIRMS parsing, the orbit and geometry calculations, land-cover sampling, the weather samplers and the weather cache.
+TypeScript, React, Vite, MapLibre GL JS and WebGL2 shaders for the interface; C# on .NET 10 with ASP.NET Core for the service; GitHub Actions, GitHub Pages, Google Cloud Run and Firestore for build, hosting and the shared weather cache. Automated tests cover FIRMS parsing, the orbit and geometry calculations, land-cover sampling, the weather samplers, the weather cache, the notes on unmatched passes and the fire radiative power estimate.
 
 USE OF AI
 
-AI coding assistants ([Anthropic Claude Code, OpenAI Codex — confirm the list]) were used to write and review code and to draft documentation, the presentation text and the demo script. [Confirm: AI assistance in compiling the literature review.] The app itself does not generate AI content: everything it shows comes from the data sources listed below. The idea of the project is the team's own.
+AI coding assistants ([Anthropic Claude Code, OpenAI Codex — confirm the list]) were used to write and review code and to draft documentation, the presentation text and the demo script. [Confirm: AI assistance in compiling the literature review.] The app itself makes no calls to AI services and generates no text or images. It contains one small statistical model, a regression fitted on NASA FIRMS data, which produces the estimated fire radiative power on the next pass; everything else it shows comes from the data sources listed below. The idea of the project is the team's own.
 
 The Lama presenter image for the demo was generated with OpenAI ChatGPT from an original photograph of the team's plush alpaca. It is an AI-edited depiction, not an exact photographic cutout. The video will label it "AI-edited image" whenever it appears. Live-action footage and application captures are real recordings. Voiceover has not yet been produced; if synthesized, its provider will be disclosed in the video description and file metadata.
 
@@ -125,16 +130,17 @@ Screenshots to insert in this field, each taken from the version that is submitt
 | 3 | **All sensors** with **Color fire spots by sensor** on, zoomed to one region | `Who saw it: both sensors, MODIS only, VIIRS only` |
 | 4 | Pinned group: timeline plus the geometry table with MODIS and VIIRS columns | `One place, 24 hours: detections, passes and viewing geometry` |
 | 5 | Same pinned group with **Weather at acquisition** open and the land-cover line visible | `Conditions of each observation` |
+| 6 | One pinned detection with **Predicted FRP if detected** and a note on an unmatched pass | `Experimental: what the next pass may show` |
 
 ## 6. Use of Super Intelligence (SI)
 
 Tick every option that applies. From what the repository shows:
 
-- **Code generation tools** — yes: `Co-Authored-By: Claude` trailers in 23 of 156 commits, branches named `codex/*`, an `AGENTS.md` in the root.
+- **Code generation tools** — yes: `Co-Authored-By: Claude` trailers in 35 of 193 commits, branches named `codex/*`, an `AGENTS.md` in the root.
 - **Large language models for text** — yes: drafts of the documentation, the slide text, the video script and this page.
 - **Image or video generation** — yes: the Lama presenter image was generated with OpenAI ChatGPT from an original photograph; label it `AI-edited image` throughout its appearance. `[Separately confirm: how og-preview.png was made.]`
 - **Generated audio** — not produced yet. If the narration is synthesized, add the actual provider to the disclosure and video metadata before submission.
-- **Machine learning in the project itself** — no: the app has no model and makes no AI calls.
+- **Machine learning in the project itself** — yes, if the form's wording covers it: the app applies regression coefficients fitted on one day of FIRMS detections (the estimated FRP on the next pass), and the notes on unmatched passes use logistic-regression baselines. The app makes no calls to AI services.
 
 The form's exact option names have not been seen; match them on the form.
 
@@ -222,5 +228,7 @@ Tick both after the [checklist](formal-requirements.md#checklist) is closed.
 | Project licence | There is no `LICENSE` file; without one NASA distributes the work under Apache 2.0 |
 | Slides PDF link | The deck is not exported yet |
 | Link preview image `og-preview.png` | It still reads "harmonization" and "Seasonal burning baselines & live calendar anomalies"; the app has neither |
-| Commit or tag of the submitted version | Replace `3da451f` in the first paragraph and in the [technical note](technical-note.md) |
+| Commit or tag of the submitted version | Replace `75f89b8` in the first paragraph and in the [technical note](technical-note.md) |
+| Baseline fitting scripts | They are not in the repository; add them or say where they are, and close the placeholder in the [technical note](technical-note.md#6-first-baselines-on-matched-passes) |
+| Backend test run | The technical note records only the interface suite; run the backend suite on the submitted commit |
 | Numbers | One snapshot across this page, the slides and the video |
