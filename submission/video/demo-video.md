@@ -64,4 +64,4 @@ Asset preparation and recording steps are in the [production plan](README.md).
 
 ## Before export
 
-Record map scenes from the live app: it now uses the EOX 2016 basemap (CC BY 4.0); older recordings show the 2025 layer (CC BY-NC-SA 4.0). Check the final MP4 for duration, the `AI-generated` label, English speech and subtitles, and metadata. See [disclosures](disclosures.md#before-publication).
+Record map scenes from the live app: it now uses the EOX 2016 basemap (CC BY 4.0); older recordings show the 2025 layer (CC BY-NC-SA 4.0). Check the final MP4 for duration, the `AI-generated` label, English speech and subtitles, and metadata. See [disclosures](disclosures.md#publication-checks-still-requiring-the-final-artifact).
