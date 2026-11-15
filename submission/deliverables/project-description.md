@@ -30,7 +30,7 @@ The completed, publicly accessible demo is the seven-slide presentation:
 https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/presentation/earth-fire-calendar.pdf
 ```
 
-The [video](../video/README.md) is still being edited. Its current full-frame 29-second assembly is available for local review; it supersedes the first assembly and is not a published final demo.
+The [video](../video/README.md) is still being edited.
 
 ## 4. Link to Final Project
 
