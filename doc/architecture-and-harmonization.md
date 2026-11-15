@@ -103,6 +103,21 @@ Models were trained separately and evaluated on held-out 5° geographic blocks. 
 
 The pinned warning checks for a matching detection across the live feed, including detections hidden by the map's sensor filter. It identifies the unmatched pass by spacecraft and instrument family and uses observed distance and intensity bands to give context. The warning describes a specific predicted pass.
 
+## Expected detection with no match
+
+The same- and cross-family models were evaluated with outer geographic holdouts. Within each training split, scores from inner geographic holdouts were used to fit sigmoid calibration. For passes with a calibrated detection score of at least 70%, the one-day results were:
+
+| Direction | Passes at ≥70% | No match | Mean detection score | Observed detection rate |
+| --- | ---: | ---: | ---: | ---: |
+| VIIRS → VIIRS | 1,668 | 420 | 76.8% | 74.8% |
+| MODIS → VIIRS | 57 | 31 | 72.7% | 45.6% |
+| MODIS → MODIS | 2 | 2 | 75.9% | 0% |
+| VIIRS → MODIS | 0 | 0 | — | — |
+
+Widening the VIIRS → VIIRS match radius from 500 m to 1 km recovered 208 of the 420 high-scoring misses. The remaining 212 warrant investigation. A missing match cannot establish whether there was a clear observation or what caused the miss.
+
+Pinned solo detections show **Expected detection, no match** for NOAA-20 → NOAA-21 or NOAA-21 → NOAA-20 when the fitted VIIRS model scores the pass at 70% or above, the matching window and expected ingestion lag have elapsed, and the shared FIRMS feed has no detection from that spacecraft within 1 km and ±25 minutes. The model was fitted on the original 500 m labels. The 1 km check is an additional screen for nearby matches. The UI uses coefficients fitted on the full snapshot and a calibration curve fitted to its out-of-fold scores. The results above use held-out scores and cover one day.
+
 ## FRP difference on matched passes
 
 The FRP baseline used 15,869 matched pairs from the same 24-hour production snapshot. It predicts the second detection's FRP minus the first detection's FRP in MW. Each direction has a separate L2-regularized Huber regression on the difference of log-transformed FRP values, back-transformed to MW at inference. Evaluation used five folds of held-out 5° geographic blocks.
