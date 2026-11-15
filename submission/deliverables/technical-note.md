@@ -2,7 +2,7 @@
 
 **Challenge:** Harmonization of MODIS and VIIRS Hot Spots · **Team:** Plush — Alexey Belkin, Viktoriia Naiman · **Version checked:** repository commit `7bbe91a`, 15 November 2026; its UI and backend code are identical to deployed commits `5b66aec` and `4686c3c`, respectively · **App:** [avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0) · **Code:** [github.com/avbelkin/nasa-space-apps-sg](https://github.com/avbelkin/nasa-space-apps-sg)
 
-This note describes what is computed, from which data, how it was checked, and what is still a plan. The [public seven-slide demo](../presentation/earth-fire-calendar.pdf) accompanies it; the video is still in production.
+This note describes what is computed, from which data, how it was checked, and what is still a plan. The [seven-slide presentation](../presentation/earth-fire-calendar.pdf) accompanies it.
 
 ## 1. Summary and status
 

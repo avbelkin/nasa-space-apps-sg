@@ -53,10 +53,10 @@ Presentation fonts Overpass and Fira Sans: **SIL Open Font License 1.1**, licenc
 |---|---|---|
 | Lama character design and edited photographic cutout, from the team's own photograph of their plush alpaca | OpenAI ChatGPT image generation | [OpenAI terms of use](https://openai.com/policies/row-terms-of-use/): output belongs to the user; the input photograph is the team's own |
 | Character motion and reconstructed desk background | Google Veo 3.1 Lite via OpenRouter (paid), composited locally | [OpenRouter terms](https://openrouter.ai/terms) and the model provider's terms; the animated character carries a visible `AI-generated` label |
-| English narration | ElevenLabs Eleven v4 via OpenRouter (paid), Voice Library voice "Flicker - Cheerful Fairy & Sparkly Sweetness"; loudness normalized, no pitch or tempo shift | [ElevenLabs terms of use](https://elevenlabs.io/terms-of-use); named in the video's file metadata and, on publication, in its description |
+| English narration | ElevenLabs Eleven v4 via OpenRouter (paid), Voice Library voice "Flicker - Cheerful Fairy & Sparkly Sweetness"; loudness normalized, no pitch or tempo shift | [ElevenLabs terms of use](https://elevenlabs.io/terms-of-use); disclosed in the video description and file metadata |
 | Narration check and caption timings | ElevenLabs Scribe v2 via OpenRouter (paid), speech-to-text | [ElevenLabs terms of use](https://elevenlabs.io/terms-of-use); the captions keep the team's own wording |
 
-Live-action footage, app recordings and screenshots are the team's own real captures; the desk background behind the animated character is generated. The video uses no music. It is still being edited and is not published yet.
+Live-action footage, app recordings and screenshots are the team's own real captures; the desk background behind the animated character is generated. The video uses no music.
 
 ## Methods used in the code
 

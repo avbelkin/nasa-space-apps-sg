@@ -1,6 +1,6 @@
 # Earth Fire Calendar: project page text
 
-Text for the **Project** tab, field by field, in the order of the [form](../working/form-fields.md). Checked against repository commit `7bbe91a` on 15 November 2026. The application code matches the UI deployed from `5b66aec` at 13:37 UTC and the backend deployed from `4686c3c` at 12:08 UTC. Team Plush: Alexey Belkin and Viktoriia Naiman. The seven-slide PDF is public; the video remains in production and has no final public URL.
+Text for the **Project** tab, field by field, in the order of the [form](../working/form-fields.md). Checked against repository commit `7bbe91a` on 15 November 2026. The application code matches the UI deployed from `5b66aec` at 13:37 UTC and the backend deployed from `4686c3c` at 12:08 UTC. Team Plush: Alexey Belkin and Viktoriia Naiman.
 
 The numerical comparison comes from one snapshot of the app's feed, fetched on 15 November 2026 at 08:36 UTC; its summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](../working/firms-snapshot-2026-11-15T0836Z.json). The slides use the same counts. Later interface captures illustrate functionality and do not establish the earlier totals.
 
@@ -24,13 +24,7 @@ The app is a tool for studying this difference and a source of detection-level d
 
 ## 3. Link to Project Demo
 
-The completed, publicly accessible demo is the seven-slide presentation:
-
-```text
-https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/presentation/earth-fire-calendar.pdf
-```
-
-The [video](../video/README.md) is still being edited.
+The demo is the 30-second video presented by Lama. The seven-slide presentation is linked in Materials in field 5.
 
 ## 4. Link to Final Project
 
@@ -123,15 +117,13 @@ Independent project. Not affiliated with or endorsed by NASA.
 
 MATERIALS
 
-- Slides (seven-slide public demo): https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/presentation/earth-fire-calendar.pdf
+- Slides: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/presentation/earth-fire-calendar.pdf
 - Technical note: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/technical-note.md
 - Literature review: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/modis-viirs-harmonization-literature-review.md
 - Third-party rights and licences: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/third-party-rights.md
 - Software licence inventory: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/software-licenses.md
 - Code: https://github.com/avbelkin/nasa-space-apps-sg
 ```
-
-The paragraph about the video in USE OF AI goes into the form together with the video link; while the slides are the demo, leave it out.
 
 Available interface illustrations, captured after the basemap change to EOxCloudless 2016; [capture provenance](../presentation/assets/screenshots/capture-scenes.json) records the times and source layer. These later captures do not reproduce the 08:36 UTC count snapshot.
 
@@ -215,4 +207,4 @@ Tick both after the [checklist](../docs/formal-requirements.md#checklist) is clo
 
 ## Publication and verification status
 
-The app, the source repository and the seven-slide PDF are public. The video is not published; when it is, its link replaces the PDF in field 3. The model-fitting scripts and the training observations are not in the repository, so the reported evaluation cannot be rerun from it. The interface and backend test runs are in the [technical note](technical-note.md#9-verification); the remaining publication steps are in the [requirements status](../working/requirements-status.md).
+The app, the source repository, the video and the seven-slide PDF are public. The model-fitting scripts and the training observations are not in the repository, so the reported evaluation cannot be rerun from it. The interface and backend test runs are in the [technical note](technical-note.md#9-verification); the remaining publication steps are in the [requirements status](../working/requirements-status.md).
