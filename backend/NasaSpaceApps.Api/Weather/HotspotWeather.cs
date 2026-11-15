@@ -15,7 +15,11 @@ public sealed record HotspotWeatherSource(
     string SamplingMethod,
     string Status,
     bool? MayUseSatelliteFireEmissions,
-    IReadOnlyDictionary<string, HotspotWeatherValue> Values);
+    IReadOnlyDictionary<string, HotspotWeatherValue> Values)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? PublishedAtUtc { get; init; }
+}
 
 public sealed record HotspotWeatherValue(
     double? Value,
@@ -27,4 +31,10 @@ public sealed record HotspotWeatherValue(
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public DateOnly? ValidDateUtc { get; init; }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public DateOnly? ValidDateLocal { get; init; }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? ValidDateTimeZone { get; init; }
 }

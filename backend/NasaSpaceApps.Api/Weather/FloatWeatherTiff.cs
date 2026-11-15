@@ -55,7 +55,8 @@ internal static class FloatWeatherTiff
         if (scale.Type != 12 || scale.Count != 3 || origin.Type != 12 || origin.Count != 6)
             throw new InvalidDataException("Missing weather TIFF georeferencing.");
         var step = Real(tiff, scale, 0);
-        if (step is <= 0 or > 1 || step != Real(tiff, scale, 1) ||
+        var stepY = Real(tiff, scale, 1);
+        if (!double.IsFinite(step) || !double.IsFinite(stepY) || step is <= 0 or > 1 || Math.Abs(step - stepY) > 1e-9 ||
             Real(tiff, origin, 0) != 0 || Real(tiff, origin, 1) != 0)
             throw new InvalidDataException("Unexpected weather TIFF geographic spacing or anchor.");
         var west = Real(tiff, origin, 3);

@@ -112,6 +112,8 @@ builder.Services.AddHttpClient(CopernicusSoilDrought.HttpClientName, client => c
 builder.Services.AddSingleton<CopernicusSoilDrought>();
 builder.Services.AddHttpClient(NoaaSoilMoistureAnomaly.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
 builder.Services.AddSingleton<NoaaSoilMoistureAnomaly>();
+builder.Services.AddHttpClient(UsfsFuelMoisture.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddSingleton<UsfsFuelMoisture>();
 builder.Services.AddSingleton<FirmsClient>();
 builder.Services.AddSingleton<HotspotGeometryWorker>();
 builder.Services.AddHostedService(services => services.GetRequiredService<HotspotGeometryWorker>());
@@ -292,6 +294,7 @@ app.MapPost("/api/fires/spots/weather", (
     NoaaGoesWeather goesWeather,
     CopernicusSoilDrought soilDrought,
     NoaaSoilMoistureAnomaly soilAnomaly,
+    UsfsFuelMoisture fuelMoisture,
     CancellationToken cancellationToken) =>
     ExecuteFirmsQueryAsync(firms, async () =>
     {
@@ -308,7 +311,8 @@ app.MapPost("/api/fires/spots/weather", (
         var goesWeatherTask = goesWeather.EnrichAsync(spots, cancellationToken);
         var droughtTask = soilDrought.EnrichAsync(spots, cancellationToken);
         var anomalyTask = soilAnomaly.EnrichAsync(spots, cancellationToken);
-        await Task.WhenAll(forecastTask, fireWeatherTask, observationsTask, gfsWeatherTask, goesWeatherTask, droughtTask, anomalyTask);
+        var fuelMoistureTask = fuelMoisture.EnrichAsync(spots, cancellationToken);
+        await Task.WhenAll(forecastTask, fireWeatherTask, observationsTask, gfsWeatherTask, goesWeatherTask, droughtTask, anomalyTask, fuelMoistureTask);
         var forecast = await forecastTask;
         var fireWeatherSources = await fireWeatherTask;
         var observationSources = await observationsTask;
@@ -316,9 +320,11 @@ app.MapPost("/api/fires/spots/weather", (
         var goesSources = await goesWeatherTask;
         var droughtSources = await droughtTask;
         var anomalySources = await anomalyTask;
+        var fuelMoistureSources = await fuelMoistureTask;
         return new HotspotWeatherResponse(forecast.Spots.Select((spot, index) =>
-            spot is not null && fireWeatherSources[index] is { } source && droughtSources[index] is { } drought && anomalySources[index] is { } anomaly
-                ? spot with { Sources = [.. spot.Sources, source, .. observationSources[index], .. gfsSources[index], .. goesSources[index], drought, anomaly] }
+            spot is not null && fireWeatherSources[index] is { } source && droughtSources[index] is { } drought &&
+                anomalySources[index] is { } anomaly && fuelMoistureSources[index] is { } fuel
+                ? spot with { Sources = [.. spot.Sources, source, .. observationSources[index], .. gfsSources[index], .. goesSources[index], drought, anomaly, fuel] }
                 : spot).ToArray());
     }));
 
