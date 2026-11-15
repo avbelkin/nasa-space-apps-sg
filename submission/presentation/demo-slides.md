@@ -43,6 +43,7 @@ A live globe that compares the two sensors and records the conditions of every d
 - **One place, 24 hours:** a timeline of detections by satellite, with the passes that reported nothing. Passes are our estimate from orbits, not FIRMS data.
 - **Conditions of each detection:** estimated viewing geometry, land cover inside the pixel footprint, weather at acquisition time. Every value keeps its source and time.
 - **Context layers:** GPM IMERG precipitation and VIIRS Black Marble night lights from NASA GIBS; cloud imagery via Extremum; satellite tracks from CelesTrak.
+- **Experimental, from one day of data:** notes on passes that reported nothing, an "Expected detection, no match" flag between the two VIIRS satellites, and an estimate of the fire radiative power on the next pass. Not checked on other days.
 
 **Not built yet:** historical archive, harmonization, validation, area and date selection, and data export.
 
@@ -80,8 +81,8 @@ A live globe that compares the two sensors and records the conditions of every d
 
 **Links:** [App](https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0) · [Code](https://github.com/avbelkin/nasa-space-apps-sg) · [Technical note](https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/technical-note.md)
 
-**Sources:** [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) — MODIS and VIIRS fire detections. [NASA GIBS](https://earthdata.nasa.gov/gibs) — GPM IMERG precipitation and VIIRS Black Marble night lights. ESA CCI / Copernicus C3S — land cover. NOAA, [Open-Meteo](https://open-meteo.com/), Copernicus GWIS and GDO, US Forest Service — weather at acquisition. [Extremum](https://extremum.org/) — cloud layer: geostationary imagery from EUMETSAT, NOAA and JMA, blended with NASA VIIRS imagery at high latitudes. [CelesTrak](https://celestrak.org/) — orbital elements. [EOX](https://s2maps.eu/)/Copernicus Sentinel-2 — Earth basemap. Bright Star / Hipparcos catalogue — star background.
+**Sources:** [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) — MODIS and VIIRS fire detections. [NASA GIBS](https://earthdata.nasa.gov/gibs) — GPM IMERG precipitation and VIIRS Black Marble night lights. ESA CCI / Copernicus C3S — land cover. NOAA, [Open-Meteo](https://open-meteo.com/), Copernicus GWIS and GDO, US Forest Service — weather at acquisition. [Extremum](https://gis.extremum.org) — cloud layer: geostationary imagery from EUMETSAT, NOAA and JMA, blended with NASA VIIRS imagery at high latitudes. [CelesTrak](https://celestrak.org/) — orbital elements. [EOX](https://s2maps.eu/)/Copernicus Sentinel-2 — Earth basemap. Bright Star / Hipparcos catalogue — star background.
 
-**AI assistance:** code development, and drafting of this presentation text and the demo script.
+**AI assistance:** code development, drafting of this presentation text and the demo script, and the layout of this deck.
 
 Independent project. Not affiliated with or endorsed by NASA.

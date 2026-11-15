@@ -17,7 +17,7 @@ Editing target: **29 seconds, 1920×1080, 30 fps — 870 frames**. The narration
 | 2–5.5 s | 60–165 | A large display shows the app's globe. The animated Lama stands in the left foreground, greets the viewer, blinks and takes a small step. Cream fur, copper ears and the orange/navy scarf connect him to the toy. | I’m Lama. I help Alexey. Mostly. | Earth Fire Calendar; AI-generated on the character |
 | 5.5–11.5 s | 165–345 | Keep the same map view: MODIS first, then VIIRS. Let the points finish rendering after the switch. Lama turns and points toward the display, then looks back at the viewer. Enlarge the actual counter; keep his gestures clear of it. | Same planet. Same day. But MODIS and VIIRS see different hotspots. | NASA FIRMS · last 24 h; MODIS → VIIRS |
 | 11.5–17 s | 345–510 | Select All sensors and enable Color fire spots by sensor. Show the prepared region and color key. Lama introduces the shared view with an open gesture, then lowers his foreleg. | Earth Fire Calendar compares their detections using NASA FIRMS data. | NASA FIRMS · last 24 h |
-| 17–23 s | 510–690 | Select the prepared group. Enlarge real excerpts from the same card in sequence: Sat. off-nadir, Land cover, and populated Weather at acquisition rows. Exclude the FRP forecast, pass predictions and timeline totals. Lama indicates the panel, then pauses so the rows can be read. | We add context: viewing angle, land cover, and weather. | Estimated viewing geometry → Land cover → Weather at acquisition |
+| 17–23 s | 510–690 | Select the prepared group. Enlarge real excerpts from the same card in sequence: Sat. off-nadir, Land cover, and populated Weather at acquisition rows. Exclude the FRP forecast, pass predictions, the Expected detection, no match flag and timeline totals. Lama indicates the panel, then pauses so the rows can be read. | We add context: viewing angle, land cover, and weather. | Estimated viewing geometry → Land cover → Weather at acquisition |
 | 23–29 s | 690–870 | Return to the map. Lama turns back to the viewer and gives a small concluding nod beside the closing card. Keep the final title, link and next step visible until the end. | Next, we’ll use this evidence to make their records comparable. | Earth Fire Calendar; Next: harmonization; avbelkin.github.io/nasa-space-apps-sg |
 
 ## Narration
@@ -53,6 +53,8 @@ Disclosure text for the description, AI-use field and export metadata is in [pub
 ## Scope of claims
 
 Compare real detections from the same 24-hour window. All sensors combines them for display, and the colored groups depend on screen-space proximity: they do not establish that individual fires match. Label geometry as estimated. Show weather and land cover only where values are available.
+
+The app, at `c73d0b5`, also shows experimental estimates fitted on one day of data on a pinned single detection: notes on unmatched passes, the red **Expected detection, no match** flag with its detection score, and **Predicted FRP if detected**. None of them appears in the video; the detail scene pins a group, where they are not shown.
 
 Harmonization is the next step. Do not depict completed calibration, a scientifically verified merging of detections into events, fire forecasting or a working seasonal calendar. Do not read exact detection counts aloud; retain the actual counters from the selected data snapshot on screen.
 

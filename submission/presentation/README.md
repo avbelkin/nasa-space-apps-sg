@@ -11,7 +11,7 @@ Slides 3–5 now contain real application captures; slide 6 has an editable pipe
 
 ## Copy and evidence
 
-The builder reads [demo-slides.md](demo-slides.md) directly. The source file is unchanged. Titles, paragraphs, dates, counts, qualifications and attribution are checked before export and again in the delivered PPTX/PDF. The two descriptive screenshot headings supplement, but do not replace, the source copy.
+The builder reads [demo-slides.md](demo-slides.md) directly. The source file was unchanged up to scaffold-r6. It was then brought in line with the app at `c73d0b5`: slide 4 gained a bullet on the experimental one-day baselines, and on slide 7 the Extremum link and the AI assistance line were corrected. The r6 outputs predate these edits; the next build must include them and needs renewed visual review. Titles, paragraphs, dates, counts, qualifications and attribution are checked before export and again in the delivered PPTX/PDF. The two descriptive screenshot headings supplement, but do not replace, the source copy.
 
 Slide 2 uses the [frozen 08:36 UTC snapshot](assets/data/firms-snapshot-2026-11-15T0836Z.json): 79,349 VIIRS and 8,127 MODIS detections. The native chart and its workbook contain these values; the value axis is fixed at 0–100,000. The source date is placed below the chart and the detection qualification directly below the lead.
 

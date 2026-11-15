@@ -49,7 +49,7 @@ Under `lama/prepared/presenter-v2/`:
 
 The old `draft/lama-draft.mp4`, `review.html`, `intro-centered.mp4` and `lama-presenter.png` remain historical material. Do not treat them as the latest creative direction.
 
-Temporary UI captures remain under `prepared/ui/`. MODIS and VIIRS screenshots share one earlier snapshot. The populated context rows are a separate, later capture of a group near −14.906°, 126.865° with 123 detections. `05-context.json` records that example. These are screen-proximity groups, not confirmed matched fires. Show only Sat. off-nadir, Land cover and selected Weather at acquisition rows; exclude FRP forecast, pass predictions and totals.
+Temporary UI captures remain under `prepared/ui/`. MODIS and VIIRS screenshots share one earlier snapshot. The populated context rows are a separate, later capture of a group near −14.906°, 126.865° with 123 detections. `05-context.json` records that example. These are screen-proximity groups, not confirmed matched fires. Show only Sat. off-nadir, Land cover and selected Weather at acquisition rows; exclude FRP forecast, pass predictions, the **Expected detection, no match** flag and totals.
 
 ## Review blocks and deadline
 
