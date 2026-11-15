@@ -332,6 +332,28 @@ public sealed class FirmsClient(
             throw new ArgumentException("Provide between 1 and 512 spots.");
         }
 
+        var (snapshot, selected) = await FindSelectedSpotsAsync(keys, cancellationToken).ConfigureAwait(false);
+        if (selected.All(spot => spot is null))
+        {
+            return new HotspotGeometryBatch("ready", new HotspotGeometry?[keys.Count]);
+        }
+
+        return await geometryWorker.GetGeometryAsync(snapshot.Spots, selected, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<FirmsHotspot?[]> GetSelectedLiveSpotsAsync(
+        IReadOnlyList<FirmsSpotGeometryKey> keys, CancellationToken cancellationToken)
+    {
+        var (_, selected) = await FindSelectedSpotsAsync(keys, cancellationToken).ConfigureAwait(false);
+        var now = DateTimeOffset.UtcNow;
+        var earliest = now.AddHours(-24);
+        return selected.Select(spot => spot is not null && spot.AcquiredAtUtc >= earliest && spot.AcquiredAtUtc <= now
+            ? spot : null).ToArray();
+    }
+
+    private async Task<(CachedAreaSnapshot Snapshot, FirmsHotspot?[] Selected)> FindSelectedSpotsAsync(
+        IReadOnlyList<FirmsSpotGeometryKey> keys, CancellationToken cancellationToken)
+    {
         // Use the same world snapshot as the 24-hour map feed. Join by detection
         // identity, since row positions can change between the map load and a pin.
         var (_, sources) = ResolveSources("harmonized");
@@ -356,13 +378,7 @@ public sealed class FirmsClient(
             }
         }
 
-        if (matches.Count == 0)
-        {
-            return new HotspotGeometryBatch("ready", new HotspotGeometry?[keys.Count]);
-        }
-
-        var selected = keys.Select(key => matches.GetValueOrDefault(key)).ToArray();
-        return await geometryWorker.GetGeometryAsync(snapshot.Spots, selected, cancellationToken).ConfigureAwait(false);
+        return (snapshot, keys.Select(key => matches.GetValueOrDefault(key)).ToArray());
     }
 
     public async Task<FirmsGeoJsonFeatureCollection> GetLiveSpotsGeoJsonAsync(

@@ -72,3 +72,7 @@ All three hotspot routes return cached land cover with their normal response. Wh
 ## Live hotspot weather enrichment
 
 The [24-hour weather enrichment proposal](./live-hotspot-weather-enrichment.md) ranks weather, surface, and sensor fields for comparing recent MODIS and VIIRS detections. It describes how to attach available weather at each spot's acquisition time.
+
+`POST /api/fires/spots/weather` takes up to 16 live spot identities in the same format as the geometry request. The response's `spots` entries follow request order. An identity outside the rolling 24-hour FIRMS snapshot has a null entry. Successful entries include the FIRMS acquisition UTC timestamp and the source, model, sampled grid point, units, valid interval, and age at acquisition for their weather values.
+
+The endpoint currently samples hourly forecast and air-quality series for clouds, visibility, weather codes, precipitation, temperature, humidity, solar irradiance, wind, snow depth, volumetric soil moisture, water vapor, and aerosol and pollutant concentrations. Precipitation totals cover the latest complete 3- or 24-hour window ending on or before acquisition. A missing hour makes the total unavailable. The forecasts identify the sampled model but can lack per-frame run times. Radar and satellite observations, cloud heights, snow fraction, soil drought indices, and fire-danger and fuel-moisture products need additional source coverage.

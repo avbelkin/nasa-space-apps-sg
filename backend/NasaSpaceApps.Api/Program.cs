@@ -6,6 +6,7 @@ using NasaSpaceApps.Api.Firms;
 using NasaSpaceApps.Api.LandCover;
 using NasaSpaceApps.Api.NasaOpenApi;
 using NasaSpaceApps.Api.Satellites;
+using NasaSpaceApps.Api.Weather;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -94,6 +95,9 @@ builder.Services.AddHttpClient(PlanetaryComputerLandCover.HttpClientName, client
     client.Timeout = TimeSpan.FromSeconds(5);
 }).RemoveAllLoggers(); // Azure range URLs include short-lived access tokens.
 builder.Services.AddSingleton<ILandCoverEnricher, PlanetaryComputerLandCover>();
+builder.Services.AddHttpClient(OpenMeteoHotspotWeather.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5))
+    .RemoveAllLoggers();
+builder.Services.AddSingleton<OpenMeteoHotspotWeather>();
 builder.Services.AddSingleton<FirmsClient>();
 builder.Services.AddSingleton<HotspotGeometryWorker>();
 builder.Services.AddHostedService(services => services.GetRequiredService<HotspotGeometryWorker>());
@@ -262,6 +266,23 @@ app.MapPost("/api/fires/spots/geometry", (
     FirmsClient firmsClient,
     CancellationToken cancellationToken) =>
     ExecuteFirmsQueryAsync(firms, () => firmsClient.GetSelectedSpotGeometryAsync(request, cancellationToken)));
+
+app.MapPost("/api/fires/spots/weather", (
+    FirmsSpotGeometryRequest request,
+    FirmsOptions firms,
+    FirmsClient firmsClient,
+    OpenMeteoHotspotWeather weather,
+    CancellationToken cancellationToken) =>
+    ExecuteFirmsQueryAsync(firms, async () =>
+    {
+        if (request.Spots is not { Count: >= 1 and <= OpenMeteoHotspotWeather.MaximumSpots } keys)
+        {
+            throw new ArgumentException($"Provide between 1 and {OpenMeteoHotspotWeather.MaximumSpots} spots.");
+        }
+
+        var spots = await firmsClient.GetSelectedLiveSpotsAsync(keys, cancellationToken);
+        return await weather.EnrichAsync(spots, cancellationToken);
+    }));
 
 app.MapGet("/api/satellites/orbits", async (
     int? pastMinutes,
