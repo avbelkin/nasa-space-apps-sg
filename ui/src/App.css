@@ -364,14 +364,14 @@
   rotate: 180deg;
 }
 
-/* Keep the satellite pass card at the bottom of the map. */
+/* Align the pass card with the map controls' right inset, below their row. */
 .map-hud-bottom {
-  grid-area: hud-bottom-end;
+  grid-column: 2 / -2;
+  grid-row: 3;
   align-self: end;
   display: flex;
   justify-content: flex-end;
   min-inline-size: 0;
-  margin-inline-end: 0.5rem;
   pointer-events: none;
 }
 
@@ -508,12 +508,6 @@
 @container mapstage (block-size < 26rem) {
   .map-controls {
     grid-template-columns: repeat(4, var(--hud-btn-size));
-  }
-}
-
-@container mapstage (inline-size < 36rem) {
-  .map-hud-bottom {
-    justify-content: flex-start;
   }
 }
 

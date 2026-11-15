@@ -377,7 +377,10 @@ test('satellite passes stay at the bottom of the map and the side panel groups d
   const panel = fs.readFileSync(new URL('../src/components/SidePanel.tsx', import.meta.url), 'utf8')
   const hud = appCss.match(/\.map-hud-bottom\s*\{([^}]*)\}/)?.[1]
   assert.ok(hud)
+  assert.match(hud, /grid-column:\s*2\s*\/\s*-2;/)
+  assert.match(hud, /grid-row:\s*3;/)
   assert.match(hud, /align-self:\s*end;/)
+  assert.match(hud, /justify-content:\s*flex-end;/)
   assert.match(mapStage, /attributionControl:\s*false/)
   assert.match(mapStage, /className="map-hud-bottom">\s*<SatelliteHud/)
   assert.doesNotMatch(mapStage, /<PinnedFireDetails/)
