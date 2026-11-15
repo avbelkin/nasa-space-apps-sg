@@ -67,7 +67,13 @@ export function LiveFiresSection({ info, connectionState }: { info: LiveFiresInf
                   {count(weather.sampledCount)} of {count(weather.targetCount)} checked &middot; {count(weatherPending)} pending
                   {weather.availableCount !== undefined && <small>{count(weather.availableCount)} with data</small>}
                   {!!weather.retryCount && <small>{count(weather.retryCount)} awaiting retry</small>}
-                  {weather.eligibleCount > weather.targetCount &&
+                  {weather.coverage?.gridCount !== undefined ? (
+                    <small title={`Cache counted at ${formatUtcTimestamp(weather.coverage.checkedAtUtc)}`}>
+                      {count(weather.coverage.gridCount)} shared weather grids · {count(weather.eligibleCount)} eligible locations
+                    </small>
+                  ) : weather.coverage?.cachedCount !== undefined ? (
+                    <small>{count(weather.coverage.cachedCount)} cached checks across 24h · {count(weather.eligibleCount)} eligible</small>
+                  ) : weather.eligibleCount > weather.targetCount &&
                     <small>{count(weather.eligibleCount - weather.targetCount)} outside the bulk target</small>}
                 </>
               ) : 'Waiting for first check'}</dd>

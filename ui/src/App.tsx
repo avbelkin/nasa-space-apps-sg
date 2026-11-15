@@ -583,6 +583,7 @@ function App() {
           <PinnedFireDetails
             selection={pinnedFireSelection}
             feedGeometry={pinnedFeedGeometry}
+            fireFeed={fireSpotsPayload}
             landCoverBySpot={landCoverBySpot}
             overpassIndex={overpassIndex}
             onUnpin={unpinFireSelection}

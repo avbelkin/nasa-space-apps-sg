@@ -71,6 +71,38 @@ All three hotspot routes return cached land cover with their normal response. Wh
 - A populated object reports `dominantCode`, `coverage` (the fraction of the footprint with classified data), and `classes` (code/fraction pairs sorted by descending share, with ties resolved by the lower code). Class shares use only classified area. `landCoverDataset` identifies the year, sampling resolution and class labels.
 - `landCover` is null for unclassified footprints and for footprints awaiting required blocks. FIRMS detections remain available.
 
+## Same-family second-pass baseline
+
+The initial baseline used one production FIRMS snapshot from 14 November 2026 at 10:10 UTC through 15 November at 10:10 UTC. It grouped detections within six hours and within 1 km of a MODIS anchor or 500 m of a VIIRS anchor. The training target was an inferred miss on a later predicted pass by another satellite in the same family. A pass needed enough time for both the ±25 minute detection match window and the expected feed delay. The eligible dataset contained 4,458 MODIS and 31,515 VIIRS passes.
+
+Separate regularized logistic regressions used five folds of held-out 5° geographic blocks. Feature importance measured the change in held-out performance after refitting without a feature group.
+
+| Family | Miss rate | AUROC | Average precision for misses | Largest AUROC loss after removing a feature group |
+| --- | ---: | ---: | ---: | --- |
+| MODIS | 92.1% | 0.752 | 0.971 | Land cover (0.034) |
+| VIIRS | 63.0% | 0.756 | 0.841 | First detection FRP and brightness (0.025) |
+
+- **MODIS.** In the observed sample, 81.0% of passes over broadleaved evergreen cover had no match, compared with 98.7% over open broadleaved deciduous cover. Land cover may track regional differences, and only 354 MODIS passes had a matched second detection.
+- **VIIRS.** Passes following a first detection of 2–5 MW missed 70.1% of the time, compared with 49.3% at 20–50 MW. The miss rate was 44.6% within 100 km of the second ground track and 87.7% at 1,200 km or farther.
+- Lighting and second-pass viewing geometry added signal in both families. The observed miss labels cannot identify which physical mechanism caused any individual miss.
+
+Pinned details can show a warning for a solo detection when an eligible, settled pass by another satellite in the same family has no matching detection. The note highlights matching baseline associations using land cover or first-detection FRP and predicted distance to the second ground track. It gives no per-spot probability. The timeline uses the current map selection to see whether a pass has a match, so its results can differ from the dataset's fixed-radius groups.
+
+**Important retraining follow-up.** When the parallel enrichment work is available, retrain the MODIS and VIIRS baselines separately. Compare the original and enriched feature sets on the same eligible rows and geographic folds, then check improvement on additional held-out days. Report AUROC, average precision and log loss by family, along with feature ablations and enrichment coverage. Use the comparison to decide whether the pinned outlook should change.
+
+## Cross-family second-pass baseline
+
+The cross-family experiment reused the same production snapshot and orbit data. It selected anchors with one reporting satellite in their own family, regardless of whether the other family reported a detection. The target was an inferred miss on a later predicted pass by the other family, within six hours of the anchor. A match required a FIRMS detection from that spacecraft within 1 km and ±25 minutes of the predicted pass. The evaluation excluded passes still within the matching window or expected ingestion delay.
+
+| Direction | Eligible passes | Miss rate | Per-pass AUROC | AUROC for no match on any eligible pass |
+| --- | ---: | ---: | ---: | ---: |
+| MODIS → VIIRS | 3,634 | 57.5% | 0.643 | 0.615 |
+| VIIRS → MODIS | 30,761 | 92.5% | 0.768 | 0.764 |
+
+Models were trained separately and evaluated on held-out 5° geographic blocks. Viewing geometry of the target pass was the strongest feature group in both directions. Removing it lowered per-pass AUROC by 0.062 for MODIS → VIIRS and 0.101 for VIIRS → MODIS. For VIIRS → MODIS, the miss rate was 85.2% within 100 km of the MODIS ground track and 99.6% at 1,000–1,200 km. The initial VIIRS FRP and brightness added signal in that direction. For MODIS → VIIRS, the corresponding near-track miss rate was 46.4%, and it reached 78.3% at 1,200 km or farther. These associations come from a single snapshot. A missing match can reflect predicted coverage error, ingestion, cloud, fire evolution, or sensor sensitivity.
+
+The pinned warning checks for a matching detection across the live feed, including detections hidden by the map's sensor filter. It identifies the unmatched pass by spacecraft and instrument family and uses observed distance and intensity bands to give context. The warning describes a specific predicted pass.
+
 ## Live hotspot weather enrichment
 
 The [24-hour weather enrichment proposal](./live-hotspot-weather-enrichment.md) ranks weather, surface, and sensor fields for comparing recent MODIS and VIIRS detections. It describes how to attach available weather at each spot's acquisition time.
@@ -79,11 +111,15 @@ The app starts weather sampling on its deferred fire-feed refresh with `enrichWe
 
 This pass samples GFS model grids, GWIS fire-weather rasters, NOAA CPC soil anomaly GeoTIFFs, and WFAS fuel moisture GeoTIFFs. Pinned weather requests reuse those samples and fetch the remaining fields through the existing sources. Full weather values are available through the selected-spots route. Decoded source grids are cached in RAM for up to 30 minutes. When WFAS replaces a raster, an uncached spot can only be sampled if an applicable frame is still available.
 
-Each sampled location and acquisition time has one shared document in the `hotspotWeatherV1` Firestore collection group. It contains compressed sampled values and their source and time metadata. Every entry expires 24 hours after the spot's UTC acquisition. The API enforces that limit when looking up results, and Firestore's TTL policy on `expireAt` removes expired documents asynchronously. [Firestore TTL policy](https://docs.cloud.google.com/firestore/native/docs/ttl)
+The shared Firestore cache keeps the original encoded GRIB2, PNG and GeoTIFF grid bytes under `weatherGridCache/liveV1/hotspotWeatherV1`. GFS keys identify the product, model run, forecast hour and tile. WMS keys identify the product, date, tile and format. The current-raster sources preserve the upstream modification time and use short refresh intervals. Reusable GFS grids expire 25 hours after the valid hour, which covers the 24-hour lifetime of acquisitions in that hour. Firestore applies the existing `expireAt` TTL policy to the nested collection. Prior root-level sample records expire through that same policy. [Firestore TTL policy](https://docs.cloud.google.com/firestore/native/docs/ttl)
 
-Unavailable sources and missing frames become eligible for another attempt after two minutes while their available values remain readable. The first pass treats permanent coverage gaps as completed. Conditional writes protect completed samples when instances overlap.
+Sampled results stay in the instance's bounded RAM cache until the location ages out of the live window. Unavailable sources and missing frames become eligible for another attempt after two minutes while available values remain readable. The first pass treats permanent coverage gaps as completed. Conditional shared writes protect encoded grid updates when instances overlap.
 
-The Cloud Run workflow sets `WeatherCache__Database=weather-cache` and the service authenticates using its runtime identity. The runtime account needs read and write access to that database. When the setting is absent or Firestore is temporarily unavailable, the bounded instance cache still serves recent samples. A later request retries failed writes for its live spots after a short backoff.
+The Cloud Run workflow sets `WeatherCache__Database=weather-cache` and the service authenticates using its runtime identity. The runtime account needs read and write access to that database. When a shared grid is unavailable, Cloud Run can fetch it from the weather source and sample it locally.
+
+The Windows launcher `scripts/start-local-weather-worker.ps1` runs the Release backend in local worker mode. Use the existing `FIRMS_MAP_KEY` and sign in with a Google account that can read and write the shared Firestore database. The launcher refreshes the Google OAuth token through the worker's standard input. The worker scans the worldwide rolling 24-hour feed and groups acquisitions by forecast hour and tile. It checks representative locations for each acquisition time and source coverage, reuses shared grids, and writes new or refreshed encoded grids. It waits 10 seconds between local NOAA GRIB subset downloads. [NOAA GRIB filter guidance](https://nomads.ncep.noaa.gov/info.php?page=gribfilter)
+
+The worldwide live response reports the total number of unexpired shared grid files, including individual bands and coverage masks. Cloud Run refreshes it at most once every two minutes per instance. The bulk-target counts describe the 512 spots Cloud Run schedules on its own.
 
 Radar and the visible/IR mosaic still use point queries. The nowCOAST coverage service advertised no raster layers for those products during verification. NOAA's separate MRMS distribution serves numeric reflectivity as 16-bit PNG-packed GRIB2 frames suitable for scene batching. Using that feed would require routing by native coverage and processing large frames within a bounded memory budget. Calibrated GOES observations, observed lightning, supplemental forecasts and air quality, and global standardized drought stay on the selected-spots path in this pass. [NOAA MRMS numeric products](https://www.nco.ncep.noaa.gov/pmb/changes/MRMS_SCN_v12.1_Upgrade_Supplemental.pdf)
 
