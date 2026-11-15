@@ -1,5 +1,7 @@
 # Harmonizing MODIS and VIIRS Data: A Review of Existing Approaches and a Hypothesis on the Role of Detailed Land-Surface Type
 
+**PDF version:** [on GitHub](Literature-Review_MODIS-VIIRS-Harmonization.pdf) · [on Google Drive](https://drive.google.com/file/d/1iEgg_tIgG9B2vq1-lW3SPwoRwGsT2GRf/view)
+
 **Scope:** 82 cited sources and a proposed research hypothesis. Implementation status checked against Earth Fire Calendar commit `7bbe91a` on 15 November 2026; current functionality and evaluation are documented in the [technical note](technical-note.md). A proposal below is not a claim that the app implements or validates that method.
 
 ## 1. Introduction: three fundamental barriers to MODIS–VIIRS comparability

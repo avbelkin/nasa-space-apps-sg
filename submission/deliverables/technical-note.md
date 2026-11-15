@@ -1,5 +1,7 @@
 # Earth Fire Calendar: technical note
 
+**PDF version:** [on GitHub](Technical-Note_Earth-Fire-Calendar.pdf) · [on Google Drive](https://drive.google.com/file/d/1y76wO7-ttIk9WDtiBXLdECs17ZI1VFzl/view)
+
 **Challenge:** Harmonization of MODIS and VIIRS Hot Spots · **Team:** Plush — Alexey Belkin, Viktoriia Naiman · **Version checked:** repository commit `7bbe91a`, 15 November 2026; its UI and backend code are identical to deployed commits `5b66aec` and `4686c3c`, respectively · **App:** [avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0) · **Code:** [github.com/avbelkin/nasa-space-apps-sg](https://github.com/avbelkin/nasa-space-apps-sg)
 
 This note describes what is computed, from which data, how it was checked, and what is still a plan. The [demo video](https://youtu.be/K_RLqjW4eNk) and the [seven-slide presentation](Presentation_Earth-Fire-Calendar.pdf) accompany it.
