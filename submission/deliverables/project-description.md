@@ -124,9 +124,9 @@ Independent project. Not affiliated with or endorsed by NASA.
 MATERIALS
 
 - Demo video: https://youtu.be/K_RLqjW4eNk
-- Slides: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/Presentation_Earth-Fire-Calendar.pdf
-- Technical note: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/technical-note.md
-- Literature review: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/modis-viirs-harmonization-literature-review.md
+- Slides: https://drive.google.com/file/d/1PCHMp1LMGzvo6F1DVeM1ttAvTRB30MMU/view
+- Technical note: https://drive.google.com/file/d/1y76wO7-ttIk9WDtiBXLdECs17ZI1VFzl/view
+- Literature review: https://drive.google.com/file/d/1iEgg_tIgG9B2vq1-lW3SPwoRwGsT2GRf/view
 - Third-party rights and licences: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/third-party-rights.md
 - Software licence inventory: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/software-licenses.md
 - Code: https://github.com/avbelkin/nasa-space-apps-sg
@@ -201,7 +201,7 @@ AI tools
 - Anthropic Claude Code, OpenAI Codex — code, review, documentation drafts. Literature review: Anthropic Claude, OpenAI Codex, Google Antigravity, Muse Code, Kimi Code, models accessed through the OpenRouter API, and the Orca agent workspace. OpenAI ChatGPT image — Lama character design and photographic cutout. Google Veo 3.1 Lite via OpenRouter — character animation and reconstructed desk background. ElevenLabs Eleven v4 via OpenRouter — narration. ElevenLabs Scribe v2 via OpenRouter — narration check and caption timings.
 
 Methods and literature
-- Literature review with 82 references: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/modis-viirs-harmonization-literature-review.md
+- Literature review with 82 references: https://drive.google.com/file/d/1iEgg_tIgG9B2vq1-lW3SPwoRwGsT2GRf/view
 - Giglio, Schroeder & Justice (2016), MODIS C6 active fire algorithm; Schroeder et al., VIIRS 375 m active fire ATBD.
 - US Naval Observatory approximate solar coordinates; Van Flandern & Pulkkinen lunar ephemeris.
 

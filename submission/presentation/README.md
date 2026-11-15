@@ -47,7 +47,7 @@ The PDF contains vector text and shapes, embedded Unicode TrueType fonts and nat
 
 ## Remaining inputs
 
-There are no name, image, numerical or link placeholders in the deck, and no additional user-supplied data is required. The [published PDF](https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/Presentation_Earth-Fire-Calendar.pdf) is linked in the project's Materials. The separate video and submission-form state are maintained in the shared project description and requirements status; they are outside the slide build.
+There are no name, image, numerical or link placeholders in the deck, and no additional user-supplied data is required. The [published PDF](https://drive.google.com/file/d/1PCHMp1LMGzvo6F1DVeM1ttAvTRB30MMU/view) is linked in the project's Materials. The separate video and submission-form state are maintained in the shared project description and requirements status; they are outside the slide build.
 
 ## Submission format
 
