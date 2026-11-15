@@ -92,6 +92,14 @@ export function getExpectedViirsMiss(
   return pass ? { pass, score: score(pass) } : null
 }
 
+export function getUnmatchedSameFamilyPass(
+  spot: FireSpotTooltipInput, passes: readonly ComputedOverpass[], feed: PassFeed,
+) {
+  if (!spot.instrument) return undefined
+  const satellite = normalizeFullSatelliteLabel(spot.satellite, spot.source, spot.instrument)
+  return findUnmatchedFollowupPass(spot, passes, feed, spot.instrument, (pass) => pass.satellite !== satellite)
+}
+
 export function getCrossFamilyPassOutlook(
   spot: FireSpotTooltipInput, passes: readonly ComputedOverpass[], feed: PassFeed,
 ) {

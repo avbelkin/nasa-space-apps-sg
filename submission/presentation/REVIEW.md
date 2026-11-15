@@ -48,3 +48,15 @@ Final delta acceptance: direction-r9 was independently reviewed on both actual P
 PDF:  da66e084d30fa298bbc7f976e7ae95d9278246cb0c0c2675044052714560164a
 PPTX: 6cfc2ba6a4b0e02b67b5426ceec5b119fbb0414140333c55e799ceed6360d5c5
 ```
+
+
+## Concurrent source update
+
+After direction-r9, main received new wording on slides 1–7. The canonical text was retained. Direction-r10 rebuilds the first two slides against that current source, including the longer cover description and Stage copy and the “almost ten times more” sentence. The cover Stage box gained vertical room. The old r9 acceptance remains historical; the latest proof receives a separate copy and visual check. Slides 3–7 and the final seven-slide PDF location remain open.
+
+Final current-copy acceptance: direction-r10 was independently accepted with no findings. Both actual PDF pages and the PPTX match the current source. The longer copy fits without clipping or overlap; the two chart/workbook values remain 8,127 and 79,349 with fixed 0–100,000 ranges. Main copies are identical. All review jobs finished; no new external temporary files were created. PowerPoint was not rerun, and slides 3–7 remain outside this checkpoint.
+
+```text
+PDF:  4b186206f3e80349c0ab41340e5e9c055f65bfd2f3d0310217d1cea734977ede
+PPTX: b10e76940c4f0925329f973780cf585332d0a6e117653c3b440d060eaefe97cb
+```

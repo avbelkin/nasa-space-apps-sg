@@ -12,7 +12,7 @@ export async function drawFirstBlock({base,text,rect,image,sections,snapshot,T})
   rect(s,0,762,1600,138,C.deep);
   rect(s,88,762,1424,1,'#34466A');
   text(s,b[3],88,796,480,65,S.small,{color:'#B6C6E2'});
-  text(s,b[4],650,796,862,65,S.small,{color:'#B6C6E2'});
+  text(s,b[4],650,796,862,78,S.small,{color:'#B6C6E2'});
   s.speakerNotes.text+='\nCover provenance: assets/screenshots/capture-scenes.json. Data: NASA FIRMS. Basemap: EOX / Copernicus Sentinel-2. Later illustration than the count snapshot.';
  }
  {

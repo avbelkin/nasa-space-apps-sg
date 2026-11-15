@@ -4,9 +4,9 @@
 
 Lama, a small boy alpaca, is Alexey's assistant. He starts as the real plush toy, then becomes a living animated presenter in front of a large display, like a TV weather presenter. He steps, turns toward the data, points and looks back at the viewer. This is a presentation style, not a claim that the app forecasts fires. Narration, captions and production instructions are all in English. The app imagery is real, temporary production-site captures; replace it with recordings of the required actions before the final export.
 
-**Current review block:** an 11.5-second character, voice and composition pilot in `lama/prepared/presenter-v2/pilot.mp4`. The earlier photo-based figure, adult Will voice and portrait opening with blurred side areas were rejected by the user. Stop for creative review of this pilot before rebuilding the complete film. The storyboard below describes the intended full edit, not a finished export.
+**Current scope: voice and character only.** The user also rejected the Charlie voice in the 11.5-second presenter pilot and clarified the target: an adult female performer voicing a little cartoon boy. The physical desk-to-monitor jump is still required; the preceding camera push does not satisfy it. See the [current voice and character direction](voice-direction.md). The narration and storyboard below are provisional audition/reference material and will be revised later; do not rebuild the complete film yet.
 
-Editing target: **29 seconds, 1920×1080, 30 fps — 870 frames**. The narration contains **46 words**. Speech timing is provisional: adjust the edit and pauses to the recorded audio while retaining the total duration.
+Editing target: **29 seconds, 1920×1080, 30 fps — 870 frames**. The existing test narration contains **46 words**, but its wording is not locked. Revise the script and timing after voice/character review while retaining a final duration of at most 30 seconds.
 
 ## Storyboard
 
@@ -34,7 +34,7 @@ We add context: viewing angle, land cover, and weather.
 Next, we’ll use this evidence to make their records comparable.
 ```
 
-Use a childlike male cartoon voice: Lama is little, curious and clever, with lively delivery and a short comic pause before Mostly. The user selected ElevenLabs through OpenRouter. The new pilot uses Eleven v4, Charlie, with playful/youthful direction and a local three-semitone pitch increase that preserves duration. The unprocessed version is retained for comparison; perceived age and voice quality require listening review. Will was rejected as too adult. Aim for about 25 seconds including pauses, starting at 2 seconds. Keep the agreed 46-word text. Check Lama, Alexey, MODIS, VIIRS and NASA FIRMS before the final edit. If a take is too long, shorten pauses or rerecord it.
+Use a childlike male cartoon voice: Lama is little, curious and clever, with lively delivery and a short comic pause before Mostly. The user selected ElevenLabs through OpenRouter. The preceding pilot used Charlie with a three-semitone pitch increase; the user rejected it as insufficiently childlike. Current auditions use Jessica, Bella and Laura with an adult-female-performing-a-little-boy direction and no local pitch change. No voice is selected yet. Will was also rejected as too adult. Aim for about 25 seconds including pauses, starting at 2 seconds. These 46 words are temporary audition copy; the user will revise the text later. Check Lama, Alexey, MODIS, VIIRS and NASA FIRMS before the final edit. If a take is too long, shorten pauses or rerecord it.
 
 English subtitles repeat the narration verbatim. Split them into short meaningful phrases, at most two lines, and set their timing after receiving the audio. Retain Mostly and Next in the subtitle segmentation: the first completes the joke; the second identifies future work.
 

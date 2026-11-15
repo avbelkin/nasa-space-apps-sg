@@ -29,11 +29,12 @@
   },
   "model_outputs": {
     "provider": "Earth Fire Calendar team-fitted statistical models",
-    "input_source": "NASA FIRMS, with observation geometry and land-cover features",
+    "input_source": "NASA FIRMS with observation geometry, land cover and selected Copernicus GWIS / CAMS fields",
     "inference": "Local browser coefficient evaluation; no LLM service call",
     "files": [
       "ui/src/data/frp-forecast-coefficients.json",
-      "ui/src/data/viirs-detection-model.json"
+      "ui/src/data/viirs-detection-model.json",
+      "ui/src/data/weather-pass-models.json"
     ],
     "nasa_responsibility": "NASA has not validated model outputs and is not responsible for their accuracy."
   },

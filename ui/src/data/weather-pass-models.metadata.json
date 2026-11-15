@@ -1,0 +1,12 @@
+{
+  "asset": "weather-pass-models.json",
+  "sha256": "2a6eede5cd6e7bb3d34e1904a8fe362161a7b540180b61165004b001d38c1fc9",
+  "kind": "Team-fitted GWIS/CAMS-assisted statistical pass models",
+  "coding_assistance": [
+    "Anthropic Claude Code",
+    "OpenAI Codex"
+  ],
+  "input_data": "NASA FIRMS with Copernicus GWIS / CAMS contextual fields; original observations are not AI-generated",
+  "output_attribution": "Earth Fire Calendar, not NASA",
+  "limitations": "One snapshot and restricted coverage; same-day geographic holdouts do not establish cross-day performance. NASA has not validated outputs and is not responsible for accuracy."
+}

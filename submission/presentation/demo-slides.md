@@ -12,8 +12,6 @@ A live globe that compares the two sensors and attaches to each detection the co
 
 **Team:** Plush — Alexey Belkin, Viktoriia Naiman
 
-**Virtual collaborators:** Lama (fictional presenter); Claude Code and Codex (AI tools, not registered team members).
-
 **Stage:** Working prototype on live NASA FIRMS detections. It collects evidence for harmonization and fits first baselines on one day of it; the harmonized record is not built yet.
 
 ## Slide 2 — Two sensors, two different counts
@@ -64,7 +62,7 @@ A live globe that compares the two sensors and attaches to each detection the co
 
 **Hypothesis:** the MODIS–VIIRS difference depends on land-cover class together with view angle, at the level of individual detections. The prototype collects initial fields; estimated geometry and coarse global land-cover sampling still need validation and refinement.
 
-**First baselines, one day of data:** whether a later pass misses a detection (AUROC 0.64–0.77 on held-out regions) and how fire radiative power differs between passes (15,869 matched pairs). They use detection attributes, estimated geometry and land cover; weather is the next feature to test.
+**First baselines, one day of data:** whether a later pass misses a detection (AUROC 0.64–0.77 on held-out regions) and how fire radiative power differs between passes (15,869 matched pairs). GWIS improved MODIS ranking/FRP in a small paired sample; CAMS improved VIIRS ranking. Other days and publication-time checks remain open.
 
 **Planned pipeline:** FIRMS archive since 2000 → daily grid per satellite, with day and night kept separate → paired MODIS and VIIRS observations → response functions by view angle, pixel area and land cover → one reference scale → export.
 
@@ -87,11 +85,8 @@ A live globe that compares the two sensors and attaches to each detection the co
 **Links:** [App](https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0) · [Code](https://github.com/avbelkin/nasa-space-apps-sg) · [Technical note](https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/technical-note.md)
 
 **Sources:** [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) — MODIS and VIIRS fire detections. [NASA GIBS](https://earthdata.nasa.gov/gibs) — GPM IMERG precipitation and VIIRS Black Marble night lights. ESA CCI / Copernicus C3S — land cover. NOAA, [Open-Meteo](https://open-meteo.com/), Copernicus GWIS and GDO, US Forest Service — weather at acquisition. [Extremum](https://gis.extremum.org) — cloud layer: geostationary imagery from EUMETSAT, NOAA and JMA, blended with NASA VIIRS imagery at high latitudes. [CelesTrak](https://celestrak.org/) — orbital elements. [EOX](https://s2maps.eu/)/Copernicus Sentinel-2 — Earth basemap. Bright Star / Hipparcos catalogue — star background.
+**Rights and licences:** [Data, imagery, generated media and fonts](https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/third-party-rights.md) · [Software inventory](https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/software-licenses.md).
 
-**Rights and licences:** [Data, imagery, generated media and fonts](https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/third-party-rights.md) · [Software inventory](https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/software-licenses.md). Rebuild final exports after replacing the older EOX 2025 captures.
+**AI assistance:** Claude Code and Codex — code, text and layout. Virtual presenter: Lama; these are not registered members.
 
-**AI assistance:** code development, drafting of this presentation text and the demo script, and the layout of this deck.
-
-Model estimates are outputs of Earth Fire Calendar, not NASA. NASA has not validated them and is not responsible for their accuracy.
-
-Independent project. Not affiliated with or endorsed by NASA.
+Earth Fire Calendar model estimates are not validated by NASA; NASA is not responsible for their accuracy. Independent project; not affiliated with or endorsed by NASA.
