@@ -1,35 +1,57 @@
-# Earth Fire Calendar: video script
+# Сценарий ролика Earth Fire Calendar с Ламой
 
-[Slides](demo-slides.md) · [Video script](demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
+[Слайды](demo-slides.md) · [Съёмка и инструменты](../video/README.md) · [Описание проекта](project-description.md) · [Техническая записка](technical-note.md) · [Требования](formal-requirements.md) · [Рекомендации](advice.md)
 
-A video for the **Harmonization of MODIS and VIIRS Hot Spots** challenge: a 29-second storyboard against a 30-second limit. On-screen captions and the voiceover are in English. Replace `[team name]` with the real team name before recording.
+Плюшевый альпака Лама — помощник Алексея. Вступление занимает 1,4 секунды, затем переход внутрь монитора длится 0,6 секунды. Появившийся рядом с интерфейсом Лама начинает рассказ. Реплики и экранные надписи — на английском; указания для монтажа — на русском. В рабочем монтаже используем временные кадры с прода; перед финалом заменяем их записью нужных действий.
 
-## Storyboard
+Монтажный ориентир: **29 секунд, 1920×1080, 30 кадров/с — 870 кадров**. Реплики содержат **46 слов**. Тайминг речи предварительный: после записи голоса подгоняем монтаж и паузы по фактическому звуку, сохраняя общую длительность.
 
-| Time | Shot and action | On-screen caption | Voiceover |
-|---|---|---|---|
-| **0–3 s** | Globe with live points, MODIS selected | `Earth Fire Calendar` · `[team name]` · `Harmonization of MODIS and VIIRS Hot Spots` | Meet Earth Fire Calendar. |
-| **3–7 s** | Same view; the **MODIS 1 km** tile is visible | `Live NASA FIRMS · last 24 h · MODIS` | MODIS and VIIRS detect fires differently. |
-| **7–15 s** | Click **VIIRS**: the points become denser and the **VIIRS 375 m** tile shows a much larger number. Only the map and the live counters are in the shot | `Live NASA FIRMS · same 24 h · VIIRS` | Same 24 hours of NASA FIRMS data: VIIRS reports far more hotspots. So their records can't simply be joined. |
-| **15–23 s** | **All sensors** with **Color fire spots by sensor** on, zoomed to one region chosen in advance. Select a group that both sensors saw: the pinned timeline and the observation table with its MODIS and VIIRS columns open | `Who saw it: both sensors · MODIS only · VIIRS only` · `Viewing geometry: estimate from orbits` | Our app shows who saw each fire, and under what conditions: view angle, land cover, weather. |
-| **23–29 s** | Closing shot of the globe | `Live NASA FIRMS` · `Next: archive since 2000 · harmonization · validation` and the public link to the app | Next: use this evidence to harmonize the two records. |
+## Раскадровка
 
-## Full voiceover
+| Время | Кадры, начало включительно и конец исключительно | Изображение и действие | Реплика Ламы | Надписи помимо субтитров |
+|---|---|---|---|---|
+| 0–1,4 с | 0–42 | Живая съёмка: Алексей за компьютером, игрушка перед монитором. Вертикальный отрезок вписан по высоте в центр размытой увеличенной копии. По решению пользователя используем вариант с Алексеем, участником команды. | — | Earth Fire Calendar |
+| 1,4–2 с | 42–60 | Удерживаем последний кадр. Наезд на нижний монитор длится 8 кадров, смаз и склейка — 4 кадра, переход к интерфейсу — ещё 6 кадров. Игрушка уходит за край при увеличении кадра; фон под ней не дорисовывается. | — | Earth Fire Calendar |
+| 2–5,5 с | 60–165 | Интерфейс занимает основную часть кадра. Лама сразу появляется справа внизу, слегка подпрыгивает, затем на слове Mostly наклоняется. У зрителя сохраняется связь с игрушкой через шерсть и платок. | I’m Lama. I help Alexey. Mostly. | Earth Fire Calendar; AI-edited image |
+| 5,5–11,5 с | 165–345 | Один и тот же ракурс карты: сначала MODIS, затем VIIRS. После переключения даём точкам полностью отрисоваться. Лама наклоняется к карте; переключатель и соответствующий счётчик кратко выделяются. | Same planet. Same day. But MODIS and VIIRS see different hotspots. | NASA FIRMS · last 24 h; MODIS → VIIRS |
+| 11,5–17 с | 345–510 | All sensors; включается Color fire spots by sensor. Показываем заранее выбранный регион и цветовую легенду. Лама короткими подскоками перемещается внутри своей полосы и останавливается. | Earth Fire Calendar compares their detections using NASA FIRMS data. | NASA FIRMS · last 24 h |
+| 17–23 с | 510–690 | Выбираем подготовленную группу. Последовательно приближаем реальные фрагменты одной карточки: строку Sat. off-nadir, строку Land cover, заполненные строки Weather at acquisition. Лама остаётся на месте, внимание направляют подсветки. | We add context: viewing angle, land cover, and weather. | Estimated viewing geometry → Land cover → Weather at acquisition |
+| 23–29 с | 690–870 | Возвращаемся к карте. Лама смотрит на зрителя и слегка кивает. Финальные название, ссылка и следующий шаг остаются на экране до конца. | Next, we’ll use this evidence to make their records comparable. | Earth Fire Calendar; Next: harmonization; avbelkin.github.io/nasa-space-apps-sg |
 
-54 words, with no detection counts: the app's panel shows them.
+## Текст для озвучки
 
 ```text
-Meet Earth Fire Calendar.
+I’m Lama. I help Alexey. Mostly.
 
-MODIS and VIIRS detect fires differently.
+Same planet. Same day. But MODIS and VIIRS see different hotspots.
 
-Same 24 hours of NASA FIRMS data: VIIRS reports far more hotspots.
+Earth Fire Calendar compares their detections using NASA FIRMS data.
 
-So their records can't simply be joined.
+We add context: viewing angle, land cover, and weather.
 
-Our app shows who saw each fire, and under what conditions: view angle, land cover, weather.
-
-Next: use this evidence to harmonize the two records.
+Next, we’ll use this evidence to make their records comparable.
 ```
 
-How to prepare the app view is in the [recording advice](advice.md#recording-the-video); what to show and what not to say is in the [breakdown of the app](advice.md#earth-fire-calendar-what-to-show-and-what-not-to).
+Голос тёплый, любопытный, разговорный; Mostly произносится с короткой комической паузой. Ориентир — около 25 секунд вместе с паузами после начала речи на 2-й секунде. Согласованный 46-словный текст не расширяем: дополнительную реплику Meet Earth Fire Calendar поверх вступления не добавляем. Названия Lama, Alexey, MODIS, VIIRS и NASA FIRMS проверяем на слух до окончательной сборки. При слишком длинном дубле сокращаем паузы или перезаписываем фразу.
+
+Английские субтитры повторяют реплики дословно. Делим их на короткие смысловые части, максимум две строки; точные моменты появления ставим после получения аудио. Слова Mostly и Next не теряем при разбивке: первое завершает шутку, второе обозначает будущую работу.
+
+## Персонаж и монтаж
+
+Используем подготовленную ИИ-версию Ламы на прозрачном фоне. Это перегенерированное изображение по фото: поза, глаз, цвет уха и узор платка немного отличаются от оригинала. Узнаваемость принята для первого монтажа; изображение не зеркалим и не перегенерируем. Отдельные движения лап и рта не заложены.
+
+В кадре 1920×1080 интерфейс вписан в область 1600×900 с началом x=16, y=24. Для Ламы оставлена полоса справа: x≈1640, верх y=700, высота 340 px (максимум 380 px с пересмотром нижних отступов). Он смотрит влево на глобус; счётчики и заголовок NASA FIRMS остаются открыты. Под фигурой постоянно видна подпись AI-edited image, начиная с её появления на 2-й секунде. Субтитры занимают отдельную область снизу слева. Во время чтения таблиц Лама стоит спокойно.
+
+Вступление готовится из intro-candidate.mp4: выбран вариант 608×1080 по центру поверх размытой копии. Подготовленный вариант без лица сохранён как технический резерв и в текущий монтаж не входит. without_Lama.MOV и восстановление фона в выбранном переходе не используются.
+
+На финальном кадре сохраняем краткую атрибуцию NASA FIRMS и пометку Independent project. Not affiliated with or endorsed by NASA. Имя команды добавляется после получения точного написания; имя Ламы его не заменяет.
+
+Текст раскрытия ИИ для описания, поля про ИИ и метаданных экспорта сохранён в [публикационных подписях](../video/disclosures.md). Синтетическую озвучку указываем после её фактического создания. Принт платка проверяем после первого монтажа; до выяснения принадлежности не объявляем его свободным от чужого бренда.
+
+## Смысловые ограничения
+
+Показываем сравнение настоящих обнаружений за одни и те же 24 часа. All sensors объединяет их для просмотра, а цветовые группы зависят от экранной близости точек: они не доказывают совпадение отдельных пожаров. Геометрия помечается как оценка. Погода и земной покров показываются только там, где значения доступны.
+
+Гармонизация — следующий шаг. Не изображаем готовую калибровку, объединение точек в научно подтверждённое событие, прогноз пожаров или работающий сезонный календарь. Точные количества обнаружений в голосе не называем: на записи остаются реальные счётчики выбранного снимка данных.
+
+Подготовка исходников и последовательность записи описаны в [съёмочном плане](../video/README.md).
