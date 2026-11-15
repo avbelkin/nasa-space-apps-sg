@@ -15,7 +15,7 @@ public sealed record ExtremumCloudOptions
     public string UserAgent { get; init; } = DefaultUserAgent;
     public TimeSpan TileCacheDuration { get; init; } = TimeSpan.FromMinutes(3);
     public TimeSpan EmptyTileCacheDuration { get; init; } = TimeSpan.FromMinutes(1);
-    public TimeSpan UpstreamTimeout { get; init; } = TimeSpan.FromSeconds(15);
+    public TimeSpan UpstreamTimeout { get; init; } = TimeSpan.FromSeconds(60);
 
     public static ExtremumCloudOptions FromConfiguration(IConfiguration configuration)
     {
