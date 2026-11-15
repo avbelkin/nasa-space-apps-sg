@@ -2,7 +2,7 @@
 
 [Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](../working/form-fields.md) · [Formal requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
 
-Draft text for the **Project** tab, field by field, in the order of the [form](../working/form-fields.md). It describes the app as of commit `75f89b8` (15 November 2026, 19:03 SGT). Replace everything in `[square brackets]` before submitting; the items the team still has to confirm are collected in [Before submitting](#before-submitting).
+Draft text for the **Project** tab, field by field, in the order of the [form](../working/form-fields.md). It describes the app as of commit `c73d0b5` (15 November 2026, deployed at 20:07 SGT). Replace everything in `[square brackets]` before submitting; the items the team still has to confirm are collected in [Before submitting](#before-submitting).
 
 The live numbers come from one snapshot of the app's feed, fetched on 15 November 2026 at 08:36 UTC; its summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](../working/firms-snapshot-2026-11-15T0836Z.json). If the slides or the video use a different snapshot, use one set of numbers everywhere.
 
@@ -60,7 +60,7 @@ Earth Fire Calendar is a public web app. It works on live NASA FIRMS data, with 
 - land cover inside the pixel footprint, from the 2019 ESA CCI / Copernicus C3S land cover map;
 - weather at the acquisition time: temperature, humidity, wind, cloud over the footprint, precipitation, lightning, snow, aerosol, soil moisture, fire-weather index and dead-fuel moisture, where each source has coverage.
 
-6. What the next pass may show. For a single pinned detection the app notes a predicted pass by another satellite, of the same sensor or the other one, that reported nothing there, and says under which conditions our one-day baseline saw fewer or more such misses. It also shows the fire radiative power the next pass would report if it detects the fire. Both are experimental: they are fitted on one 24-hour snapshot and give no probability for an individual detection.
+6. What the next pass may show. For a single pinned detection the app notes a predicted pass by another satellite, of the same sensor or the other one, that reported nothing there, and says under which conditions our one-day baseline saw fewer or more such misses. When the other VIIRS satellite passed over a VIIRS detection, our model scored that pass at 70% or more for detecting it, and FIRMS has no detection within 1 km, the app flags it as "Expected detection, no match". It also shows the fire radiative power the next pass would report if it detects the fire. All three are experimental: they are fitted on one 24-hour snapshot and have not been checked on other days, and the detection score is not a validated probability.
 
 7. Context layers. Satellite ground tracks and scan swaths, cloud imagery, GPM IMERG precipitation and VIIRS Black Marble night lights can be switched on and off. The precipitation layer shows the latest available data and refreshes every 10 minutes while visible.
 
@@ -70,7 +70,7 @@ The interface is a static React and MapLibre GL JS application on GitHub Pages. 
 
 The service then enriches the detections in the background. It estimates the viewing geometry of each detection by propagating the satellite's orbit from CelesTrak orbital elements to the acquisition time. It samples the land cover map over a circle with the same area as the FIRMS scan-by-track pixel. It samples weather at the acquisition time from NOAA model and satellite products, Open-Meteo, Copernicus fire-danger and drought services and the US Forest Service, and keeps the source, valid time and unit of every value: model and fire-danger fields in the background for the most recent detections, every field for the detections you pin. The weather grids the service downloads are stored in a shared cache, so every service instance can sample them; a worker the team starts by hand can fill this cache for the whole feed. Missing values stay empty with no substitute. The side panel shows how far each enrichment stage has progressed.
 
-The notes and the estimate in point 6 come from baselines fitted offline on one 24-hour snapshot of the feed (14–15 November 2026): logistic regressions for a missed second pass and, on 15,869 matched pairs of detections, a regression for the change in fire radiative power. They use the detection attributes, the estimated geometry and the land cover, not yet the weather, and were evaluated on held-out geographic blocks. The interface applies the fitted coefficients in the browser. The scores are in the technical note.
+The notes and the estimate in point 6 come from baselines fitted offline on one 24-hour snapshot of the feed (14–15 November 2026): logistic regressions for a missed second pass and, on 15,869 matched pairs of detections, a regression for the change in fire radiative power. They use the detection attributes, the estimated geometry and the land cover, not yet the weather, and were evaluated on held-out geographic blocks. The interface applies the fitted coefficients in the browser: the regression for the fire radiative power estimate and the calibrated logistic model behind the detection score of the other VIIRS satellite's pass. The scores are in the technical note.
 
 WHY THESE FIELDS
 
@@ -78,7 +78,7 @@ Our literature review (82 sources, linked below) shows that existing harmonizati
 
 WHAT IS LIVE AND WHAT IS PLANNED
 
-Working today, on live data: the 24-hour detections, the sensor switch and counters, colouring by sensor, the pinned timeline, the geometry, land-cover and weather enrichment, and the context layers. Experimental, from a one-day baseline: the notes on unmatched passes and the estimated fire radiative power on the next pass.
+Working today, on live data: the 24-hour detections, the sensor switch and counters, colouring by sensor, the pinned timeline, the geometry, land-cover and weather enrichment, and the context layers. Experimental, from a one-day baseline: the notes on unmatched passes, the "Expected detection, no match" flag and the estimated fire radiative power on the next pass.
 
 Not built yet: the FIRMS archive since 2000, the harmonized record itself, its validation, free selection of an area and dates, and data export. "All sensors" shows the two sensors together without calibration or removal of duplicates; it is not a harmonized product.
 
@@ -92,7 +92,7 @@ LIMITATIONS
 - The viewing geometry is our estimate from public orbital elements, not the instruments' own per-pixel geolocation.
 - Land cover is a fixed 2019 map; at the global scale it is sampled from a 1.2 km overview.
 - Weather coverage differs by source: some products cover only the Americas or the contiguous United States, and model values are not observations.
-- The notes on unmatched passes and the estimated fire radiative power rest on one day of data and have not been checked on other days. A pass without a detection is inferred from predicted orbits.
+- The notes on unmatched passes, the detection score and the estimated fire radiative power rest on one day of data and have not been checked on other days. A pass without a detection is inferred from predicted orbits.
 - The app does not forecast fire behaviour or spread and is not an operational alerting tool.
 
 WHAT WE CONSIDERED
@@ -107,7 +107,7 @@ TypeScript, React, Vite, MapLibre GL JS and WebGL2 shaders for the interface; C#
 
 USE OF AI
 
-AI coding assistants ([Anthropic Claude Code, OpenAI Codex — confirm the list]) were used to write and review code and to draft documentation, the presentation text and the demo script. [Confirm: AI assistance in compiling the literature review.] The app itself makes no calls to AI services and generates no text or images. It contains one small statistical model, a regression fitted on NASA FIRMS data, which produces the estimated fire radiative power on the next pass; everything else it shows comes from the data sources listed below. The idea of the project is the team's own.
+AI coding assistants ([Anthropic Claude Code, OpenAI Codex — confirm the list]) were used to write and review code and to draft documentation, the presentation text and the demo script. [Confirm: AI assistance in compiling the literature review.] The app itself makes no calls to AI services and generates no text or images. It contains two small statistical models fitted on NASA FIRMS data: a regression that produces the estimated fire radiative power on the next pass, and a logistic regression that produces the detection score behind the "Expected detection, no match" flag. Everything else it shows comes from the data sources listed below. The idea of the project is the team's own.
 
 The Lama presenter image for the demo was generated with OpenAI ChatGPT from an original photograph of the team's plush alpaca. It is an AI-edited depiction, not an exact photographic cutout. The video will label it "AI-edited image" whenever it appears. Live-action footage and application captures are real recordings. The English narration was synthesized with ElevenLabs Eleven v4 through OpenRouter, using the Will voice. The provider is disclosed in the video description and file metadata.
 
@@ -136,11 +136,11 @@ Screenshots to insert in this field, each taken from the version that is submitt
 
 Tick every option that applies. From what the repository shows:
 
-- **Code generation tools** — yes: `Co-Authored-By: Claude` trailers in 41 of 219 commits (counted at `2d3f5df`), branches named `codex/*`, an `AGENTS.md` in the root.
+- **Code generation tools** — yes: `Co-Authored-By: Claude` trailers in 43 of 228 commits (counted at `c73d0b5`), branches named `codex/*`, an `AGENTS.md` in the root.
 - **Large language models for text** — yes: drafts of the documentation, the slide text, the video script and this page.
 - **Image or video generation** — yes: the Lama presenter image was generated with OpenAI ChatGPT from an original photograph; label it `AI-edited image` throughout its appearance. `[Separately confirm: how og-preview.png was made.]`
 - **Generated audio** — yes: English narration synthesized with ElevenLabs Eleven v4 through OpenRouter (Will voice); disclose it in the video description and MP4 metadata.
-- **Machine learning in the project itself** — yes, if the form's wording covers it: the app applies regression coefficients fitted on one day of FIRMS detections (the estimated FRP on the next pass), and the notes on unmatched passes use logistic-regression baselines. The app makes no calls to AI services.
+- **Machine learning in the project itself** — yes, if the form's wording covers it: the app applies coefficients fitted on one day of FIRMS detections: a regression for the estimated FRP on the next pass and a calibrated logistic regression for the detection score of the other VIIRS satellite's pass. The notes on unmatched passes quote associations observed in the same data. The app makes no calls to AI services.
 
 The form's exact option names have not been seen; match them on the form.
 
@@ -228,7 +228,7 @@ Tick both after the [checklist](../docs/formal-requirements.md#checklist) is clo
 | Project licence | There is no `LICENSE` file; without one NASA distributes the work under Apache 2.0 |
 | Slides PDF link | The deck is not exported yet |
 | Link preview image `og-preview.png` | It still reads "harmonization" and "Seasonal burning baselines & live calendar anomalies"; the app has neither |
-| Commit or tag of the submitted version | Replace `75f89b8` in the first paragraph and in the [technical note](technical-note.md) |
+| Commit or tag of the submitted version | Replace `c73d0b5` in the first paragraph and in the [technical note](technical-note.md) |
 | Baseline fitting scripts | They are not in the repository; add them or say where they are, and close the placeholder in the [technical note](technical-note.md#6-first-baselines-on-matched-passes) |
 | Backend test run | The technical note records only the interface suite; run the backend suite on the submitted commit |
 | Numbers | One snapshot across this page, the slides and the video |

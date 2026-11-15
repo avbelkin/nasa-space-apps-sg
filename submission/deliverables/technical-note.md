@@ -2,13 +2,13 @@
 
 [Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](../working/form-fields.md) · [Formal requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
 
-**Challenge:** Harmonization of MODIS and VIIRS Hot Spots · **Team:** `[team name]` · **Version described:** commit `75f89b8`, 15 November 2026 · **App:** [avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0) · **Code:** [github.com/avbelkin/nasa-space-apps-sg](https://github.com/avbelkin/nasa-space-apps-sg)
+**Challenge:** Harmonization of MODIS and VIIRS Hot Spots · **Team:** `[team name]` · **Version described:** commit `c73d0b5`, 15 November 2026 · **App:** [avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0) · **Code:** [github.com/avbelkin/nasa-space-apps-sg](https://github.com/avbelkin/nasa-space-apps-sg)
 
 This note answers the questions the demo and the project page leave open: what exactly is computed, from which data, how it was checked, and what is still a plan. Draft: replace the text in `[square brackets]`.
 
 ## 1. Summary and status
 
-Earth Fire Calendar is a web app that compares MODIS and VIIRS active-fire detections from the last 24 hours of NASA FIRMS data and attaches to each detection the conditions under which it was observed. It is a tool for studying the difference between the sensors: it makes the gap visible and collects the per-detection evidence needed to model it. First baselines fitted on one day of this evidence are already used in the app: notes on predicted passes that reported nothing, and an experimental estimate of the fire radiative power (FRP) the next pass would report.
+Earth Fire Calendar is a web app that compares MODIS and VIIRS active-fire detections from the last 24 hours of NASA FIRMS data and attaches to each detection the conditions under which it was observed. It is a tool for studying the difference between the sensors: it makes the gap visible and collects the per-detection evidence needed to model it. First baselines fitted on one day of this evidence are already used in the app: notes on predicted passes that reported nothing, a flag for a pass that was expected to detect the fire and did not, and an experimental estimate of the fire radiative power (FRP) the next pass would report.
 
 | Part | Status |
 |---|---|
@@ -21,13 +21,14 @@ Earth Fire Calendar is a web app that compares MODIS and VIIRS active-fire detec
 | Shared cache of weather source grids | Working; filled by the service and, for the whole feed, by a worker the team starts by hand |
 | Enrichment progress in the side panel | Working |
 | Notes on unmatched passes for a single pinned detection, same sensor family and the other family | Working; passes are an orbital estimate, the context comes from a one-day baseline, no per-detection probability |
+| **Expected detection, no match** flag for a VIIRS detection and the other VIIRS satellite | Working, experimental; a calibrated logistic model fitted on one 24-hour snapshot gives the detection score, [section 6](#6-first-baselines-on-matched-passes) |
 | Estimated FRP on the next pass, if it detects the fire | Working, experimental; coefficients fitted on one 24-hour snapshot, [section 6](#6-first-baselines-on-matched-passes) |
 | FRP prediction from weather | Not tested; the first baseline uses observation conditions only |
 | FIRMS archive since 2000 | Not built |
 | Harmonized record, calibration, validation | Not built; design in [section 7](#7-from-enrichment-to-harmonization) |
 | Area and date selection, export | Not built |
 
-The app shows no sample or synthetic detections. The one modelled value, the FRP estimate, is labelled as a prediction and shown next to the original FIRMS value.
+The app shows no sample or synthetic detections. It shows two modelled values: the FRP estimate, labelled as a prediction and shown next to the original FIRMS value, and the detection score in the **Expected detection, no match** flag.
 
 ## 2. The problem in the data
 
@@ -60,7 +61,7 @@ flowchart LR
 
 - **Interface** (`ui/`): TypeScript, React 19, Vite, MapLibre GL JS with custom WebGL2 layers. A static site, rebuilt by GitHub Actions on every push to `main` that touches `ui/`.
 - **Service** (`backend/`): C#, .NET 10, ASP.NET Core minimal API in a container on Google Cloud Run (`asia-southeast1`). It holds the FIRMS key, caches upstream data in memory and does all enrichment. The only stored data is a Firestore cache of weather source grids, shared between service instances; every cache can be rebuilt from public sources.
-- **Baseline coefficients** (`ui/src/data/frp-forecast-coefficients.json`): fitted offline and evaluated in the browser; the service is not involved.
+- **Baseline coefficients** (`ui/src/data/frp-forecast-coefficients.json` for the FRP estimate, `ui/src/data/viirs-detection-model.json` for the VIIRS detection score): fitted offline and evaluated in the browser; the service is not involved.
 - The view state (position, sensor, layers) lives in the URL hash, so any view can be shared as a link.
 
 ## 4. Detections: ingestion and display
@@ -94,6 +95,8 @@ The grouping is by screen distance, so it changes with zoom. It is a visual aid 
 
 The notes say whether the baseline saw fewer or more misses under these conditions. They give no probability for the individual detection, and a missing match can come from an error in the predicted coverage, late data, cloud, a change in the fire, or sensor sensitivity.
 
+**Expected detection, no match.** For a pinned NOAA-20 or NOAA-21 detection the app also scores the other VIIRS satellite's settled pass with the VIIRS → VIIRS model of [section 6](#6-first-baselines-on-matched-passes). If the calibrated detection score is 70% or more and the whole live feed has no detection from that spacecraft within 1 km and ±25 minutes of the pass, the card shows this flag in an error colour, with the spacecraft, the pass time and the score, in place of the same-family note. The score comes from one day of data and is not a validated probability; the flag marks a case worth a closer look, not a confirmed omission.
+
 **Predicted FRP if detected.** For one pinned detection the app finds the next predicted pass by a different spacecraft that is still in the future and within six hours of the detection, and shows the FRP that pass would report if it detects the fire, with the signed change in MW. The original FIRMS value stays visible under the estimate and in the timeline. The model is described in [section 6](#6-first-baselines-on-matched-passes).
 
 ## 5. Per-detection enrichment
@@ -123,9 +126,9 @@ For pinned detections (up to 16 per request) the service samples each source at 
 
 A background pass samples the gridded sources (NOAA GFS, Copernicus GWIS, NOAA CPC, WFAS) without waiting for a selection. It covers the 512 most recent unique locations and acquisition times in the 24-hour window, up to 64 per feed refresh; older detections get weather only when pinned. Pinned requests reuse these samples and fetch the remaining fields. Sampled values stay in the memory of the service instance until the detection leaves the 24-hour window.
 
-What the instances share is the source data, not the samples. The encoded grids as downloaded (GRIB2, PNG, GeoTIFF) are stored in Firestore under a key of product, model run or date, forecast hour and tile, so any instance can sample a grid that another one fetched. GFS grids expire 25 hours after their valid hour; the daily and weekly rasters are refreshed at short intervals and keep the upstream modification time. If the shared cache is unavailable, the service downloads the grid from the source.
+What the instances share is the source data, not the samples. The encoded grids (GRIB2, PNG, GeoTIFF), as downloaded or as cut from a larger file by the worker described below, are stored in Firestore under a key of product, model run or date, forecast hour and tile, so any instance can sample a grid that another one fetched. GFS grids expire 25 hours after their valid hour; the daily and weekly rasters are refreshed at short intervals and keep the upstream modification time. If the shared cache is unavailable, the service downloads the grid from the source.
 
-To fill the cache for the whole feed and not only for the 512 targets, the team can start a local worker (`scripts/start-local-weather-worker.ps1`): the same service code in a mode that preloads unexpired Firestore grid IDs, scans the worldwide 24-hour feed every two minutes, fetches `.idx` byte ranges from NOAA's public GFS mirrors on Google Cloud Storage (with AWS S3 fallback) to slice and batch-write missing 4° simple-packed GRIB2 tiles without NOMADS CGI throttling, and refreshes the daily and weekly rasters concurrently. It runs only while a team member keeps it running. The side panel shows the number of shared grids; on 15 November 2026 at 11:12 UTC it was 3,121.
+To fill the cache for the whole feed and not only for the 512 targets, the team can start a local worker (`scripts/start-local-weather-worker.ps1`): the same service code in a mode that preloads unexpired Firestore grid IDs, scans the worldwide 24-hour feed every two minutes, fetches `.idx` byte ranges from NOAA's public GFS mirrors on Google Cloud Storage (with AWS S3 fallback) to slice and batch-write missing 4° simple-packed GRIB2 tiles without NOMADS CGI throttling, and refreshes the daily and weekly rasters concurrently. It runs only while a team member keeps it running. The side panel shows the number of shared grids; on 15 November 2026 it was 3,121 at 11:12 UTC and 12,582 at 12:10 UTC.
 
 | Source | Fields | Coverage and time matching |
 |---|---|---|
@@ -153,7 +156,18 @@ These are first reference scores, fitted offline on one snapshot of the app's fe
 | MODIS → VIIRS | 3,634 | 57.5% | 0.643 | Viewing geometry of the later pass (0.062) |
 | VIIRS → MODIS | 30,761 | 92.5% | 0.768 | Viewing geometry of the later pass (0.101) |
 
-Examples of the associations the app quotes: after a VIIRS detection of 2–5 MW the other VIIRS satellite missed 70.1% of the time, after 20–50 MW 49.3%; a MODIS pass missed a VIIRS detection 85.2% of the time when its ground track was within 100 km and 99.6% at 1,000–1,200 km. The app uses these observed bands as fixed rules; it does not evaluate the logistic models.
+Examples of the associations the app quotes: after a VIIRS detection of 2–5 MW the other VIIRS satellite missed 70.1% of the time, after 20–50 MW 49.3%; a MODIS pass missed a VIIRS detection 85.2% of the time when its ground track was within 100 km and 99.6% at 1,000–1,200 km. For the notes the app uses these observed bands as fixed rules; it does not evaluate the logistic models there.
+
+**When was a detection expected?** The one model the app does evaluate is VIIRS → VIIRS, for the **Expected detection, no match** flag. Its scores were calibrated with a sigmoid fitted on inner geographic holdouts within each training split. For held-out passes with a calibrated detection score of at least 70%:
+
+| Direction | Passes at ≥ 70% | No match | Mean detection score | Observed detection rate |
+|---|---:|---:|---:|---:|
+| VIIRS → VIIRS | 1,668 | 420 | 76.8% | 74.8% |
+| MODIS → VIIRS | 57 | 31 | 72.7% | 45.6% |
+| MODIS → MODIS | 2 | 2 | 75.9% | 0% |
+| VIIRS → MODIS | 0 | 0 | — | — |
+
+The flag is limited to NOAA-20 and NOAA-21: VIIRS → VIIRS is the only direction with many high-scoring passes and a mean score close to the observed rate. Widening the match radius from 500 m to 1 km recovered 208 of the 420 high-scoring misses, so the app checks for a match within 1 km before showing the flag; the model itself was fitted on the 500 m labels. The app uses coefficients fitted on the full snapshot and a calibration curve fitted to its out-of-fold scores (`ui/src/data/viirs-detection-model.json`).
 
 **How does FRP differ on the next pass?** 15,869 matched pairs from the same snapshot. The target is the second detection's FRP minus the first. Each direction has its own L2-regularized Huber regression on the difference of log-transformed FRP, converted back to MW. Features, all in bands: the first detection's FRP, brightness temperature and confidence; time between the passes; distance to the second ground track and a nadir flag; off-nadir angle, glint angle, day or night, Sun and Moon elevation; land-cover class; the satellite pair.
 
@@ -209,13 +223,13 @@ The data constraints behind this plan and the design decisions for the measure, 
 - **FRP is not additive across passes,** and several 375 m VIIRS detections can share one 750 m FRP retrieval, so individual VIIRS detections are not independent FRP measurements.
 - **Near-real-time data.** NRT records are replaced later by standard-quality products; the numbers in this note will not match the archive exactly.
 - **Mostly in memory.** Geometry, land-cover and sampled weather results are kept per service instance and are lost on restart; only the weather source grids are shared between instances. A newly started instance returns detections first and enrichment later.
-- **One-day baselines.** The notes on unmatched passes and the FRP estimate rest on a single 24-hour snapshot (section 6). The estimate is conditional on the next pass detecting the fire; it is not a forecast of fire behaviour or spread.
+- **One-day baselines.** The notes on unmatched passes, the detection score and the FRP estimate rest on a single 24-hour snapshot (section 6). The detection score was calibrated on that day only. The estimate is conditional on the next pass detecting the fire; it is not a forecast of fire behaviour or spread.
 
 ## 9. Verification
 
-- **Automated tests:** 49 backend test methods (90 test cases, xUnit) and 110 interface test cases (Node test runner). They cover FIRMS CSV parsing and confidence normalization, the orbit, swath and geometry calculations, land-cover footprint sampling including tile edges and the antimeridian, each weather sampler against recorded fixtures, global GRIB2 complex-packing decoding and regional tile slicing, `.idx` byte-range selection, the weather grid cache and the local worker's batch planning, the enriched-feed endpoint, and the interface's grouping, timeline, unmatched-pass notes, FRP estimate, enrichment-progress and URL-state logic. The interface suite was run on 15 November 2026 at 11:13 UTC on `8e84ea6`, which has the same code as `75f89b8`: 110 passed, 0 failed. `[Run the backend suite on the submitted commit and record the result here.]`
-- **Build:** GitHub Actions builds the service in Release mode and the interface on every push. The interface deployment of `75f89b8`, started on 15 November 2026 at 11:03 UTC, completed successfully. The service was last deployed from `2945f5c` at 10:36 UTC, also successfully; its code has not changed since.
-- **Live check:** on 15 November 2026 at 08:36 UTC, on the earlier version `82f1a17`, the public app returned HTTP 200, the service reported healthy, and the feed returned the snapshot in section 2. Repeated on `75f89b8` at 11:13 UTC: the app and the feed returned HTTP 200; the feed held 85,032 detections (MODIS 9,063, VIIRS 75,969) with geometry ready for all of them, background weather checked for 64 of the 512 target locations and still running, and 3,121 shared weather grids.
+- **Automated tests:** 49 backend test methods (90 test cases, xUnit) and 112 interface test cases (Node test runner). They cover FIRMS CSV parsing and confidence normalization, the orbit, swath and geometry calculations, land-cover footprint sampling including tile edges and the antimeridian, each weather sampler against recorded fixtures, global GRIB2 complex-packing decoding and regional tile slicing, `.idx` byte-range selection, the weather grid cache and the local worker's batch planning, the enriched-feed endpoint, and the interface's grouping, timeline, unmatched-pass notes, expected-detection flag, FRP estimate, rain-layer refresh, enrichment-progress and URL-state logic. The interface suite was run on 15 November 2026 at 12:08 UTC on `c73d0b5`: 112 passed, 0 failed. `[Run the backend suite on the submitted commit and record the result here.]`
+- **Build:** GitHub Actions builds the service in Release mode and the interface on every push. The interface deployment of `c73d0b5`, started on 15 November 2026 at 12:06 UTC, completed successfully. The service was last deployed from `4686c3c` at 12:06 UTC, also successfully; its code has not changed since.
+- **Live check:** on 15 November 2026 at 08:36 UTC, on the earlier version `82f1a17`, the public app returned HTTP 200, the service reported healthy, and the feed returned the snapshot in section 2. Repeated on `75f89b8` at 11:13 UTC: the app and the feed returned HTTP 200; the feed held 85,032 detections (MODIS 9,063, VIIRS 75,969) with geometry ready for all of them, background weather checked for 64 of the 512 target locations and still running, and 3,121 shared weather grids. Repeated on `c73d0b5` at 12:10 UTC, two minutes after the service was redeployed: the app, the service health check and the feed returned HTTP 200; the feed held 69,890 detections (MODIS 8,951, VIIRS 60,939); geometry, land cover and weather were still pending on the new instance, as described in section 8; the shared cache held 12,582 weather grids.
 - **Not verified:** the estimated view angles against the instruments' own geolocation products; the weather samples against station observations; the baselines of section 6 on any day other than the one they were fitted on; any harmonization result, because none exists yet.
 
 ## 10. Reproducing the numbers
@@ -233,12 +247,12 @@ GET  …/api/satellites/orbits
 
 The response of the first request carries `count`, `modisCount`, `viirsCount`, the window bounds and the per-dataset counts used in section 2. The feed is a rolling window, so a later request returns different numbers. To run the app locally, see the [README](../../README.md); the endpoint reference is in [`doc/architecture-and-harmonization.md`](../../doc/architecture-and-harmonization.md).
 
-The baseline scores in section 6 are recorded in the same document. The fitted FRP coefficients are in [`ui/src/data/frp-forecast-coefficients.json`](../../ui/src/data/frp-forecast-coefficients.json), and the code that applies them in [`ui/src/utils/frpForecast.ts`](../../ui/src/utils/frpForecast.ts).
+The baseline scores in section 6 are recorded in the same document. The fitted FRP coefficients are in [`ui/src/data/frp-forecast-coefficients.json`](../../ui/src/data/frp-forecast-coefficients.json), and the code that applies them in [`ui/src/utils/frpForecast.ts`](../../ui/src/utils/frpForecast.ts). The VIIRS detection model is in [`ui/src/data/viirs-detection-model.json`](../../ui/src/data/viirs-detection-model.json), applied by [`ui/src/utils/viirsDetectionScore.ts`](../../ui/src/utils/viirsDetectionScore.ts).
 
 ## 11. Data, licences and AI use
 
 All data sources, software components and their licences are listed in the [project page text, field 8](project-description.md#8-space-agency-partner-data-and-other-references); NASA data and its role in [field 7](project-description.md#7-nasa-data).
 
-AI coding assistants (`[Anthropic Claude Code, OpenAI Codex — confirm the list]`) were used to write and review code and to draft documentation, including this note. The app makes no calls to AI services and shows no generated text or images. It does contain one small statistical model: the regression of section 6, fitted on FIRMS data and evaluated in the browser. The idea, the hypothesis and the decisions on what to build are the team's.
+AI coding assistants (`[Anthropic Claude Code, OpenAI Codex — confirm the list]`) were used to write and review code and to draft documentation, including this note. The app makes no calls to AI services and shows no generated text or images. It does contain two small statistical models from section 6, fitted on FIRMS data and evaluated in the browser: the FRP regression and the VIIRS detection-score logistic regression. The idea, the hypothesis and the decisions on what to build are the team's.
 
 Independent project built for the 2026 NASA Space Apps Challenge. Not affiliated with or endorsed by NASA.
