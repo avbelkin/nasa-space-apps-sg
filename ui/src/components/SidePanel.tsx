@@ -101,9 +101,9 @@ export function SidePanel({
       />
 
       <div className="panel-bottom">
-        <LiveFiresSection info={liveFires} />
+        <LiveFiresSection info={liveFires} connectionState={connectionState} />
         {legend}
-        <AttributionFooter connectionState={connectionState} />
+        <AttributionFooter />
       </div>
     </aside>
   )

@@ -1,6 +1,6 @@
 # Space Apps 2026: formal requirements and checklist
 
-[Slides](demo-slides.md) · [Video script](demo-video.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
+[Slides](demo-slides.md) · [Video script](demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
 
 Based on the official guides as retrieved on 14 November 2026 and re-checked against those copies on 15 November. This document covers the rules common to the whole submission (team, deadlines, language, access, rights, people, brand, AI) and the status of Earth Fire Calendar against them. What goes in each form field, and the demo limits, are in the [form fields](form-fields.md).
 

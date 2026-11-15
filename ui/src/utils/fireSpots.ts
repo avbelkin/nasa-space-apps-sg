@@ -100,8 +100,17 @@ export interface FirmsLiveSpotsResponse {
   landCoverDataset?: LandCoverDataset
   landCoverPending?: boolean
   geometryStatus?: 'pending' | 'unavailable' | 'ready'
+  geometryProgress?: { status: 'pending' | 'unavailable' | 'ready'; totalCount: number; readyCount: number; pendingCount: number }
   enrichmentStatus?: 'pending' | 'complete' | 'incomplete'
-  weather?: { status: 'pending' | 'ready' | 'partial'; sampledCount: number; targetCount: number; eligibleCount: number }
+  weather?: {
+    status: 'pending' | 'ready' | 'partial'
+    sampledCount: number
+    targetCount: number
+    eligibleCount: number
+    availableCount?: number
+    retryCount?: number
+    pendingCount?: number
+  }
 }
 
 export interface FireSpotFeatureProperties {

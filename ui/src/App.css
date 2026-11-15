@@ -1273,6 +1273,43 @@
   gap: 0.5rem;
 }
 
+.live-fire-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.live-fire-status {
+  padding: 0.25rem 0.7rem 0.55rem;
+  border-radius: 0.5rem;
+  background-color: var(--surface-subtle);
+  font-size: var(--fs-12);
+}
+
+.live-fire-stages {
+  margin: 0;
+}
+
+.live-fire-stages > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: 0.5rem;
+  padding-block: 0.18rem;
+}
+
+.live-fire-stages dd {
+  margin: 0;
+  text-align: end;
+}
+
+.live-fire-stages small,
+.live-fire-status-update {
+  display: block;
+  color: var(--text-muted);
+}
+
+.live-fire-status-update {
+  margin-block-start: 0.25rem;
+}
+
 .metric-tile {
   padding: 0.5rem 0.7rem;
   border-radius: 0.5rem;
@@ -1510,7 +1547,7 @@
   gap: 0 0.75rem;
 }
 
-/* Open, the credits take the full width and the indicator moves below them */
+/* Open, the credits take the full width. */
 .footer-meta > .panel-details[open] {
   flex-basis: 100%;
 }

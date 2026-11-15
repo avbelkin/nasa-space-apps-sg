@@ -54,6 +54,11 @@ The brief names early-warning and emergency responders, scientists, land manager
 
 **Source type.** The MODIS guide defines `type` 0 as presumed vegetation fire, 1 as active volcano, 2 as other static land source (repeatedly detected on 16 or more days in a calendar year, or in an urban area) and 3 as offshore. The field is part of the standard products; its presence has to be checked for each download, and the near-real-time feed the prototype reads does not carry it.
 
+**Limits of single detections.**
+
+- *Displaced night detections near large fires.* The VIIRS guide (FAQ) describes cases where the 375 m product detected part of a tall, hot plume together with the surface fire: at night, over very large fires with explosive growth, at high scan angle. Parallax then places those pixels outside the fire perimeter, on the side toward the swath edge, and the algorithm cannot separate them from surface fire. The guide advises preferring an overpass closer to nadir. For any correction by land cover and view angle, the cover class under such a pixel may not be the class that is burning.
+- *Saturated MODIS detections have no valid FRP.* In very intense burning a MODIS detection can saturate and carry no valid FRP, so summed FRP is underestimated exactly in extreme events. [Li et al., 2021](https://doi.org/10.1088/2515-7620/ac2e6f) report 14% and 23% saturated MODIS detections on peak days in two Australian ecoregions in 2019–2020. Count detections without valid FRP separately when comparing FRP sums between sensors or between years.
+
 ## 3. Design decisions
 
 ### 3.1 Measures and units
@@ -99,9 +104,11 @@ The brief names early-warning and emergency responders, scientists, land manager
 
 **Note on the observation-operator coefficients.** Evaluating the paper's detection-limit relation (Eq. 5) with Table 1 at a 1 km² pixel gives 4.96 MW by day and 5.44 MW by night for MODIS; the paper's conclusions give 5.7 and 3.7 MW for the smallest pixels. For VIIRS, Table 2 at a 0.375 km × 0.375 km pixel gives 2.31 and 0.54 MW; the conclusions give 3.7 and 0.7 MW. We have not reconciled the two sets, which may rest on different definitions. Neither should be copied as an implementation constant before the equations, tables and code are reconciled.
 
+**Note on the operator output.** In the released code (`FRP_OOp_pixel.py`, function `observe`), each fire near the detection limit is kept with its input FRP or set to zero by a random draw against the detection probability; the FRP itself is not scaled. A run is therefore one random realization, not an expected value. An implementation has to choose between the two representations, state the choice, and fix the random seed for reproducible results.
+
 ### 3.6 A shortcut to a MODIS baseline
 
-The MODIS guide documents monthly 0.25° climate-modelling-grid products, `MOD14CMQ` and `MYD14CMQ`, with layers including `RawFirePix`, `CorrFirePix`, `CloudCorrFirePix`, `MeanCloudFraction`, `CloudPix`, `TotalPix` and `MeanFRP`. They can reduce the work for a coarse MODIS historical baseline. Limits: the files are a time series from which a climatology still has to be computed; `CloudCorrFirePix` is a corrected estimate, not a detection count; monthly 0.25° data cannot serve daily history or a small arbitrary polygon; Terra and Aqua stay separate until their combination is defined. We have not downloaded these products or tested a reader for their HDF4 format.
+The MODIS guide documents monthly 0.25° climate-modelling-grid products, `MOD14CMQ` and `MYD14CMQ`, with layers including `RawFirePix`, `CorrFirePix`, `CloudCorrFirePix`, `MeanCloudFraction`, `CloudPix`, `TotalPix` and `MeanFRP`. They can reduce the work for a coarse MODIS historical baseline. Limits: the files are a time series from which a climatology still has to be computed; `CloudCorrFirePix` is a corrected estimate, not a detection count; monthly 0.25° data cannot serve daily history or a small arbitrary polygon; Terra and Aqua stay separate until their combination is defined; `TotalPix` is a number of pixels, not a number of overpasses and not evidence of clear-sky observation; inferred non-vegetation hot spots are excluded from the CMG products but not from the fire location product (guide, sections 8.6.6 and 8.7.3), so a comparison between the two needs the same exclusion on both sides. We have not downloaded these products or tested a reader for their HDF4 format.
 
 The same guide warns of large sampling bias in MODIS analyses over periods shorter than about eight days. Start with monthly comparisons, keep daily records so that other summaries stay possible, and require coverage evidence before publishing daily or five-day statistics.
 
@@ -152,7 +159,7 @@ Checked in the code at `82f1a17`:
 - **Residuals** must not depend systematically on view angle, cloudiness, local time, platform or processing version.
 - **Cells seen by one sensor only.** Check MODIS-only, VIIRS-only and no-detection cells separately; a calibration fitted on matched detections learns mostly from burning that is easy to detect.
 - **Results by class:** cropland burning, forest fires, savanna, peat; day and night; weak and strong sources. A good overall score must not hide a class that got worse.
-- **Uncertainty.** Resample whole space-time blocks or fire episodes, not single pixels, so that dependent pixels do not produce intervals that are too narrow.
+- **Uncertainty.** Resample whole space-time blocks or fire episodes, not single pixels, so that dependent pixels do not produce intervals that are too narrow. A prediction interval for a new cell-period is not a confidence interval for a fitted parameter: report which one is shown, and check the coverage of prediction intervals on held-out data.
 - Split held-out data by whole seasons and spatial blocks; never distribute neighbouring pixels of one event between training and test.
 - Burned-area products can serve as a secondary check, with two cautions: a burn scar does not establish active combustion at a given overpass, and products that share active-fire inputs are not independent.
 - If the calibration fails, publish the source-separated history and label the adjusted view experimental.
