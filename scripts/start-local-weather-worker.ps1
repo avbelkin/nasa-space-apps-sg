@@ -32,7 +32,7 @@ if (!(Test-Path -LiteralPath $workerAssembly)) {
 $dotnet = (Get-Command dotnet -ErrorAction Stop).Source
 $resolvedAssembly = (Resolve-Path -LiteralPath $workerAssembly).ProviderPath
 
-$firstToken = (& $gcloud auth print-access-token --quiet | Select-Object -First 1)
+$firstToken = (& $gcloud auth print-access-token --quiet | Out-String).Trim()
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($firstToken)) {
     throw 'Sign in to Google Cloud with an account that can read and write the weather-cache database.'
 }
@@ -46,12 +46,12 @@ $psi.RedirectStandardInput = $true
 # Stream refreshed tokens via StandardInput so both Windows PowerShell 5.1 and PowerShell 7 launch dotnet immediately.
 $process = [System.Diagnostics.Process]::Start($psi)
 try {
-    $process.StandardInput.WriteLine($firstToken.Trim())
+    $process.StandardInput.WriteLine($firstToken)
     $process.StandardInput.Flush()
     while (!$process.WaitForExit(600000)) {
-        $nextToken = (& $gcloud auth print-access-token --quiet | Select-Object -First 1)
+        $nextToken = (& $gcloud auth print-access-token --quiet | Out-String).Trim()
         if ($LASTEXITCODE -eq 0 -and ![string]::IsNullOrWhiteSpace($nextToken)) {
-            $process.StandardInput.WriteLine($nextToken.Trim())
+            $process.StandardInput.WriteLine($nextToken)
             $process.StandardInput.Flush()
         }
         else {
