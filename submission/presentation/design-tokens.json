@@ -30,9 +30,9 @@
   },
   "reference": "assets/brand/palette.json",
   "sensorColors": {
-    "both": "#ff5a52",
-    "single": "#ffd84d",
-    "modis": "#68d5a0",
-    "viirs": "#b89cf0"
+    "both": "#ff1a00",
+    "single": "#ffff00",
+    "modis": "#86efac",
+    "viirs": "#e9b3ff"
   }
 }

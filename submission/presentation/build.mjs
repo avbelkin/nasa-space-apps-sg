@@ -75,7 +75,7 @@ function text(s,md,x,y,w,h,size=S.body,opt={}){
 function title(s,md){text(s,md,88,60,1424,90,S.heading,{font:T.fonts.body,bold:true,name:'headline'});}
 function base(index,dark=false){
  const s=pres.slides.add(); s._number=index+1;s._dark=dark;s._scene={number:index+1,dark,elements:[]};scenes.push(s._scene);
- s.background.fill=dark?C.deep:C.white;s._scene.background=s.background.fill;
+ s.background.fill=dark?C.deep:C.white;s._scene.background=dark?C.deep:C.white;
  const sec=sections[index];
  s.speakerNotes.text=`${sec.title}\n\n${sec.markdown}\n\nSources: submission/presentation/demo-slides.md; submission/presentation/assets/brand/README.md. Independent project. Not affiliated with or endorsed by NASA.`;
  return s;
@@ -114,6 +114,8 @@ const coverage=sections.slice(0,slideCount).map(sec=>{
 });
 await fs.writeFile(path.join(buildDir,'copy-coverage.json'),JSON.stringify(coverage,null,2));
 if(coverage.some(x=>x.missing.length)) throw Error(`Source copy missing: ${JSON.stringify(coverage)}`);
+// Check browser text fitting before creating the finalized PowerPoint file.
+const pdfResult=await renderVectorPdf({root,version,slides:scenes,tokens:T,buildDir,out});
 const candidate=path.join(buildDir,'candidate.pptx');
 await (await PresentationFile.exportPptx(pres)).save(candidate);
 await patchPptx({candidate,scenes,modules});
@@ -129,7 +131,6 @@ for(let i=0;i<pres.slides.items.length;i++) {
 }
 // Both exports consume the same layout. Chromium embeds the original font
 // subsets and produces real text, vectors and clickable URI annotations.
-const pdfResult=await renderVectorPdf({root,version,slides:scenes,tokens:T,buildDir,out});
 const sharp=require('sharp');
 const thumbnails=await Promise.all(scenes.map(async(s,i)=>({input:await sharp(path.join(buildDir,`pdf-slide-${i+1}.png`)).resize(800,450).png().toBuffer(),left:20+(i%2)*820,top:20+Math.floor(i/2)*470})));
 await sharp({create:{width:1660,height:20+Math.ceil(slideCount/2)*470,channels:3,background:'#E8EDF4'}}).composite(thumbnails).png().toFile(path.join(out,`earth-fire-calendar-${version}-overview.png`));

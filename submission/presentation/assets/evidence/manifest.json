@@ -6,12 +6,12 @@
       "name": "cover-sensors",
       "original": "cover-sensors.png",
       "file": "cover-sensors.jpg",
-      "width": 980,
-      "height": 980,
-      "bytes": 247856,
+      "width": 996,
+      "height": 996,
+      "bytes": 230678,
       "crop": null,
-      "sourceSha256": "38140d0e8ce604c617fae5d1857545f20f27ed3c194ca204917ac651965313a7",
-      "sha256": "582e2871bd7a04368d72dc87b252f61868449a64f03384d25d015e61e9c5f2d3"
+      "sourceSha256": "741e37b9699820dc5002bcfce2bed261c9bd07137da23afc5474dd30706e6cf5",
+      "sha256": "6edeba1803dd98d1db6f3d6935040f35e856027d98cf9ea3996b583eecd36df6"
     },
     {
       "name": "regional-sensors",
@@ -19,15 +19,15 @@
       "file": "regional-sensors.jpg",
       "width": 1800,
       "height": 1020,
-      "bytes": 686441,
+      "bytes": 563978,
       "crop": {
         "left": 0,
         "top": 0,
-        "width": 2948,
+        "width": 2404,
         "height": 1992
       },
-      "sourceSha256": "0d860bcfadca7a39aab01984cd496dca714c04dcc95c51778e5966045b99ca0d",
-      "sha256": "23f54b6b33dfc2521ceffb30f67af471d61f420857ea3d7c9ba14c002a38b577"
+      "sourceSha256": "9441055feea4b07e065ea93d9f4e83f3a51df32e03657e009e89719ea77dc69d",
+      "sha256": "1f994950a8356076ffaf186234046b450de9a385e9dab076c70d52a53d5d2716"
     },
     {
       "name": "step-modis",
@@ -35,15 +35,15 @@
       "file": "step-modis.jpg",
       "width": 860,
       "height": 390,
-      "bytes": 142988,
+      "bytes": 132676,
       "crop": {
         "left": 0,
         "top": 0,
-        "width": 2948,
+        "width": 2404,
         "height": 1992
       },
-      "sourceSha256": "6692546a94461bc2a743ee4fa73979c645539cd17c9b9f68d3b3dc70855f036d",
-      "sha256": "ead5dcbdb259884ef089b360b8d32db8c32534a033525d9fd960386e2bd83a2e"
+      "sourceSha256": "aa67258b5269a962173fbf0429610566943d1ba70044bf42219a92ceceb25a15",
+      "sha256": "7ec5a8504155abff7e125bbfdeca18a6c9e725608f4463542f4b872c207b9ebe"
     },
     {
       "name": "step-viirs",
@@ -51,26 +51,26 @@
       "file": "step-viirs.jpg",
       "width": 860,
       "height": 390,
-      "bytes": 164915,
+      "bytes": 156032,
       "crop": {
         "left": 0,
         "top": 0,
-        "width": 2948,
+        "width": 2404,
         "height": 1992
       },
-      "sourceSha256": "112707435bf1b8138b27b61b62b5da0284bcc207f1000348bd6b128c458861c7",
-      "sha256": "5a12e5c9b01b17fe7740337c07ee2e7085d04a7978977f3d8eb3afcf6efed1ef"
+      "sourceSha256": "1db9e1c0e9c8761a8176581ed2c43ca296c8281e71c8f73b0e95498550e9459e",
+      "sha256": "6c14608dfebf6322e8da0fa568cc15006db5df145289ffb4e8be18a6112a66b2"
     },
     {
       "name": "pinned-summary",
       "original": "pinned-summary.png",
       "file": "pinned-summary.png",
       "width": 1280,
-      "height": 126,
-      "bytes": 21387,
+      "height": 88,
+      "bytes": 14738,
       "crop": null,
-      "sourceSha256": "da9d62f7344f1594dd3ef7bd9c36835a3ebe53bde4f145fa071a3970b3dab574",
-      "sha256": "cd6dd42031f6574f77b8c9cbc7c1871a6304d0a305a649e8a213b78ba5c7a774"
+      "sourceSha256": "8ee3de463db5a4b578578035831f0f0d653d4a9155dfcc3d5d2803ecf6f7fd7d",
+      "sha256": "d371dbaa8653122f044dd96b2c70a99e9c7ea51698a51b21d3a6049ce2f85d37"
     },
     {
       "name": "pinned-timeline",
@@ -78,21 +78,21 @@
       "file": "pinned-timeline.png",
       "width": 1280,
       "height": 292,
-      "bytes": 53910,
+      "bytes": 49957,
       "crop": null,
-      "sourceSha256": "c771f1a1f94e0c19ec7cebcac070445545318ed2ee44567cc3a8cd0137043c74",
-      "sha256": "41eb42638981770e5ebabf220d2d9aadccfcbc17b9be5e63169d3079aa503b04"
+      "sourceSha256": "c37ca6fe219b604ad5720f27ebacaffd57d09a6fcc2eb5103149c742160ca446",
+      "sha256": "5dd20580657649e01a009ab467945d4eb1221fe5c3b8a651cde1a44f8eac36a1"
     },
     {
       "name": "pinned-geometry",
       "original": "pinned-geometry.png",
       "file": "pinned-geometry.png",
       "width": 1280,
-      "height": 276,
-      "bytes": 31983,
+      "height": 274,
+      "bytes": 37782,
       "crop": null,
-      "sourceSha256": "e8a25cab518b7ef7307431d51961b0e78b53c4e73bdaff1f185cb2f7038d0e70",
-      "sha256": "6bafa1337410272957aebc3ab2397d984c21c41673691b7d0adc014cfbf6314e"
+      "sourceSha256": "6e7c26dbd3963de64f0f1d1b3c15c6f416a0d4de36c344d8b27968fe554b0d60",
+      "sha256": "a8341100ba346873432c7129ff0c4696629b8f1eb1eccd9c0af5864024057fc4"
     },
     {
       "name": "pinned-weather",
@@ -100,21 +100,55 @@
       "file": "pinned-weather.png",
       "width": 1280,
       "height": 546,
-      "bytes": 69463,
+      "bytes": 73260,
       "crop": null,
-      "sourceSha256": "3ee874b0ff5ee00a217407643bcc6adfbe67a5da294d0d58f38e964215690005",
-      "sha256": "1af9ded895488b70f60a629ec813d37ba1f4c47a53608155e83e7b7e85004c63"
+      "sourceSha256": "e81003956fed78444bb060a09e21dfbcf759980cb23f30f29c3204e3f34e942f",
+      "sha256": "c7bc31ba2b60ebd11056020da0631e8600ea1d0536d50dbf7edb02f4ba6ccc39"
     },
     {
       "name": "sensor-key",
       "original": "sensor-key.png",
       "file": "sensor-key.png",
-      "width": 617,
-      "height": 120,
-      "bytes": 28568,
+      "width": 1120,
+      "height": 81,
+      "bytes": 29054,
       "crop": null,
-      "sourceSha256": "af8ecd4c1ef017ea02f356452271be2da8312d8cbf65cf8bb212d40cc6c5e6b9",
-      "sha256": "dfc2489067d9c74de5cdc809f26ea122ad88dfe7dd712d9919c521a3bcb826a4"
+      "sourceSha256": "a8afe6fc37645b33632de23f8c855c13e9a80f056a5d483f2c1357612e3a2da7",
+      "sha256": "b8c1dbe539ff558698738e61b10d03a1209cdd3d5b1d9413c4a10ba2dc88e59e"
+    },
+    {
+      "name": "geometry-focus",
+      "original": "pinned-geometry.png",
+      "file": "geometry-focus.png",
+      "width": 1280,
+      "height": 102,
+      "bytes": 14557,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "width": 1280,
+        "height": 102
+      },
+      "sourceLocation": "assets/evidence",
+      "sourceSha256": "a8341100ba346873432c7129ff0c4696629b8f1eb1eccd9c0af5864024057fc4",
+      "sha256": "b330af4ee1dd5a351c97923dc93b06e28c29f4182e54818602244dd241362774"
+    },
+    {
+      "name": "weather-focus",
+      "original": "pinned-weather.png",
+      "file": "weather-focus.png",
+      "width": 1280,
+      "height": 138,
+      "bytes": 19729,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "width": 1280,
+        "height": 138
+      },
+      "sourceLocation": "assets/evidence",
+      "sourceSha256": "c7bc31ba2b60ebd11056020da0631e8600ea1d0536d50dbf7edb02f4ba6ccc39",
+      "sha256": "30db31bd0690e15ee09e0559fe1f3ca24afe2d950c8f1202cbb84ff6d5759acf"
     }
   ]
 }

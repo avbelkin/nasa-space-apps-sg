@@ -18,7 +18,7 @@ export async function drawRemainingSlides({base,title,text,rect,dot,image,sectio
   let y=192;
   for(let row=0;row<2;row++){
    let tallest=0;
-   for(let col=0;col<3;col++){const value=items[row*3+col],h=textHeight(value,width,S.small);text(s,value,columns[col],y,width,h,S.small);tallest=Math.max(tallest,h);}
+   for(let col=0;col<3;col++){const value=items[row*3+col],h=textHeight(value,width,S.body);text(s,value,columns[col],y,width,h,S.body);tallest=Math.max(tallest,h);}
    y+=tallest+34;
   }
   // A single large crop shows actual weather values; the full capture is retained.
@@ -41,36 +41,36 @@ export async function drawRemainingSlides({base,title,text,rect,dot,image,sectio
  }
  {
   const s=base(5),b=sections[5].blocks;title(s,sections[5].title);
-  text(s,b[0],88,184,662,155,S.body);
-  text(s,b[1],850,184,662,185,S.body);
-  text(s,'**Planned pipeline:**',88,394,1424,35,S.small);
+  text(s,b[0],88,184,1424,110,S.body);
+  text(s,b[1],88,306,1424,126,S.body);
+  text(s,'**Planned pipeline:**',88,448,1424,35,S.small);
   const steps=b[2].replace(/^\*\*Planned pipeline:\*\* /,'').split(' → ');
   const widths=[178,282,246,298,174,96];let x=88;
   steps.forEach((value,i)=>{
-   rect(s,x,442,widths[i],3,C.electric);
-   text(s,value,x,460,widths[i],95,S.small);
-   if(i<steps.length-1)text(s,'→',x+widths[i]+1,476,28,44,S.lead,{color:C.electric});
+   rect(s,x,496,widths[i],3,C.electric);
+   text(s,value,x,514,widths[i],95,S.small);
+   if(i<steps.length-1)text(s,'→',x+widths[i]+1,530,28,44,S.lead,{color:C.electric});
    x+=widths[i]+30;
   });
-  text(s,b[3],88,600,662,40,S.body);
-  flowList(s,b[4].split('\n').map(v=>v.replace(/^- /,'')),88,650,662,S.small,15);
-  text(s,b[5],850,600,662,134,S.small);
+  text(s,b[3],88,650,662,40,S.body);
+  flowList(s,b[4].split('\n').map(v=>v.replace(/^- /,'')),88,700,662,S.small,15);
+  text(s,b[5],850,650,662,104,S.small);
   text(s,b[6],850,770,662,100,S.body,{bold:true});
  }
  {
   const s=base(6,true),b=sections[6].blocks;title(s,sections[6].title);
-  text(s,b[0],88,188,1424,112,S.lead);
-  text(s,b[1],88,348,1424,90,S.lead,{color:C.yellow});
+  text(s,b[0],88,180,1424,100,S.lead);
+  text(s,b[1],88,296,1424,90,S.lead,{color:C.yellow});
   const links=[...b[2].matchAll(/\[[^\]]+\]\([^)]+\)/g)].map(m=>m[0]);
-  text(s,'**Links:**',88,474,105,44,S.lead);
-  text(s,links[0],218,474,64,44,S.lead);
-  text(s,'·',308,474,20,44,S.lead);
-  text(s,links[1],352,474,82,44,S.lead);
-  text(s,'·',460,474,20,44,S.lead);
-  text(s,links[2],505,474,270,44,S.lead);
-  rect(s,88,558,1424,1,C.ruleDark);
-  text(s,b[3],88,592,1424,158,S.small,{color:C.onDarkBody});
-  text(s,b[4],88,782,1424,36,S.small,{color:C.onDarkMuted});
-  text(s,b[5],88,840,1424,32,S.small,{color:C.onDarkMuted});
+  text(s,'**Links:**',88,410,105,44,S.lead);
+  text(s,links[0],218,410,64,44,S.lead);
+  text(s,'·',308,410,20,44,S.lead);
+  text(s,links[1],352,410,82,44,S.lead);
+  text(s,'·',460,410,20,44,S.lead);
+  text(s,links[2],505,410,270,44,S.lead);
+  rect(s,88,480,1424,1,C.ruleDark);
+  text(s,b[3],88,510,1424,238,S.small,{color:C.onDarkBody});
+  text(s,b[4],88,776,1424,36,S.small,{color:C.onDarkMuted});
+  text(s,b[5],88,834,1424,50,S.small,{color:C.onDarkMuted});
  }
 }
