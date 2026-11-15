@@ -37,7 +37,7 @@ function fireSpotCoreColor(color: string): ExpressionSpecification {
 }
 
 function buildFireSensorGroupColor(forCore: boolean): ExpressionSpecification {
-  const screenGroup: ExpressionSpecification = ['feature-state', 'screenSensorGroup']
+  const screenGroup: ExpressionSpecification = ['get', 'screenSensorGroup']
   const paintColor = (color: string) => forCore ? fireSpotCoreColor(color) : color
   const groupColor = (group: ExpressionSpecification): ExpressionSpecification => [
     'match',

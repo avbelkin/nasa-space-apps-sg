@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { groupProjectedFireSpots } from '../src/utils/fireSpotScreenGroups.ts'
+import {
+  buildFireSpotSourceData,
+  diffFireSpotScreenColors,
+  groupProjectedFireSpots,
+} from '../src/utils/fireSpotScreenGroups.ts'
 import { FIRE_SPOT_COLORS } from '../src/data/dataPalette.ts'
 import {
   ACTIVE_AGE_SECONDS,
@@ -488,6 +492,20 @@ describe('hierarchical z1..z7 spatial decluttering', () => {
     assert.strictEqual(screenGroups.get(0), screenGroups.get(3))
     assert.equal(screenGroups.get(3)?.color, 'both')
     assert.equal(screenGroups.get(3)?.detections.length, 4)
+
+    const sourceData = buildFireSpotSourceData(built, screenGroups)
+    assert.deepEqual(sourceData.features.map(({ properties }) => properties.screenSensorGroup), [
+      'both', undefined, undefined, 'both',
+    ])
+    assert.equal(built.featureCollection.features[0].properties.screenSensorGroup, undefined)
+    assert.deepEqual(diffFireSpotScreenColors(screenGroups, new Map(screenGroups)), [])
+    assert.deepEqual(diffFireSpotScreenColors(new Map([[0, screenGroups.get(0)!]]), screenGroups), [
+      { id: 3, addOrUpdateProperties: [{ key: 'screenSensorGroup', value: 'both' }] },
+    ])
+    assert.deepEqual(diffFireSpotScreenColors(screenGroups, undefined), [
+      { id: 0, removeProperties: ['screenSensorGroup'] },
+      { id: 3, removeProperties: ['screenSensorGroup'] },
+    ])
 
     const z1Modis = expandHoveredFireSpots(built, [1], 1.5, 'modis')
     assert.deepEqual(

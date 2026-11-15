@@ -93,9 +93,10 @@ import {
   type PhaseCohort,
 } from '../utils/fireSpots'
 import {
+  buildFireSpotSourceData,
+  diffFireSpotScreenColors,
   FIRE_SPOT_HIT_PADDING,
   readFireSpotScreenGroups,
-  updateFireSpotScreenColors,
   type FireSpotScreenGroup,
 } from '../utils/fireSpotScreenGroups'
 import type { SatelliteOverpassIndex } from '../utils/satelliteOverpassTimeline'
@@ -788,15 +789,8 @@ export function EarthMapStage({
   }, [builtFireSpots, sensorFilter, showFires])
 
   useEffect(() => {
-    const map = mapInstanceRef.current
-    screenGroupsRef.current = undefined
     screenGroupsDirtyRef.current = true
-    if (!isMapStyleReady(map)) {
-      return
-    }
-    map.removeFeatureState({ source: FIRMS_SPOTS_SOURCE_ID })
-    setGeoJsonSourceData(map, FIRMS_SPOTS_SOURCE_ID, builtFireSpots.featureCollection)
-    fireAnimControllerRef.current?.sync()
+    mapInstanceRef.current?.triggerRepaint()
   }, [builtFireSpots])
 
   useEffect(() => {
@@ -1143,11 +1137,7 @@ export function EarthMapStage({
       })
 
       let styleLoaded = false
-      map.on('sourcedata', (event) => {
-        if (event.sourceId === FIRMS_SPOTS_SOURCE_ID && event.isSourceLoaded) {
-          screenGroupsDirtyRef.current = true
-        }
-      })
+      let fireSourceData: BuiltFireSpotsData | undefined
       // The style is parsed and its sources exist: re-apply whatever changed while it loaded,
       // without waiting for 'load' (which also waits for every basemap tile).
       map.once('style.load', () => {
@@ -1179,11 +1169,7 @@ export function EarthMapStage({
           },
         })
         satAnimControllerRef.current.syncNow()
-        setGeoJsonSourceData(
-          map,
-          FIRMS_SPOTS_SOURCE_ID,
-          latestBuiltFireSpotsRef.current.featureCollection,
-        )
+        screenGroupsDirtyRef.current = true
         setGeoJsonSourceData(map, 'fire-spot-focus', latestFocusSpotGeoJsonRef.current)
         if (map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
           setFireLayerVisibility(map, FIRMS_SPOTS_CORE_LAYER_ID, latestShowFiresRef.current)
@@ -1274,14 +1260,23 @@ export function EarthMapStage({
         if (!map) {
           return
         }
-        if (screenGroupsDirtyRef.current && styleLoaded && !map.isMoving() &&
-          map.isSourceLoaded(FIRMS_SPOTS_SOURCE_ID)) {
+        if (screenGroupsDirtyRef.current && styleLoaded && !map.isMoving()) {
           screenGroupsDirtyRef.current = false
+          const data = latestBuiltFireSpotsRef.current
           const next = latestFireSensorColorsRef.current && latestShowFiresRef.current &&
             map.getZoom() >= MIN_FIRE_SPOT_ZOOM
-            ? readFireSpotScreenGroups(map, latestBuiltFireSpotsRef.current)
+            ? readFireSpotScreenGroups(map, data)
             : undefined
-          updateFireSpotScreenColors(map, screenGroupsRef.current, next)
+          const source = map.getSource<GeoJSONSource>(FIRMS_SPOTS_SOURCE_ID)
+          if (fireSourceData !== data) {
+            void source?.setData(buildFireSpotSourceData(data, next))
+            fireSourceData = data
+          } else {
+            const update = diffFireSpotScreenColors(screenGroupsRef.current, next)
+            if (update.length > 0) {
+              void source?.updateData({ update })
+            }
+          }
           screenGroupsRef.current = next
         }
         const center = map.getCenter()

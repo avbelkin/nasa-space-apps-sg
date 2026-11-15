@@ -85,6 +85,7 @@ export interface FirmsLiveSpotsResponse {
 
 export interface FireSpotFeatureProperties {
   spotIndex: number
+  screenSensorGroup?: FireSensorGroup
   timestamp: number
   frp: number
   brightnessK: number

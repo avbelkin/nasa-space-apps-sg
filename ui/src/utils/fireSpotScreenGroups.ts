@@ -1,15 +1,15 @@
-import type { Map as MapLibreMap } from 'maplibre-gl'
+import type { GeoJSONSourceDiff, Map as MapLibreMap } from 'maplibre-gl'
 import {
   classifyFireSensorGroup,
   compareMatchedFireSpots,
   deduplicateSpotMatches,
   expandHoveredFireSpots,
   featureToTooltipInput,
+  FULL_DETAIL_FIRE_SPOT_ZOOM,
   type BuiltFireSpotsData,
   type FireSensorGroup,
   type FireSpotTooltipInput,
 } from './fireSpots.ts'
-import { FIRMS_SPOTS_CORE_LAYER_ID, FIRMS_SPOTS_SOURCE_ID } from './fireSpotsAnimation.ts'
 
 export const FIRE_SPOT_HIT_PADDING = 8
 
@@ -74,38 +74,71 @@ export function groupProjectedFireSpots(
 }
 
 export function readFireSpotScreenGroups(map: MapLibreMap, data: BuiltFireSpotsData) {
-  const hits = map.queryRenderedFeatures({ layers: [FIRMS_SPOTS_CORE_LAYER_ID] })
-  const spots = new Map<number, ProjectedFireSpot>()
-  const centerLng = map.getCenter().lng
-  for (const hit of hits) {
-    const index = hit.properties?.spotIndex
-    const feature = data.featureCollection.features[index]
-    if (feature && !spots.has(index)) {
-      const [lng, lat] = feature.geometry.coordinates
-      const nearestLng = lng + 360 * Math.round((centerLng - lng) / 360)
-      const { x, y } = map.project([nearestLng, lat])
-      spots.set(index, { index, x, y, detection: featureToTooltipInput(feature) })
-    }
-  }
+  const spots: ProjectedFireSpot[] = []
   const zoom = map.getZoom()
-  return groupProjectedFireSpots([...spots.values()], (members) =>
+  const globe = map.getProjection()?.type === 'globe'
+  const bounds = globe ? undefined : map.getBounds()
+  const centerLng = map.getCenter().lng
+  const { clientWidth, clientHeight } = map.getCanvas()
+  for (const feature of data.featureCollection.features) {
+    if (zoom < FULL_DETAIL_FIRE_SPOT_ZOOM && feature.properties.minZoomAll > zoom) {
+      continue
+    }
+    const [lng, lat] = feature.geometry.coordinates
+    const nearestLng = lng + 360 * Math.round((centerLng - lng) / 360)
+    if (bounds && !bounds.contains([nearestLng, lat])) {
+      continue
+    }
+    const point = map.project([nearestLng, lat])
+    const { x, y } = point
+    if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > clientWidth || y > clientHeight) {
+      continue
+    }
+    if (globe) {
+      // Projection alone also gives screen coordinates for points on the far side of the globe.
+      const surface = map.unproject(point).wrap()
+      const lngDelta = ((surface.lng - lng + 540) % 360) - 180
+      if (Math.abs(surface.lat - lat) > 0.0001 || Math.abs(lngDelta) > 0.0001) {
+        continue
+      }
+    }
+    spots.push({ index: feature.properties.spotIndex, x, y, detection: featureToTooltipInput(feature) })
+  }
+  return groupProjectedFireSpots(spots, (members) =>
     expandHoveredFireSpots(data, members.map((spot) => spot.index), zoom, 'harmonized'),
   )
 }
 
-export function updateFireSpotScreenColors(
-  map: MapLibreMap,
+export function buildFireSpotSourceData(
+  data: BuiltFireSpotsData,
+  groups: ReadonlyMap<number, FireSpotScreenGroup> | undefined,
+): BuiltFireSpotsData['featureCollection'] {
+  if (!groups?.size) {
+    return data.featureCollection
+  }
+  return {
+    ...data.featureCollection,
+    features: data.featureCollection.features.map((feature) => {
+      const screenSensorGroup = groups.get(feature.properties.spotIndex)?.color
+      return screenSensorGroup ? { ...feature, properties: { ...feature.properties, screenSensorGroup } } : feature
+    }),
+  }
+}
+
+export function diffFireSpotScreenColors(
   previous: ReadonlyMap<number, FireSpotScreenGroup> | undefined,
   next: ReadonlyMap<number, FireSpotScreenGroup> | undefined,
-) {
+): NonNullable<GeoJSONSourceDiff['update']> {
+  const update: NonNullable<GeoJSONSourceDiff['update']> = []
   for (const [id, group] of previous ?? []) {
     if (group.color && !next?.get(id)?.color) {
-      map.removeFeatureState({ source: FIRMS_SPOTS_SOURCE_ID, id }, 'screenSensorGroup')
+      update.push({ id, removeProperties: ['screenSensorGroup'] })
     }
   }
   for (const [id, group] of next ?? []) {
     if (group.color && group.color !== previous?.get(id)?.color) {
-      map.setFeatureState({ source: FIRMS_SPOTS_SOURCE_ID, id }, { screenSensorGroup: group.color })
+      update.push({ id, addOrUpdateProperties: [{ key: 'screenSensorGroup', value: group.color }] })
     }
   }
+  return update
 }
