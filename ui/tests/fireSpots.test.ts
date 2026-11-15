@@ -9,6 +9,7 @@ import { FIRE_SPOT_COLORS } from '../src/data/dataPalette.ts'
 import {
   ACTIVE_AGE_SECONDS,
   buildFireSpotsGeoJson,
+  buildFireSpotLandCoverLookup,
   classifyFireSensorGroup,
   COHORT_PHASE_RADIANS,
   compareMatchedFireSpots,
@@ -133,6 +134,32 @@ describe('buildFireSpotsGeoJson & summarizeFireSpotsForSensor', () => {
     const expiredFeature = built.featureCollection.features[3]
     assert.equal(expiredFeature.properties.activity, 0)
     assert.equal(expiredFeature.properties.phaseCohort, -1)
+  })
+
+  it('lists up to three land cover labels by detection frequency after deduplication', () => {
+    const classCodes = [190, 210, 130, 10, 210, 210, 130, 130, 210, 190, null]
+    const spots = classCodes.map((code, index): FirmsLiveSpotsResponse['spots'][number] => [
+      103.85, 1.35, referenceNowMs - index * 60_000, 20, 345, 90, 0, 'Terra', 'D',
+      code === null ? null : { dominantCode: code, coverage: 1, classes: [{ code, fraction: 1 }] },
+    ])
+    const payload = {
+      ...samplePayload,
+      spots,
+      landCoverDataset: {
+        id: 'test', year: 2019, resolutionMeters: 1200,
+        classLabels: { 10: 'Cropland', 130: 'Grassland', 190: 'Urban areas', 210: 'Water bodies' },
+      },
+    }
+    const built = buildFireSpotsGeoJson(payload, referenceNowMs)
+    const detections = expandHoveredFireSpots(built, spots.map((_, index) => index), 7, 'harmonized')
+    const withDuplicates = [...detections, detections[3], detections[3], detections[3]]
+    const options = { landCoverBySpot: buildFireSpotLandCoverLookup(payload) }
+
+    assert.equal(formatFireSpotsTooltip(withDuplicates, referenceNowMs, options)?.landCoverLabel,
+      'Water bodies, Grassland, Urban areas')
+    assert.equal(formatFireSpotsTooltip([detections[0]], referenceNowMs, options)?.landCoverLabel,
+      'Urban areas')
+    assert.equal(formatFireSpotsTooltip([detections[10]], referenceNowMs, options)?.landCoverLabel, '')
   })
 
   it('summarizes counts, peak FRP, and latest acquisition per sensor filter', () => {

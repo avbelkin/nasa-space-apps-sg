@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using NasaSpaceApps.Api.LandCover;
 
 namespace NasaSpaceApps.Api.Firms;
 
@@ -41,7 +42,8 @@ public sealed record FirmsHotspot(
     int ConfidenceScore,
     string Version,
     double FrpMw,
-    string DayNight);
+    string DayNight,
+    LandCoverSummary? LandCover = null);
 
 public readonly record struct FirmsSpotGeometryKey(double Lng, double Lat, long TimestampMs, string Satellite);
 
@@ -55,7 +57,9 @@ public sealed record FirmsHotspotsResponse(
     int Count,
     DateTimeOffset FetchedAtUtc,
     string Attribution,
-    IReadOnlyList<FirmsHotspot> Hotspots)
+    IReadOnlyList<FirmsHotspot> Hotspots,
+    LandCoverDataset LandCoverDataset,
+    bool LandCoverPending = false)
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public HotspotGeometryBatch? Geometry { get; init; }
@@ -171,7 +175,9 @@ public sealed record FirmsLiveSpotsResponse(
     double MaxFrpMw,
     string Attribution,
     IReadOnlyList<string> Columns,
-    IReadOnlyList<object[]> Spots)
+    IReadOnlyList<object?[]> Spots,
+    LandCoverDataset LandCoverDataset,
+    bool LandCoverPending = false)
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public HotspotGeometryBatch? Geometry { get; init; }
@@ -190,7 +196,8 @@ public sealed record FirmsGeoJsonSpotProperties(
     string Instrument,
     string Satellite,
     int Confidence,
-    string Daynight);
+    string Daynight,
+    LandCoverSummary? LandCover);
 
 public sealed record FirmsGeoJsonFeature(
     string Type,
@@ -206,7 +213,9 @@ public sealed record FirmsGeoJsonFeatureCollection(
     string SensorFilter,
     int Count,
     string Attribution,
-    IReadOnlyList<FirmsGeoJsonFeature> Features)
+    IReadOnlyList<FirmsGeoJsonFeature> Features,
+    LandCoverDataset LandCoverDataset,
+    bool LandCoverPending = false)
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public HotspotGeometryBatch? Geometry { get; init; }

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
+using NasaSpaceApps.Api.LandCover;
 
 namespace NasaSpaceApps.Api.Firms;
 
@@ -14,7 +15,8 @@ public sealed class FirmsClient(
     IMemoryCache cache,
     FirmsOptions options,
     ILogger<FirmsClient> logger,
-    HotspotGeometryWorker geometryWorker)
+    HotspotGeometryWorker geometryWorker,
+    ILandCoverEnricher landCover)
 {
     public const string DefaultBbox = "95,-11,141,20";
     public const int DefaultLiveWindowHours = 24;
@@ -38,6 +40,7 @@ public sealed class FirmsClient(
         "sourceCode",
         "satellite",
         "dayNight",
+        "landCover",
     ];
 
     private readonly SemaphoreSlim _statusLock = new(1, 1);
@@ -111,12 +114,19 @@ public sealed class FirmsClient(
         int? days,
         string? sensor,
         CancellationToken cancellationToken = default,
-        bool includeGeometry = false)
+        bool includeGeometry = false,
+        bool enrichLandCover = false)
     {
         var response = await GetAreaHotspotsCoreAsync(bbox, days, sensor, cancellationToken).ConfigureAwait(false);
         var geometry = await geometryWorker.ObserveAsync(
             response.Hotspots, response.Hotspots, includeGeometry, cancellationToken).ConfigureAwait(false);
-        return geometry is null ? response : response with { Geometry = geometry };
+        var landCoverResult = await landCover.EnrichAsync(response.Hotspots, enrichLandCover, cancellationToken);
+        return response with
+        {
+            Hotspots = landCoverResult.Spots,
+            Geometry = geometry,
+            LandCoverPending = landCoverResult.Pending,
+        };
     }
 
     private async Task<FirmsHotspotsResponse> GetAreaHotspotsCoreAsync(
@@ -184,7 +194,8 @@ public sealed class FirmsClient(
                 Count: combined.Length,
                 FetchedAtUtc: DateTimeOffset.UtcNow,
                 Attribution: FirmsDefaults.Attribution,
-                Hotspots: combined);
+                Hotspots: combined,
+                LandCoverDataset: LandCoverDataset.C3s2019);
 
             cache.Set(cacheKey, response, HotspotsCacheDuration);
             return response;
@@ -200,7 +211,8 @@ public sealed class FirmsClient(
         int? hours = null,
         string? bbox = null,
         CancellationToken cancellationToken = default,
-        bool includeGeometry = false)
+        bool includeGeometry = false,
+        bool enrichLandCover = false)
     {
         var windowHours = Math.Clamp(hours ?? DefaultLiveWindowHours, 1, 48);
         var dayRange = windowHours <= 24 ? 2 : 3;
@@ -211,26 +223,33 @@ public sealed class FirmsClient(
         var responseCacheKey = $"firms:live:{snapshot.FetchedAtUtc.UtcTicks}:{snapshot.Stale}:{sensorFilter}:{area}:{windowHours}";
         if (!cache.TryGetValue(responseCacheKey, out CachedLiveResponse? cachedResponse) || cachedResponse is null)
         {
-            cachedResponse = BuildLiveSpotsResponse(snapshot, windowHours, sensorFilter, sources);
-            cache.Set(responseCacheKey, cachedResponse, LiveResponseCacheDuration);
+            var nowUtc = DateTimeOffset.UtcNow;
+            var selected = FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours);
+            var landCoverResult = await landCover.EnrichAsync(
+                selected, enrichLandCover, cancellationToken, world: area == "world");
+            var response = BuildLiveSpotsResponse(
+                snapshot, windowHours, sensorFilter, sources, area, nowUtc, landCoverResult);
+            cachedResponse = new CachedLiveResponse(response, selected);
+            if (!landCoverResult.Pending)
+                cache.Set(responseCacheKey, cachedResponse, LiveResponseCacheDuration);
         }
         var geometry = await geometryWorker.ObserveAsync(
             snapshot.Spots, cachedResponse.Selected, includeGeometry, cancellationToken).ConfigureAwait(false);
         return geometry is null ? cachedResponse.Response : cachedResponse.Response with { Geometry = geometry };
     }
 
-    private static CachedLiveResponse BuildLiveSpotsResponse(
-        CachedAreaSnapshot snapshot, int windowHours, string sensorFilter, string[] sources)
+    private static FirmsLiveSpotsResponse BuildLiveSpotsResponse(
+        CachedAreaSnapshot snapshot, int windowHours, string sensorFilter, string[] sources,
+        string area, DateTimeOffset nowUtc, LandCoverResult landCoverResult)
     {
-        var nowUtc = DateTimeOffset.UtcNow;
-        var filtered = FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours);
+        var filtered = landCoverResult.Spots;
 
         var sourceCounts = new Dictionary<int, int>();
         var modisCount = 0;
         var viirsCount = 0;
         var maxFrp = 0.0;
         DateTimeOffset? latestAcquiredAtUtc = null;
-        var rows = new List<object[]>(filtered.Count);
+        var rows = new List<object?[]>(filtered.Count);
 
         foreach (var spot in filtered)
         {
@@ -266,6 +285,7 @@ public sealed class FirmsClient(
                 meta.SourceCode,
                 FirmsSensorCatalog.NormalizeSatelliteLabel(spot.Satellite, spot.SourceDataset),
                 spot.DayNight,
+                spot.LandCover,
             ]);
         }
 
@@ -297,9 +317,11 @@ public sealed class FirmsClient(
             MaxFrpMw: Math.Round(maxFrp, 1),
             Attribution: FirmsDefaults.Attribution,
             Columns: LiveSpotColumns,
-            Spots: rows);
+            Spots: rows,
+            LandCoverDataset: LandCoverDatasetFor(area),
+            LandCoverPending: landCoverResult.Pending);
 
-        return new CachedLiveResponse(response, filtered);
+        return response;
     }
 
     public async Task<HotspotGeometryBatch> GetSelectedSpotGeometryAsync(
@@ -348,7 +370,8 @@ public sealed class FirmsClient(
         int? hours = null,
         string? bbox = null,
         CancellationToken cancellationToken = default,
-        bool includeGeometry = false)
+        bool includeGeometry = false,
+        bool enrichLandCover = false)
     {
         var windowHours = Math.Clamp(hours ?? DefaultLiveWindowHours, 1, 48);
         var dayRange = windowHours <= 24 ? 2 : 3;
@@ -358,10 +381,12 @@ public sealed class FirmsClient(
         var snapshot = await GetAreaSnapshotAsync(area, dayRange, sources, cancellationToken).ConfigureAwait(false);
         var nowUtc = DateTimeOffset.UtcNow;
         var filtered = FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours);
-
-        var response = BuildGeoJsonFeatureCollection(filtered, nowUtc, snapshot, windowHours, sensorFilter);
         var geometry = await geometryWorker.ObserveAsync(
             snapshot.Spots, filtered, includeGeometry, cancellationToken).ConfigureAwait(false);
+        var landCoverResult = await landCover.EnrichAsync(
+            filtered, enrichLandCover, cancellationToken, world: area == "world");
+        var response = BuildGeoJsonFeatureCollection(
+            landCoverResult.Spots, nowUtc, snapshot, windowHours, sensorFilter, LandCoverDatasetFor(area), landCoverResult.Pending);
         return geometry is null ? response : response with { Geometry = geometry };
     }
 
@@ -453,10 +478,17 @@ public sealed class FirmsClient(
         }
     }
 
-    private static string ResolveLiveArea(string? bbox) =>
-        string.IsNullOrWhiteSpace(bbox) || string.Equals(bbox.Trim(), "world", StringComparison.OrdinalIgnoreCase)
-            ? "world"
-            : ParseBoundingBox(bbox, enforceSpanLimit: false).ToQueryString();
+    private static LandCoverDataset LandCoverDatasetFor(string area) =>
+        area == "world" ? LandCoverDataset.C3s2019World : LandCoverDataset.C3s2019;
+
+    private static string ResolveLiveArea(string? bbox)
+    {
+        if (string.IsNullOrWhiteSpace(bbox) || string.Equals(bbox.Trim(), "world", StringComparison.OrdinalIgnoreCase))
+            return "world";
+
+        var bounds = ParseBoundingBox(bbox, enforceSpanLimit: false);
+        return bounds == new BoundingBox(-180, -90, 180, 90) ? "world" : bounds.ToQueryString();
+    }
 
     private static List<FirmsHotspot> FilterSnapshotSpots(
         IReadOnlyList<FirmsHotspot> spots,
@@ -482,7 +514,9 @@ public sealed class FirmsClient(
         DateTimeOffset nowUtc,
         CachedAreaSnapshot snapshot,
         int windowHours,
-        string sensorFilter)
+        string sensorFilter,
+        LandCoverDataset landCoverDataset,
+        bool landCoverPending)
     {
         var features = new List<FirmsGeoJsonFeature>(spots.Count);
         foreach (var spot in spots)
@@ -502,7 +536,8 @@ public sealed class FirmsClient(
                     Instrument: meta.Instrument,
                     Satellite: FirmsSensorCatalog.NormalizeSatelliteLabel(spot.Satellite, spot.SourceDataset),
                     Confidence: spot.ConfidenceScore,
-                    Daynight: spot.DayNight)));
+                    Daynight: spot.DayNight,
+                    LandCover: spot.LandCover)));
         }
 
         return new FirmsGeoJsonFeatureCollection(
@@ -514,7 +549,9 @@ public sealed class FirmsClient(
             SensorFilter: sensorFilter,
             Count: features.Count,
             Attribution: FirmsDefaults.Attribution,
-            Features: features);
+            Features: features,
+            LandCoverDataset: landCoverDataset,
+            LandCoverPending: landCoverPending);
     }
 
     private async Task<CachedKeyQuota> GetKeyQuotaAsync(CancellationToken cancellationToken)

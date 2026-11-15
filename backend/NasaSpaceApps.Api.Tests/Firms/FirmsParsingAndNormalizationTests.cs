@@ -6,6 +6,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NasaSpaceApps.Api.Firms;
+using NasaSpaceApps.Api.LandCover;
 using NasaSpaceApps.Api.Satellites;
 using Xunit;
 
@@ -42,6 +43,16 @@ public sealed class FirmsParsingAndNormalizationTests
                 BaseAddress = new Uri("https://firms.modaps.eosdis.nasa.gov/"),
             };
         }
+    }
+
+    private sealed class StubLandCover : ILandCoverEnricher
+    {
+        public Task<LandCoverResult> EnrichAsync(
+            IReadOnlyList<FirmsHotspot> spots, bool fetchMissing, CancellationToken cancellationToken, bool world = false) =>
+            Task.FromResult(new LandCoverResult(spots.Select(s => s with
+            {
+                LandCover = new LandCoverSummary(50, 1, [new(50, 0.75), new(130, 0.25)]),
+            }).ToArray(), Pending: false));
     }
 
     [Theory]
@@ -167,24 +178,28 @@ public sealed class FirmsParsingAndNormalizationTests
         var options = FirmsOptions.FromConfiguration(config, new StubHostEnvironment());
         var downloader = new CelesTrakTleDownloader(factory, memoryCache, NullLogger<CelesTrakTleDownloader>.Instance);
         using var worker = new HotspotGeometryWorker(downloader, memoryCache, NullLogger<HotspotGeometryWorker>.Instance);
-        var client = new FirmsClient(factory, memoryCache, options, NullLogger<FirmsClient>.Instance, worker);
+        var client = new FirmsClient(factory, memoryCache, options, NullLogger<FirmsClient>.Instance, worker, new StubLandCover());
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await worker.StartAsync(timeout.Token);
         try
         {
             var response = await clientResponse(false).WaitAsync(timeout.Token);
             Assert.Null(response.Geometry);
+            Assert.Equal(2019, response.LandCoverDataset.Year);
+            Assert.Equal(1200, response.LandCoverDataset.ResolutionMeters);
+            Assert.Equal("landCover", response.Columns[9]);
             Assert.Equal(24, response.WindowHours);
             Assert.Equal(TimeSpan.FromHours(24), response.WindowEndUtc - response.WindowStartUtc);
             Assert.Equal(2, response.Count);
-            Assert.Equal(["NOAA-20", "NOAA-21"], response.Spots.Select(row => (string)row[7]).Order().ToArray());
+            Assert.Equal(["NOAA-20", "NOAA-21"], response.Spots.Select(row => (string)row[7]!).Order().ToArray());
             Assert.All(response.Spots, row =>
             {
                 Assert.Equal(95, row[5]);
-                Assert.Equal(9, row.Length);
+                Assert.Equal(10, row.Length);
+                Assert.Equal(50, Assert.IsType<LandCoverSummary>(row[9]).DominantCode);
             });
 
-            static FirmsSpotGeometryKey Key(object[] row) => new((double)row[0], (double)row[1], (long)row[2], (string)row[7]);
+            static FirmsSpotGeometryKey Key(object?[] row) => new((double)row[0]!, (double)row[1]!, (long)row[2]!, (string)row[7]!);
             var first = Key(response.Spots[0]);
             var second = Key(response.Spots[1]);
             var pinned = new FirmsSpotGeometryRequest([second, first with { Satellite = "Aqua" }, first]);
@@ -216,7 +231,7 @@ public sealed class FirmsParsingAndNormalizationTests
 
         Task<FirmsLiveSpotsResponse> clientResponse(bool includeGeometry)
         {
-            return client.GetLiveSpotsAsync("harmonized", 24, "world", timeout.Token, includeGeometry);
+            return client.GetLiveSpotsAsync("harmonized", 24, "world", timeout.Token, includeGeometry: includeGeometry, enrichLandCover: includeGeometry);
         }
     }
 }

@@ -89,6 +89,7 @@ import {
   type BuiltFireSpotsData,
   type FireSpotFeatureProperties,
   type FireSpotTooltipInput,
+  type FireSpotLandCoverLookup,
   type FirmsLiveSpotsResponse,
   type PhaseCohort,
 } from '../utils/fireSpots'
@@ -169,6 +170,7 @@ interface EarthMapStageProps {
   onGeolocationStateChange?: (state: GeolocationLegendState) => void
   onReducedMotionChange?: (reduced: boolean) => void
   fireSpotsPayload: FirmsLiveSpotsResponse | null
+  landCoverBySpot: FireSpotLandCoverLookup
   showFires: boolean
   onShowFiresChange: (next: boolean) => void
   pulsePaused: boolean
@@ -670,6 +672,7 @@ export function EarthMapStage({
   onGeolocationStateChange,
   onReducedMotionChange,
   fireSpotsPayload,
+  landCoverBySpot,
   showFires,
   onShowFiresChange,
   pulsePaused,
@@ -746,8 +749,9 @@ export function EarthMapStage({
     () => hoveredSelection && formatFireSpotsTooltip(hoveredSelection.inputs, hoveredSelection.nowMs, {
       sensorFilter: hoveredSelection.sensorFilter,
       overpassIndex,
+      landCoverBySpot,
     }),
-    [hoveredSelection, overpassIndex],
+    [hoveredSelection, overpassIndex, landCoverBySpot],
   )
   const focusSpotGeoJson = useMemo(
     () => buildFireSpotFocusGeoJson(pinnedFireSelection?.anchorLngLat ?? null),
@@ -1719,6 +1723,9 @@ export function EarthMapStage({
               </span>
             )}
             <FireDetectionPowerSummary timeline={hoverDetails.timeline} />
+            {hoverDetails.landCoverLabel && (
+              <span className="fire-land-cover">Land cover · {hoverDetails.landCoverLabel}</span>
+            )}
           </div>
           <FireDetectionsTimelineCard timeline={hoverDetails.timeline} interactive={false} />
           <p>Click spot to pin details</p>

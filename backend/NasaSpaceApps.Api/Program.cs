@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.ResponseCompression;
 using NasaSpaceApps.Api.Clouds;
 using NasaSpaceApps.Api.Firms;
+using NasaSpaceApps.Api.LandCover;
 using NasaSpaceApps.Api.NasaOpenApi;
 using NasaSpaceApps.Api.Satellites;
 
@@ -88,6 +89,11 @@ builder.Services.AddHttpClient(ExtremumCloudOptions.HttpClientName, client =>
 });
 builder.Services.AddSingleton<CelesTrakTleDownloader>();
 builder.Services.AddSingleton<SatelliteOrbitService>();
+builder.Services.AddHttpClient(PlanetaryComputerLandCover.HttpClientName, client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(5);
+}).RemoveAllLoggers(); // Azure range URLs include short-lived access tokens.
+builder.Services.AddSingleton<ILandCoverEnricher, PlanetaryComputerLandCover>();
 builder.Services.AddSingleton<FirmsClient>();
 builder.Services.AddSingleton<HotspotGeometryWorker>();
 builder.Services.AddHostedService(services => services.GetRequiredService<HotspotGeometryWorker>());
@@ -222,30 +228,33 @@ app.MapGet("/api/hotspots", (
     int? days,
     string? sensor,
     bool? includeGeometry,
+    bool? enrichLandCover,
     FirmsOptions firms,
     FirmsClient firmsClient,
     CancellationToken cancellationToken) =>
-    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetAreaHotspotsAsync(bbox, days, sensor, cancellationToken, includeGeometry == true)));
+    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetAreaHotspotsAsync(bbox, days, sensor, cancellationToken, includeGeometry: includeGeometry == true, enrichLandCover: enrichLandCover == true)));
 
 app.MapGet("/api/fires/spots", (
     string? sensor,
     int? hours,
     string? bbox,
     bool? includeGeometry,
+    bool? enrichLandCover,
     FirmsOptions firms,
     FirmsClient firmsClient,
     CancellationToken cancellationToken) =>
-    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetLiveSpotsAsync(sensor, hours, bbox, cancellationToken, includeGeometry == true)));
+    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetLiveSpotsAsync(sensor, hours, bbox, cancellationToken, includeGeometry: includeGeometry == true, enrichLandCover: enrichLandCover == true)));
 
 app.MapGet("/api/fires/spots.geojson", (
     string? sensor,
     int? hours,
     string? bbox,
     bool? includeGeometry,
+    bool? enrichLandCover,
     FirmsOptions firms,
     FirmsClient firmsClient,
     CancellationToken cancellationToken) =>
-    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetLiveSpotsGeoJsonAsync(sensor, hours, bbox, cancellationToken, includeGeometry == true)));
+    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetLiveSpotsGeoJsonAsync(sensor, hours, bbox, cancellationToken, includeGeometry: includeGeometry == true, enrichLandCover: enrichLandCover == true)));
 
 app.MapPost("/api/fires/spots/geometry", (
     FirmsSpotGeometryRequest request,
