@@ -73,6 +73,8 @@ function App() {
     initialResolution.state.showNightLights,
   )
   const [showFires, setShowFires] = useState<boolean>(initialResolution.state.showFires)
+  const [sensorGroupColors, setSensorGroupColors] = useState(false)
+  const colorFireSpotsBySensor = sensorFilter === 'harmonized' && sensorGroupColors
   const [pinnedFireSelection, setPinnedFireSelection] = useState<PinnedFireSelection | null>(null)
   const appFrameRef = useRef<HTMLDivElement | null>(null)
   const [pulsePaused, setPulsePaused] = useState<boolean>(false)
@@ -444,6 +446,7 @@ function App() {
 
       <EarthMapStage
         sensorFilter={sensorFilter}
+        colorFireSpotsBySensor={colorFireSpotsBySensor}
         projectionMode={projectionMode}
         onProjectionModeChange={setProjectionMode}
         initialViewport={initialResolution.state}
@@ -511,10 +514,13 @@ function App() {
             showUserLocation={geolocationState.hasUserLocation}
             hasLiveFires={fireSpotsPayload !== null}
             showFires={showFires}
+            colorFireSpotsBySensor={colorFireSpotsBySensor}
             reducedMotion={reducedMotion}
           />
         }
         sensorFilter={sensorFilter}
+        colorFireSpotsBySensor={colorFireSpotsBySensor}
+        onFireSensorColorsChange={setSensorGroupColors}
         onSensorFilterChange={(next) => {
           if (next !== sensorFilter) {
             setPinnedFireSelection(null)

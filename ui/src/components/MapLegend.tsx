@@ -17,6 +17,7 @@ interface MapLegendProps {
   showUserLocation: boolean
   hasLiveFires: boolean
   showFires: boolean
+  colorFireSpotsBySensor: boolean
   showRain: boolean
   rainSummaryLabel: string | null
   reducedMotion: boolean
@@ -42,6 +43,7 @@ export function MapLegend({
   showUserLocation,
   hasLiveFires,
   showFires,
+  colorFireSpotsBySensor,
   showRain,
   rainSummaryLabel,
   reducedMotion,
@@ -64,9 +66,11 @@ export function MapLegend({
           <li className="legend-note">Fire spots hidden (flame button on the map shows them)</li>
         ) : (
           <li>
-            <span className="legend-glyph" aria-hidden="true">
-              <FireDot color={FIRE_SPOT_COLORS.fill} />
-            </span>
+            {!colorFireSpotsBySensor && (
+              <span className="legend-glyph" aria-hidden="true">
+                <FireDot color={FIRE_SPOT_COLORS.fill} />
+              </span>
+            )}
             <span>Active fire spots (24 h, size by FRP)</span>
           </li>
         ))}

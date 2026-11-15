@@ -36,6 +36,13 @@ export const FIRE_SPOT_COLORS = {
   focusRing: '#b6ff00',
 } as const
 
+export const FIRE_SENSOR_GROUP_COLORS = {
+  both: FIRE_SPOT_COLORS.fill,
+  single: '#ffff00',
+  modis: '#86efac',
+  viirs: '#e9b3ff',
+} as const
+
 export const USER_LOCATION_COLORS = {
   fill: '#ffffff',
   ring: '#0f172a',

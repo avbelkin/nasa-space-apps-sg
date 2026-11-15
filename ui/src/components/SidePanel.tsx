@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { FIRE_SENSOR_GROUP_COLORS } from '../data/dataPalette'
 import type { SensorFilter } from '../data/mapTypes'
 import type { ConnectionState } from '../state/apiStatus'
 import type { LiveSatelliteSnapshot } from '../utils/satelliteOrbits'
@@ -13,9 +14,18 @@ const SENSOR_FILTER_OPTIONS: readonly SegmentedOption<SensorFilter>[] = [
   { value: 'viirs', label: 'VIIRS' },
 ]
 
+const FIRE_SENSOR_COLOR_LEGEND = [
+  { label: 'Both sensors', color: FIRE_SENSOR_GROUP_COLORS.both },
+  { label: 'Single detection', color: FIRE_SENSOR_GROUP_COLORS.single },
+  { label: 'MODIS only (2+)', color: FIRE_SENSOR_GROUP_COLORS.modis },
+  { label: 'VIIRS only (2+)', color: FIRE_SENSOR_GROUP_COLORS.viirs },
+] as const
+
 interface SidePanelProps {
   sensorFilter: SensorFilter
   onSensorFilterChange: (next: SensorFilter) => void
+  colorFireSpotsBySensor: boolean
+  onFireSensorColorsChange: (enabled: boolean) => void
   satelliteFeedState: SatelliteFeedState
   satellites: readonly LiveSatelliteSnapshot[]
   selectedSatelliteId: string | null
@@ -29,6 +39,8 @@ interface SidePanelProps {
 export function SidePanel({
   sensorFilter,
   onSensorFilterChange,
+  colorFireSpotsBySensor,
+  onFireSensorColorsChange,
   satelliteFeedState,
   satellites,
   selectedSatelliteId,
@@ -51,6 +63,30 @@ export function SidePanel({
           onChange={onSensorFilterChange}
         />
       </div>
+
+      {sensorFilter === 'harmonized' && (
+        <div className="fire-sensor-colors">
+          <label className="fire-sensor-colors-switch">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={colorFireSpotsBySensor}
+              onChange={(event) => onFireSensorColorsChange(event.target.checked)}
+            />
+            Color fire spots by sensor
+          </label>
+          {colorFireSpotsBySensor && (
+            <ul className="fire-sensor-color-key" aria-label="Fire spot colors by sensor">
+              {FIRE_SENSOR_COLOR_LEGEND.map(({ label, color }) => (
+                <li key={label}>
+                  <span className="legend-fire-dot" style={{ backgroundColor: color }} aria-hidden="true" />
+                  {label}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {pinnedDetails}
 

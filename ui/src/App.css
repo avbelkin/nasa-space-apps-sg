@@ -1138,6 +1138,41 @@
   color: var(--text-muted);
 }
 
+.fire-sensor-colors {
+  display: grid;
+  gap: 0.35rem;
+  margin-block-start: -0.5rem;
+}
+
+.fire-sensor-colors-switch,
+.fire-sensor-color-key li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.fire-sensor-colors-switch {
+  inline-size: fit-content;
+  font-size: var(--fs-14);
+  cursor: pointer;
+}
+
+.fire-sensor-colors-switch input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.fire-sensor-color-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-muted);
+  font-size: var(--fs-12);
+}
+
 .baseline-compare {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

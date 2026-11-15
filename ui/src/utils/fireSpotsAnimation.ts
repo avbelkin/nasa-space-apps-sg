@@ -5,12 +5,14 @@ import type {
   Map as MapLibreMap,
   MapSourceDataEvent,
 } from 'maplibre-gl'
-import { FIRE_SPOT_COLORS } from '../data/dataPalette.ts'
+import { FIRE_SENSOR_GROUP_COLORS, FIRE_SPOT_COLORS } from '../data/dataPalette.ts'
 import type { SensorFilter } from '../data/mapTypes.ts'
 import {
   ANIMATION_INTERVAL_MS,
   COHORT_PHASE_RADIANS,
   computeWildfirePulse,
+  DECLUTTER_CELL_DEGREES,
+  FULL_DETAIL_FIRE_SPOT_ZOOM,
   MAX_INACTIVITY_MS,
   MIN_FIRE_SPOT_ZOOM,
   SPOT_EXPANSION,
@@ -29,6 +31,42 @@ export const FIRMS_SPOTS_PULSE_LAYER_IDS = [
 ] as const
 
 const PULSE_HALO_MAX_OPACITY = 0.52
+
+export function buildFireSensorGroupColor(): ExpressionSpecification {
+  const colorAtZoom = (zoom: number): ExpressionSpecification => [
+    'match',
+    ['get', `sensorGroupAtZoom${zoom}`],
+    'both', FIRE_SENSOR_GROUP_COLORS.both,
+    'modis', FIRE_SENSOR_GROUP_COLORS.modis,
+    'viirs', FIRE_SENSOR_GROUP_COLORS.viirs,
+    FIRE_SENSOR_GROUP_COLORS.single,
+  ]
+  const tierStops = DECLUTTER_CELL_DEGREES.slice(1).flatMap((_, index) => {
+    const zoom = MIN_FIRE_SPOT_ZOOM + index + 1
+    return [zoom, colorAtZoom(zoom)]
+  })
+  // Full detail renders separate detections, so every marker uses the single-detection color.
+  return [
+    'step',
+    ['zoom'],
+    colorAtZoom(MIN_FIRE_SPOT_ZOOM),
+    ...tierStops,
+    FULL_DETAIL_FIRE_SPOT_ZOOM,
+    FIRE_SENSOR_GROUP_COLORS.single,
+  ] as ExpressionSpecification
+}
+
+export function setFireSpotSensorColors(map: MapLibreMap, enabled: boolean): void {
+  const groupColor = enabled ? buildFireSensorGroupColor() : null
+  for (const layerId of [FIRMS_SPOTS_CORE_LAYER_ID, ...FIRMS_SPOTS_PULSE_LAYER_IDS]) {
+    if (map.getLayer(layerId)) {
+      const defaultColor = layerId === FIRMS_SPOTS_CORE_LAYER_ID
+        ? FIRE_SPOT_COLORS.fill
+        : FIRE_SPOT_COLORS.pulse
+      map.setPaintProperty(layerId, 'circle-color', groupColor ?? defaultColor)
+    }
+  }
+}
 
 function getDeclutterProperty(
   sensorFilter: SensorFilter,

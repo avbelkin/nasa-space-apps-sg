@@ -101,6 +101,7 @@ export interface FireSpotFeatureProperties {
   minZoomAll: number
   minZoomModis: number
   minZoomViirs: number
+  [key: `sensorGroupAtZoom${number}`]: FireInstrument | 'both' | undefined
 }
 
 export type DeclutterGroupMembersBySensor = Record<
@@ -402,6 +403,18 @@ export function buildFireSpotsGeoJson(
     (a, b) => compareMatchedFireSpots(features[a].properties, features[b].properties) || a - b,
   )
   const harmonizedGroups = assignDeclutterTierProperty(features, sortedIndices, 'minZoomAll')
+  for (const [tier, groups] of harmonizedGroups.entries()) {
+    const key = `sensorGroupAtZoom${MIN_FIRE_SPOT_ZOOM + tier}` as const
+    for (const [leader, members] of groups) {
+      if (members.length > 1) {
+        const properties = features[leader].properties
+        const instrument = properties.instrument
+        properties[key] = members.some((member) => features[member].properties.instrument !== instrument)
+          ? 'both'
+          : instrument
+      }
+    }
+  }
   const modisGroups = assignDeclutterTierProperty(
     features,
     sortedIndices.filter((i) => features[i].properties.instrument === 'modis'),

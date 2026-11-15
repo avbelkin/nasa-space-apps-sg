@@ -358,6 +358,11 @@ describe('hierarchical z1..z7 spatial decluttering', () => {
     assert.equal(neighbor.properties.minZoomAll, 7)
     assert.equal(midDist.properties.minZoomAll, 2)
     assert.equal(distant.properties.minZoomAll, 1)
+    assert.equal(leader.properties.sensorGroupAtZoom1, 'viirs')
+    assert.equal(leader.properties.sensorGroupAtZoom2, 'viirs')
+    assert.equal(midDist.properties.sensorGroupAtZoom2, undefined)
+    assert.equal(distant.properties.sensorGroupAtZoom1, undefined)
+    assert.equal(leader.properties.sensorGroupAtZoom7, undefined)
 
     for (const feature of featureCollection.features) {
       for (const tier of [
@@ -401,6 +406,14 @@ describe('hierarchical z1..z7 spatial decluttering', () => {
     assert.equal(viirsFeature.properties.minZoomViirs, 1)
     assert.equal(modisFeature.properties.minZoomAll, 7)
     assert.equal(modisFeature.properties.minZoomModis, 1)
+    assert.equal(viirsFeature.properties.sensorGroupAtZoom1, 'both')
+
+    const modisPayload: FirmsLiveSpotsResponse = {
+      ...payload,
+      spots: [[101.05, 1.05, referenceNowMs - 500_000, 260, 360, 95, 0, 'Aqua', 'D'], payload.spots[1]],
+    }
+    const modisLeader = buildFireSpotsGeoJson(modisPayload, referenceNowMs).featureCollection.features[0]
+    assert.equal(modisLeader.properties.sensorGroupAtZoom1, 'modis')
   })
 
   it('expands hovered decluttered leaders into their hidden group members at z1..z6 without cross-sensor leaks', () => {

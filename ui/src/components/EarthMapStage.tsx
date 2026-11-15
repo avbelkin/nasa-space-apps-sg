@@ -100,6 +100,7 @@ import {
   FIRMS_SPOTS_CORE_LAYER_ID,
   FIRMS_SPOTS_PULSE_LAYER_IDS,
   FIRMS_SPOTS_SOURCE_ID,
+  setFireSpotSensorColors,
   type FireSpotsAnimationController,
 } from '../utils/fireSpotsAnimation'
 import { ChevronLeftIcon, ChevronRightIcon } from './icons'
@@ -127,6 +128,7 @@ export interface GeolocationLegendState {
 
 interface EarthMapStageProps {
   sensorFilter: SensorFilter
+  colorFireSpotsBySensor: boolean
   projectionMode: ProjectionMode
   onProjectionModeChange: (next: ProjectionMode) => void
   initialViewport: MapViewportState
@@ -632,6 +634,7 @@ function isMapStyleReady(map: MapLibreMap | null, styleReady = true): map is Map
 
 export function EarthMapStage({
   sensorFilter,
+  colorFireSpotsBySensor,
   projectionMode,
   onProjectionModeChange,
   initialViewport,
@@ -753,6 +756,7 @@ export function EarthMapStage({
   const latestPulsePausedRef = useRef(pulsePaused)
   const latestFocusSpotGeoJsonRef = useRef(focusSpotGeoJson)
   const latestSensorFilterRef = useRef(sensorFilter)
+  const latestFireSensorColorsRef = useRef(colorFireSpotsBySensor)
   const onPinFireSelectionRef = useRef(onPinFireSelection)
   const latestOnReducedMotionChangeRef = useRef(onReducedMotionChange)
   const fireAnimControllerRef = useRef<FireSpotsAnimationController | null>(null)
@@ -832,6 +836,14 @@ export function EarthMapStage({
     }
     fireAnimControllerRef.current?.sync()
   }, [sensorFilter])
+
+  useEffect(() => {
+    latestFireSensorColorsRef.current = colorFireSpotsBySensor
+    const map = mapInstanceRef.current
+    if (isMapStyleReady(map)) {
+      setFireSpotSensorColors(map, colorFireSpotsBySensor)
+    }
+  }, [colorFireSpotsBySensor])
 
   useEffect(() => {
     latestOnReducedMotionChangeRef.current = onReducedMotionChange
@@ -1166,6 +1178,7 @@ export function EarthMapStage({
           }
         }
         setFireLayerVisibility(map, 'fire-spot-focus-ring', latestShowFiresRef.current)
+        setFireSpotSensorColors(map, latestFireSensorColorsRef.current)
 
         fireAnimControllerRef.current?.dispose()
         fireAnimControllerRef.current = createFireSpotsAnimationController({
