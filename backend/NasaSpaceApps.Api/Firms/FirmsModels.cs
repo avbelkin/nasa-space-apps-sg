@@ -1,3 +1,5 @@
+using NasaSpaceApps.Api.LandCover;
+
 namespace NasaSpaceApps.Api.Firms;
 
 public static class FirmsDefaults
@@ -39,7 +41,8 @@ public sealed record FirmsHotspot(
     int ConfidenceScore,
     string Version,
     double FrpMw,
-    string DayNight);
+    string DayNight,
+    LandCoverSummary? LandCover = null);
 
 public sealed record FirmsHotspotsResponse(
     string Area,
@@ -49,7 +52,8 @@ public sealed record FirmsHotspotsResponse(
     int Count,
     DateTimeOffset FetchedAtUtc,
     string Attribution,
-    IReadOnlyList<FirmsHotspot> Hotspots);
+    IReadOnlyList<FirmsHotspot> Hotspots,
+    LandCoverDataset LandCoverDataset);
 
 public sealed record FirmsSensorMetadata(
     int SourceCode,
@@ -161,7 +165,8 @@ public sealed record FirmsLiveSpotsResponse(
     double MaxFrpMw,
     string Attribution,
     IReadOnlyList<string> Columns,
-    IReadOnlyList<object[]> Spots);
+    IReadOnlyList<object?[]> Spots,
+    LandCoverDataset LandCoverDataset);
 
 public sealed record FirmsGeoJsonPointGeometry(
     string Type,
@@ -176,7 +181,8 @@ public sealed record FirmsGeoJsonSpotProperties(
     string Instrument,
     string Satellite,
     int Confidence,
-    string Daynight);
+    string Daynight,
+    LandCoverSummary? LandCover);
 
 public sealed record FirmsGeoJsonFeature(
     string Type,
@@ -192,4 +198,5 @@ public sealed record FirmsGeoJsonFeatureCollection(
     string SensorFilter,
     int Count,
     string Attribution,
-    IReadOnlyList<FirmsGeoJsonFeature> Features);
+    IReadOnlyList<FirmsGeoJsonFeature> Features,
+    LandCoverDataset LandCoverDataset);

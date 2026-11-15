@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.ResponseCompression;
 using NasaSpaceApps.Api.Clouds;
 using NasaSpaceApps.Api.Firms;
+using NasaSpaceApps.Api.LandCover;
 using NasaSpaceApps.Api.NasaOpenApi;
 using NasaSpaceApps.Api.Satellites;
 
@@ -88,6 +89,11 @@ builder.Services.AddHttpClient(ExtremumCloudOptions.HttpClientName, client =>
 });
 builder.Services.AddSingleton<CelesTrakTleDownloader>();
 builder.Services.AddSingleton<SatelliteOrbitService>();
+builder.Services.AddHttpClient(PlanetaryComputerLandCover.HttpClientName, client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(5);
+}).RemoveAllLoggers(); // Azure range URLs include short-lived access tokens.
+builder.Services.AddSingleton<ILandCoverEnricher, PlanetaryComputerLandCover>();
 builder.Services.AddSingleton<FirmsClient>();
 builder.Services.AddSingleton<NasaOpenApiClient>();
 builder.Services.AddSingleton<ExtremumCloudTileClient>();

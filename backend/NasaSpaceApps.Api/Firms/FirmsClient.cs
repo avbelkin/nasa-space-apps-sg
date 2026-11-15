@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
+using NasaSpaceApps.Api.LandCover;
 
 namespace NasaSpaceApps.Api.Firms;
 
@@ -13,7 +14,8 @@ public sealed class FirmsClient(
     IHttpClientFactory httpClientFactory,
     IMemoryCache cache,
     FirmsOptions options,
-    ILogger<FirmsClient> logger)
+    ILogger<FirmsClient> logger,
+    ILandCoverEnricher landCover)
 {
     public const string DefaultBbox = "95,-11,141,20";
     public const int DefaultLiveWindowHours = 24;
@@ -37,6 +39,7 @@ public sealed class FirmsClient(
         "sourceCode",
         "satellite",
         "dayNight",
+        "landCover",
     ];
 
     private readonly SemaphoreSlim _statusLock = new(1, 1);
@@ -171,7 +174,8 @@ public sealed class FirmsClient(
                 Count: combined.Length,
                 FetchedAtUtc: DateTimeOffset.UtcNow,
                 Attribution: FirmsDefaults.Attribution,
-                Hotspots: combined);
+                Hotspots: await landCover.EnrichAsync(combined, cancellationToken),
+                LandCoverDataset: LandCoverDataset.C3s2019);
 
             cache.Set(cacheKey, response, HotspotsCacheDuration);
             return response;
@@ -202,14 +206,14 @@ public sealed class FirmsClient(
         }
 
         var nowUtc = DateTimeOffset.UtcNow;
-        var filtered = FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours);
+        var filtered = await landCover.EnrichAsync(FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours), cancellationToken);
 
         var sourceCounts = new Dictionary<int, int>();
         var modisCount = 0;
         var viirsCount = 0;
         var maxFrp = 0.0;
         DateTimeOffset? latestAcquiredAtUtc = null;
-        var rows = new List<object[]>(filtered.Count);
+        var rows = new List<object?[]>(filtered.Count);
 
         foreach (var spot in filtered)
         {
@@ -245,6 +249,7 @@ public sealed class FirmsClient(
                 meta.SourceCode,
                 FirmsSensorCatalog.NormalizeSatelliteLabel(spot.Satellite, spot.SourceDataset),
                 spot.DayNight,
+                spot.LandCover,
             ]);
         }
 
@@ -276,7 +281,8 @@ public sealed class FirmsClient(
             MaxFrpMw: Math.Round(maxFrp, 1),
             Attribution: FirmsDefaults.Attribution,
             Columns: LiveSpotColumns,
-            Spots: rows);
+            Spots: rows,
+            LandCoverDataset: LandCoverDataset.C3s2019);
 
         cache.Set(responseCacheKey, response, LiveResponseCacheDuration);
         return response;
@@ -295,7 +301,7 @@ public sealed class FirmsClient(
 
         var snapshot = await GetAreaSnapshotAsync(area, dayRange, sources, cancellationToken).ConfigureAwait(false);
         var nowUtc = DateTimeOffset.UtcNow;
-        var filtered = FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours);
+        var filtered = await landCover.EnrichAsync(FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours), cancellationToken);
 
         return BuildGeoJsonFeatureCollection(filtered, nowUtc, snapshot, windowHours, sensorFilter);
     }
@@ -437,7 +443,8 @@ public sealed class FirmsClient(
                     Instrument: meta.Instrument,
                     Satellite: FirmsSensorCatalog.NormalizeSatelliteLabel(spot.Satellite, spot.SourceDataset),
                     Confidence: spot.ConfidenceScore,
-                    Daynight: spot.DayNight)));
+                    Daynight: spot.DayNight,
+                    LandCover: spot.LandCover)));
         }
 
         return new FirmsGeoJsonFeatureCollection(
@@ -449,7 +456,8 @@ public sealed class FirmsClient(
             SensorFilter: sensorFilter,
             Count: features.Count,
             Attribution: FirmsDefaults.Attribution,
-            Features: features);
+            Features: features,
+            LandCoverDataset: LandCoverDataset.C3s2019);
     }
 
     private async Task<CachedKeyQuota> GetKeyQuotaAsync(CancellationToken cancellationToken)

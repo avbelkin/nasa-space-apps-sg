@@ -92,6 +92,21 @@ export function AttributionFooter({ connectionState }: AttributionFooterProps) {
                 </dd>
               </div>
               <div className="meta-row">
+                <dt>Hotspot land cover</dt>
+                <dd>
+                  Derived from the 2019 global land cover classification (300 m), © ESA Climate
+                  Change Initiative Land Cover project and{' '}
+                  <a href="https://doi.org/10.24381/cds.006f2c9a" {...EXTERNAL}>
+                    Copernicus Climate Change Service
+                  </a>
+                  . GeoTIFFs via{' '}
+                  <a href="https://planetarycomputer.microsoft.com/dataset/esa-cci-lc" {...EXTERNAL}>
+                    Microsoft Planetary Computer
+                  </a>
+                  .
+                </dd>
+              </div>
+              <div className="meta-row">
                 <dt>Satellite clouds</dt>
                 <dd>
                   Live geostationary visible and infrared cloud images (EUMETSAT, NOAA, JMA) and

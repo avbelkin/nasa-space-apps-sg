@@ -6,6 +6,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NasaSpaceApps.Api.Firms;
+using NasaSpaceApps.Api.LandCover;
 using Xunit;
 
 namespace NasaSpaceApps.Api.Tests.Firms;
@@ -41,6 +42,16 @@ public sealed class FirmsParsingAndNormalizationTests
                 BaseAddress = new Uri("https://firms.modaps.eosdis.nasa.gov/"),
             };
         }
+    }
+
+    private sealed class StubLandCover : ILandCoverEnricher
+    {
+        public Task<IReadOnlyList<FirmsHotspot>> EnrichAsync(
+            IReadOnlyList<FirmsHotspot> spots, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<FirmsHotspot>>(spots.Select(s => s with
+            {
+                LandCover = new LandCoverSummary(50, 1, [new(50, 0.75), new(130, 0.25)]),
+            }).ToArray());
     }
 
     [Theory]
@@ -144,10 +155,12 @@ public sealed class FirmsParsingAndNormalizationTests
             })
             .Build();
         var options = FirmsOptions.FromConfiguration(config, new StubHostEnvironment());
-        var client = new FirmsClient(factory, memoryCache, options, NullLogger<FirmsClient>.Instance);
+        var client = new FirmsClient(factory, memoryCache, options, NullLogger<FirmsClient>.Instance, new StubLandCover());
 
         var response = await client.GetLiveSpotsAsync(sensor: "viirs", hours: 24, bbox: "world");
 
+        Assert.Equal(2019, response.LandCoverDataset.Year);
+        Assert.Equal("landCover", response.Columns[9]);
         Assert.Equal(24, response.WindowHours);
         Assert.Equal(TimeSpan.FromHours(24), response.WindowEndUtc - response.WindowStartUtc);
         Assert.True(response.WindowEndUtc >= response.GeneratedAtUtc.AddSeconds(-1));
@@ -156,6 +169,7 @@ public sealed class FirmsParsingAndNormalizationTests
         {
             Assert.Equal("NOAA-20", row[7]);
             Assert.Equal(95, row[5]);
+            Assert.Equal(50, Assert.IsType<LandCoverSummary>(row[9]).DominantCode);
         });
     }
 }

@@ -52,6 +52,19 @@ export interface FirmsSourceSummary {
   count: number
 }
 
+export interface LandCoverSummary {
+  dominantCode: number
+  coverage: number
+  classes: Array<{ code: number; fraction: number }>
+}
+
+export interface LandCoverDataset {
+  id: string
+  year: number
+  resolutionMeters: number
+  classLabels: Record<number, string>
+}
+
 export type FirmsSpotTuple = [
   lng: number,
   lat: number,
@@ -62,6 +75,7 @@ export type FirmsSpotTuple = [
   sourceCode: number,
   satellite: string,
   dayNight: string,
+  landCover?: LandCoverSummary | null,
 ]
 
 export interface FirmsLiveSpotsResponse {
@@ -81,6 +95,7 @@ export interface FirmsLiveSpotsResponse {
   attribution: string
   columns: string[]
   spots: FirmsSpotTuple[]
+  landCoverDataset?: LandCoverDataset
 }
 
 export interface FireSpotFeatureProperties {

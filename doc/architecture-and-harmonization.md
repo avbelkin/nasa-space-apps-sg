@@ -42,3 +42,14 @@ This repository implements the [Harmonization of MODIS and VIIRS Hot Spots](./RE
   - `GET /api/anomalies/summary` *(planned)* — Regional & AOI current situation summary compared against historical calendar baselines (`fitsTypical`, `anomalyScore`, `zScore`, percentile).
   - `GET /api/seasonal/profile` *(planned)* — Harmonized multi-decade monthly/pentad climatology vs. current-year trajectory for the bottom seasonal scrubber and side inspector.
   - `GET /api/hotspots` *(planned)* — Spatial GeoJSON/vector hotspot clusters and harmonized grid cells for MapLibre rendering within a selected date window and sensor filter.
+
+## Hotspot land cover
+
+The backend samples the [2019 Copernicus C3S land cover map v2.1.1](https://doi.org/10.24381/cds.006f2c9a), which continues the ESA Climate Change Initiative Land Cover series. It uses the 300 m native grid (1/360° in WGS84) and preserves the original 22 global classes and their regional subclasses. [Microsoft Planetary Computer](https://planetarycomputer.microsoft.com/dataset/esa-cci-lc) hosts the 32 Cloud Optimized GeoTIFFs. The backend gets a short-lived anonymous token and requests only the needed native blocks; no account or local data setup is required.
+
+Land cover is a fixed 2019 reference, not the observed cover on the fire date. A circle with the same area as the FIRMS scan × track pixel approximates the acquisition footprint. If either measurement is unavailable or invalid, sampling uses the sensor radius already published by the API. The backend estimates area fractions using equally weighted sample points on the circle, including across tile boundaries and the antimeridian.
+
+- The live compact payload appends `landCover` to `columns` and each spot tuple. Existing fields retain their indexes.
+- Raw area hotspots expose `hotspots[].landCover`; live GeoJSON exposes `features[].properties.landCover`.
+- A populated object reports `dominantCode`, `coverage` (the fraction of the footprint with classified data), and `classes` (code/fraction pairs sorted by descending share, with ties resolved by the lower code). Class shares use only classified area. `landCoverDataset` identifies the year, nominal resolution and class labels.
+- For an unclassified footprint or if any required source block could not be read within the request budget, `landCover` is null. FIRMS detections remain available.
