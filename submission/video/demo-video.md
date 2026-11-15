@@ -46,7 +46,7 @@ Compose him as a weather presenter in the foreground, about 700 px tall, with a 
 
 The new opening uses 12.6–14.0 seconds of with_Lama.MOV, converted from HDR to SDR and cropped to a full-width profile close-up. It is softer than a native landscape recording but has no side areas. A fast push into the monitor connects it to the presenter stage. This is an editorial transition, not a generated physical jump. It uses neither without_Lama.MOV nor background reconstruction.
 
-The final frame retains a short NASA FIRMS credit and the note Independent project. Not affiliated with or endorsed by NASA. Use Team Plush; registered members are Alexey Belkin and Viktoriia Naiman. Lama is a fictional presenter, and Claude / Codex are tools rather than registered members; Lama's name does not replace it.
+The final frame retains a short NASA FIRMS credit and the note Independent project. Not affiliated with or endorsed by NASA. Name Team Plush — Alexey Belkin and Viktoriia Naiman; Lama's name does not replace it.
 
 Disclosure text for the description, AI-use field and export metadata is in [publication disclosures](disclosures.md). The English narration has been synthesized using ElevenLabs Eleven v4 through OpenRouter; disclose it in the video description and MP4 metadata. Check the scarf print after the first edit; do not claim that it contains no third-party branding before its ownership is established.
 
@@ -60,6 +60,6 @@ Harmonization is the next step. Do not depict completed calibration, a scientifi
 
 Asset preparation and recording steps are in the [production plan](README.md).
 
-## Compliance handoff
+## Before export
 
-Before final export, follow the [rights and capture release gate](disclosures.md#rights-release-gate). The live basemap now uses EOX 2016 (CC BY 4.0); old EOX 2025 recordings must be replaced, not relabelled. Include the EOX source / licence near its use and in the description. Keep written adult consent privately even for team members. The final MP4, not this storyboard, must be checked for duration, watermark coverage, English speech/subtitles, metadata and public access.
+Record map scenes from the live app: it now uses the EOX 2016 basemap (CC BY 4.0); older recordings show the 2025 layer (CC BY-NC-SA 4.0). Check the final MP4 for duration, the `AI-generated` label, English speech and subtitles, and metadata. See [disclosures](disclosures.md#before-publication).

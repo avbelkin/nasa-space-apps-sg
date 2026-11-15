@@ -114,9 +114,8 @@ export function AttributionFooter() {
               </div>
               <div className="meta-row">
                 <dt>Star background</dt>
-                <dd>Curated bright-star coordinates described in the source as Bright Star / Hipparcos;
-                  additional faint stars are generated procedurally. Exact catalogue provenance and
-                  redistribution terms remain under review.</dd>
+                <dd>Bright-star positions from the Yale Bright Star Catalogue and ESA Hipparcos;
+                  fainter stars are generated procedurally.</dd>
               </div>
               <div className="meta-row">
                 <dt>Satellite clouds</dt>
@@ -133,7 +132,7 @@ export function AttributionFooter() {
             <p className="panel-note">
               <a href="./third-party-notices.txt" {...EXTERNAL}>Software licence notices</a>.{' '}
               Independent project built for the 2026 NASA Space Apps Challenge. Not affiliated
-              with, endorsed by, or an official product of NASA. Model estimates are Earth Fire Calendar outputs; NASA has not validated them and is not responsible for their accuracy.
+              with, endorsed by, or an official product of NASA. Model estimates are Earth Fire Calendar's own; NASA is not responsible for their accuracy.
             </p>
           </div>
         </details>

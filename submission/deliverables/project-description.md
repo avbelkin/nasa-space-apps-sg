@@ -2,7 +2,7 @@
 
 [Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](../working/form-fields.md) · [Formal requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
 
-Draft text for the **Project** tab, field by field, in the order of the [form](../working/form-fields.md). It describes the app as of commit `c73d0b5` (15 November 2026, deployed at 20:07 SGT). Team Plush: Alexey Belkin and Viktoriia Naiman. Replace unresolved publication links before submitting; the items the team still has to confirm are collected in [Before submitting](#before-submitting).
+Draft text for the **Project** tab, field by field, in the order of the [form](../working/form-fields.md). It describes the app as of commit `c73d0b5` (15 November 2026, deployed at 20:07 SGT). Team Plush: Alexey Belkin and Viktoriia Naiman. Replace the placeholders before submitting; the items the team still has to confirm are collected in [Before submitting](#before-submitting).
 
 The live numbers come from one snapshot of the app's feed, fetched on 15 November 2026 at 08:36 UTC; its summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](../working/firms-snapshot-2026-11-15T0836Z.json). If the slides or the video use a different snapshot, use one set of numbers everywhere.
 
@@ -107,10 +107,9 @@ TypeScript, React, Vite, MapLibre GL JS and WebGL2 shaders for the interface; C#
 
 USE OF AI
 
-AI coding assistants (Anthropic Claude Code and OpenAI Codex) were used to write and review code and to draft documentation, the presentation text and the demo script. AI assistance in assembling the literature review has not been fully reconstructed; its provenance disclosure states that limitation. The app itself makes no calls to AI services for inference; the link preview is an original code-rendered typographic diagram with a visible AI-assistance label and metadata. It applies fitted statistical models for next-pass FRP, detection scores and GWIS- or CAMS-assisted detection odds. Training inputs come from the sources listed below. The idea belongs to team Plush. The team confirms that application development began after the hackathon start; pre-event preparation consisted of collecting and studying research.
+AI coding assistants (Anthropic Claude Code and OpenAI Codex) were used to write and review code and to draft documentation, the presentation text and the demo script. AI research and writing assistants (Anthropic Claude, OpenAI Codex, Google Antigravity, Muse Code, Kimi Code, models accessed through the OpenRouter API, and the Orca agent workspace) helped compile the literature review. The app itself makes no calls to AI services. It applies the team's own fitted statistical models for next-pass FRP, detection scores and GWIS- or CAMS-assisted detection odds; their estimates are not NASA products, and NASA is not responsible for their accuracy. Training inputs come from the sources listed below. The idea of the project is the team's own.
 
-The animated Lama presenter for the demo was designed with the OpenAI ChatGPT image tool from an original photograph of the team's plush alpaca. Character motion was generated with Google Veo 3.1 Lite through OpenRouter. The current concept pilot labels the character "AI-generated" whenever it appears. Live-action footage and application captures are real recordings. Its English narration was synthesized with ElevenLabs Eleven v4 through OpenRouter, using Charlie, then raised by three semitones locally while preserving duration. These tools are disclosed in the video description and file metadata. The user rejected that voice; new Jessica, Bella and Laura auditions use a female-performed little-boy direction without local pitch shifting. No final voice or narration is selected. Update the disclosure to the selected export before submission.
-
+The animated Lama presenter for the demo was designed with the OpenAI ChatGPT image tool from an original photograph of the team's plush alpaca. Character motion was generated with Google Veo 3.1 Lite through OpenRouter. The character is labelled "AI-generated" whenever it appears. Live-action footage and application captures are real recordings. The English narration is synthesized with ElevenLabs Eleven v4 through OpenRouter, using the Voice Library voice "Flicker". These tools are also disclosed in the video description and file metadata.
 
 Independent project. Not affiliated with or endorsed by NASA.
 
@@ -139,10 +138,10 @@ Screenshots to insert in this field, each taken from the version that is submitt
 
 Tick every option that applies. From what the repository shows:
 
-- **Code generation tools** — yes: Anthropic Claude Code and OpenAI Codex, used for implementation, review, tests and documentation. Commit trailers are incomplete provenance and are not a measure of the extent of assistance.
-- **Large language models for text** — yes: drafts of the documentation, the slide text, the video script and this page.
-- **Image or video generation** — yes: OpenAI ChatGPT image tool for Lama's design, Google Veo 3.1 Lite through OpenRouter for his motion; label the animated character `AI-generated` throughout his appearance. The older unverified social-preview illustration was replaced with a visibly AI-assisted original typographic diagram, with machine-readable provenance.
-- **Generated audio** — yes: ElevenLabs Eleven v4 through OpenRouter, Charlie with a local three-semitone pitch increase in the rejected pilot; current Jessica/Bella/Laura auditions have no final selection. Disclose the actual selected voice in the video description and MP4 metadata.
+- **Code generation tools** — yes: Anthropic Claude Code and OpenAI Codex, used for implementation, review, tests and documentation.
+- **Large language models for text** — yes: drafts of the documentation, the literature review, the slide text, the video script and this page.
+- **Image or video generation** — yes: OpenAI ChatGPT image tool for Lama's design, Google Veo 3.1 Lite through OpenRouter for his motion; label the animated character `AI-generated` throughout his appearance.
+- **Generated audio** — yes: ElevenLabs Eleven v4 through OpenRouter, voice "Flicker"; disclosed in the video description and MP4 metadata.
 - **Machine learning in the project itself** — yes. The browser applies coefficients fitted on one day of FIRMS detections to estimate FRP, score a later VIIRS detection, and compare detection odds with and without GWIS or CAMS inputs. The app makes no calls to AI services.
 
 The form's exact option names have not been seen; match them on the form.
@@ -167,27 +166,41 @@ The backend also has `/api/nasa/epic` and `/api/nasa/wildfires` endpoints (DSCOV
 
 ## 8. Space Agency Partner Data and Other References
 
-The submitted [third-party rights and credit register](third-party-rights.md) records the actual licences, primary-source terms, required credits and unresolved permissions. The [software inventory](software-licenses.md) lists every UI lockfile dependency, direct .NET references and presentation fonts. Include both links in this field; do not paste this short summary without them.
+Paste the block below. The full table of sources, uses and licences is the [third-party materials register](third-party-rights.md); the [software inventory](software-licenses.md) lists every dependency with its licence.
 
-- NASA FIRMS MODIS / VIIRS; NASA GIBS GPM IMERG, Black Marble and imagery; NASA sensor/algorithm documentation and the ported GPM precipitation colour map — NASA open-data credits and product-specific terms, detailed in field 7 and the register.
-- EOxCloudless 2016 / modified Copernicus Sentinel 2016 & 2017 — **CC BY 4.0**, with EOX credit. The live source has been corrected. Existing 2025 map captures remain **CC BY-NC-SA 4.0** and must be replaced before final release.
-- ESA CCI / Copernicus C3S 2019 land cover via Microsoft Planetary Computer — **ESA CCI Land Cover licence** and applicable C3S terms; the exact COG redistribution terms remain under verification, not an assumed CC BY licence.
-- CelesTrak GP / TLE — publicly available under its usage policy; an unrestricted redistribution licence has not been established. Bright Star / Hipparcos table — exact provenance and terms unresolved.
-- NOAA GFS, GOES-R ABI / GLM and CPC NLDAS Noah — US Government-produced data, public-domain basis under US law, subject to item-specific third-party notices. NOAA nowCOAST / GMGSI mosaic constituents still require confirmation.
-- Open-Meteo forecast and air quality — **data CC BY 4.0**; the free hosted API has non-commercial service conditions and limits. Credit underlying models as well as Open-Meteo.
-- Copernicus GWIS — **CC BY 4.0** for EU-owned content, subject to product-specific third-party terms. Copernicus GDO soil-moisture anomaly — **CC BY 4.0** on the dataset downloads. Credit European Commission JRC and actual product/model versions.
-- US Forest Service WFAS — federal-work public-domain basis; exact raster-level notice still to be verified.
-- Extremum cloud composite and its EUMETSAT / NOAA / JMA / NASA inputs — composite and constituent redistribution permissions unresolved. Do not claim that an accessible tile endpoint supplies a licence.
-- MapLibre GL JS — BSD-3-Clause; React / React DOM, Vite and plugin, oxlint, PureHDF, .NET / ASP.NET Core — MIT; TypeScript and xUnit — Apache-2.0. Transitive UI licences also include ISC, BSD-2-Clause, 0BSD, MPL-2.0 and MIT-or-Apache-2.0. The complete table and notice links are in the software inventory; resolved .NET transitive coverage is still pending.
-- Overpass and Fira Sans fonts — **SIL OFL 1.1**, with bundled licence texts. Space Apps palette / reference kit — official brand-use terms, not a grant over NASA insignia; no NASA or Space Apps logo appears in the inspected deck.
-- Original team code and prose — **Apache-2.0**, with third-party exclusions in NOTICE. Literature: the [review's 82 references](modis-viirs-harmonization-literature-review.md), including the MODIS / VIIRS algorithm papers; US Naval Observatory solar coordinates and Van Flandern & Pulkkinen lunar ephemeris methods. Cited publications retain their own rights; the papers are not redistributed as project files.
-- AI assistance: Anthropic Claude Code and OpenAI Codex (code/review/writing/layout); OpenAI ChatGPT image tool (Lama design); Google Veo 3.1 Lite via OpenRouter (motion); ElevenLabs Eleven v4 / Charlie via OpenRouter (pilot speech, locally pitch-shifted). Final selections and applicable output terms must match the final media. OpenRouter is the intermediary, not the owner of every model's output rights.
-- Hosting / build services: GitHub Pages, GitHub Actions, Google Cloud Run, Firestore, managed presentation tooling, Chrome / Chromium, FFmpeg and PowerPoint. Their executables are not submitted as original team work.
+```text
+Full list of sources, uses and licences:
+https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/third-party-rights.md
+Software dependencies and licences:
+https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/software-licenses.md
 
-Rights register: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/third-party-rights.md
-Software inventory: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/software-licenses.md
+Partner space agency data
+- ESA CCI Land Cover / Copernicus C3S land cover 2019 (via Microsoft Planetary Computer) — land cover in each detection footprint. ESA CCI Land Cover licence (free use with attribution).
+- Copernicus Sentinel-2 via EOxCloudless 2016, EOX IT Services GmbH — Earth basemap. CC BY 4.0.
+- ESA Hipparcos and Yale Bright Star catalogues — background star positions. Public astronomical data.
 
-The unresolved entries are release blockers, not compliance confirmations. Retain all applicable notices and resolve permissions before ticking the originality checkbox.
+Other data
+- CelesTrak GP/TLE orbital elements — satellite tracks, swaths, viewing geometry. Public data, CelesTrak usage policy.
+- NOAA GFS, GOES-R ABI/GLM, nowCOAST, CPC soil moisture — weather at acquisition. US Government work, public domain.
+- Open-Meteo forecast and air quality (incl. Copernicus CAMS) — weather, aerosols. CC BY 4.0.
+- Copernicus GWIS and Global Drought Observatory (European Commission JRC) — fire danger, drought. CC BY 4.0.
+- US Forest Service WFAS — dead-fuel moisture. US Government work, public domain.
+- Extremum SAR GIS cloud tiles (EUMETSAT, NOAA, JMA, NASA/NOAA VIIRS imagery) — optional cloud layer. Used with Extremum's permission, credited in the app.
+
+Software
+- MapLibre GL JS (BSD-3-Clause); React, Vite, oxlint, .NET / ASP.NET Core, PureHDF (MIT); TypeScript, xUnit (Apache-2.0). Fonts: Overpass, Fira Sans (SIL OFL 1.1).
+- Our own code and documents: Apache-2.0.
+
+AI tools
+- Anthropic Claude Code, OpenAI Codex — code, review, documentation drafts. Literature review: Anthropic Claude, OpenAI Codex, Google Antigravity, Muse Code, Kimi Code, models accessed through the OpenRouter API, and the Orca agent workspace. OpenAI ChatGPT image — Lama character design. Google Veo 3.1 Lite via OpenRouter — character animation. ElevenLabs Eleven v4 via OpenRouter — narration.
+
+Methods and literature
+- Literature review with 82 references: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/modis-viirs-harmonization-literature-review.md
+- Giglio, Schroeder & Justice (2016), MODIS C6 active fire algorithm; Schroeder et al., VIIRS 375 m active fire ATBD.
+- US Naval Observatory approximate solar coordinates; Van Flandern & Pulkkinen lunar ephemeris.
+
+Hosting: GitHub Pages, GitHub Actions, Google Cloud Run, Google Cloud Firestore.
+```
 
 ## 9. Two checkboxes
 
@@ -197,15 +210,10 @@ Tick both after the [checklist](../docs/formal-requirements.md#checklist) is clo
 
 | What | Why |
 |---|---|
-| Team identity | Plush — Alexey Belkin and Viktoriia Naiman. Lama is a fictional presenter; Claude / Codex are AI tools, not registered team members |
-| Final AI/media provenance | Fields 5, 6 and 8, the final video description and metadata must match; preserve the model terms and asset provenance |
-| Remaining third-party rights | Resolve the explicit blockers in the rights register; recapture old EOX 2025 images |
-| Project licence | Apache-2.0 in LICENSE, with third-party exclusions in NOTICE; no permission is asserted over unresolved assets |
-| Slides PDF link | Existing exports are local drafts; publish the final complete deck at a public stable URL after rights/capture checks |
-| Link preview image `og-preview.png` | Replaced with an original labelled diagram; rebuild/deploy the corrected app and verify the public preview |
+| Map images in the slides and the video | Frames captured before 15 November 20:54 SGT show the old EOX 2025 basemap (CC BY-NC-SA 4.0, non-commercial). The live app now uses the 2016 layer (CC BY 4.0); re-capture map scenes from it. If an old frame stays, add "EOxCloudless 2025, CC BY-NC-SA 4.0" to the [register](third-party-rights.md) |
+| Slides PDF link | Publish the final deck and put its link in Materials |
+| Video | Final export ≤ 30 s, public link, voice and AI label as described in field 5 |
 | Commit or tag of the submitted version | Replace `c73d0b5` in the first paragraph and in the [technical note](technical-note.md) |
-| Baseline fitting scripts | They are not in the repository; add them or say where they are, and close the placeholder in the [technical note](technical-note.md#6-first-baselines-on-matched-passes) |
-| Backend test run | The technical note records only the interface suite; run the backend suite on the submitted commit |
+| Baseline fitting scripts | Not in the repository; add them or keep the limitation stated in the [technical note](technical-note.md#6-first-baselines-on-matched-passes) |
+| Backend test run | Run `dotnet test` on the submitted commit and record it in the technical note |
 | Numbers | One snapshot across this page, the slides and the video |
-
-Model estimates are outputs of Earth Fire Calendar, not NASA products. NASA has not reviewed or validated them and is not responsible for their accuracy.
