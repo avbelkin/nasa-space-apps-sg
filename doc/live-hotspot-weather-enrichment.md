@@ -2,7 +2,7 @@
 
 Earth Fire Calendar displays NASA FIRMS detections from a rolling 24-hour window. Use the current FIRMS snapshot and frames available from the live weather source. Attach weather and surface context to each reported spot using its acquisition time in UTC. Comparing recent detections can help explain why MODIS and VIIRS report different spots or fire radiative power (FRP) over the same area.
 
-The [same-family second-pass baseline and retraining follow-up](./architecture-and-harmonization.md#same-family-second-pass-baseline) describe how to evaluate whether the enriched fields improve prediction of missed second detections.
+The [same-family baseline and retraining follow-up](./architecture-and-harmonization.md#same-family-second-pass-baseline) and [cross-family baseline](./architecture-and-harmonization.md#cross-family-second-pass-baseline) provide reference scores for evaluating enriched features on missed second detections.
 
 Start with cloud along the viewing path, view angle, pixel footprint, and thermal contrast against the local background. These can affect whether a sensor sees a fire. Wind, recent rain, and fuel moisture help explain changes in the fire and its plume between passes. [MODIS fire detection algorithm](https://pmc.ncbi.nlm.nih.gov/articles/PMC6110110/) · [VIIRS 375 m algorithm](https://viirsland.gsfc.nasa.gov/PDF/VIIRS_activefire_375m_ATBD.pdf) · [MODIS and VIIRS detection limits](https://gmd.copernicus.org/articles/19/10123/2026/)
 
