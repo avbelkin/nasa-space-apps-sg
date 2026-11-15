@@ -104,6 +104,8 @@ USE OF AI
 
 AI coding assistants ([Anthropic Claude Code, OpenAI Codex — confirm the list]) were used to write and review code and to draft documentation, the presentation text and the demo script. [Confirm: AI assistance in compiling the literature review.] The app itself does not generate AI content: everything it shows comes from the data sources listed below. The idea of the project is the team's own.
 
+The Lama presenter image for the demo was generated with OpenAI ChatGPT from an original photograph of the team's plush alpaca. It is an AI-edited depiction, not an exact photographic cutout. The video will label it "AI-edited image" whenever it appears. Live-action footage and application captures are real recordings. Voiceover has not yet been produced; if synthesized, its provider will be disclosed in the video description and file metadata.
+
 Independent project. Not affiliated with or endorsed by NASA.
 
 MATERIALS
@@ -130,7 +132,8 @@ Tick every option that applies. From what the repository shows:
 
 - **Code generation tools** — yes: `Co-Authored-By: Claude` trailers in 23 of 156 commits, branches named `codex/*`, an `AGENTS.md` in the root.
 - **Large language models for text** — yes: drafts of the documentation, the slide text, the video script and this page.
-- **Image or video generation** — `[confirm: how og-preview.png was made]`. If it was generated, it needs a visible watermark.
+- **Image or video generation** — yes: the Lama presenter image was generated with OpenAI ChatGPT from an original photograph; label it `AI-edited image` throughout its appearance. `[Separately confirm: how og-preview.png was made.]`
+- **Generated audio** — not produced yet. If the narration is synthesized, add the actual provider to the disclosure and video metadata before submission.
 - **Machine learning in the project itself** — no: the app has no model and makes no AI calls.
 
 The form's exact option names have not been seen; match them on the form.

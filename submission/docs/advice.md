@@ -135,7 +135,7 @@ The [video script](demo-video.md) adapts this outline to a 29-second story with 
 
 | Script shot | Criteria it covers |
 |---|---|
-| 0–5.5 seconds: Lama enters the app and introduces himself | Presentation |
+| 0–2 seconds: live footage and transition; 2–5.5 seconds: Lama introduces himself | Presentation |
 | 5.5–11.5 seconds: MODIS → VIIRS in the same view | Relevance, Validity |
 | 11.5–17 seconds: both sensors and NASA FIRMS attribution | Relevance, Creativity |
 | 17–23 seconds: viewing geometry, land cover and weather | Creativity, Validity |
