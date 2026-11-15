@@ -12,13 +12,13 @@ Editing target: **29 seconds, 1920×1080, 30 fps — 870 frames**. The narration
 
 | Time | Frames, start inclusive and end exclusive | Visuals and action | Lama's narration | Captions in addition to subtitles |
 |---|---|---|---|---|
-| 0–0.7 s | 0–21 | Full-width close-up from the real portrait recording, cropped to 16:9 without side panels. | — | Earth Fire Calendar; Harmonization of MODIS and VIIRS Hot Spots; Team Plush |
+| 0–0.7 s | 0–21 | Full-width close-up from the real portrait recording, cropped to 16:9 without side panels. Keyboard typing begins here and ends at 1 s. | — | Earth Fire Calendar; Harmonization of MODIS and VIIRS Hot Spots; Team Plush |
 | 0.7–2.3 s | 21–69 | Photographic plush Lama squashes, jumps and shrinks into the physical monitor. The animated character first appears inside it at 1.8 s, after the plush has disappeared. End with a short push into the screen. | — | Title; visible AI transition disclosure |
 | 2.3–6.3 s | 69–189 | Animated full-body Lama over the app's recorded globe, blinking and turning toward the viewer. | I’m Lama. I help protect nature. Mostly. | AI-generated on the character |
 | 6.3–12 s | 189–360 | Real recorded view with sensor coloring and the actual MODIS/VIIRS counters from that recording. The supplied captures show All sensors, so do not label them as individual filter switches. | Same planet. Same day. But MODIS and VIIRS see different hotspots. | NASA FIRMS · last 24 h |
 | 12–17 s | 360–510 | The real Color fire spots by sensor action and its color key. Lama gestures toward the display. Exclude status rows and popup timeline totals by framing. | Earth Fire Calendar compares their detections using NASA FIRMS data. | NASA FIRMS · last 24 h |
 | 17–22.5 s | 510–675 | Enlarge real Sat. off-nadir, Land cover and populated Weather at acquisition excerpts from the same single detection in the new 21.52.05 recording. Exclude forecast, missing-pass warnings and timeline totals. | We add context: viewing angle, land cover, and weather. | Estimated viewing geometry → Land cover → Weather at acquisition |
-| 22.5–29 s | 675–870 | 22.5–26 s: show the new recorded cross-satellite context correction. 26–29 s: closing card styled after the presentation PDF, with the link and team. | We apply cross-satellite corrections — a first step toward comparable records. | Experimental cross-satellite correction; First harmonization step; avbelkin.github.io/nasa-space-apps-sg; NASA non-endorsement note |
+| 22.5–29 s | 675–870 | 22.5–26 s: show the new recorded cross-satellite context correction. 26–29 s: closing card styled after the presentation PDF, with the real presentation globe behind a dark gradient, the link and team. | We apply cross-satellite corrections — a first step toward comparable records. | Experimental cross-satellite correction; First harmonization step; avbelkin.github.io/nasa-space-apps-sg; NASA non-endorsement note |
 
 ## Narration
 
