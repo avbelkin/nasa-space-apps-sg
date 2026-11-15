@@ -7,6 +7,7 @@ The complete deck uses the final English copy in [demo-slides.md](demo-slides.md
 - [Submission PDF](earth-fire-calendar.pdf): the compact published appearance reference.
 - [Editable PPTX](output/earth-fire-calendar-complete-r14.pptx) and [overview](output/earth-fire-calendar-complete-r14-overview.png): local files, synchronized to the main checkout.
 - [Review record](REVIEW.md): verification, independent acceptance and known export limitations.
+- [Independent review prompt](review-prompt.txt): frozen r14 artifacts and checks for other models; requests a Russian report.
 - [Slide copy](demo-slides.md): the only source of authored slide wording.
 - `output/`: versioned local PDF, editable PPTX, overview and verification reports. Generated historical binaries are ignored.
 - `assets/evidence/`: committed, resized captures and hashes; a fresh clone needs no live recapture.
