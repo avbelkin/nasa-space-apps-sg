@@ -43,7 +43,7 @@ A live globe that compares the two sensors and attaches to each detection the co
 - **Sensor switch and colouring by sensor:** the same 24 hours for MODIS, VIIRS or both, with each group of detections coloured by who saw it.
 - **One place, 24 hours:** a timeline of detections by satellite, with the passes that reported nothing. Passes are our estimate from orbits, not FIRMS data.
 - **Conditions of each detection:** estimated viewing geometry and land cover inside the pixel footprint for every detection; weather at acquisition time for the most recent detections and for any detection you select. Every weather value keeps its source and time.
-- **Experimental, from one day of data:** for a single selected detection, notes on a later pass that reported nothing, an "Expected detection, no match" flag between the two VIIRS satellites, an estimate of the fire radiative power on the next pass, and how GWIS fire-weather or CAMS aerosol fields change the model's detection odds. Our own models, not validated by NASA; not checked on other days.
+- **Experimental, from one day of data:** for a single selected detection, unmatched-pass notes, the "Expected detection, no match" flag, an estimate of fire radiative power on the next pass, and GWIS or CAMS detection odds. Our own models; not validated by NASA.
 - **Context layers:** GPM IMERG precipitation and VIIRS Black Marble night lights from NASA GIBS; cloud imagery via Extremum; satellite tracks from CelesTrak.
 
 **Not built yet:** historical archive, harmonization, validation, area and date selection, and data export.
@@ -62,7 +62,7 @@ A live globe that compares the two sensors and attaches to each detection the co
 
 **Hypothesis:** the MODIS–VIIRS difference depends on land-cover class together with view angle, at the level of individual detections. The prototype collects initial fields; estimated geometry and coarse global land-cover sampling still need validation and refinement.
 
-**First baselines, one day of data:** whether a later pass misses a detection (AUROC 0.64–0.77 on held-out regions) and how fire radiative power differs between passes (15,869 matched pairs). In a paired test, GWIS fire-weather fields improved MODIS → MODIS ranking and fire-radiative-power error (172 held-out passes); CAMS aerosol fields improved VIIRS → VIIRS ranking only (191 passes). Other days and publication-time checks remain open.
+**First baselines, one day of data:** whether a later pass misses a detection (AUROC 0.64–0.77 on held-out regions) and how fire radiative power differs between passes (15,869 matched pairs). In a paired test, GWIS fire-weather fields improved MODIS → MODIS ranking (172 passes) and lowered the fire-radiative-power error (87 pairs); CAMS aerosol fields improved VIIRS → VIIRS ranking only (191 passes). Other days and publication-time checks remain open.
 
 **Planned pipeline:** FIRMS archive since 2000 → daily grid per satellite, with day and night kept separate → paired MODIS and VIIRS observations → response functions by view angle, pixel area and land cover → one reference scale → export.
 

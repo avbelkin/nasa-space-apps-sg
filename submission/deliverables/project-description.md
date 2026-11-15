@@ -14,14 +14,14 @@ Earth Fire Calendar
 
 ## 2. High-Level Project Summary
 
-198 words; the official video recommends 50–200.
+199 words; the official video recommends 50–200.
 
 ```text
 Earth Fire Calendar shows, on a live 3D globe, every active-fire detection that NASA FIRMS published in the last 24 hours from MODIS (Terra, Aqua) and VIIRS (NOAA-20, NOAA-21), and lets you switch between the two sensors. The same day looks very different: on 15 November 2026 at 08:36 UTC, VIIRS reported 79,349 detections and MODIS 8,127. The two sets of detections overlap only in part, which is why the MODIS record since 2000 and the newer VIIRS record cannot simply be joined.
 
 To explain the gap, not only show it, the app attaches to each detection the conditions under which it was observed: viewing geometry, land cover inside the pixel footprint and weather at acquisition time. This is the evidence a harmonization method needs.
 
-The app is a tool for studying this difference and a source of detection-level data for research. As a first use of that evidence, it notes when another satellite passed over a detection and reported nothing, and gives experimental one-day estimates of what the next pass would report; fire-weather and aerosol fields improved some of them on held-out regions. A harmonized record is what we explore next; it is not part of this prototype.
+The app is a tool for studying this difference and a source of detection-level data for research. As a first use of that evidence, it notes when another satellite passed over a detection and reported nothing, and gives experimental one-day estimates of what the next pass would report; GWIS fields improved held-out MODIS-to-MODIS estimates, CAMS fields VIIRS-to-VIIRS detection ranking. A harmonized record is what we explore next; it is not part of this prototype.
 ```
 
 ## 3. Link to Project Demo
@@ -60,7 +60,7 @@ Earth Fire Calendar is a public web app. It works on live NASA FIRMS data, with 
 - land cover inside the pixel footprint, from the 2019 ESA CCI / Copernicus C3S land cover map;
 - weather at the acquisition time: temperature, humidity, wind, cloud over the footprint, precipitation, lightning, snow, aerosol, soil moisture, fire-weather index and dead-fuel moisture, where each source has coverage.
 
-6. What the next pass may show. For a single pinned detection the app notes a predicted pass by another satellite, of the same sensor or the other one, that reported nothing there, and says under which conditions our one-day baseline saw fewer or more such misses. When the other VIIRS satellite passed over a VIIRS detection, our model scored that pass at 70% or more for detecting it, and FIRMS has no detection within 1 km, the app flags it as "Expected detection, no match". It also shows the fire radiative power the next pass would report if it detects the fire. For a pass by the other satellite of the same sensor, it shows how weather changes the model's detection odds: Copernicus GWIS fire-weather fields for MODIS, Copernicus CAMS aerosol fields for VIIRS. For MODIS the GWIS model also gives the power estimate. All of these are experimental outputs of our own models, labelled as such next to each value: they are fitted on one 24-hour snapshot and have not been checked on other days, and the detection score is not a validated probability.
+6. What the next pass may show. For a single pinned detection the app notes a predicted pass by another satellite, of the same sensor or the other one, that reported nothing there, and says under which conditions our one-day baseline saw fewer or more such misses. When the other VIIRS satellite passed over a VIIRS detection, our model scored that pass at 70% or more for detecting it, and FIRMS has no detection within 1 km, the app flags it as "Expected detection, no match". It also shows the fire radiative power the next pass would report if it detects the fire. For a pass by the other satellite of the same sensor, it shows how weather changes the model's detection odds: Copernicus GWIS fire-weather fields for MODIS, Copernicus CAMS aerosol fields for VIIRS. For a MODIS detection whose next pass is by the other MODIS satellite, when GWIS fields for the acquisition day are available, the GWIS model also gives the power estimate. All of these are experimental outputs of our own models, labelled as such next to each value: they are fitted on one 24-hour snapshot and have not been checked on other days, and the detection score is not a validated probability.
 
 7. Context layers. Satellite ground tracks and scan swaths, cloud imagery, GPM IMERG precipitation and VIIRS Black Marble night lights can be switched on and off. The precipitation layer shows the latest available data and refreshes every 10 minutes while visible.
 
