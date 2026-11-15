@@ -30,7 +30,7 @@ internal sealed record WeatherCacheEntry(GridSources Sources, DateTimeOffset? Re
         return new WeatherCacheEntry(combined, combined.All.Any(NeedsRetry) ? retryAt : null);
     }
 
-    private static bool NeedsRetry(HotspotWeatherSource source) =>
+    internal static bool NeedsRetry(HotspotWeatherSource source) =>
         source.Status is "source_unavailable" or "no_matching_frame" ||
         source.Values.Values.Any(value => value.MissingReason == "source_unavailable");
 

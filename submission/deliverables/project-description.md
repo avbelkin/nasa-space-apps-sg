@@ -180,7 +180,7 @@ The licence column records what we believe applies; the rows marked **check** ha
 |---|---|---|
 | [CelesTrak](https://celestrak.org/) — orbital elements (GP / TLE) for Terra, Aqua, NOAA-20, NOAA-21, including fallback sets embedded in the source | Satellite tracks, swaths, estimated viewing geometry, passes without a detection | **check** |
 | [Extremum SAR GIS](https://gis.extremum.org) — cloud tiles built from EUMETSAT, NOAA and JMA geostationary imagery and NASA/NOAA VIIRS imagery | Cloud layer, proxied through our service | **check**: terms not recorded |
-| NOAA GFS — model fields from NOMADS and the NOAA open data mirror on AWS | Weather at acquisition: temperature, humidity, wind, cloud, precipitation type, snow, soil water | US Government work, public domain — **check** |
+| NOAA GFS — model fields from NOMADS and the NOAA open data mirrors on Google Cloud Storage and AWS | Weather at acquisition: temperature, humidity, wind, cloud, precipitation type, snow, soil water | US Government work, public domain — **check** |
 | NOAA GOES-R ABI and GLM — open data on AWS | Brightness temperature, cloud class, fraction, optical depth, height and phase, smoke flag, lightning flashes (GOES East and West coverage) | US Government work, public domain — **check** |
 | NOAA nowCOAST — radar mosaic and global satellite mosaic (GMGSI) | Radar reflectivity and satellite imagery samples | US Government work, public domain — **check** |
 | NOAA Climate Prediction Center — weekly NLDAS Noah soil-moisture anomalies | Soil-moisture departures by depth (North America) | US Government work, public domain — **check** |

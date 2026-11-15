@@ -48,6 +48,94 @@ internal sealed class FirestoreWeatherGridStore(IHttpClientFactory clients, ICon
     {
         if (expires <= clock.GetUtcNow()) return false;
         var auth = await GetIdentityAsync(token).ConfigureAwait(false);
+        var update = new { name = auth.GridName(key), fields = BuildFields(key, grid, expires) };
+        var currentDocument = version is null ? (object)new { exists = false } : new { updateTime = version };
+        using var json = await SendAsync(auth, "batchWrite", new { writes = new[] { new { update, currentDocument } } }, token).ConfigureAwait(false);
+        var status = json.RootElement.GetProperty("status")[0];
+        var code = status.TryGetProperty("code", out var number) ? number.GetInt32() : 0;
+        if (code is 6 or 9 or 10) return false;
+        if (code != 0) throw new IOException($"Firestore grid write failed with status {code}.");
+        return true;
+    }
+
+    internal async Task<int> WriteBatchAsync(IReadOnlyList<BatchWriteItem> items, CancellationToken token)
+    {
+        if (!IsEnabled || items.Count == 0) return 0;
+        var now = clock.GetUtcNow();
+        var auth = await GetIdentityAsync(token).ConfigureAwait(false);
+        var written = 0;
+        var chunk = new List<object>(25);
+        var chunkBytes = 0L;
+
+        foreach (var item in items)
+        {
+            if (item.Expires <= now) continue;
+            var size = item.Grid.Bytes.LongLength;
+            if (chunk.Count > 0 && (chunk.Count >= 25 || chunkBytes + size > 3_500_000))
+            {
+                written += await FlushAsync().ConfigureAwait(false);
+            }
+            var update = new { name = auth.GridName(item.Key), fields = BuildFields(item.Key, item.Grid, item.Expires) };
+            chunk.Add(new { update, currentDocument = new { exists = false } });
+            chunkBytes += size;
+        }
+        if (chunk.Count > 0) written += await FlushAsync().ConfigureAwait(false);
+        return written;
+
+        async Task<int> FlushAsync()
+        {
+            using var json = await SendAsync(auth, "batchWrite", new { writes = chunk }, token).ConfigureAwait(false);
+            var added = 0;
+            foreach (var status in json.RootElement.GetProperty("status").EnumerateArray())
+            {
+                var code = status.TryGetProperty("code", out var number) ? number.GetInt32() : 0;
+                if (code == 0) added++;
+                else if (code is not (6 or 9 or 10)) throw new IOException($"Firestore batch grid write failed with status {code}.");
+            }
+            chunk.Clear();
+            chunkBytes = 0;
+            return added;
+        }
+    }
+
+    internal async Task<Dictionary<string, DateTimeOffset>> ListActiveExpirationsAsync(DateTimeOffset now, CancellationToken token)
+    {
+        var active = new Dictionary<string, DateTimeOffset>(StringComparer.Ordinal);
+        if (!IsEnabled) return active;
+        var auth = await GetIdentityAsync(token).ConfigureAwait(false);
+        var query = new
+        {
+            structuredQuery = new
+            {
+                from = new[] { new { collectionId = Collection } },
+                select = new { fields = new[] { new { fieldPath = "__name__" }, new { fieldPath = "expireAt" } } },
+                where = new
+                {
+                    fieldFilter = new
+                    {
+                        field = new { fieldPath = "expireAt" },
+                        op = "GREATER_THAN",
+                        value = Timestamp(now),
+                    }
+                },
+            },
+        };
+        using var json = await SendAsync(auth, "runQuery", query, token, Parent).ConfigureAwait(false);
+        foreach (var row in json.RootElement.EnumerateArray())
+        {
+            if (!row.TryGetProperty("document", out var doc)) continue;
+            var name = doc.GetProperty("name").GetString();
+            if (string.IsNullOrEmpty(name)) continue;
+            var slash = name.LastIndexOf('/');
+            var docId = slash >= 0 ? name[(slash + 1)..] : name;
+            var expireAt = doc.GetProperty("fields").GetProperty("expireAt").GetProperty("timestampValue").GetDateTimeOffset();
+            active[docId] = expireAt;
+        }
+        return active;
+    }
+
+    private static Dictionary<string, object> BuildFields(string key, EncodedWeatherGrid grid, DateTimeOffset expires)
+    {
         var fields = new Dictionary<string, object>
         {
             ["expireAt"] = Timestamp(expires),
@@ -56,14 +144,7 @@ internal sealed class FirestoreWeatherGridStore(IHttpClientFactory clients, ICon
             ["sourceKey"] = new { stringValue = key },
         };
         if (grid.ModifiedAt is { } modified) fields["modifiedAt"] = Timestamp(modified);
-        var update = new { name = auth.GridName(key), fields };
-        var currentDocument = version is null ? (object)new { exists = false } : new { updateTime = version };
-        using var json = await SendAsync(auth, "batchWrite", new { writes = new[] { new { update, currentDocument } } }, token).ConfigureAwait(false);
-        var status = json.RootElement.GetProperty("status")[0];
-        var code = status.TryGetProperty("code", out var number) ? number.GetInt32() : 0;
-        if (code is 6 or 9 or 10) return false;
-        if (code != 0) throw new IOException($"Firestore grid write failed with status {code}.");
-        return true;
+        return fields;
     }
 
     internal async Task<HotspotWeatherCoverage?> CountAsync(DateTimeOffset now, CancellationToken token)
@@ -140,5 +221,6 @@ internal sealed class FirestoreWeatherGridStore(IHttpClientFactory clients, ICon
         public string GridName(string key) => $"{Root}/documents{Parent}/{Collection}/{GridId(key)}";
     }
 
+    internal sealed record BatchWriteItem(string Key, EncodedWeatherGrid Grid, DateTimeOffset Expires);
     internal sealed record StoredWeatherGrid(EncodedWeatherGrid Grid, DateTimeOffset Expires, string Version);
 }
