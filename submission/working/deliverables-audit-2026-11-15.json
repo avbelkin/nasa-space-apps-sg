@@ -1,0 +1,74 @@
+{
+  "api": {
+    "provider": "openai",
+    "model": "gpt-6.1-sol",
+    "route": "synchronous Flex",
+    "status": "ready",
+    "finishReason": "stop",
+    "calls": 1,
+    "usage": {
+      "prompt_tokens": 66657,
+      "output_tokens": 11799,
+      "total_tokens": 78456,
+      "thinking_tokens": 6147,
+      "cached_tokens": 0,
+      "service_tier": "flex"
+    },
+    "estimatedCostUsd": 0.125652,
+    "costBasis": "Gateway price-table estimate from actual usage: 66,657 input tokens and 11,799 output tokens at Flex rates; provider billing not supplied",
+    "receipt": "20261115T142552Z_e83776f4fb19e3c8.json",
+    "resultSha256": "bb329308291d48ecccf46ef929f47b113c72f1bb2f907273ac1b2a13d7f8bbf0",
+    "acceptance": "Root Codex independently checked every finding and both zero-finding document scopes against repository inputs; no outstanding jobs"
+  },
+  "live": {
+    "checkedAtUtc": "2026-11-15T14:21:49.879Z",
+    "results": [
+      {
+        "url": "https://avbelkin.github.io/nasa-space-apps-sg/",
+        "status": 200,
+        "bytes": 2564
+      },
+      {
+        "url": "https://earth-fire-calendar-api-354cntvldq-as.a.run.app/health",
+        "status": 200,
+        "bytes": 71
+      },
+      {
+        "url": "https://earth-fire-calendar-api-354cntvldq-as.a.run.app/api/fires/spots?hours=24&sensor=harmonized",
+        "status": 200,
+        "bytes": 5120281,
+        "fetchedAtUtc": "2026-11-15T14:19:57.6959002+00:00",
+        "count": 77946,
+        "modisCount": 7758,
+        "viirsCount": 70188,
+        "geometryProgress": {
+          "status": "ready",
+          "totalCount": 77946,
+          "readyCount": 77946,
+          "pendingCount": 0
+        },
+        "landCoverPending": true,
+        "weather": {
+          "status": "pending",
+          "sampledCount": 320,
+          "targetCount": 512,
+          "eligibleCount": 77946,
+          "pendingCount": 192,
+          "availableCount": 275,
+          "retryCount": 56,
+          "coverage": {
+            "gridCount": 13124,
+            "checkedAtUtc": "2026-11-15T14:21:49.2041936+00:00"
+          }
+        }
+      },
+      {
+        "url": "https://raw.githubusercontent.com/avbelkin/nasa-space-apps-sg/main/submission/presentation/earth-fire-calendar.pdf",
+        "status": 200,
+        "bytes": 1244994,
+        "header": "%PDF-1.7"
+      }
+    ]
+  },
+  "repositoryCommit": "7bbe91a"
+}

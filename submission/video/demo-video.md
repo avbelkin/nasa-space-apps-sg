@@ -2,11 +2,11 @@
 
 [Slides](../presentation/demo-slides.md) · [Production plan](README.md) · [Project description](../deliverables/project-description.md) · [Technical note](../deliverables/technical-note.md) · [Requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
 
-Lama, a small boy alpaca, is Alexey's assistant. He starts as the real plush toy, then becomes a living animated presenter in front of a large display, like a TV weather presenter. He steps, turns toward the data, points and looks back at the viewer. This is a presentation style, not a claim that the app forecasts fires. Narration, captions and production instructions are all in English. The app imagery is real, temporary production-site captures; replace it with recordings of the required actions before the final export.
+Lama, a small boy alpaca, is Alexey's assistant. He starts as the real plush toy, then becomes a living animated presenter in front of a large display, like a TV weather presenter. He steps, turns toward the data, points and looks back at the viewer. This is a presentation style, not a claim that the app forecasts fires. Narration, captions and production instructions are all in English. The app imagery uses Alexey's real production-site recordings, including the expanded observation context and cross-satellite correction.
 
 **Current scope: full assembly.** The user selected Flicker and authorized the updated narration on 15 November. Preserve the exact narration below. Alexey is supplying the final screen recordings under `screens/`; see the [current voice and character direction](voice-direction.md).
 
-Editing target: **29 seconds, 1920×1080, 30 fps — 870 frames**. The narration, revised on 15 November for the app at `09b25a0`, contains **47 words**, and is authorized for this assembly. The collected speech lasts 23.36 seconds; place its five lines at 2.3, 6.3, 12, 17 and 22.5 seconds within the 29-second film.
+Editing target: **29 seconds, 1920×1080, 30 fps — 870 frames**. The narration, revised on 15 November with the supplied correction recording, contains **47 words**, and is authorized for this assembly. The selected speech lasts 22.64 seconds; place its five lines at 2.3, 6.3, 12, 17 and 22.5 seconds within the 29-second film.
 
 ## Storyboard
 
