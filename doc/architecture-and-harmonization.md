@@ -88,7 +88,7 @@ Separate regularized logistic regressions used five folds of held-out 5° geogra
 
 Pinned details can show a warning for a solo detection when an eligible, settled pass by another satellite in the same family has no matching detection. The note highlights matching baseline associations using land cover or first-detection FRP and predicted distance to the second ground track. It gives no per-spot probability. The timeline uses the current map selection to see whether a pass has a match, so its results can differ from the dataset's fixed-radius groups.
 
-**Important retraining follow-up.** When the parallel enrichment work is available, retrain the MODIS and VIIRS baselines separately. Compare the original and enriched feature sets on the same eligible rows and geographic folds, then check improvement on additional held-out days. Report AUROC, average precision and log loss by family, along with feature ablations and enrichment coverage. Use the comparison to decide whether the pinned outlook should change.
+**Retraining follow-up.** The [weather comparison](#what-weather-adds-to-the-prediction) uses the same cases and geographic folds with and without weather. Repeat it on additional held-out days and check source publication times before recalibrating the expected-detection warning.
 
 ## Cross-family second-pass baseline
 
@@ -129,9 +129,33 @@ The FRP baseline used 15,869 matched pairs from the same 24-hour production snap
 | MODIS → VIIRS | 1,546 | −8.7 MW | 19.1 MW | 3.0 MW |
 | VIIRS → MODIS | 2,315 | +5.9 MW | 24.4 MW | 23.2 MW |
 
-First-detection FRP and brightness were the strongest feature group in all four directions. For MODIS → VIIRS, a median shift alone reached 5.2 MW MAE. The full VIIRS → MODIS model improved MAE by about 5% over no change. The measured differences combine changes at the fire with differences in sensor footprint and viewing geometry. The experiment used one day and the existing snapshot features. Weather enrichment remains an open comparison.
+First-detection FRP and brightness were the strongest feature group in all four directions. For MODIS → VIIRS, a median shift alone reached 5.2 MW MAE. The full VIIRS → MODIS model improved MAE by about 5% over no change. The measured differences combine changes at the fire with differences in sensor footprint and viewing geometry. The experiment used one day and the existing snapshot features. The [follow-up weather comparison](#what-weather-adds-to-the-prediction) tested the effect of adding weather to those inputs.
 
 For a pinned solo detection, the UI can display the estimated FRP and signed difference for the next predicted pass by a different spacecraft, conditional on a matching detection. It uses the direction-specific fitted coefficients and the same follow-up window as training. The original FIRMS FRP remains visible under the estimate and in the detection timeline.
+
+## What weather adds to the prediction
+
+When a second satellite flies past a hotspot, we ask two questions. Will it report a thermal detection close enough to match the first one? If it does, how much fire radiative power (FRP) will it report? Imagine two satellites looking at a fire from opposite sides of a valley. Their instruments can sample different amounts of hot ground, and the fire can change in between. A missing match records what FIRMS reported for that predicted pass. Clouds, smoke, changing fire activity, and a predicted viewing footprint that misses its mark can all produce the same result.
+
+### How the models turn readings into a prediction
+
+- **Detection.** The model groups each reading into a range, such as a ground track within 100 km or a first detection between 20 and 50 MW. It learns a weight for each range and adds the applicable weights to a starting value. The sum is the log of the detection odds, where odds are `p / (1 − p)`. The weather comparison fits two models to the same cases. The odds multiplier shown in the panel is `exp(score with weather − score without weather)`. A multiplier of 1.5 means the weather model gave 50% higher odds than that study's baseline. It is a relative comparison, so the existing [70% VIIRS warning](#expected-detection-with-no-match) still uses its original calibrated score and matching rules.
+- **FRP if detected.** The regression learns `r = log((1 + second FRP) / (1 + first FRP))`, with FRP entered in MW. On that scale, doubling and halving the shifted reading are equally large changes in opposite directions. The model limits the influence of unusually large discrepancies during fitting. The UI turns the prediction back into MW with `max(0, (1 + first FRP) × exp(r) − 1)` and subtracts the original FRP to show the signed difference. Training and evaluation use passes where both satellites reported a match.
+
+### What improved on the same held-out passes
+
+Each comparison trained with and without the weather source using the same cases and held out the same 5° geographic blocks. This helps test whether a result travels to a region the model has not seen. The export deliberately balanced detections and misses. It covers one day, so these scores describe ranking within the study sample. AUROC measures how often the model ranks a detected pass above a missed one. FRP mean absolute error is the typical size of the error averaged across matched cases, in MW.
+
+| Added weather source | Direction and held-out cases | Detection AUROC | FRP mean absolute error |
+| --- | --- | ---: | ---: |
+| Copernicus GWIS fire weather | MODIS → MODIS, 172 passes and 87 matched pairs | 0.597 → 0.669 | 12.91 → 9.86 MW |
+| CAMS aerosols | VIIRS → VIIRS, 191 passes and 95 matched pairs | 0.652 → 0.696 | 3.10 → 3.49 MW |
+
+For MODIS → MODIS, the GWIS model uses the day's Fire Weather Index, fine-fuel moisture code, drought code, and forecast lightning density. Those fields describe how readily fuels may dry and burn, which can help contextualize two passes hours apart. Pinned details use the GWIS model for detection odds and conditional FRP when those fields are available.
+
+For VIIRS → VIIRS, the CAMS model uses aerosol optical depth, dust, fine particles, and carbon monoxide. These fields describe material in the air around the first observation. They helped sort detections from misses on the held-out cases. The panel uses CAMS for detection odds and keeps the existing VIIRS FRP forecast, which had the lower error in this comparison.
+
+Across all four directions, the acquisition-time GFS fields alone increased FRP error and showed no reliable improvement in detection AUROC. GOES cloud and infrared gave mixed results, and the soil-moisture and fuel-moisture products had smaller eligible samples. The displayed weather adjustments use available GWIS or CAMS fields matched to the first observation. Their publication times were unavailable in this export, so the one-day study measured retrospective performance. See [weather source coverage and timing](./live-hotspot-weather-enrichment.md) for how acquisition-time samples are selected.
 
 ## Live hotspot weather enrichment
 
