@@ -2,9 +2,9 @@
 
 [Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](../working/form-fields.md) · [Formal requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
 
-**Challenge:** Harmonization of MODIS and VIIRS Hot Spots · **Team:** `[team name]` · **Version described:** commit `c73d0b5`, 15 November 2026 · **App:** [avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0) · **Code:** [github.com/avbelkin/nasa-space-apps-sg](https://github.com/avbelkin/nasa-space-apps-sg)
+**Challenge:** Harmonization of MODIS and VIIRS Hot Spots · **Team:** Plush — Alexey Belkin, Viktoriia Naiman · **Version described:** commit `c73d0b5`, 15 November 2026 · **App:** [avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0) · **Code:** [github.com/avbelkin/nasa-space-apps-sg](https://github.com/avbelkin/nasa-space-apps-sg)
 
-This note answers the questions the demo and the project page leave open: what exactly is computed, from which data, how it was checked, and what is still a plan. Draft: replace the text in `[square brackets]`.
+This note answers the questions the demo and the project page leave open: what exactly is computed, from which data, how it was checked, and what is still a plan. Status: prototype documentation; reproduction and rights limitations are explicit below.
 
 ## 1. Summary and status
 
@@ -41,7 +41,7 @@ One snapshot of the app's feed, fetched on 15 November 2026 at 08:36:16 UTC, win
 | Day / night | 5,893 / 2,234 | 58,198 / 21,151 |
 | Median FRP per detection | 14.5 MW | 5.6 MW |
 
-VIIRS reported 9.8 times more detections than MODIS, and its typical detection was weaker. Both follow from the pixel size: a 375 m pixel resolves smaller and cooler fires, and one MODIS pixel can cover several VIIRS detections. These are counts of hot pixels per satellite pass, not of fires; the ratio is for this day only and varies by region, season and time of day (see the [literature review](modis-viirs-harmonization-literature-review.md), §1–§3).
+VIIRS reported 9.8 times more detections than MODIS, and its typical detection was weaker. Smaller pixels and different sensitivity are important contributors: a 375 m pixel can resolve smaller fires, and one MODIS pixel can cover several VIIRS detections. This one-day comparison also mixes observation timing, coverage and processing effects; it does not isolate the contribution of pixel size. These are counts of hot pixels per satellite pass, not of fires; the ratio is for this day only and varies by region, season and time of day (see the [literature review](modis-viirs-harmonization-literature-review.md), §1–§3).
 
 ## 3. System overview
 
@@ -145,7 +145,7 @@ The interface shows 23 of these fields in the **Weather at acquisition** table a
 
 ## 6. First baselines on matched passes
 
-These are first reference scores, fitted offline on one snapshot of the app's feed: 14 November 2026, 10:10 UTC – 15 November, 10:10 UTC. They use the detection attributes, the estimated geometry and the land cover; weather is not among the features yet. All models were evaluated on five folds of held-out 5° geographic blocks. `[The fitting scripts are not in the repository: add them, or say where they are.]`
+These are first reference scores, fitted offline on one snapshot of the app's feed: 14 November 2026, 10:10 UTC – 15 November, 10:10 UTC. They use the detection attributes, the estimated geometry and the land cover; weather is not among the features yet. All models were evaluated on five folds of held-out 5° geographic blocks. The fitting scripts and full frozen training input are not distributed in this repository. Published coefficients support inference, but the reported training and evaluation cannot yet be reproduced independently from this submission.
 
 **Will the next pass miss?** The target is an inferred miss: a later predicted pass, within six hours, by another satellite with no FIRMS detection within ±25 minutes and within 1 km of a MODIS anchor or 500 m of a VIIRS anchor (1 km in the cross-family case). Passes still inside the match window or the expected publication delay are excluded. One regularized logistic regression per row:
 
@@ -167,7 +167,7 @@ Examples of the associations the app quotes: after a VIIRS detection of 2–5 MW
 | MODIS → MODIS | 2 | 2 | 75.9% | 0% |
 | VIIRS → MODIS | 0 | 0 | — | — |
 
-The flag is limited to NOAA-20 and NOAA-21: VIIRS → VIIRS is the only direction with many high-scoring passes and a mean score close to the observed rate. Widening the match radius from 500 m to 1 km recovered 208 of the 420 high-scoring misses, so the app checks for a match within 1 km before showing the flag; the model itself was fitted on the 500 m labels. The app uses coefficients fitted on the full snapshot and a calibration curve fitted to its out-of-fold scores (`ui/src/data/viirs-detection-model.json`).
+The flag is limited to NOAA-20 and NOAA-21: VIIRS → VIIRS is the only direction with many high-scoring passes and a mean score close to the observed rate. Widening the match radius from 500 m to 1 km recovered 208 of the 420 high-scoring misses, so the app checks for a match within 1 km before showing the flag; the model itself was fitted on the 500 m labels. The table therefore evaluates a different matching event from the deployed 1 km screen. Its calibration does not establish a probability of a detection within 1 km. Until that event is evaluated and recalibrated on held-out days, the displayed value is only an experimental model score. The app uses coefficients fitted on the full snapshot and a calibration curve fitted to its out-of-fold scores (`ui/src/data/viirs-detection-model.json`).
 
 **How does FRP differ on the next pass?** 15,869 matched pairs from the same snapshot. The target is the second detection's FRP minus the first. Each direction has its own L2-regularized Huber regression on the difference of log-transformed FRP, converted back to MW. Features, all in bands: the first detection's FRP, brightness temperature and confidence; time between the passes; distance to the second ground track and a nadir flag; off-nadir angle, glint angle, day or night, Sun and Moon elevation; land-cover class; the satellite pair.
 
@@ -208,7 +208,7 @@ Apart from the baselines in section 6, nothing in this section is implemented.
 - Hide one sensor during the overlap years and reconstruct it from the other.
 - Hold out whole years and a contrasting region.
 - Compare with simple baselines: no adjustment, and one global scale factor.
-- `[Draft pass criteria, to be fixed before the archive is processed: lower error than both baselines on the held-out years and region; no step at the start of VIIRS larger than the year-to-year variation before it; the land-cover term kept only if it lowers the held-out error.]`
+- Proposed pass criteria, to be fixed before the archive is processed: lower error than both baselines on the held-out years and region; no step at the start of VIIRS larger than the year-to-year variation before it; the land-cover term kept only if it lowers the held-out error.
 
 **If calibration fails,** the app will show each sensor separately and label the combined view experimental.
 
@@ -227,7 +227,7 @@ The data constraints behind this plan and the design decisions for the measure, 
 
 ## 9. Verification
 
-- **Automated tests:** 49 backend test methods (90 test cases, xUnit) and 112 interface test cases (Node test runner). They cover FIRMS CSV parsing and confidence normalization, the orbit, swath and geometry calculations, land-cover footprint sampling including tile edges and the antimeridian, each weather sampler against recorded fixtures, global GRIB2 complex-packing decoding and regional tile slicing, `.idx` byte-range selection, the weather grid cache and the local worker's batch planning, the enriched-feed endpoint, and the interface's grouping, timeline, unmatched-pass notes, expected-detection flag, FRP estimate, rain-layer refresh, enrichment-progress and URL-state logic. The interface suite was run on 15 November 2026 at 12:08 UTC on `c73d0b5`: 112 passed, 0 failed. `[Run the backend suite on the submitted commit and record the result here.]`
+- **Automated tests:** 49 backend test methods (90 test cases, xUnit) and 112 interface test cases (Node test runner). They cover FIRMS CSV parsing and confidence normalization, the orbit, swath and geometry calculations, land-cover footprint sampling including tile edges and the antimeridian, each weather sampler against recorded fixtures, global GRIB2 complex-packing decoding and regional tile slicing, `.idx` byte-range selection, the weather grid cache and the local worker's batch planning, the enriched-feed endpoint, and the interface's grouping, timeline, unmatched-pass notes, expected-detection flag, FRP estimate, rain-layer refresh, enrichment-progress and URL-state logic. The interface suite was run on 15 November 2026 at 12:08 UTC on `c73d0b5`: 112 passed, 0 failed. The backend suite has not been rerun for this audit: this machine has no discoverable .NET SDK. Historical counts are not a passing result for the submitted commit.
 - **Build:** GitHub Actions builds the service in Release mode and the interface on every push. The interface deployment of `c73d0b5`, started on 15 November 2026 at 12:06 UTC, completed successfully. The service was last deployed from `4686c3c` at 12:06 UTC, also successfully; its code has not changed since.
 - **Live check:** on 15 November 2026 at 08:36 UTC, on the earlier version `82f1a17`, the public app returned HTTP 200, the service reported healthy, and the feed returned the snapshot in section 2. Repeated on `75f89b8` at 11:13 UTC: the app and the feed returned HTTP 200; the feed held 85,032 detections (MODIS 9,063, VIIRS 75,969) with geometry ready for all of them, background weather checked for 64 of the 512 target locations and still running, and 3,121 shared weather grids. Repeated on `c73d0b5` at 12:10 UTC, two minutes after the service was redeployed: the app, the service health check and the feed returned HTTP 200; the feed held 69,890 detections (MODIS 8,951, VIIRS 60,939); geometry, land cover and weather were still pending on the new instance, as described in section 8; the shared cache held 12,582 weather grids.
 - **Not verified:** the estimated view angles against the instruments' own geolocation products; the weather samples against station observations; the baselines of section 6 on any day other than the one they were fitted on; any harmonization result, because none exists yet.
@@ -251,8 +251,10 @@ The baseline scores in section 6 are recorded in the same document. The fitted F
 
 ## 11. Data, licences and AI use
 
-All data sources, software components and their licences are listed in the [project page text, field 8](project-description.md#8-space-agency-partner-data-and-other-references); NASA data and its role in [field 7](project-description.md#7-nasa-data).
+The [third-party rights register](third-party-rights.md) identifies verified licences and unresolved release blockers; the [software inventory](software-licenses.md) lists every UI lockfile dependency. The [project page text, field 8](project-description.md#8-space-agency-partner-data-and-other-references) summarizes references; NASA data and its role in [field 7](project-description.md#7-nasa-data).
 
-AI coding assistants (`[Anthropic Claude Code, OpenAI Codex — confirm the list]`) were used to write and review code and to draft documentation, including this note. The app makes no calls to AI services and shows no generated text or images. It does contain two small statistical models from section 6, fitted on FIRMS data and evaluated in the browser: the FRP regression and the VIIRS detection-score logistic regression. The idea, the hypothesis and the decisions on what to build are the team's.
+AI coding assistants (Anthropic Claude Code and OpenAI Codex) were used to write and review code and to draft documentation, including this note. The app makes no calls to AI services for inference. It evaluates team-fitted statistical models locally; the link preview is an original labelled code-rendered diagram with machine-readable provenance. It does contain two small statistical models from section 6, fitted on FIRMS data and evaluated in the browser: the FRP regression and the VIIRS detection-score logistic regression. Team Plush (Alexey Belkin and Viktoriia Naiman) confirms ownership of the idea and that application development began after the hackathon start; pre-event work consisted of collecting and studying research.
 
 Independent project built for the 2026 NASA Space Apps Challenge. Not affiliated with or endorsed by NASA.
+
+Model estimates are outputs of Earth Fire Calendar, not NASA products. NASA has not reviewed or validated them and is not responsible for their accuracy.
