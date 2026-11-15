@@ -216,7 +216,8 @@ internal sealed class FirmsClient(
         bool includeGeometry = false,
         bool enrichLandCover = false,
         bool enrichGeometry = false,
-        DeferredHotspotWeather? weatherEnrichment = null)
+        DeferredHotspotWeather? weatherEnrichment = null,
+        bool enrichWeather = false)
     {
         var windowHours = Math.Clamp(hours ?? DefaultLiveWindowHours, 1, 48);
         var dayRange = windowHours <= 24 ? 2 : 3;
@@ -237,7 +238,7 @@ internal sealed class FirmsClient(
             if (!landCoverResult.Pending)
                 cache.Set(responseCacheKey, cachedResponse, LiveResponseCacheDuration);
         }
-        var weatherProgress = weatherEnrichment?.ObserveAsync(cachedResponse.Selected, DateTimeOffset.UtcNow, cancellationToken);
+        var weatherProgress = weatherEnrichment?.ObserveAsync(cachedResponse.Selected, DateTimeOffset.UtcNow, enrichWeather, cancellationToken);
         var geometry = await geometryWorker.ObserveAsync(
             snapshot.Spots, cachedResponse.Selected, includeGeometry || enrichGeometry, cancellationToken).ConfigureAwait(false);
         var liveResponse = cachedResponse.Response;
@@ -257,7 +258,9 @@ internal sealed class FirmsClient(
         {
             Geometry = includeGeometry ? geometry : null,
             GeometryStatus = geometry?.Status ?? (rows.Count == 0 ? "ready" : "pending"),
+            GeometryProgress = geometryWorker.GetProgress(snapshot.Spots, cachedResponse.Selected),
             Weather = weatherProgress is null ? null : await weatherProgress.ConfigureAwait(false),
+            IncludeWeatherInEnrichmentStatus = enrichWeather,
         };
     }
 

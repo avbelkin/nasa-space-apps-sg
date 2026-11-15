@@ -47,10 +47,9 @@ import {
 import { formatRainLookbackLabel, type RainLayerMetadata } from './utils/rainCloudShader'
 import { readPinnedFireGeometry } from './utils/fireObservationGeometry'
 import { buildSatelliteOverpassIndex } from './utils/satelliteOverpassTimeline'
+import { fireEnrichmentDelay, fireEnrichmentProgressKey } from './state/fireEnrichment'
 
 const FIRES_REFRESH_INTERVAL_MS = 15 * 60 * 1000
-const FIRE_ENRICHMENT_DELAY_MS = 10_000
-const MAX_FIRE_ENRICHMENT_PASSES_PER_REFRESH = 3
 const FOCUS_ZOOM = 3.6
 const EMPTY_SATELLITES: readonly SatelliteOrbit[] = []
 
@@ -126,7 +125,7 @@ function App() {
   }, [showOrbits])
 
   const [fireSpotsPayload, setFireSpotsPayload] = useState<FirmsLiveSpotsResponse | null>(null)
-  const [fireEnrichmentStopped, setFireEnrichmentStopped] = useState(false)
+  const [fireEnrichmentCheck, setFireEnrichmentCheck] = useState<{ checkedAt: number; delayed: boolean } | null>(null)
   const [fireSpotsLoading, setFireSpotsLoading] = useState<boolean>(!isProdUnconfigured)
   const [fireSpotsError, setFireSpotsError] = useState<string | null>(null)
 
@@ -262,11 +261,12 @@ function App() {
     let geometryPending = false
     let requestGeometry = false
     let weatherPending = false
-    let enrichmentPasses = 0
+    let unchangedChecks = 0
+    let lastProgress = ''
 
     const scheduleFireEnrichment = () => {
       if ((!landCoverPending && !geometryPending && !weatherPending) || enrichmentInProgress || enrichmentTimer !== undefined ||
-          enrichmentPasses >= MAX_FIRE_ENRICHMENT_PASSES_PER_REFRESH || document.visibilityState === 'hidden') {
+          document.visibilityState === 'hidden') {
         return
       }
       const refreshId = firesRefreshId
@@ -274,7 +274,6 @@ function App() {
         enrichmentTimer = undefined
         if (controller.signal.aborted || document.visibilityState === 'hidden') return
 
-        enrichmentPasses++
         enrichmentInProgress = true
         try {
           const data = await fetchLiveFireSpots(apiBaseUrl, controller.signal, {
@@ -287,23 +286,23 @@ function App() {
             landCoverPending = data.landCoverPending === true
             geometryPending = data.geometryStatus === 'pending'
             weatherPending = data.weather?.status === 'pending'
-            setFireEnrichmentStopped(
-              (landCoverPending || geometryPending || weatherPending) && enrichmentPasses >= MAX_FIRE_ENRICHMENT_PASSES_PER_REFRESH,
-            )
+            const progress = fireEnrichmentProgressKey(data)
+            unchangedChecks = lastProgress === progress ? unchangedChecks + 1 : 0
+            lastProgress = progress
+            setFireEnrichmentCheck({ checkedAt: Date.now(), delayed: unchangedChecks >= 3 &&
+              (landCoverPending || geometryPending || weatherPending) })
           }
         } catch {
           // Keep the working fire feed when a deferred request fails.
           if (!controller.signal.aborted && refreshId === firesRefreshId) {
-            landCoverPending = false
-            geometryPending = false
-            weatherPending = false
-            setFireEnrichmentStopped(true)
+            unchangedChecks = Math.max(3, unchangedChecks + 1)
+            setFireEnrichmentCheck((previous) => previous ? { ...previous, delayed: true } : previous)
           }
         } finally {
           enrichmentInProgress = false
           if (!controller.signal.aborted) scheduleFireEnrichment()
         }
-      }, FIRE_ENRICHMENT_DELAY_MS)
+      }, fireEnrichmentDelay(unchangedChecks))
     }
 
     const refreshFires = () => {
@@ -314,17 +313,19 @@ function App() {
       geometryPending = false
       requestGeometry = false
       weatherPending = false
-      enrichmentPasses = 0
+      unchangedChecks = 0
+      lastProgress = ''
 
       void fetchLiveFireSpots(apiBaseUrl, controller.signal).then(
         (data) => {
           if (!controller.signal.aborted && refreshId === firesRefreshId) {
             applyFiresSuccess(data)
-            setFireEnrichmentStopped(false)
+            setFireEnrichmentCheck({ checkedAt: Date.now(), delayed: false })
             landCoverPending = data.landCoverPending === true
             geometryPending = data.geometryStatus === 'pending'
             requestGeometry = geometryPending
-            weatherPending = data.count > 0
+            weatherPending = data.weather ? data.weather.status === 'pending' : data.count > 0
+            lastProgress = fireEnrichmentProgressKey(data)
             scheduleFireEnrichment()
           }
         },
@@ -629,7 +630,7 @@ function App() {
           payload: fireSpotsPayload,
           summary: fireSummary,
           refreshFailed: fireSpotsPayload !== null && fireSpotsError !== null,
-          enrichmentStopped: fireEnrichmentStopped,
+          enrichmentCheck: fireEnrichmentCheck,
         }}
       />
     </div>

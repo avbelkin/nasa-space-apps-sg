@@ -184,13 +184,17 @@ public sealed record FirmsLiveSpotsResponse(
     public HotspotGeometryBatch? Geometry { get; init; }
 
     public string GeometryStatus { get; init; } = "pending";
+    public HotspotGeometryProgress? GeometryProgress { get; init; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public HotspotWeatherProgress? Weather { get; init; }
+    [JsonIgnore]
+    internal bool IncludeWeatherInEnrichmentStatus { get; init; }
 
-    public string EnrichmentStatus => LandCoverPending || GeometryStatus == "pending" || Weather?.Status == "pending"
+    public string EnrichmentStatus => LandCoverPending || GeometryStatus == "pending" ||
+        (IncludeWeatherInEnrichmentStatus && Weather?.Status == "pending")
         ? "pending"
-        : GeometryStatus == "ready" && Weather?.Status != "partial" ? "complete" : "incomplete";
+        : GeometryStatus == "ready" && (!IncludeWeatherInEnrichmentStatus || Weather?.Status != "partial") ? "complete" : "incomplete";
 }
 
 public sealed record FirmsGeoJsonPointGeometry(

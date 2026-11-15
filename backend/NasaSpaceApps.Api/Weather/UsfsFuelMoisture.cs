@@ -11,6 +11,7 @@ internal sealed class UsfsFuelMoisture(IHttpClientFactory clients, IMemoryCache 
     private const string ZoneName = "America/Denver";
     private const int Width = 576;
     private const int Height = 243;
+    private static readonly TimeSpan GridLifetime = TimeSpan.FromMinutes(30);
     private static readonly TimeZoneInfo ProductZone = TimeZoneInfo.FindSystemTimeZoneById(ZoneName);
     private static readonly int[] Periods = [10, 100, 1000];
     private static readonly (string Suffix, string Kind, int DayOffset)[] Products =
@@ -34,7 +35,7 @@ internal sealed class UsfsFuelMoisture(IHttpClientFactory clients, IMemoryCache 
             catch (OperationCanceledException) when (!token.IsCancellationRequested)
             {
                 if (cache.TryGetValue<Frame[]>(HttpClientName, out var retained) && retained is not null)
-                    frames = retained;
+                    frames = retained.Where(frame => IsRecent(frame, DateTimeOffset.UtcNow)).ToArray();
                 reachable = false;
             }
         }
@@ -45,7 +46,7 @@ internal sealed class UsfsFuelMoisture(IHttpClientFactory clients, IMemoryCache 
     {
         var refreshed = cache.TryGetValue((HttpClientName, "refreshed"), out _);
         cache.TryGetValue<Frame[]>(HttpClientName, out var previous);
-        if (refreshed && previous is not null) return (previous, true);
+        if (refreshed && previous is not null) return (previous.Where(frame => IsRecent(frame, DateTimeOffset.UtcNow)).ToArray(), true);
 
         using var http = clients.CreateClient(HttpClientName);
         var result = await Task.WhenAll(Products.Select(async product =>
@@ -60,7 +61,7 @@ internal sealed class UsfsFuelMoisture(IHttpClientFactory clients, IMemoryCache 
                 if (available.Any(layer => ProductDate(layer.Modified) != ProductDate(revision) || layer.Grid != grid ||
                     revision - layer.Modified > TimeSpan.FromMinutes(2)))
                     throw new InvalidDataException("WFAS fuel moisture revisions or grids disagree.");
-                return (Frame: new Frame(ProductDate(revision).AddDays(product.DayOffset), revision, product.Kind, grid, layers),
+                return (Frame: new Frame(ProductDate(revision).AddDays(product.DayOffset), revision, product.Kind, grid, layers, DateTimeOffset.UtcNow),
                     Reachable: true);
             }
             catch (Exception error) when (!token.IsCancellationRequested && error is
@@ -72,12 +73,14 @@ internal sealed class UsfsFuelMoisture(IHttpClientFactory clients, IMemoryCache 
             }
         })).ConfigureAwait(false);
 
+        var now = DateTimeOffset.UtcNow;
         var frames = result.Select(record => record.Frame).OfType<Frame>().Concat(previous ?? [])
+            .Where(frame => IsRecent(frame, now))
             .OrderByDescending(frame => frame.Revision)
             .DistinctBy(frame => (frame.Date, frame.Kind, frame.Revision))
             .Take(9).ToArray();
         var reachable = result.All(record => record.Reachable);
-        cache.Set(HttpClientName, frames, TimeSpan.FromDays(2));
+        cache.Set(HttpClientName, frames, GridLifetime);
         if (reachable) cache.Set((HttpClientName, "refreshed"), true, TimeSpan.FromMinutes(15));
         return (frames, reachable);
 
@@ -133,10 +136,12 @@ internal sealed class UsfsFuelMoisture(IHttpClientFactory clients, IMemoryCache 
     private static bool InRegion(FirmsHotspot spot) =>
         spot.Latitude is >= 24 and <= 50 && spot.Longitude is >= -125 and <= -67;
 
+    private static bool IsRecent(Frame frame, DateTimeOffset now) => now - frame.FetchedAt < GridLifetime;
+
     private sealed record Raster((double West, double North, double Step) Grid, DateTimeOffset Modified, float[] Values);
 
     private sealed record Frame(DateOnly Date, DateTimeOffset Revision, string Kind,
-        (double West, double North, double Step) Grid, Raster?[] Rasters)
+        (double West, double North, double Step) Grid, Raster?[] Rasters, DateTimeOffset FetchedAt)
     {
         public (int Row, int Col)? FindPixel(double latitude, double longitude)
         {
