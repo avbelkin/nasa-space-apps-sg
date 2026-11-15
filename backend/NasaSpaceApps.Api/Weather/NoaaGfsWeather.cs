@@ -41,6 +41,8 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
     ];
 
     private readonly SemaphoreSlim requests = new(local is null ? 4 : 1);
+    private readonly SemaphoreSlim publicationRequests = new(8);
+    private readonly Dictionary<string, Task<DateTimeOffset?>> inFlightPublications = [];
     private readonly EncodedWeatherGridCache gridCache = grids ?? EncodedWeatherGridCache.Disabled;
     private long lastLocalFetch;
 
@@ -118,42 +120,66 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
         return (west, south, HourFloor(spot.AcquiredAtUtc));
     }
 
+    internal async Task<PublishedFrame?> ResolvePublishedFrameAsync(DateTimeOffset at, DateTimeOffset acquisition,
+        bool snow, CancellationToken token)
+    {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
+        deadline.CancelAfter(TimeSpan.FromSeconds(local is null ? 8 : 45));
+        return await FindPublishedAsync(at, acquisition, snow, uri => ReadPublicationAsync(uri, deadline.Token, token))
+            .ConfigureAwait(false);
+    }
+
     private static async Task<PublishedFrame?> FindPublishedAsync(DateTimeOffset at, DateTimeOffset acquisition, bool snow,
         Func<string, Task<DateTimeOffset?>> read)
     {
         // f000 is an analysis. Hourly forecast hours are indexed from each 6-hour run.
         for (var run = HourFloor(at.AddHours(-1), 6); at - run <= TimeSpan.FromHours(30); run = run.AddHours(-6))
         {
-            var uri = FormattableString.Invariant($"{PublicationBaseUrl}gfs.{run:yyyyMMdd}/{run:HH}/atmos/{Filename(run, at, snow)}");
+            var uri = FormattableString.Invariant($"{PublicationBaseUrl}gfs.{run:yyyyMMdd}/{run:HH}/atmos/{ObjectFilename(run, at, snow)}");
             if (await read(uri).ConfigureAwait(false) is { } published && published >= run && published <= acquisition)
                 return new PublishedFrame(run, published);
         }
         return null;
     }
 
-    private async Task<DateTimeOffset?> ReadPublicationAsync(string uri, CancellationToken deadline, CancellationToken token)
+    private Task<DateTimeOffset?> ReadPublicationAsync(string uri, CancellationToken deadline, CancellationToken token)
     {
-        if (cache.TryGetValue<DateTimeOffset>(uri, out var cached)) return cached;
-        try
+        if (cache.TryGetValue<DateTimeOffset>(uri, out var cached)) return Task.FromResult<DateTimeOffset?>(cached);
+        lock (inFlightPublications)
         {
-            await requests.WaitAsync(deadline).ConfigureAwait(false);
+            if (inFlightPublications.TryGetValue(uri, out var existing)) return existing;
+            var task = FetchPublicationAsync();
+            inFlightPublications[uri] = task;
+            return task;
+        }
+
+        async Task<DateTimeOffset?> FetchPublicationAsync()
+        {
             try
             {
-                if (cache.TryGetValue<DateTimeOffset>(uri, out cached)) return cached;
-                using var http = clients.CreateClient(HttpClientName);
-                using var request = new HttpRequestMessage(HttpMethod.Head, uri);
-                using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, deadline).ConfigureAwait(false);
-                if (!response.IsSuccessStatusCode || response.Content.Headers.LastModified is not { } modified) return null;
-                cache.Set(uri, modified, TimeSpan.FromHours(2));
-                return modified;
+                await publicationRequests.WaitAsync(deadline).ConfigureAwait(false);
+                try
+                {
+                    if (cache.TryGetValue<DateTimeOffset>(uri, out cached)) return cached;
+                    using var http = clients.CreateClient(HttpClientName);
+                    using var request = new HttpRequestMessage(HttpMethod.Head, uri);
+                    using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, deadline).ConfigureAwait(false);
+                    if (!response.IsSuccessStatusCode || response.Content.Headers.LastModified is not { } modified) return null;
+                    cache.Set(uri, modified, TimeSpan.FromHours(2));
+                    return modified;
+                }
+                finally { publicationRequests.Release(); }
             }
-            finally { requests.Release(); }
+            catch (Exception error) when (!token.IsCancellationRequested && error is HttpRequestException or OperationCanceledException)
+            {
+                logger.LogWarning("NOAA model publication was unavailable: {Message}", error.Message);
+                return null;
+            }
+            finally
+            {
+                lock (inFlightPublications) inFlightPublications.Remove(uri);
+            }
         }
-        catch (Exception error) when (!token.IsCancellationRequested && error is HttpRequestException or OperationCanceledException)
-        {
-            if (error is not OperationCanceledException) logger.LogWarning("NOAA model publication was unavailable: {Message}", error.Message);
-        }
-        return null;
     }
 
     private static DateTimeOffset HourFloor(DateTimeOffset time, int step = 1)
@@ -317,7 +343,7 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
 
     internal static string BuildUrl(int west, int south, DateTimeOffset run, DateTimeOffset valid, bool snow)
     {
-        var file = Filename(run, valid, snow);
+        var file = ObjectFilename(run, valid, snow);
         var fields = snow ? "&var_SNOWC=on&lev_surface=on" :
             "&var_HGT=on&var_PRES=on&var_CWAT=on&var_WILT=on&var_FLDCP=on&var_SOILW=on&var_CRAIN=on&var_CFRZR=on&var_CICEP=on&var_CSNOW=on&var_CLWMR=on&var_ICMR=on" +
             "&var_TMP=on&var_DPT=on&var_RH=on&var_UGRD=on&var_VGRD=on&var_GUST=on&var_VIS=on&var_TCDC=on&var_PWAT=on&var_DSWRF=on&var_SNOD=on" +
@@ -329,14 +355,14 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
         return FormattableString.Invariant($"{BaseUrl}{(snow ? "gfs_sflux" : "gfs_0p25")}.pl?dir=%2Fgfs.{run:yyyyMMdd}%2F{run:HH}%2Fatmos&file={file}{fields}&subregion=&leftlon={west}&rightlon={west + TileDegrees}&toplat={south + TileDegrees}&bottomlat={south}");
     }
 
-    private static string Filename(DateTimeOffset run, DateTimeOffset valid, bool snow)
+    internal static string ObjectFilename(DateTimeOffset run, DateTimeOffset valid, bool snow)
     {
         var lead = (int)(valid - run).TotalHours;
         return snow ? FormattableString.Invariant($"gfs.t{run:HH}z.sfluxgrbf{lead:000}.grib2")
             : FormattableString.Invariant($"gfs.t{run:HH}z.pgrb2.0p25.f{lead:000}");
     }
 
-    private sealed record PublishedFrame(DateTimeOffset Run, DateTimeOffset Published);
+    internal sealed record PublishedFrame(DateTimeOffset Run, DateTimeOffset Published);
 
     private async Task<Dictionary<Parameter, Frame>?> LoadAsync(Tile tile, CancellationToken deadline, CancellationToken token)
     {
@@ -344,31 +370,29 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
         if (cache.TryGetValue<Dictionary<Parameter, Frame>>(key, out var cached)) return cached;
         try
         {
-            await requests.WaitAsync(deadline).ConfigureAwait(false);
-            try
-            {
-                if (cache.TryGetValue(key, out cached)) return cached;
-                var url = BuildUrl(tile.West, tile.South, tile.Run, tile.Valid, tile.Snow);
-                var frames = await gridCache.GetAsync(url, tile.Valid.AddHours(25), DownloadAsync, Decode, deadline).ConfigureAwait(false);
-                cache.Set(key, frames, TimeSpan.FromMinutes(20));
-                return frames;
-            }
-            finally { requests.Release(); }
+            var url = BuildUrl(tile.West, tile.South, tile.Run, tile.Valid, tile.Snow);
+            var frames = await gridCache.GetAsync(url, tile.Valid.AddHours(25), DownloadAsync, Decode, deadline).ConfigureAwait(false);
+            cache.Set(key, frames, TimeSpan.FromMinutes(20));
+            return frames;
 
             async Task<EncodedWeatherGrid> DownloadAsync(CancellationToken fetchToken)
             {
-                if (local is not null && lastLocalFetch != 0)
-                {
-                    var remaining = TimeSpan.FromSeconds(10) - Stopwatch.GetElapsedTime(lastLocalFetch);
-                    if (remaining > TimeSpan.Zero) await Task.Delay(remaining, fetchToken).ConfigureAwait(false);
-                }
+                await requests.WaitAsync(fetchToken).ConfigureAwait(false);
                 try
                 {
-                    using var http = clients.CreateClient(HttpClientName);
-                    return await gridCache.DownloadAsync(http, BuildUrl(tile.West, tile.South, tile.Run, tile.Valid, tile.Snow),
-                        512 * 1024, fetchToken).ConfigureAwait(false);
+                    if (local is not null && lastLocalFetch != 0)
+                    {
+                        var remaining = TimeSpan.FromSeconds(10) - Stopwatch.GetElapsedTime(lastLocalFetch);
+                        if (remaining > TimeSpan.Zero) await Task.Delay(remaining, fetchToken).ConfigureAwait(false);
+                    }
+                    try
+                    {
+                        using var http = clients.CreateClient(HttpClientName);
+                        return await gridCache.DownloadAsync(http, url, 512 * 1024, fetchToken).ConfigureAwait(false);
+                    }
+                    finally { if (local is not null) lastLocalFetch = Stopwatch.GetTimestamp(); }
                 }
-                finally { if (local is not null) lastLocalFetch = Stopwatch.GetTimestamp(); }
+                finally { requests.Release(); }
             }
 
             Dictionary<Parameter, Frame> Decode(EncodedWeatherGrid encoded)
@@ -383,7 +407,7 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
         catch (Exception error) when (!token.IsCancellationRequested && error is HttpRequestException or OperationCanceledException or
             IOException or InvalidDataException or ArgumentException or IndexOutOfRangeException or OverflowException)
         {
-            if (error is not OperationCanceledException) logger.LogWarning("NOAA GFS subset was unavailable: {Message}", error.Message);
+            logger.LogWarning("NOAA GFS subset was unavailable: {Message}", error.Message);
             return null;
         }
     }

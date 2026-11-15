@@ -5,7 +5,7 @@ using NasaSpaceApps.Api.Firms;
 namespace NasaSpaceApps.Api.Weather;
 
 internal sealed class UsfsFuelMoisture(IHttpClientFactory clients, IMemoryCache cache, ILogger<UsfsFuelMoisture> logger,
-    EncodedWeatherGridCache? grids = null)
+    EncodedWeatherGridCache? grids = null, LocalWeatherCredentials? local = null)
 {
     public const string HttpClientName = "UsfsFuelMoisture";
     private const string BaseUrl = "https://www.wfas.net/data/Current/";
@@ -27,7 +27,7 @@ internal sealed class UsfsFuelMoisture(IHttpClientFactory clients, IMemoryCache 
         if (spots.Any(spot => spot is not null && InRegion(spot)))
         {
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
-            deadline.CancelAfter(TimeSpan.FromSeconds(9));
+            deadline.CancelAfter(TimeSpan.FromSeconds(local is null ? 9 : 45));
             try
             {
                 await refresh.WaitAsync(deadline.Token).ConfigureAwait(false);

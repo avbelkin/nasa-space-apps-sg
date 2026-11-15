@@ -105,24 +105,37 @@ builder.Services.AddSingleton<ILandCoverEnricher, PlanetaryComputerLandCover>();
 builder.Services.AddHttpClient(OpenMeteoHotspotWeather.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5))
     .RemoveAllLoggers();
 builder.Services.AddSingleton<OpenMeteoHotspotWeather>();
-builder.Services.AddHttpClient(CopernicusFireWeather.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+var weatherHttpTimeout = localWeather is null ? TimeSpan.FromSeconds(5) : TimeSpan.FromSeconds(30);
+builder.Services.AddHttpClient(CopernicusFireWeather.HttpClientName, client => client.Timeout = weatherHttpTimeout);
 builder.Services.AddSingleton<CopernicusFireWeather>();
-builder.Services.AddHttpClient(NoaaWeatherObservations.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddHttpClient(NoaaWeatherObservations.HttpClientName, client => client.Timeout = weatherHttpTimeout);
 builder.Services.AddSingleton<NoaaWeatherObservations>();
-builder.Services.AddHttpClient(NoaaGfsWeather.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddHttpClient(NoaaGfsWeather.HttpClientName, client => client.Timeout = weatherHttpTimeout);
 builder.Services.AddSingleton<NoaaGfsWeather>();
+builder.Services.AddHttpClient(GfsCloudArchive.HttpClientName, client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(60);
+    client.DefaultRequestVersion = HttpVersion.Version20;
+    client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+}).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+{
+    MaxConnectionsPerServer = 16,
+    AutomaticDecompression = DecompressionMethods.None,
+});
+builder.Services.AddSingleton<GfsCloudArchive>();
 builder.Services.AddHttpClient(NoaaGoesWeather.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(6))
     .RemoveAllLoggers();
 builder.Services.AddSingleton<NoaaGoesWeather>();
 builder.Services.AddHttpClient(CopernicusSoilDrought.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(7))
     .RemoveAllLoggers();
 builder.Services.AddSingleton<CopernicusSoilDrought>();
-builder.Services.AddHttpClient(NoaaSoilMoistureAnomaly.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddHttpClient(NoaaSoilMoistureAnomaly.HttpClientName, client => client.Timeout = weatherHttpTimeout);
 builder.Services.AddSingleton<NoaaSoilMoistureAnomaly>();
-builder.Services.AddHttpClient(UsfsFuelMoisture.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddHttpClient(UsfsFuelMoisture.HttpClientName, client => client.Timeout = weatherHttpTimeout);
 builder.Services.AddSingleton<UsfsFuelMoisture>();
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddHttpClient(FirestoreWeatherGridStore.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(4))
+builder.Services.AddHttpClient(FirestoreWeatherGridStore.HttpClientName, client =>
+    client.Timeout = localWeather is null ? TimeSpan.FromSeconds(4) : TimeSpan.FromSeconds(60))
     .RemoveAllLoggers();
 builder.Services.AddHttpClient(FirestoreWeatherGridStore.MetadataHttpClientName, client =>
 {
