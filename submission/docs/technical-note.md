@@ -148,6 +148,8 @@ Nothing in this section is implemented.
 
 **If calibration fails,** the app will show each sensor separately and label the combined view experimental.
 
+The data constraints behind this plan and the design decisions for the measure, the reference scale and the calendar are in the [design notes](harmonization-design-notes.md).
+
 ## 7. Known limitations
 
 - **Detections are not fires.** A detection is a thermal anomaly in one pixel on one pass. Gas flares, volcanoes and industrial sources are in the feed; the live FIRMS records carry no type flag, and the app does not filter them.
