@@ -83,6 +83,30 @@ The goal, according to the guide, is to quickly convey the importance and releva
 7. **Subtitles are proofread.** In the PureFlow video the name DONKI turned into "donkey". FIRMS, MODIS and VIIRS get mangled just as easily.
 8. **After the first viewing, the viewer can answer four questions:** what the problem is, what was built, what result is visible and why NASA data is needed.
 
+### A structure to check the pitch against
+
+From the same review. It is a checklist for the argument, not a mandatory seven-slide template.
+
+| Part | Question it answers | Minimal evidence |
+|---|---|---|
+| Problem | Who is affected, where, and which decision is difficult? | One named user situation and a sourced baseline |
+| Contribution | What is different about the proposed approach? | One explained transformation or design choice |
+| Demonstration | What enters, what happens, what comes out? | One readable example with input and output |
+| Validity | Why should the result be trusted within its scope? | A control, comparison or explicit constraint; a known failure mode |
+| NASA relevance | What part of the value depends on these resources? | The exact dataset, tool or resource and its role |
+| Impact and next step | Who acts on the result, and what remains to be shown? | An adoption path and a clearly labelled future test |
+
+How the winners' decks carried such an argument:
+
+| Approach | Example | What to take |
+|---|---|---|
+| A user scenario leads to the product | Twisters, slides 1–6 | Begin with a specific decision the user has to make; show the result before listing further capabilities; label an invented dialogue as an illustration |
+| The deck answers the judging questions | Resonant Exoplanets, slides 2–7 | Impact, Creativity, Validity, Relevance and Results as a sequence of questions; the slides need not be named after the criteria |
+| A social purpose backed by architecture | AakashNet, slides 2–7 | The people and their constraint first, then one system diagram; detailed cost tables go to supporting material |
+| A technical result connected to adoption | Astro Sweepers, slides 4–7 | Keep one worked case and the person acting on it central; the full business model stays behind the short argument |
+
+Choosing the form: if the result is visible through an interaction, show the interaction; if the achievement is reasoning about a system, use one diagram and one worked scenario; if local action is central, show the place, the decision and the intervention.
+
 ### Other presentation forms among the winners
 
 They are not needed in full for a 30-second Earth Fire Calendar demo, but the techniques carry over to the slides and the project page.
