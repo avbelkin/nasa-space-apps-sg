@@ -261,10 +261,11 @@ function App() {
     let landCoverPending = false
     let geometryPending = false
     let requestGeometry = false
+    let weatherPending = false
     let enrichmentPasses = 0
 
     const scheduleFireEnrichment = () => {
-      if ((!landCoverPending && !geometryPending) || enrichmentInProgress || enrichmentTimer !== undefined ||
+      if ((!landCoverPending && !geometryPending && !weatherPending) || enrichmentInProgress || enrichmentTimer !== undefined ||
           enrichmentPasses >= MAX_FIRE_ENRICHMENT_PASSES_PER_REFRESH || document.visibilityState === 'hidden') {
         return
       }
@@ -279,13 +280,15 @@ function App() {
           const data = await fetchLiveFireSpots(apiBaseUrl, controller.signal, {
             landCover: landCoverPending,
             geometry: requestGeometry,
+            weather: true,
           })
           if (!controller.signal.aborted && refreshId === firesRefreshId) {
             setFireSpotsPayload(data)
             landCoverPending = data.landCoverPending === true
             geometryPending = data.geometryStatus === 'pending'
+            weatherPending = data.weather?.status === 'pending'
             setFireEnrichmentStopped(
-              (landCoverPending || geometryPending) && enrichmentPasses >= MAX_FIRE_ENRICHMENT_PASSES_PER_REFRESH,
+              (landCoverPending || geometryPending || weatherPending) && enrichmentPasses >= MAX_FIRE_ENRICHMENT_PASSES_PER_REFRESH,
             )
           }
         } catch {
@@ -293,6 +296,7 @@ function App() {
           if (!controller.signal.aborted && refreshId === firesRefreshId) {
             landCoverPending = false
             geometryPending = false
+            weatherPending = false
             setFireEnrichmentStopped(true)
           }
         } finally {
@@ -309,6 +313,7 @@ function App() {
       landCoverPending = false
       geometryPending = false
       requestGeometry = false
+      weatherPending = false
       enrichmentPasses = 0
 
       void fetchLiveFireSpots(apiBaseUrl, controller.signal).then(
@@ -319,6 +324,7 @@ function App() {
             landCoverPending = data.landCoverPending === true
             geometryPending = data.geometryStatus === 'pending'
             requestGeometry = geometryPending
+            weatherPending = data.count > 0
             scheduleFireEnrichment()
           }
         },

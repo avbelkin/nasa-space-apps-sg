@@ -101,6 +101,7 @@ export interface FirmsLiveSpotsResponse {
   landCoverPending?: boolean
   geometryStatus?: 'pending' | 'unavailable' | 'ready'
   enrichmentStatus?: 'pending' | 'complete' | 'incomplete'
+  weather?: { status: 'pending' | 'ready' | 'partial'; sampledCount: number; targetCount: number; eligibleCount: number }
 }
 
 export interface FireSpotFeatureProperties {
@@ -254,12 +255,13 @@ export function computeSpatialPhaseCohort(lng: number, lat: number): PhaseCohort
 export async function fetchLiveFireSpots(
   apiBaseUrl: string,
   signal?: AbortSignal,
-  enrichment?: { landCover: boolean; geometry: boolean },
+  enrichment?: { landCover: boolean; geometry: boolean; weather?: boolean },
 ): Promise<FirmsLiveSpotsResponse> {
   const endpoint = apiBaseUrl ? `${apiBaseUrl}/api/fires/spots` : '/api/fires/spots'
   const search = new URLSearchParams({ hours: '24', sensor: 'harmonized' })
   if (enrichment?.landCover) search.set('enrichLandCover', 'true')
   if (enrichment?.geometry) search.set('enrichGeometry', 'true')
+  if (enrichment?.weather) search.set('enrichWeather', 'true')
   const url = `${endpoint}?${search}`
   const response = await fetch(url, {
     headers: { Accept: 'application/json' },

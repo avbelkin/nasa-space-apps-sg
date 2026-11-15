@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
 using NasaSpaceApps.Api.LandCover;
+using NasaSpaceApps.Api.Weather;
 
 namespace NasaSpaceApps.Api.Firms;
 
@@ -10,7 +11,7 @@ namespace NasaSpaceApps.Api.Firms;
 /// Cached NASA FIRMS HTTP client covering MAP_KEY quota status, dataset availability,
 /// and MODIS/VIIRS active-fire area queries with automatic secret redaction.
 /// </summary>
-public sealed class FirmsClient(
+internal sealed class FirmsClient(
     IHttpClientFactory httpClientFactory,
     IMemoryCache cache,
     FirmsOptions options,
@@ -214,7 +215,8 @@ public sealed class FirmsClient(
         CancellationToken cancellationToken = default,
         bool includeGeometry = false,
         bool enrichLandCover = false,
-        bool enrichGeometry = false)
+        bool enrichGeometry = false,
+        DeferredHotspotWeather? weatherEnrichment = null)
     {
         var windowHours = Math.Clamp(hours ?? DefaultLiveWindowHours, 1, 48);
         var dayRange = windowHours <= 24 ? 2 : 3;
@@ -235,6 +237,7 @@ public sealed class FirmsClient(
             if (!landCoverResult.Pending)
                 cache.Set(responseCacheKey, cachedResponse, LiveResponseCacheDuration);
         }
+        var weatherProgress = weatherEnrichment?.ObserveAsync(cachedResponse.Selected, DateTimeOffset.UtcNow, cancellationToken);
         var geometry = await geometryWorker.ObserveAsync(
             snapshot.Spots, cachedResponse.Selected, includeGeometry || enrichGeometry, cancellationToken).ConfigureAwait(false);
         var liveResponse = cachedResponse.Response;
@@ -254,6 +257,7 @@ public sealed class FirmsClient(
         {
             Geometry = includeGeometry ? geometry : null,
             GeometryStatus = geometry?.Status ?? (rows.Count == 0 ? "ready" : "pending"),
+            Weather = weatherProgress is null ? null : await weatherProgress.ConfigureAwait(false),
         };
     }
 
