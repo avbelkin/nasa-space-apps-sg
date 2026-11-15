@@ -1,0 +1,120 @@
+{
+  "capture": "../screenshots/capture-scenes.json",
+  "processing": "Layout crops and resizing only; original capture data is unchanged.",
+  "images": [
+    {
+      "name": "cover-sensors",
+      "original": "cover-sensors.png",
+      "file": "cover-sensors.jpg",
+      "width": 980,
+      "height": 980,
+      "bytes": 247856,
+      "crop": null,
+      "sourceSha256": "38140d0e8ce604c617fae5d1857545f20f27ed3c194ca204917ac651965313a7",
+      "sha256": "582e2871bd7a04368d72dc87b252f61868449a64f03384d25d015e61e9c5f2d3"
+    },
+    {
+      "name": "regional-sensors",
+      "original": "regional-sensors.png",
+      "file": "regional-sensors.jpg",
+      "width": 1800,
+      "height": 1020,
+      "bytes": 686441,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "width": 2948,
+        "height": 1992
+      },
+      "sourceSha256": "0d860bcfadca7a39aab01984cd496dca714c04dcc95c51778e5966045b99ca0d",
+      "sha256": "23f54b6b33dfc2521ceffb30f67af471d61f420857ea3d7c9ba14c002a38b577"
+    },
+    {
+      "name": "step-modis",
+      "original": "step-modis.png",
+      "file": "step-modis.jpg",
+      "width": 860,
+      "height": 390,
+      "bytes": 142988,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "width": 2948,
+        "height": 1992
+      },
+      "sourceSha256": "6692546a94461bc2a743ee4fa73979c645539cd17c9b9f68d3b3dc70855f036d",
+      "sha256": "ead5dcbdb259884ef089b360b8d32db8c32534a033525d9fd960386e2bd83a2e"
+    },
+    {
+      "name": "step-viirs",
+      "original": "step-viirs.png",
+      "file": "step-viirs.jpg",
+      "width": 860,
+      "height": 390,
+      "bytes": 164915,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "width": 2948,
+        "height": 1992
+      },
+      "sourceSha256": "112707435bf1b8138b27b61b62b5da0284bcc207f1000348bd6b128c458861c7",
+      "sha256": "5a12e5c9b01b17fe7740337c07ee2e7085d04a7978977f3d8eb3afcf6efed1ef"
+    },
+    {
+      "name": "pinned-summary",
+      "original": "pinned-summary.png",
+      "file": "pinned-summary.png",
+      "width": 1280,
+      "height": 126,
+      "bytes": 21387,
+      "crop": null,
+      "sourceSha256": "da9d62f7344f1594dd3ef7bd9c36835a3ebe53bde4f145fa071a3970b3dab574",
+      "sha256": "cd6dd42031f6574f77b8c9cbc7c1871a6304d0a305a649e8a213b78ba5c7a774"
+    },
+    {
+      "name": "pinned-timeline",
+      "original": "pinned-timeline.png",
+      "file": "pinned-timeline.png",
+      "width": 1280,
+      "height": 292,
+      "bytes": 53910,
+      "crop": null,
+      "sourceSha256": "c771f1a1f94e0c19ec7cebcac070445545318ed2ee44567cc3a8cd0137043c74",
+      "sha256": "41eb42638981770e5ebabf220d2d9aadccfcbc17b9be5e63169d3079aa503b04"
+    },
+    {
+      "name": "pinned-geometry",
+      "original": "pinned-geometry.png",
+      "file": "pinned-geometry.png",
+      "width": 1280,
+      "height": 276,
+      "bytes": 31983,
+      "crop": null,
+      "sourceSha256": "e8a25cab518b7ef7307431d51961b0e78b53c4e73bdaff1f185cb2f7038d0e70",
+      "sha256": "6bafa1337410272957aebc3ab2397d984c21c41673691b7d0adc014cfbf6314e"
+    },
+    {
+      "name": "pinned-weather",
+      "original": "pinned-weather.png",
+      "file": "pinned-weather.png",
+      "width": 1280,
+      "height": 546,
+      "bytes": 69463,
+      "crop": null,
+      "sourceSha256": "3ee874b0ff5ee00a217407643bcc6adfbe67a5da294d0d58f38e964215690005",
+      "sha256": "1af9ded895488b70f60a629ec813d37ba1f4c47a53608155e83e7b7e85004c63"
+    },
+    {
+      "name": "sensor-key",
+      "original": "sensor-key.png",
+      "file": "sensor-key.png",
+      "width": 617,
+      "height": 120,
+      "bytes": 28568,
+      "crop": null,
+      "sourceSha256": "af8ecd4c1ef017ea02f356452271be2da8312d8cbf65cf8bb212d40cc6c5e6b9",
+      "sha256": "dfc2489067d9c74de5cdc809f26ea122ad88dfe7dd712d9919c521a3bcb826a4"
+    }
+  ]
+}
