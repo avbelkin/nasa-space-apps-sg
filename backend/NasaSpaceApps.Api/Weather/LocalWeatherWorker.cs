@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Threading.Channels;
 using NasaSpaceApps.Api.Firms;
 
 namespace NasaSpaceApps.Api.Weather;
@@ -20,11 +22,12 @@ internal sealed class LocalWeatherCredentials(string project, string database)
     internal void Update(string accessToken) => Volatile.Write(ref token, accessToken.Trim());
 }
 
-internal sealed class LocalWeatherWorker(FirmsClient firms, DeferredHotspotWeather sampler,
+internal sealed class LocalWeatherWorker(FirmsClient firms, NoaaGfsWeather forecasts, CopernicusFireWeather fireWeather,
+    NoaaSoilMoistureAnomaly anomaly, UsfsFuelMoisture fuel,
     LocalWeatherCredentials credentials, TimeProvider clock, ILogger<LocalWeatherWorker> logger)
 {
     private static readonly TimeSpan ScanInterval = TimeSpan.FromMinutes(2);
-    private readonly Dictionary<GridWorkKey, DateTimeOffset> nextChecks = [];
+    private static readonly TimeSpan RetryInterval = TimeSpan.FromMinutes(2);
 
     internal async Task RunAsync()
     {
@@ -41,16 +44,16 @@ internal sealed class LocalWeatherWorker(FirmsClient firms, DeferredHotspotWeath
             logger.LogInformation("Local weather worker started for {Project}/{Database}.", credentials.Project, credentials.Database);
             try
             {
-                while (!token.IsCancellationRequested)
-                {
-                    try { await ScanAsync(token).ConfigureAwait(false); }
-                    catch (Exception error) when (!token.IsCancellationRequested && error is HttpRequestException or IOException or
-                        System.Text.Json.JsonException or OperationCanceledException or InvalidOperationException)
-                    {
-                        logger.LogWarning("Local weather scan will resume after a failure: {Message}", error.Message);
-                        await Task.Delay(TimeSpan.FromSeconds(15), token).ConfigureAwait(false);
-                    }
-                }
+                await Task.WhenAll(
+                    RunProviderAsync(new("GFS", spot => GridWorkKey.From(spot), WarmGfsAsync,
+                        (spot, _) => spot.AcquiredAtUtc.AddHours(24)), token),
+                    RunProviderAsync(new("Copernicus fire weather", spot => new GridWorkKey(CopernicusFireWeather.SamplingGroup(spot)),
+                        (spots, cancel) => WarmAsync(fireWeather.EnrichAsync(spots, cancel)), (_, now) => now.AddMinutes(5)), token),
+                    RunProviderAsync(new("NOAA soil moisture", spot => NoaaSoilMoistureAnomaly.InRegion(spot) ? GridWorkKey.CurrentRaster : null,
+                        (spots, cancel) => WarmAsync(anomaly.EnrichAsync(spots, cancel)), (_, now) => now.AddMinutes(15)), token),
+                    RunProviderAsync(new("Forest Service fuel moisture", spot => UsfsFuelMoisture.InRegion(spot) ? GridWorkKey.CurrentRaster : null,
+                        (spots, cancel) => WarmAsync(fuel.EnrichAsync(spots, cancel)), (_, now) => now.AddMinutes(15)), token))
+                    .ConfigureAwait(false);
             }
             finally
             {
@@ -77,59 +80,111 @@ internal sealed class LocalWeatherWorker(FirmsClient firms, DeferredHotspotWeath
         }
     }
 
-    internal async Task ScanAsync(CancellationToken token)
+    private async Task<bool[]> WarmGfsAsync(FirmsHotspot[] spots, CancellationToken token)
     {
-        var spots = await firms.GetWorldwideWeatherSpotsAsync(token).ConfigureAwait(false);
-        var now = clock.GetUtcNow();
-        var refreshAt = now + ScanInterval;
-        foreach (var key in nextChecks.Keys.Where(key => key.Acquired.AddHours(24) <= now).ToArray())
-            nextChecks.Remove(key);
-        var eligible = spots.Where(spot => spot.AcquiredAtUtc <= now && WeatherSpotKey.From(spot).ExpiresAt > now)
-            .ToArray();
-        var groups = 0;
-        var selections = 0;
+        var results = await forecasts.EnrichAsync(spots, token).ConfigureAwait(false);
+        return results.Select(sources => sources.Any(WeatherCacheEntry.NeedsRetry)).ToArray();
+    }
 
-        foreach (var batch in PlanBatches(eligible, nextChecks, now))
+    private static async Task<bool[]> WarmAsync(Task<HotspotWeatherSource?[]> pending) =>
+        (await pending.ConfigureAwait(false)).Select(source => source is null || WeatherCacheEntry.NeedsRetry(source)).ToArray();
+
+    private Task RunProviderAsync(Provider provider, CancellationToken token)
+    {
+        var queue = Channel.CreateBounded<FirmsHotspot[]>(new BoundedChannelOptions(4) { SingleReader = true, SingleWriter = true });
+        var nextChecks = new ConcurrentDictionary<GridWorkKey, DateTimeOffset>();
+        return Task.WhenAll(ProduceAsync(), ConsumeAsync());
+
+        async Task ProduceAsync()
         {
-            var live = batch.Where(spot => spot.AcquiredAtUtc.AddHours(24) > clock.GetUtcNow()).ToArray();
-            if (live.Length == 0) continue;
-            var sampled = await sampler.SampleAsync(live, token).ConfigureAwait(false);
-            var checkedAt = clock.GetUtcNow();
-            foreach (var spot in live)
+            try
             {
-                var entry = sampled[WeatherSpotKey.From(spot)];
-                nextChecks[GridWorkKey.From(spot)] = entry.RetryAt ?? checkedAt.AddMinutes(15);
+                while (!token.IsCancellationRequested)
+                {
+                    var refreshAt = clock.GetUtcNow() + ScanInterval;
+                    try
+                    {
+                        var spots = await firms.GetWorldwideWeatherSpotsAsync(token).ConfigureAwait(false);
+                        var now = clock.GetUtcNow();
+                        foreach (var item in nextChecks.Where(item => item.Value <= now.AddHours(-24)))
+                            nextChecks.TryRemove(item);
+                        var eligible = spots.Where(spot => IsLive(spot, now));
+                        var queued = 0;
+                        foreach (var batch in PlanBatches(eligible, nextChecks, now, provider.Select))
+                        {
+                            foreach (var spot in batch) nextChecks[provider.Select(spot)!.Value] = DateTimeOffset.MaxValue;
+                            await queue.Writer.WriteAsync(batch, token).ConfigureAwait(false);
+                            queued += batch.Length;
+                            if (clock.GetUtcNow() >= refreshAt) break;
+                        }
+                        logger.LogInformation("Local {Provider} queue added {Count} grid selections.", provider.Name, queued);
+                    }
+                    catch (Exception error) when (!token.IsCancellationRequested && IsRecoverable(error))
+                    {
+                        logger.LogWarning("Local {Provider} scan will retry: {Message}", provider.Name, error.Message);
+                        refreshAt = clock.GetUtcNow().AddSeconds(15);
+                    }
+                    var delay = refreshAt - clock.GetUtcNow();
+                    if (delay > TimeSpan.Zero) await Task.Delay(delay, token).ConfigureAwait(false);
+                }
             }
-            groups++;
-            selections += live.Length;
-            if (clock.GetUtcNow() >= refreshAt) break;
+            finally { queue.Writer.TryComplete(); }
         }
 
-        logger.LogInformation("Local weather scan: {Eligible} live detections, {Groups} grid batches, {Selections} acquisition and coverage selections checked.",
-            eligible.Length, groups, selections);
-        var delay = refreshAt - clock.GetUtcNow();
-        if (delay > TimeSpan.Zero) await Task.Delay(delay, token).ConfigureAwait(false);
+        async Task ConsumeAsync()
+        {
+            await foreach (var batch in queue.Reader.ReadAllAsync(token))
+            {
+                var live = batch.Where(spot => IsLive(spot, clock.GetUtcNow())).ToArray();
+                foreach (var spot in batch.Except(live)) nextChecks.TryRemove(provider.Select(spot)!.Value, out _);
+                if (live.Length == 0) continue;
+                try
+                {
+                    var retry = await provider.Warm(live, token).ConfigureAwait(false);
+                    var now = clock.GetUtcNow();
+                    for (var index = 0; index < live.Length; index++)
+                        nextChecks[provider.Select(live[index])!.Value] = retry[index] ? now + RetryInterval : provider.Refresh(live[index], now);
+                }
+                catch (Exception error) when (!token.IsCancellationRequested && IsRecoverable(error))
+                {
+                    var next = clock.GetUtcNow() + RetryInterval;
+                    foreach (var spot in live) nextChecks[provider.Select(spot)!.Value] = next;
+                    logger.LogWarning("Local {Provider} grid fetch will retry: {Message}", provider.Name, error.Message);
+                }
+            }
+        }
     }
 
     internal static IEnumerable<FirmsHotspot[]> PlanBatches(IEnumerable<FirmsHotspot> spots,
-        IReadOnlyDictionary<GridWorkKey, DateTimeOffset> known, DateTimeOffset now)
+        IReadOnlyDictionary<GridWorkKey, DateTimeOffset> known, DateTimeOffset now, Func<FirmsHotspot, GridWorkKey?>? select = null)
     {
-        return spots.DistinctBy(GridWorkKey.From)
-            .Select(spot => (Spot: spot, Seen: known.TryGetValue(GridWorkKey.From(spot), out var retryAt), RetryAt: retryAt))
+        select ??= spot => GridWorkKey.From(spot);
+        return spots.OrderByDescending(spot => spot.AcquiredAtUtc)
+            .Select(spot => (Spot: spot, Key: select(spot)))
+            .Where(item => item.Key.HasValue).DistinctBy(item => item.Key)
+            .Select(item => (item.Spot, Key: item.Key!.Value, Seen: known.TryGetValue(item.Key.Value, out var retryAt), RetryAt: retryAt))
             .Where(item => !item.Seen || item.RetryAt <= now)
             .OrderBy(item => item.Seen)
-            .ThenByDescending(item => item.Spot.AcquiredAtUtc)
-            .GroupBy(item => (item.Seen, Tile: NoaaGfsWeather.SamplingGroup(item.Spot)))
+            .GroupBy(item => (item.Seen, item.Key.Group))
             .SelectMany(group => group.Select(item => item.Spot).Chunk(DeferredHotspotWeather.BatchSize));
     }
 
-    internal readonly record struct GridWorkKey(int West, int South, DateTimeOffset Acquired, bool Wfas, bool Cpc, bool AtEastDateline)
+    private static bool IsLive(FirmsHotspot spot, DateTimeOffset now) => spot.AcquiredAtUtc <= now && spot.AcquiredAtUtc.AddHours(24) > now;
+
+    private static bool IsRecoverable(Exception error) => EncodedWeatherGridCache.IsStoreError(error) || error is InvalidOperationException;
+
+    private sealed record Provider(string Name, Func<FirmsHotspot, GridWorkKey?> Select,
+        Func<FirmsHotspot[], CancellationToken, Task<bool[]>> Warm, Func<FirmsHotspot, DateTimeOffset, DateTimeOffset> Refresh);
+
+    internal readonly record struct GridWorkKey((int West, int South, DateTimeOffset Hour) Group,
+        DateTimeOffset Acquired = default, int FallbackWest = 0, int FallbackSouth = 0)
     {
+        internal static GridWorkKey CurrentRaster { get; } = new((0, 0, DateTimeOffset.UnixEpoch));
+
         internal static GridWorkKey From(FirmsHotspot spot)
         {
-            var (west, south, _) = NoaaGfsWeather.SamplingGroup(spot);
-            return new(west, south, spot.AcquiredAtUtc, UsfsFuelMoisture.InRegion(spot), NoaaSoilMoistureAnomaly.InRegion(spot),
-                spot.Longitude == 180);
+            var (fineWest, fineSouth, _) = NoaaGfsWeather.FallbackGroup(spot);
+            return new(NoaaGfsWeather.SamplingGroup(spot), spot.AcquiredAtUtc, fineWest, fineSouth);
         }
     }
 }

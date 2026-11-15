@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net;
 using Microsoft.Extensions.Caching.Memory;
 using NasaSpaceApps.Api.Firms;
 using static NasaSpaceApps.Api.Weather.GfsGribSubset;
@@ -11,7 +12,8 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
     public const string HttpClientName = "NoaaGfsWeather";
     private const string BaseUrl = "https://nomads.ncep.noaa.gov/cgi-bin/filter_";
     private const string PublicationBaseUrl = "https://noaa-gfs-bdp-pds.s3.amazonaws.com/";
-    private const int TileDegrees = 4;
+    private const int RegionDegrees = 8;
+    private const int FallbackDegrees = 4;
     private static readonly int[] HeightLevelsHpa = [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100];
     private static readonly int[] CondensateLevelsHpa = [925, 850, 700, 500, 300];
     private static readonly string PressureLevels = string.Concat(HeightLevelsHpa.Select(p => $"&lev_{p}_mb=on"));
@@ -41,13 +43,14 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
     ];
 
     private readonly SemaphoreSlim requests = new(local is null ? 4 : 1);
+    private readonly SemaphoreSlim publicationRequests = new(4);
     private readonly EncodedWeatherGridCache gridCache = grids ?? EncodedWeatherGridCache.Disabled;
     private long lastLocalFetch;
 
     public async Task<HotspotWeatherSource[][]> EnrichAsync(IReadOnlyList<FirmsHotspot?> spots, CancellationToken token)
     {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
-        deadline.CancelAfter(TimeSpan.FromSeconds(local is null ? 8 : 45));
+        deadline.CancelAfter(TimeSpan.FromSeconds(local is null ? 8 : 75));
         var batches = new Dictionary<Tile, Task<Dictionary<Parameter, Frame>?>>();
         var publications = new Dictionary<string, Task<DateTimeOffset?>>();
         return await Task.WhenAll(spots.Select(EnrichSpotAsync)).ConfigureAwait(false);
@@ -69,8 +72,14 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
                 Dictionary<Parameter, Frame>? data = null;
                 if (frame is not null)
                 {
-                    var tile = new Tile(west, south, frame.Run, time, isSnow);
-                    data = await GetAsync(tile).ConfigureAwait(false);
+                    var tile = new Tile(west, south, frame.Run, time, isSnow, RegionDegrees);
+                    try { data = await GetAsync(tile).ConfigureAwait(false); }
+                    catch (WeatherGridSizeException)
+                    {
+                        var (fineWest, fineSouth, _) = FallbackGroup(spot);
+                        data = await GetAsync(tile with { West = fineWest, South = fineSouth, Degrees = FallbackDegrees })
+                            .ConfigureAwait(false);
+                    }
                 }
                 var values = isSnow ? new Dictionary<string, HotspotWeatherValue>
                 {
@@ -110,11 +119,14 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
         }
     }
 
-    internal static (int West, int South, DateTimeOffset Hour) SamplingGroup(FirmsHotspot spot)
+    internal static (int West, int South, DateTimeOffset Hour) SamplingGroup(FirmsHotspot spot) => GroupAt(spot, RegionDegrees);
+    internal static (int West, int South, DateTimeOffset Hour) FallbackGroup(FirmsHotspot spot) => GroupAt(spot, FallbackDegrees);
+
+    private static (int West, int South, DateTimeOffset Hour) GroupAt(FirmsHotspot spot, int degrees)
     {
         var longitude = spot.Longitude == 180 ? -180 : spot.Longitude;
-        var west = Math.Min(176, (int)Math.Floor((longitude + 180) / TileDegrees) * TileDegrees - 180);
-        var south = Math.Min(86, (int)Math.Floor((spot.Latitude + 90) / TileDegrees) * TileDegrees - 90);
+        var west = Math.Min(180 - degrees, (int)Math.Floor((longitude + 180) / degrees) * degrees - 180);
+        var south = Math.Min(90 - degrees, (int)Math.Floor((spot.Latitude + 90) / degrees) * degrees - 90);
         return (west, south, HourFloor(spot.AcquiredAtUtc));
     }
 
@@ -136,7 +148,7 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
         if (cache.TryGetValue<DateTimeOffset>(uri, out var cached)) return cached;
         try
         {
-            await requests.WaitAsync(deadline).ConfigureAwait(false);
+            await publicationRequests.WaitAsync(deadline).ConfigureAwait(false);
             try
             {
                 if (cache.TryGetValue<DateTimeOffset>(uri, out cached)) return cached;
@@ -147,7 +159,7 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
                 cache.Set(uri, modified, TimeSpan.FromHours(2));
                 return modified;
             }
-            finally { requests.Release(); }
+            finally { publicationRequests.Release(); }
         }
         catch (Exception error) when (!token.IsCancellationRequested && error is HttpRequestException or OperationCanceledException)
         {
@@ -315,7 +327,7 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
             value.HasValue ? null : "no_source_coverage");
     }
 
-    internal static string BuildUrl(int west, int south, DateTimeOffset run, DateTimeOffset valid, bool snow)
+    internal static string BuildUrl(int west, int south, DateTimeOffset run, DateTimeOffset valid, bool snow, int degrees = RegionDegrees)
     {
         var file = Filename(run, valid, snow);
         var fields = snow ? "&var_SNOWC=on&lev_surface=on" :
@@ -326,7 +338,7 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
             "&lev_low_cloud_bottom_level=on&lev_middle_cloud_bottom_level=on&lev_high_cloud_bottom_level=on" +
             "&lev_low_cloud_top_level=on&lev_middle_cloud_top_level=on&lev_high_cloud_top_level=on" +
             "&lev_0-0.1_m_below_ground=on&lev_0.1-0.4_m_below_ground=on&lev_0.4-1_m_below_ground=on" + PressureLevels;
-        return FormattableString.Invariant($"{BaseUrl}{(snow ? "gfs_sflux" : "gfs_0p25")}.pl?dir=%2Fgfs.{run:yyyyMMdd}%2F{run:HH}%2Fatmos&file={file}{fields}&subregion=&leftlon={west}&rightlon={west + TileDegrees}&toplat={south + TileDegrees}&bottomlat={south}");
+        return FormattableString.Invariant($"{BaseUrl}{(snow ? "gfs_sflux" : "gfs_0p25")}.pl?dir=%2Fgfs.{run:yyyyMMdd}%2F{run:HH}%2Fatmos&file={file}{fields}&subregion=&leftlon={west}&rightlon={west + degrees}&toplat={south + degrees}&bottomlat={south}");
     }
 
     private static string Filename(DateTimeOffset run, DateTimeOffset valid, bool snow)
@@ -342,13 +354,16 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
     {
         var key = (nameof(NoaaGfsWeather), tile);
         if (cache.TryGetValue<Dictionary<Parameter, Frame>>(key, out var cached)) return cached;
+        var oversized = (key, "oversized");
+        if (cache.TryGetValue(oversized, out _)) throw new WeatherGridSizeException();
+        var url = BuildUrl(tile.West, tile.South, tile.Run, tile.Valid, tile.Snow, tile.Degrees);
         try
         {
             await requests.WaitAsync(deadline).ConfigureAwait(false);
             try
             {
                 if (cache.TryGetValue(key, out cached)) return cached;
-                var url = BuildUrl(tile.West, tile.South, tile.Run, tile.Valid, tile.Snow);
+                if (cache.TryGetValue(oversized, out _)) throw new WeatherGridSizeException();
                 var frames = await gridCache.GetAsync(url, tile.Valid.AddHours(25), DownloadAsync, Decode, deadline).ConfigureAwait(false);
                 cache.Set(key, frames, TimeSpan.FromMinutes(20));
                 return frames;
@@ -365,7 +380,7 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
                 try
                 {
                     using var http = clients.CreateClient(HttpClientName);
-                    return await gridCache.DownloadAsync(http, BuildUrl(tile.West, tile.South, tile.Run, tile.Valid, tile.Snow),
+                    return await gridCache.DownloadAsync(http, url,
                         512 * 1024, fetchToken).ConfigureAwait(false);
                 }
                 finally { if (local is not null) lastLocalFetch = Stopwatch.GetTimestamp(); }
@@ -380,6 +395,12 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
                 return frames;
             }
         }
+        catch (Exception error) when (tile.Degrees == RegionDegrees && (error is WeatherGridSizeException ||
+            error is HttpRequestException { StatusCode: HttpStatusCode.RequestEntityTooLarge }))
+        {
+            cache.Set(oversized, true, TimeSpan.FromHours(1));
+            throw new WeatherGridSizeException(error);
+        }
         catch (Exception error) when (!token.IsCancellationRequested && error is HttpRequestException or OperationCanceledException or
             IOException or InvalidDataException or ArgumentException or IndexOutOfRangeException or OverflowException)
         {
@@ -388,5 +409,5 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
         }
     }
 
-    private readonly record struct Tile(int West, int South, DateTimeOffset Run, DateTimeOffset Valid, bool Snow);
+    private readonly record struct Tile(int West, int South, DateTimeOffset Run, DateTimeOffset Valid, bool Snow, int Degrees);
 }

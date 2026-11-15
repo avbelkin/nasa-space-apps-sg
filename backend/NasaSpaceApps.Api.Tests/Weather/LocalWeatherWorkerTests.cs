@@ -29,4 +29,17 @@ public sealed class LocalWeatherWorkerTests
         Assert.DoesNotContain(duplicate, scheduled);
         Assert.Equal(spots[2], scheduled[^1]);
     }
+
+    [Fact]
+    public void DailyProviderPlansEachTileOnlyOnceAcrossAcquisitions()
+    {
+        var now = new DateTimeOffset(2026, 1, 12, 9, 30, 0, TimeSpan.Zero);
+        var newest = new FirmsHotspot(45, 7, 350, null, null, null, now, "NOAA-20", "VIIRS", "VIIRS_NOAA20_NRT", "n", 60, "", 10, "D");
+        var older = newest with { AcquiredAtUtc = now.AddHours(-1) };
+        var otherTile = newest with { Longitude = 12 };
+        var plan = LocalWeatherWorker.PlanBatches([older, otherTile, newest],
+            new Dictionary<LocalWeatherWorker.GridWorkKey, DateTimeOffset>(), now,
+            spot => new LocalWeatherWorker.GridWorkKey(CopernicusFireWeather.SamplingGroup(spot)));
+        Assert.Equal(new[] { otherTile, newest }, plan.SelectMany(batch => batch));
+    }
 }

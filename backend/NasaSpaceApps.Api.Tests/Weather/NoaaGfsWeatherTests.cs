@@ -61,6 +61,27 @@ public sealed class NoaaGfsWeatherTests
     }
 
     [Fact]
+    public async Task UsesFourDegreesAfterAnOversizeRegionalResponse()
+    {
+        using var upstream = new FixtureHandler(rejectLargeRegion: true);
+        using var memory = new MemoryCache(new MemoryCacheOptions());
+        var gfs = new NoaaGfsWeather(new ClientFactory(upstream), memory, NullLogger<NoaaGfsWeather>.Instance);
+        var acquisition = Run.AddHours(6).AddMinutes(24);
+        var first = Spot(acquisition, 1.5, 101);
+        var next = Spot(acquisition.AddMinutes(1), 1.5, 100.75);
+        Assert.Equal(NoaaGfsWeather.SamplingGroup(first), NoaaGfsWeather.SamplingGroup(first with { Longitude = 105 }));
+        Assert.NotEqual(NoaaGfsWeather.FallbackGroup(first), NoaaGfsWeather.FallbackGroup(first with { Longitude = 105 }));
+
+        var firstResult = Assert.Single(await gfs.EnrichAsync([first], default));
+        var secondResult = Assert.Single(await gfs.EnrichAsync([next], default));
+
+        Assert.Equal(4, upstream.Urls.Count);
+        Assert.Equal(2, upstream.Urls.Count(FixtureHandler.IsRegional));
+        Assert.NotNull(firstResult[0].Values["temperature_2m"].Value);
+        Assert.NotNull(secondResult[0].Values["temperature_2m"].Value);
+    }
+
+    [Fact]
     public async Task AnotherBackendSamplesADifferentSpotFromTheSameSharedEncodedGrids()
     {
         var acquisition = Run.AddHours(6).AddMinutes(24);
@@ -161,10 +182,17 @@ public sealed class NoaaGfsWeatherTests
         }
     }
 
-    private sealed class FixtureHandler : HttpMessageHandler
+    private sealed class FixtureHandler(bool rejectLargeRegion = false) : HttpMessageHandler
     {
         public ConcurrentBag<string> Urls { get; } = [];
         public ConcurrentBag<string> PublicationUrls { get; } = [];
+
+        internal static bool IsRegional(string url)
+        {
+            var left = int.Parse(System.Text.RegularExpressions.Regex.Match(url, @"&leftlon=(-?\d+)").Groups[1].Value);
+            var right = int.Parse(System.Text.RegularExpressions.Regex.Match(url, @"&rightlon=(-?\d+)").Groups[1].Value);
+            return right - left == 8;
+        }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -179,6 +207,8 @@ public sealed class NoaaGfsWeatherTests
                 return Task.FromResult(publication);
             }
             Urls.Add(url.AbsoluteUri);
+            if (rejectLargeRegion && IsRegional(url.AbsoluteUri))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[512 * 1024 + 1]) });
             // Real NOMADS subsets from the run at 00 UTC, valid 06 UTC, 15 Nov 2026.
             var file = url.AbsolutePath.Contains("sflux", StringComparison.Ordinal) ? "gfs-snow.grb2" : "gfs-weather.grb2";
             var bytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Weather", "Fixtures", file));

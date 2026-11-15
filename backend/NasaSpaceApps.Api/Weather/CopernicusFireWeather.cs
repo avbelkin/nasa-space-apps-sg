@@ -85,6 +85,13 @@ internal sealed class CopernicusFireWeather(
         Math.Min(180 - Degrees, (int)Math.Floor((longitude + 180) / Degrees) * Degrees - 180),
         Math.Min(90 - Degrees, (int)Math.Floor((latitude + 90) / Degrees) * Degrees - 90), date);
 
+    internal static (int West, int South, DateTimeOffset Day) SamplingGroup(FirmsHotspot spot)
+    {
+        var day = new DateTimeOffset(spot.AcquiredAtUtc.UtcDateTime.Date, TimeSpan.Zero);
+        var tile = TileAt(spot.Latitude, spot.Longitude, DateOnly.FromDateTime(day.UtcDateTime));
+        return (tile.West, tile.South, day);
+    }
+
     private async Task<Dictionary<string, Layer>> LoadTileAsync(
         Tile tile, CancellationToken deadline, CancellationToken cancellationToken)
     {

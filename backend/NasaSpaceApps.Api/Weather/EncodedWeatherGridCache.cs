@@ -5,6 +5,9 @@ namespace NasaSpaceApps.Api.Weather;
 
 internal sealed record EncodedWeatherGrid(byte[] Bytes, DateTimeOffset FetchedAt, DateTimeOffset? ModifiedAt);
 
+internal sealed class WeatherGridSizeException(Exception? inner = null)
+    : IOException("Encoded weather grid exceeded the download limit.", inner);
+
 internal sealed class EncodedWeatherGridCache(FirestoreWeatherGridStore? store, TimeProvider clock,
     ILogger<EncodedWeatherGridCache> logger, LocalWeatherCredentials? local = null)
 {
@@ -61,7 +64,12 @@ internal sealed class EncodedWeatherGridCache(FirestoreWeatherGridStore? store, 
     {
         using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        await response.Content.LoadIntoBufferAsync(maximumSize, token).ConfigureAwait(false);
+        if (response.Content.Headers.ContentLength > maximumSize) throw new WeatherGridSizeException();
+        try { await response.Content.LoadIntoBufferAsync(maximumSize, token).ConfigureAwait(false); }
+        catch (HttpRequestException error) when (error.HttpRequestError == HttpRequestError.ConfigurationLimitExceeded)
+        {
+            throw new WeatherGridSizeException(error);
+        }
         return new EncodedWeatherGrid(await response.Content.ReadAsByteArrayAsync(token).ConfigureAwait(false),
             clock.GetUtcNow(), response.Content.Headers.LastModified);
     }

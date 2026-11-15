@@ -111,7 +111,7 @@ internal sealed class DeferredHotspotWeather(
         return result;
     }
 
-    internal async Task<Dictionary<WeatherSpotKey, WeatherCacheEntry>> SampleAsync(IReadOnlyList<FirmsHotspot> spots, CancellationToken token)
+    private async Task<Dictionary<WeatherSpotKey, WeatherCacheEntry>> SampleAsync(IReadOnlyList<FirmsHotspot> spots, CancellationToken token)
     {
         var forecast = forecasts.EnrichAsync(spots, token);
         var danger = fireWeather.EnrichAsync(spots, token);
