@@ -2,8 +2,8 @@ Independently review the Earth Fire Calendar presentation for factual correctnes
 
 TARGET
 - Repository: https://github.com/avbelkin/nasa-space-apps-sg
-- Frozen deck revision: complete-r16; identify the exact artifact by the SHA-256 below.
-- Public PDF: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/presentation/earth-fire-calendar.pdf
+- Frozen deck revision: complete-r16, presentation source commit 45fcc7d; identify the exact artifact by the SHA-256 below.
+- Public PDF: https://github.com/avbelkin/nasa-space-apps-sg/blob/45fcc7d/submission/presentation/earth-fire-calendar.pdf
 - PDF SHA-256: 96ff5fddfe12e26f1bb532fe825accd04267b89003667a06c2a4a425dd038636
 - Local repository, if available: /Users/vgneyman/Repos/nasa-space-apps-sg
 - Local PDF: submission/presentation/earth-fire-calendar.pdf
@@ -14,7 +14,7 @@ TARGET
 If an artifact is inaccessible, say exactly which one and what that prevents you from checking. Do not infer a pass. Keep all temporary review files inside submission/presentation/.build/.
 
 INPUTS
-Read the following inputs and record their commit. If main has moved, use the commit containing the exact artifact and source hashes above:
+Read presentation inputs at commit 45fcc7d and current main for implementation and shared deliverables, recording their commit separately. If an artifact hash differs, locate the exact frozen revision above:
 - submission/presentation/demo-slides.md: approved slide wording;
 - submission/presentation/assets/data/firms-snapshot-2026-11-15T0836Z.json: historical global counts;
 - submission/presentation/assets/evidence/manifest.json, assets/screenshots/capture-scenes.json and assets/screenshots/live-adjustment.json: image hashes, capture times, basemap, selected detections and the team-provided CAMS crop;

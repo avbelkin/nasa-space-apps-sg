@@ -2,7 +2,7 @@
 
 ## Current work
 
-The full seven-slide deck now uses the approved direction and the final source text. Current export: complete-r16, with the team-approved live CAMS screenshot and working partial harmonization stated explicitly. Team names are filled; no slide placeholders remain. Automated verification and root PDF/native PowerPoint inspection are complete; independent delta acceptance is in progress. Earlier checkpoint records below are historical.
+The full seven-slide deck now uses the approved direction and the final source text. Current export: complete-r16, with the team-approved live CAMS screenshot and working partial harmonization stated explicitly. Team names are filled; no slide placeholders remain. Automated verification, root PDF/native PowerPoint inspection and independent Codex delta acceptance are complete, with no blocking findings. Earlier checkpoint records below are historical.
 
 All presentation source files, local captures, outputs, fonts, reference copies and work files are now under `submission/presentation` in the main checkout. Builders read `demo-slides.md`, `assets/data/` and `assets/brand/` inside this folder. Large generated files remain Git-ignored. Shared project references outside this folder are not build dependencies.
 
@@ -106,12 +106,14 @@ Claude's supplied review is addressed: the screen-distance grouping caveat, capt
 
 r15 was an intermediate layout; its longer slide 4 paragraph overlapped the image. r16 shortens that paragraph without removing its claims and supplies the approved screenshot. Root checked the actual PDF layouts and native PowerPoint pages 4–5: the screenshot, model caveat, new captions and footer fit. PowerPoint 16.109.3 opens and exports all seven slides, still substituting Calibri for Overpass. Use the vector PDF, with its three embedded Overpass faces, as the appearance reference.
 
-Automated verification passes source wording, seven pages, twelve URI annotations, both editable charts/workbooks and fixed scales, nine alt texts, font tokens, metadata and package/layout checks. Independent delta acceptance is in progress; r14's acceptance does not substitute for it.
+Automated verification passes source wording, seven pages, twelve URI annotations, both editable charts/workbooks and fixed scales, nine alt texts, font tokens, metadata and package/layout checks. The independent Codex reviewer accepted the exact r16 hashes below after inspecting all seven actual PDF pages, source wording in both exports, twelve links, native chart values/scales, speaker notes and the live-correction implementation. No blocking findings remain. The complete local receipt is `.build/complete-r16/independent-acceptance.json`. The reviewer did not rerun model training or external scientific claims and did not open native PowerPoint in this targeted pass; the root performed the native PowerPoint check described above.
 
 ```text
 Source: a3dcf4d5c06bcd2e8e99f2b1df3175d856b50e9d87f0e84febb215d5dec339de
 PDF:    96ff5fddfe12e26f1bb532fe825accd04267b89003667a06c2a4a425dd038636
 PPTX:   011a3f5efe03449476771330a294801ab8c42a2754cc3645584adf840088d60f
 ```
+
+All root build, render, verification and native PowerPoint jobs finished. The independent reviewer returned a terminal accepted result, all its commands finished and its complete output was collected and checked against the unchanged r16 hashes. No review or generation job remains outstanding.
 
 No LLM API provider/model/route was used; measured API cost is $0. This change uses the primary Codex session and the existing independent Codex reviewer; subscription allowance consumption is unavailable.
