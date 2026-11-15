@@ -5,6 +5,7 @@ The complete deck uses the final English copy in [demo-slides.md](demo-slides.md
 ## Files
 
 - [Submission PDF](earth-fire-calendar.pdf): the compact published appearance reference.
+- [Editable PPTX](output/earth-fire-calendar-complete-r14.pptx) and [overview](output/earth-fire-calendar-complete-r14-overview.png): local files, synchronized to the main checkout.
 - [Review record](REVIEW.md): verification, independent acceptance and known export limitations.
 - [Slide copy](demo-slides.md): the only source of authored slide wording.
 - `output/`: versioned local PDF, editable PPTX, overview and verification reports. Generated historical binaries are ignored.
@@ -32,7 +33,7 @@ Use the already managed runtime; no dependency or font installation is required.
 export RUNTIME_NODE_MODULES=/absolute/path/to/managed/runtime/dependencies/node/node_modules
 export RUNTIME_PYTHON=/absolute/path/to/managed/runtime/dependencies/python/bin/python
 export PRESENTATIONS_SKILL=/absolute/path/to/presentations/skills/presentations
-export DECK_VERSION=complete-r14
+export DECK_VERSION=complete-r15
 /absolute/path/to/node submission/presentation/build.mjs
 /absolute/path/to/node submission/presentation/verify.mjs
 ```
@@ -43,6 +44,10 @@ The PDF contains vector text and shapes, embedded Unicode TrueType fonts and nat
 
 ## Remaining inputs
 
-There are no name, image, numerical or link placeholders in the deck. The broader submission still needs its final public video URL and the submitted app commit or tag. These are outside the slide build; the deck requires no additional user-supplied data.
+There are no name, image, numerical or link placeholders in the deck. The broader submission still needs its final public video URL and the submitted app commit or tag. The project-description Materials block still contains a PDF-link placeholder; use [this published PDF URL](https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/presentation/earth-fire-calendar.pdf). These are outside the slide build; the deck requires no additional user-supplied data.
+
+## Submission format
+
+The official [Project Submission Guide](https://www.spaceappschallenge.org/resources/project-submission-guide/#tips-for-creating-a-project-demo), dated 13 November 2026 and retrieved again on 15 November, requires a publicly accessible slide deck with no more than seven English-language slides. It does not require PPTX or an editable format. PDF suitability is an inference from these format-neutral requirements, not an explicit list of permitted extensions. Documents cannot be uploaded directly to Space Apps; the guide explicitly permits links to files hosted in GitHub or a cloud service, without sign-in or access requests.
 
 No LLM API provider/model/processing route is used; measured LLM API cost is $0. The work uses the primary Codex session and one independent Codex reviewer. Subscription allowance consumption is unavailable.

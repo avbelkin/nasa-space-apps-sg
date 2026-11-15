@@ -32,7 +32,7 @@ if(sections.length!==7) throw Error(`Expected seven source slides, got ${section
 const snapshot=JSON.parse(await fs.readFile(path.join(root,'assets/data/firms-snapshot-2026-11-15T0836Z.json'),'utf8'));
 const firstBlock=process.env.DECK_SCOPE==='first-block';
 const slideCount=firstBlock?2:7;
-const version=process.env.DECK_VERSION || (firstBlock?'direction-r11':'complete-r11');
+const version=process.env.DECK_VERSION || (firstBlock?'direction-r11':'complete-r14');
 const evidence=JSON.parse(await fs.readFile(path.join(root,'assets/evidence/manifest.json'),'utf8'));
 const buildDir=path.join(root,'.build',version);
 const out=path.join(root,'output');
