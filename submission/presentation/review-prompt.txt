@@ -2,21 +2,22 @@ Independently review the Earth Fire Calendar presentation for factual correctnes
 
 TARGET
 - Repository: https://github.com/avbelkin/nasa-space-apps-sg
-- Frozen deck revision: complete-r14, presentation source commit 579f76e.
-- Public PDF: https://github.com/avbelkin/nasa-space-apps-sg/blob/579f76e/submission/presentation/earth-fire-calendar.pdf
-- PDF SHA-256: 94963dc5dc559b9c272a93c467b9ff918c89f72f7b9c3d770197d5e25821b509
+- Frozen deck revision: complete-r16; identify the exact artifact by the SHA-256 below.
+- Public PDF: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/presentation/earth-fire-calendar.pdf
+- PDF SHA-256: 96ff5fddfe12e26f1bb532fe825accd04267b89003667a06c2a4a425dd038636
 - Local repository, if available: /Users/vgneyman/Repos/nasa-space-apps-sg
 - Local PDF: submission/presentation/earth-fire-calendar.pdf
-- Local editable PPTX: submission/presentation/output/earth-fire-calendar-complete-r14.pptx
-- PPTX SHA-256: 04ff06ae15722fad780b04c2714be0042c268eefc4c49c8d1d25bfbbb23ea022
+- Local editable PPTX: submission/presentation/output/earth-fire-calendar-complete-r16.pptx
+- PPTX SHA-256: 011a3f5efe03449476771330a294801ab8c42a2754cc3645584adf840088d60f
+- Slide-copy SHA-256: a3dcf4d5c06bcd2e8e99f2b1df3175d856b50e9d87f0e84febb215d5dec339de
 - Live app: https://avbelkin.github.io/nasa-space-apps-sg/
 If an artifact is inaccessible, say exactly which one and what that prevents you from checking. Do not infer a pass. Keep all temporary review files inside submission/presentation/.build/.
 
 INPUTS
-At commit 579f76e, read:
+Read the following inputs and record their commit. If main has moved, use the commit containing the exact artifact and source hashes above:
 - submission/presentation/demo-slides.md: approved slide wording;
 - submission/presentation/assets/data/firms-snapshot-2026-11-15T0836Z.json: historical global counts;
-- submission/presentation/assets/evidence/manifest.json and assets/screenshots/capture-scenes.json: image hashes, capture times, basemap and selected detections;
+- submission/presentation/assets/evidence/manifest.json, assets/screenshots/capture-scenes.json and assets/screenshots/live-adjustment.json: image hashes, capture times, basemap, selected detections and the team-provided CAMS crop;
 - submission/deliverables/project-description.md;
 - submission/deliverables/technical-note.md, including the baseline and weather experiments;
 - submission/deliverables/third-party-rights.md and software-licenses.md;
@@ -26,10 +27,10 @@ Also inspect the current live app and current main for later changes, recording 
 CHECKS
 1. Inspect every one of the seven actual PDF pages. Compare visible wording with the approved source; find omissions, altered values, missing caveats or links. Do not accept source-code intent as proof of what the exported PDF contains.
 2. Verify claims against implementation, available study results and authoritative source documentation. Check sensor/platform names, spatial resolution, record start dates, Suomi NPP delivery status, and whether descriptions match the current app. Browse official sources for time-sensitive external facts. A claim repeated in our own documents is not independent corroboration.
-3. Preserve the distinction between a hot-pixel detection and an individual fire, and between an estimated satellite pass and an observed FIRMS detection. Check that working features, experimental one-day models, hypotheses, planned harmonization and validation are clearly separated. The raw-detection CSV export exists; the unfinished item on slide 4 is harmonized data export.
+3. Preserve the distinction between a hot-pixel detection and an individual fire, and between an estimated satellite pass and an observed FIRMS detection. Check that working features, experimental one-day models, hypotheses and future validation are clearly separated. Partial live harmonization already works: eligible selected detections receive next-pass FRP estimates and GWIS/CAMS detection-odds adjustments from models learned across satellite passes; original FIRMS readings stay visible. Verify that narrow claim against PinnedFireDetails.tsx, frpForecast.ts and weatherPassModels.ts. Do not describe all harmonization as future work or imply a validated unified historical record already exists. Raw-detection CSV export exists; harmonized record export remains planned.
 4. Trace the baseline numbers: AUROC 0.64–0.77, 15,869 matched pairs, GWIS MODIS-to-MODIS results on 172 held-out passes and 87 pairs, CAMS VIIRS-to-VIIRS results on 191 passes. Check direction, sample, metric, split and limitations against the technical note and available results. Do not imply validation on other days, causal effects or operational forecast skill when only retrospective evidence exists. If fitting scripts or raw evidence are absent, state the resulting verification limit.
 5. Slide 2 intentionally uses 15 November 2026, 08:36 UTC: 8,127 MODIS and 79,349 VIIRS worldwide detections. Do not replace these with current live counts. Other screenshots were taken later and illustrate the interface; check their provenance and do not confuse them with the global-count snapshot. Verify identical bar scales, proportions and displayed values.
-6. Check that the screenshots support the accompanying claims: sensor-colour meanings, same-region comparisons, a real 24-hour timeline, readable MODIS/VIIRS columns, estimated geometry and weather. Look for misleading crops, hidden qualifying labels, mixed dates or basemap/licence mismatches. Check completeness of data credits, rights links and AI disclosure against actual slide assets. NASA, Space Apps and agency logos must not appear. References to NASA datasets and the challenge are allowed and are not logos or endorsement.
+6. Check that the screenshots support the accompanying claims: sensor-colour meanings, same-region comparisons, a real 24-hour timeline, readable MODIS/VIIRS columns, estimated geometry and the live CAMS correction. Slide 4 shows 1.28× study baseline detection odds with the full experimental-model caveat. Its 14:28 UTC capture time is inferred from the team screenshot filename in UTC+8; the exact deployment is unknown. Look for misleading crops, hidden qualifying labels, mixed dates or basemap/licence mismatches. Check completeness of data credits, rights links and AI disclosure against actual slide assets. NASA, Space Apps and agency logos must not appear. References to NASA datasets and the challenge are allowed and are not logos or endorsement.
 7. Check seven-slide completeness: project name, selected challenge, Team Plush — Alexey Belkin and Viktoriia Naiman, problem, intended user, demonstrated prototype, evidence, limitations, next milestone and usable links. Check all actual PDF URI annotations, embedded fonts, selectable text, clipping and screenshot readability. If PPTX is available, verify native chart values/workbooks and note rendering differences separately. The PDF is the submission appearance reference.
 8. Recheck the official 2026 submission guide: https://www.spaceappschallenge.org/resources/project-submission-guide/. Separate explicit rules from your interpretation. Check the public-link requirement, English and slide limit. Do not invent a PPTX requirement or treat a specific file extension as explicitly approved when the guide does not enumerate extensions.
 

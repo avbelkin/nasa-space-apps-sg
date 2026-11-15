@@ -2,7 +2,7 @@
 
 ## Current work
 
-The full seven-slide deck now uses the approved direction and the final source text. Current export: complete-r14, independently accepted with no blocking findings. Team names are filled; no slide placeholders remain. Automated verification, root PDF and native PowerPoint inspection, and independent Codex acceptance are complete. Earlier checkpoint records below are historical.
+The full seven-slide deck now uses the approved direction and the final source text. Current export: complete-r16, with the team-approved live CAMS screenshot and working partial harmonization stated explicitly. Team names are filled; no slide placeholders remain. Automated verification and root PDF/native PowerPoint inspection are complete; independent delta acceptance is in progress. Earlier checkpoint records below are historical.
 
 All presentation source files, local captures, outputs, fonts, reference copies and work files are now under `submission/presentation` in the main checkout. Builders read `demo-slides.md`, `assets/data/` and `assets/brand/` inside this folder. Large generated files remain Git-ignored. Shared project references outside this folder are not build dependencies.
 
@@ -95,3 +95,23 @@ The official Project Submission Guide (13 November 2026) was retrieved again fro
 Final reconciliation: the independent `/root/deck_acceptance` review returned a terminal acceptance for the exact r14 hashes above; its commands are finished and all results were collected and accepted. All root captures, builds, native PowerPoint exports and verification commands also finished. Earlier failed capture, verification and push attempts were resolved and are not pending jobs. The final public PDF was fetched without authentication, fully collected and byte-checked against the local file. Its size is 1,244,994 bytes. The local PPTX is 1,223,051 bytes. Both artifacts and their source are synchronized to the main checkout, and r14 is published on main.
 
 No LLM API provider, model or processing route was used; measured API cost is $0. Work used the primary Codex session and one independent Codex reviewer. Subscription allowance consumption is unavailable. No Claude job was launched by this session; `review-prompt.txt` is provided for user-initiated reviews by other models.
+
+## Live harmonization and review corrections: complete-r16
+
+The user confirmed that the existing next-pass FRP and GWIS/CAMS adjustments are the implemented partial harmonization to demonstrate. Slides 1, 4, 5, 6 and 7 now distinguish those working live corrections from broader validation and extension to a unified historical record. Original FIRMS values remain visible; the one-day models are experimental. The implementation was checked in `PinnedFireDetails.tsx`, `frpForecast.ts` and `weatherPassModels.ts`, including single-detection and model-applicability conditions.
+
+Slide 4 contains the team-approved **1.28× CAMS study-baseline detection-odds** screenshot. The crop preserves all three lines, including the complete experimental-model/NASA notice. No observation or multiplier was altered. Its original is retained locally under `assets/screenshots/live-adjustment.png`; the small crop, hash and provenance are committed. The capture time is derived from the original filename in the team's UTC+8 timezone, and no deployment identity is asserted.
+
+Claude's supplied review is addressed: the screen-distance grouping caveat, capture times and timeline timezone, weather source/time being retained in the data, map wording, estimated geometry label, approximate VIIRS nadir resolution, full EOX attribution and plain-text speaker notes. The EOX attribution was checked against `https://cloudless.eox.at/license-non-commercial`; the approximate 375 m nadir wording is supported by `https://www.star.nesdis.noaa.gov/jpss/VIIRS.php`. The frozen 08:36 UTC global counts, study values, seven-slide limit and twelve links are unchanged. No NASA, Space Apps or agency logos appear.
+
+r15 was an intermediate layout; its longer slide 4 paragraph overlapped the image. r16 shortens that paragraph without removing its claims and supplies the approved screenshot. Root checked the actual PDF layouts and native PowerPoint pages 4–5: the screenshot, model caveat, new captions and footer fit. PowerPoint 16.109.3 opens and exports all seven slides, still substituting Calibri for Overpass. Use the vector PDF, with its three embedded Overpass faces, as the appearance reference.
+
+Automated verification passes source wording, seven pages, twelve URI annotations, both editable charts/workbooks and fixed scales, nine alt texts, font tokens, metadata and package/layout checks. Independent delta acceptance is in progress; r14's acceptance does not substitute for it.
+
+```text
+Source: a3dcf4d5c06bcd2e8e99f2b1df3175d856b50e9d87f0e84febb215d5dec339de
+PDF:    96ff5fddfe12e26f1bb532fe825accd04267b89003667a06c2a4a425dd038636
+PPTX:   011a3f5efe03449476771330a294801ab8c42a2754cc3645584adf840088d60f
+```
+
+No LLM API provider/model/route was used; measured API cost is $0. This change uses the primary Codex session and the existing independent Codex reviewer; subscription allowance consumption is unavailable.
