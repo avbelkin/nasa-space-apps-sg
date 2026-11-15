@@ -125,7 +125,7 @@ The limitations of such a test follow from the review itself: detection probabil
 
 The live app reads the latest 24 hours from MODIS on Terra/Aqua and VIIRS on NOAA-20/NOAA-21. It estimates geometry from orbital elements, samples the fixed 2019 ESA CCI / C3S land-cover map (300 m native grid; 1.2 km overview for the worldwide feed), and retrieves available weather at acquisition. The pinned surface bar shows class fractions and classified coverage; for a group it averages available detection summaries. The sidebar compares raw detection counts by dominant surface class, and a CSV download exports the loaded sensor-filtered detections with their available surface fractions. Neither display nor export applies an inter-sensor correction.
 
-The app's one-day pass-matching and FRP baselines, including the GWIS and CAMS variants, are first uses of these fields, not a test of the class-by-angle hypothesis: the archive, the class-specific angular response functions and the harmonized record are not built. The model results and their limits are in [technical note §6](technical-note.md#6-first-baselines-on-matched-passes).
+The app's one-day pass-matching and FRP baselines, including the GWIS and CAMS variants, are a first harmonization step built on these fields: experimental cross-satellite corrections. They do not yet test the class-by-angle hypothesis; the archive, the class-specific angular response functions and a validated unified record come next. The model results and their limits are in [technical note §6](technical-note.md#6-first-baselines-on-matched-passes).
 
 ---
 
