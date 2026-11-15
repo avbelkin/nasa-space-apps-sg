@@ -50,10 +50,6 @@ How a judge reaches each material:
 
 Not checked on the live form: whether field 5 accepts clickable links and images. If it does not, the Materials addresses go in as plain text.
 
-## Release evidence
-
-Team Plush: Alexey Belkin and Viktoriia Naiman. Lama is a fictional presenter; Claude Code and Codex are tools, not roster members. See the [current detailed audit](submission-compliance-audit.md), [rights register](../deliverables/third-party-rights.md) and [software inventory](../deliverables/software-licenses.md). The video and final complete deck are still release gates, not ready links.
-
 ## 1. Project Name
 
 **Required:** the project name.

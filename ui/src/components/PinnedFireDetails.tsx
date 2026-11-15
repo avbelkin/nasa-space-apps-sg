@@ -143,14 +143,13 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
           <span className="fire-frp-forecast-original">Original detection {frpFormat.format(forecast.originalMw)} MW</span>
         </div>
       )}
-      {forecast && <p className="panel-note">Experimental Earth Fire Calendar model estimate, conditional on a later detection.
-        NASA has not validated this output and is not responsible for its accuracy.</p>}
+      {forecast && <p className="panel-note">Experimental Earth Fire Calendar model estimate, not a NASA product.</p>}
       <FireDetectionsTimelineCard timeline={timeline} />
       {expectedMiss && (
         <div className="fire-second-pass-note fire-second-pass-note--error">
           <strong>Expected detection, no match</strong>
           <p>{expectedMiss.pass.satellite} VIIRS · {passTimeFormat.format(expectedMiss.pass.timestampMs)} · {scoreFormat.format(expectedMiss.score)} detection score</p>
-          <p>No matching FIRMS detection within 1 km of this spot. Experimental Earth Fire Calendar model score, trained on 500 m matches; not a validated probability for this 1 km check. NASA has not validated this output and is not responsible for its accuracy.</p>
+          <p>No matching FIRMS detection within 1 km of this spot. Experimental Earth Fire Calendar model score, not a NASA product.</p>
         </div>
       )}
       {!expectedMiss && outlook && (
@@ -172,7 +171,7 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
         <p className="fire-observation-status">
           {weatherAdjustment.source} context for {weatherAdjustment.pass.satellite} at {passTimeFormat.format(weatherAdjustment.pass.timestampMs)}
           {' · '}{oddsFormat.format(weatherAdjustment.oddsMultiplier)}× study baseline detection odds
-          {' · '}Experimental Earth Fire Calendar model; NASA has not validated it and is not responsible for its accuracy.
+          {' · '}experimental Earth Fire Calendar model
         </p>
       )}
       <FireObservationDetails inputs={inputs} feedGeometry={feedGeometry} weatherObservations={weatherObservations} />

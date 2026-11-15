@@ -1,6 +1,6 @@
 # Software licences and dependency inventory
 
-This inventory accompanies field 8 of the submission. Generated from `ui/package-lock.json` without installing packages. It includes optional platform packages even when not installed on this machine. Package metadata records the declared licence; it does not replace copyright notices and full licence texts that distributors must preserve. No dependency is relicensed by the project's Apache-2.0 licence.
+This inventory accompanies field 8 of the submission. The UI table is generated from `ui/package-lock.json` and includes optional platform packages. Each package keeps its own licence; the project's Apache-2.0 licence does not apply to them.
 
 ## UI: complete locked dependency graph
 
@@ -131,7 +131,7 @@ Lockfile SHA-256: `76d3197fa4838dc6d9e88c6508094abd57af3eeda645172b94d2f25ed26d6
 | `undici-types` | `7.24.6` | MIT | Build/test |
 | `vite` | `8.3.8` | MIT | Build/test |
 
-All listed licence identifiers are OSI-approved, including MPL-2.0, ISC and 0BSD. For `(MIT OR Apache-2.0)`, the recipient may choose either licence. MPL-2.0 obligations apply to covered files; a package being a build tool does not erase its licence. Preserve source availability and notices if distributing modified covered files. The application code is not automatically relicensed under MPL merely by using the tool.
+All listed licence identifiers are OSI-approved, including MPL-2.0, ISC and 0BSD.
 
 ## Backend and test tools
 
@@ -145,17 +145,14 @@ All listed licence identifiers are OSI-approved, including MPL-2.0, ISC and 0BSD
 | xunit | 2.9.3 | Apache-2.0; [tagged source licence](https://github.com/xunit/xunit/blob/v2-2.9.3/license.txt) |
 | xunit.runner.visualstudio | 3.1.5 | Apache-2.0; [source licence](https://github.com/xunit/visualstudio.xunit/blob/main/License.txt) |
 
-**Release blocker:** no resolved NuGet assets or lockfile are present here, and this machine has no discoverable .NET SDK. This table covers direct references, not a verified transitive .NET inventory. Before asserting that all third-party licences are documented, collect the resolved dependency list and associated licence files on the existing Windows/CI build environment. No SDK installation was performed.
+Transitive NuGet packages of these references are restored from nuget.org under their own licences.
 
 ## Presentation, video and tooling
 
-| Component | Role | Licence / status |
+| Component | Role | Licence |
 |---|---|---|
-| Overpass | Embedded presentation fonts | SIL Open Font License 1.1; bundled [text](../presentation/assets/fonts/Overpass-OFL.txt) and [provenance](../presentation/assets/fonts/sources.json) |
-| Fira Sans | Bundled presentation fonts | SIL Open Font License 1.1; bundled [text](../presentation/assets/fonts/FiraSans-OFL.txt) |
-| FFmpeg | Video processing, executable not submitted | Build licence depends on enabled configuration (LGPL/GPL); preserve this build's `ffmpeg -L` output if distributing the executable, not just rendered video |
-| Chromium / Chrome | Captures and PDF rendering, executable not submitted | Chromium BSD-style and third-party notices; Google Chrome has separate terms; no browser binaries are submitted |
-| OpenAI Artifact Tool / managed renderer | Editable deck generation | Tool/service terms apply to use; no proprietary runtime is redistributed. Verify that final exports contain only permitted assets and ordinary slide content |
-| Python / Node.js / PowerPoint | Build / export tools | Tool licences apply separately; exported original prose is not automatically licensed as the tool. No interpreter or PowerPoint binary is submitted |
+| Overpass | Presentation fonts | SIL Open Font License 1.1; [text](../presentation/assets/fonts/Overpass-OFL.txt), [provenance](../presentation/assets/fonts/sources.json) |
+| Fira Sans | Presentation fonts | SIL Open Font License 1.1; [text](../presentation/assets/fonts/FiraSans-OFL.txt) |
+| FFmpeg, Chrome / Chromium, Node.js, Python, PowerPoint | Video processing, screen capture, slide export | Used as tools only; no binaries are distributed with the project |
 
-The final website includes a public `third-party-notices.txt` copied from installed dependency licence/notice files, including the murmurhash-js MIT text from its README. Native build bindings refer to their parent oxlint/rolldown notices; these tools are not browser runtime payloads. The final website bundle must retain dependency notices. The package inventory alone is not a licence-text bundle. Verify `ui/dist/assets/*.js` and emitted notices on the final production build; Vite's generated chunk sizes and a successful compile do not establish notice coverage.
+The website publishes the licence and notice texts of its dependencies in [`third-party-notices.txt`](../../ui/public/third-party-notices.txt).

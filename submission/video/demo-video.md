@@ -6,7 +6,7 @@ Lama, a small boy alpaca, is Alexey's assistant. He starts as the real plush toy
 
 **Current scope: voice and character only.** The user also rejected the Charlie voice in the 11.5-second presenter pilot and clarified the target: an adult female performer voicing a little cartoon boy. The physical desk-to-monitor jump is still required; the preceding camera push does not satisfy it. See the [current voice and character direction](voice-direction.md). The narration and storyboard below are provisional audition/reference material and will be revised later; do not rebuild the complete film yet.
 
-Editing target: **29 seconds, 1920×1080, 30 fps — 870 frames**. The narration, revised on 15 November for the app at `c16b7b7`, contains **47 words**, but its wording is not locked. Revise the script and timing after voice/character review while retaining a final duration of at most 30 seconds.
+Editing target: **29 seconds, 1920×1080, 30 fps — 870 frames**. The narration, revised on 15 November for the app at `09b25a0`, contains **47 words**, but its wording is not locked. Revise the script and timing after voice/character review while retaining a final duration of at most 30 seconds.
 
 ## Storyboard
 
@@ -46,7 +46,7 @@ Compose him as a weather presenter in the foreground, about 700 px tall, with a 
 
 The new opening uses 12.6–14.0 seconds of with_Lama.MOV, converted from HDR to SDR and cropped to a full-width profile close-up. It is softer than a native landscape recording but has no side areas. A fast push into the monitor connects it to the presenter stage. This is an editorial transition, not a generated physical jump. It uses neither without_Lama.MOV nor background reconstruction.
 
-The final frame retains a short NASA FIRMS credit and the note Independent project. Not affiliated with or endorsed by NASA. Use Team Plush; registered members are Alexey Belkin and Viktoriia Naiman. Lama is a fictional presenter, and Claude / Codex are tools rather than registered members; Lama's name does not replace it.
+The final frame retains a short NASA FIRMS credit and the note Independent project. Not affiliated with or endorsed by NASA. Name Team Plush — Alexey Belkin and Viktoriia Naiman; Lama's name does not replace it.
 
 Disclosure text for the description, AI-use field and export metadata is in [publication disclosures](disclosures.md). The English narration has been synthesized using ElevenLabs Eleven v4 through OpenRouter; disclose it in the video description and MP4 metadata. Check the scarf print after the first edit; do not claim that it contains no third-party branding before its ownership is established.
 
@@ -54,7 +54,7 @@ Disclosure text for the description, AI-use field and export metadata is in [pub
 
 Compare real detections from the same 24-hour window. All sensors combines them for display, and the colored groups depend on screen-space proximity: they do not establish that individual fires match. Label geometry as estimated. Show weather and land cover only where values are available.
 
-The app, at `c16b7b7`, also shows experimental estimates fitted on one day of data on a pinned single detection: notes on unmatched passes, the red **Expected detection, no match** flag with its detection score, **Predicted FRP if detected** or **GWIS-adjusted FRP if detected**, and the GWIS or CAMS context line with its detection-odds multiplier. None of them appears on screen; the detail scene pins a group, where they are not shown.
+The app, at `09b25a0`, also shows experimental estimates fitted on one day of data on a pinned single detection: notes on unmatched passes, the red **Expected detection, no match** flag with its detection score, **Predicted FRP if detected** or **GWIS-adjusted FRP if detected**, and the GWIS or CAMS context line with its detection-odds multiplier. None of them appears on screen; the detail scene pins a group, where they are not shown.
 
 The closing line and its caption are the only mention of these models. They use the viewing angle, land cover and, for some sensor pairs, weather as inputs, which is what "use it" refers to. Call them first experimental estimates or first baselines, fitted on one day of data. Do not say that the models learn: they were fitted once, offline. Do not say that the app predicts or forecasts fires, do not quote a score without its sample, and attribute the models to Earth Fire Calendar, never to NASA.
 
@@ -62,6 +62,6 @@ Harmonization is the next step. Do not depict completed calibration, a scientifi
 
 Asset preparation and recording steps are in the [production plan](README.md).
 
-## Compliance handoff
+## Before export
 
-Before final export, follow the [rights and capture release gate](disclosures.md#rights-release-gate). The live basemap now uses EOX 2016 (CC BY 4.0); old EOX 2025 recordings must be replaced, not relabelled. Include the EOX source / licence near its use and in the description. Keep written adult consent privately even for team members. The final MP4, not this storyboard, must be checked for duration, watermark coverage, English speech/subtitles, metadata and public access.
+Record map scenes from the live app: it now uses the EOX 2016 basemap (CC BY 4.0); older recordings show the 2025 layer (CC BY-NC-SA 4.0). Check the final MP4 for duration, the `AI-generated` label, English speech and subtitles, and metadata. See [disclosures](disclosures.md#before-publication).

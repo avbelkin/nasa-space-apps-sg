@@ -11,7 +11,7 @@ export const LINK_PREVIEW_IMAGE_WIDTH = 1200
 export const LINK_PREVIEW_IMAGE_HEIGHT = 630
 
 export const LINK_PREVIEW_IMAGE_ALT =
-  'Earth Fire Calendar: MODIS and VIIRS detections provide evidence for future harmonization. Original AI-assisted typographic diagram.'
+  'Earth Fire Calendar: live MODIS and VIIRS active-fire detections compared on one globe.'
 
 export const LINK_PREVIEW_THEME_COLOR = '#090f1d'
 
