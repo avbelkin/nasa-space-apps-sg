@@ -21,11 +21,10 @@ internal sealed class LocalWeatherCredentials(string project, string database)
 }
 
 internal sealed class LocalWeatherWorker(FirmsClient firms, DeferredHotspotWeather sampler,
-    ISharedWeatherSampleStore shared, LocalWeatherCredentials credentials, TimeProvider clock, ILogger<LocalWeatherWorker> logger)
+    LocalWeatherCredentials credentials, TimeProvider clock, ILogger<LocalWeatherWorker> logger)
 {
     private static readonly TimeSpan ScanInterval = TimeSpan.FromMinutes(2);
-    private readonly Dictionary<WeatherSpotKey, DateTimeOffset?> known = [];
-    private bool firstWriteReported;
+    private readonly Dictionary<GridWorkKey, DateTimeOffset> nextChecks = [];
 
     internal async Task RunAsync()
     {
@@ -83,53 +82,54 @@ internal sealed class LocalWeatherWorker(FirmsClient firms, DeferredHotspotWeath
         var spots = await firms.GetWorldwideWeatherSpotsAsync(token).ConfigureAwait(false);
         var now = clock.GetUtcNow();
         var refreshAt = now + ScanInterval;
-        foreach (var key in known.Keys.Where(key => key.ExpiresAt <= now).ToArray()) known.Remove(key);
+        foreach (var key in nextChecks.Keys.Where(key => key.Acquired.AddHours(24) <= now).ToArray())
+            nextChecks.Remove(key);
         var eligible = spots.Where(spot => spot.AcquiredAtUtc <= now && WeatherSpotKey.From(spot).ExpiresAt > now)
-            .DistinctBy(WeatherSpotKey.From).ToArray();
-        var inspected = 0;
-        var written = 0;
-        var available = 0;
+            .ToArray();
+        var groups = 0;
+        var selections = 0;
 
-        foreach (var batch in PlanBatches(eligible, known, now))
+        foreach (var batch in PlanBatches(eligible, nextChecks, now))
         {
-            var candidates = batch.Where(spot => WeatherSpotKey.From(spot).ExpiresAt > clock.GetUtcNow())
-                .ToDictionary(WeatherSpotKey.From);
-            if (candidates.Count == 0) continue;
-            var previous = await shared.ReadAsync(candidates.Keys.ToArray(), token).ConfigureAwait(false);
-            inspected += candidates.Count;
-            foreach (var (key, entry) in previous) known[key] = entry.RetryAt;
-            var missing = candidates.Where(item => !previous.TryGetValue(item.Key, out var entry) ||
-                entry.ShouldRetry(clock.GetUtcNow())).Select(item => item.Value).ToArray();
-            if (missing.Length > 0)
+            var live = batch.Where(spot => spot.AcquiredAtUtc.AddHours(24) > clock.GetUtcNow()).ToArray();
+            if (live.Length == 0) continue;
+            var sampled = await sampler.SampleAsync(live, token).ConfigureAwait(false);
+            var checkedAt = clock.GetUtcNow();
+            foreach (var spot in live)
             {
-                var sampled = await sampler.SampleAsync(missing, token).ConfigureAwait(false);
-                var stored = await shared.WriteAsync(sampled, token).ConfigureAwait(false);
-                foreach (var (key, entry) in stored) known[key] = entry.RetryAt;
-                written += stored.Count;
-                available += stored.Values.Count(entry => entry.Sources.HasData);
-                if (stored.Count > 0 && !firstWriteReported)
-                {
-                    firstWriteReported = true;
-                    logger.LogInformation("Local weather worker saved its first batch of {Count} spots to Firestore.", stored.Count);
-                }
+                var entry = sampled[WeatherSpotKey.From(spot)];
+                nextChecks[GridWorkKey.From(spot)] = entry.RetryAt ?? checkedAt.AddMinutes(15);
             }
+            groups++;
+            selections += live.Length;
             if (clock.GetUtcNow() >= refreshAt) break;
         }
 
-        logger.LogInformation("Local weather scan: {Eligible} live spots, {Known} cache entries seen, {Checked} checked in Firestore, {Written} saved ({Available} with data).",
-            eligible.Length, eligible.Count(spot => known.ContainsKey(WeatherSpotKey.From(spot))), inspected, written, available);
+        logger.LogInformation("Local weather scan: {Eligible} live detections, {Groups} grid batches, {Selections} acquisition and coverage selections checked.",
+            eligible.Length, groups, selections);
         var delay = refreshAt - clock.GetUtcNow();
         if (delay > TimeSpan.Zero) await Task.Delay(delay, token).ConfigureAwait(false);
     }
 
     internal static IEnumerable<FirmsHotspot[]> PlanBatches(IEnumerable<FirmsHotspot> spots,
-        IReadOnlyDictionary<WeatherSpotKey, DateTimeOffset?> known, DateTimeOffset now)
+        IReadOnlyDictionary<GridWorkKey, DateTimeOffset> known, DateTimeOffset now)
     {
-        return spots.Select(spot => (Spot: spot, Seen: known.TryGetValue(WeatherSpotKey.From(spot), out var retryAt), RetryAt: retryAt))
+        return spots.DistinctBy(GridWorkKey.From)
+            .Select(spot => (Spot: spot, Seen: known.TryGetValue(GridWorkKey.From(spot), out var retryAt), RetryAt: retryAt))
             .Where(item => !item.Seen || item.RetryAt <= now)
             .OrderBy(item => item.Seen)
             .ThenByDescending(item => item.Spot.AcquiredAtUtc)
             .GroupBy(item => (item.Seen, Tile: NoaaGfsWeather.SamplingGroup(item.Spot)))
             .SelectMany(group => group.Select(item => item.Spot).Chunk(DeferredHotspotWeather.BatchSize));
+    }
+
+    internal readonly record struct GridWorkKey(int West, int South, DateTimeOffset Acquired, bool Wfas, bool Cpc, bool AtEastDateline)
+    {
+        internal static GridWorkKey From(FirmsHotspot spot)
+        {
+            var (west, south, _) = NoaaGfsWeather.SamplingGroup(spot);
+            return new(west, south, spot.AcquiredAtUtc, UsfsFuelMoisture.InRegion(spot), NoaaSoilMoistureAnomaly.InRegion(spot),
+                spot.Longitude == 180);
+        }
     }
 }

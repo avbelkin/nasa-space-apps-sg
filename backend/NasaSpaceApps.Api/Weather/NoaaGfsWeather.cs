@@ -6,7 +6,7 @@ using static NasaSpaceApps.Api.Weather.GfsGribSubset;
 namespace NasaSpaceApps.Api.Weather;
 
 internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache cache, ILogger<NoaaGfsWeather> logger,
-    LocalWeatherCredentials? local = null)
+    LocalWeatherCredentials? local = null, EncodedWeatherGridCache? grids = null)
 {
     public const string HttpClientName = "NoaaGfsWeather";
     private const string BaseUrl = "https://nomads.ncep.noaa.gov/cgi-bin/filter_";
@@ -41,6 +41,7 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
     ];
 
     private readonly SemaphoreSlim requests = new(local is null ? 4 : 1);
+    private readonly EncodedWeatherGridCache gridCache = grids ?? EncodedWeatherGridCache.Disabled;
     private long lastLocalFetch;
 
     public async Task<HotspotWeatherSource[][]> EnrichAsync(IReadOnlyList<FirmsHotspot?> spots, CancellationToken token)
@@ -344,31 +345,39 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
         try
         {
             await requests.WaitAsync(deadline).ConfigureAwait(false);
-            var fetched = false;
             try
             {
                 if (cache.TryGetValue(key, out cached)) return cached;
-                if (local is not null && lastLocalFetch != 0)
-                {
-                    var remaining = TimeSpan.FromSeconds(10) - Stopwatch.GetElapsedTime(lastLocalFetch);
-                    if (remaining > TimeSpan.Zero) await Task.Delay(remaining, deadline).ConfigureAwait(false);
-                }
-                fetched = true;
-                using var http = clients.CreateClient(HttpClientName);
-                using var response = await http.GetAsync(BuildUrl(tile.West, tile.South, tile.Run, tile.Valid, tile.Snow),
-                    HttpCompletionOption.ResponseHeadersRead, deadline).ConfigureAwait(false);
-                response.EnsureSuccessStatusCode();
-                await response.Content.LoadIntoBufferAsync(512 * 1024, deadline).ConfigureAwait(false);
-                var frames = Parse(await response.Content.ReadAsByteArrayAsync(deadline).ConfigureAwait(false));
-                foreach (var parameter in frames.Where(pair => pair.Value.Run != tile.Run || pair.Value.End != tile.Valid)
-                    .Select(pair => pair.Key).ToArray()) frames.Remove(parameter);
+                var url = BuildUrl(tile.West, tile.South, tile.Run, tile.Valid, tile.Snow);
+                var frames = await gridCache.GetAsync(url, tile.Valid.AddHours(25), DownloadAsync, Decode, deadline).ConfigureAwait(false);
                 cache.Set(key, frames, TimeSpan.FromMinutes(20));
                 return frames;
             }
-            finally
+            finally { requests.Release(); }
+
+            async Task<EncodedWeatherGrid> DownloadAsync(CancellationToken fetchToken)
             {
-                if (local is not null && fetched) lastLocalFetch = Stopwatch.GetTimestamp();
-                requests.Release();
+                if (local is not null && lastLocalFetch != 0)
+                {
+                    var remaining = TimeSpan.FromSeconds(10) - Stopwatch.GetElapsedTime(lastLocalFetch);
+                    if (remaining > TimeSpan.Zero) await Task.Delay(remaining, fetchToken).ConfigureAwait(false);
+                }
+                try
+                {
+                    using var http = clients.CreateClient(HttpClientName);
+                    return await gridCache.DownloadAsync(http, BuildUrl(tile.West, tile.South, tile.Run, tile.Valid, tile.Snow),
+                        512 * 1024, fetchToken).ConfigureAwait(false);
+                }
+                finally { if (local is not null) lastLocalFetch = Stopwatch.GetTimestamp(); }
+            }
+
+            Dictionary<Parameter, Frame> Decode(EncodedWeatherGrid encoded)
+            {
+                var frames = Parse(encoded.Bytes);
+                foreach (var parameter in frames.Where(pair => pair.Value.Run != tile.Run || pair.Value.End != tile.Valid)
+                    .Select(pair => pair.Key).ToArray()) frames.Remove(parameter);
+                if (frames.Count == 0) throw new InvalidDataException("GFS grid has no fields matching the selected run and valid hour.");
+                return frames;
             }
         }
         catch (Exception error) when (!token.IsCancellationRequested && error is HttpRequestException or OperationCanceledException or

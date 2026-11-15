@@ -11,7 +11,7 @@ public sealed record HotspotWeatherProgress(string Status, int SampledCount, int
     public HotspotWeatherCoverage? Coverage { get; init; }
 }
 
-public sealed record HotspotWeatherCoverage(int CachedCount, DateTimeOffset CheckedAtUtc);
+public sealed record HotspotWeatherCoverage(int GridCount, DateTimeOffset CheckedAtUtc);
 
 internal sealed class DeferredHotspotWeather(
     NoaaGfsWeather forecasts,
@@ -35,7 +35,6 @@ internal sealed class DeferredHotspotWeather(
             .OrderByDescending(spot => spot.AcquiredAtUtc).DistinctBy(Key).ToArray();
         var targets = eligible.Take(MaximumTargets).ToArray();
         var coverage = includeCoverage ? samples.GetCoverageAsync(token) : null;
-        await samples.HydrateAsync(targets.Select(Key), token).ConfigureAwait(false);
         Work? work = null;
         if (enrich)
         {
@@ -73,7 +72,6 @@ internal sealed class DeferredHotspotWeather(
     internal async Task<GridSources?[]> GetAsync(IReadOnlyList<FirmsHotspot?> spots, CancellationToken token)
     {
         var requested = spots.OfType<FirmsHotspot>().DistinctBy(Key).ToArray();
-        await samples.HydrateAsync(requested.Select(Key), token).ConfigureAwait(false);
         Task[] running;
         lock (gate)
             running = spots.OfType<FirmsHotspot>().Select(spot => inProgress.GetValueOrDefault(Key(spot)))
@@ -109,7 +107,7 @@ internal sealed class DeferredHotspotWeather(
     private async Task<Dictionary<WeatherSpotKey, WeatherCacheEntry>> LoadAsync(IReadOnlyList<FirmsHotspot> spots, CancellationToken token)
     {
         var result = await SampleAsync(spots, token).ConfigureAwait(false);
-        await samples.SaveAsync(result, token).ConfigureAwait(false);
+        samples.Save(result);
         return result;
     }
 

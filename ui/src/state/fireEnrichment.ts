@@ -15,6 +15,6 @@ export function fireEnrichmentProgressKey(data: Pick<FirmsLiveSpotsResponse,
     data.geometryProgress?.pendingCount, data.landCoverPending, data.weather?.status,
     data.weather?.sampledCount, data.weather?.availableCount, data.weather?.retryCount,
     data.weather?.targetCount, data.weather?.eligibleCount,
-    data.weather?.coverage?.cachedCount,
+    data.weather?.coverage?.gridCount ?? data.weather?.coverage?.cachedCount,
   ].join('|')
 }
