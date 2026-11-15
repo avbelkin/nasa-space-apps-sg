@@ -39,6 +39,8 @@ public sealed class HotspotWeatherTests
                     .ConfigurePrimaryHttpMessageHandler(() => weatherHandler);
                 services.AddHttpClient(CopernicusFireWeather.HttpClientName)
                     .ConfigurePrimaryHttpMessageHandler(() => new OfflineHandler());
+                services.AddHttpClient(NoaaWeatherObservations.HttpClientName)
+                    .ConfigurePrimaryHttpMessageHandler(() => new OfflineHandler());
             });
         });
         using var client = factory.CreateClient();

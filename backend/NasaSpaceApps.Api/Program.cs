@@ -100,6 +100,8 @@ builder.Services.AddHttpClient(OpenMeteoHotspotWeather.HttpClientName, client =>
 builder.Services.AddSingleton<OpenMeteoHotspotWeather>();
 builder.Services.AddHttpClient(CopernicusFireWeather.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
 builder.Services.AddSingleton<CopernicusFireWeather>();
+builder.Services.AddHttpClient(NoaaWeatherObservations.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddSingleton<NoaaWeatherObservations>();
 builder.Services.AddSingleton<FirmsClient>();
 builder.Services.AddSingleton<HotspotGeometryWorker>();
 builder.Services.AddHostedService(services => services.GetRequiredService<HotspotGeometryWorker>());
@@ -275,6 +277,7 @@ app.MapPost("/api/fires/spots/weather", (
     FirmsClient firmsClient,
     OpenMeteoHotspotWeather weather,
     CopernicusFireWeather fireWeather,
+    NoaaWeatherObservations observations,
     CancellationToken cancellationToken) =>
     ExecuteFirmsQueryAsync(firms, async () =>
     {
@@ -286,12 +289,14 @@ app.MapPost("/api/fires/spots/weather", (
         var spots = await firmsClient.GetSelectedLiveSpotsAsync(keys, cancellationToken);
         var forecastTask = weather.EnrichAsync(spots, cancellationToken);
         var fireWeatherTask = fireWeather.EnrichAsync(spots, cancellationToken);
-        await Task.WhenAll(forecastTask, fireWeatherTask);
+        var observationsTask = observations.EnrichAsync(spots, cancellationToken);
+        await Task.WhenAll(forecastTask, fireWeatherTask, observationsTask);
         var forecast = await forecastTask;
         var fireWeatherSources = await fireWeatherTask;
+        var observationSources = await observationsTask;
         return new HotspotWeatherResponse(forecast.Spots.Select((spot, index) =>
             spot is not null && fireWeatherSources[index] is { } source
-                ? spot with { Sources = [.. spot.Sources, source] }
+                ? spot with { Sources = [.. spot.Sources, source, .. observationSources[index]] }
                 : spot).ToArray());
     }));
 
