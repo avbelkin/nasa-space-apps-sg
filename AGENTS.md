@@ -5,6 +5,16 @@
 - All repository content must be in English, including documentation, scripts, comments, review notes, and local review pages. This also applies to authored text in Git-ignored working directories.
 - Respond to the user in Russian. The chat language does not change the repository language.
 
+## Submission Folder Layout
+
+Follow the folder rules in [submission/README.md](submission/README.md):
+
+- `submission/deliverables/`: only the documents that are submitted or shown to judges (project page text, technical note, literature review) and the data they cite.
+- `submission/presentation/`: everything about the slide deck, including the slide text.
+- `submission/video/`: everything about the demo video, including the script and the Git-ignored `lama/` footage.
+- `submission/docs/`: only our own working documents that are not submitted or shown anywhere.
+- `submission/assets/`: only official third-party material (logos, colours, fonts, patterns). Nothing we made goes there.
+
 ## Git & Remote Sync Workflow
 
 - **Parallel feature worktrees**: Start new features in an isolated sibling Git worktree on a dedicated feature branch (for example, `git worktree add ..\nasa-space-apps-sg-wt-<feature> -b feat/<feature> main`) so multiple features or agents can be built, tested, and committed in parallel without branch-switching or dirty-worktree conflicts. Remove the worktree (`git worktree remove ..\nasa-space-apps-sg-wt-<feature>`) once merged.

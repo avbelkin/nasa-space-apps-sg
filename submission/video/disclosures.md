@@ -1,6 +1,6 @@
 # Captions and AI disclosures for the Lama video
 
-[Script](../docs/demo-video.md) · [Production plan](README.md)
+[Script](demo-video.md) · [Production plan](README.md)
 
 ## Persistent on-screen label
 
@@ -28,7 +28,7 @@ Name the actual provider if another service is used. Omit the synthetic-voice se
 
 ## Submission AI-use field
 
-The [project description](../docs/project-description.md#6-use-of-super-intelligence-si) records the use of image generation for Lama. Complete the voice details after producing the audio. Do not name a specific image-generation model: the built-in tool did not disclose it.
+The [project description](../deliverables/project-description.md#6-use-of-super-intelligence-si) records the use of image generation for Lama. Complete the voice details after producing the audio. Do not name a specific image-generation model: the built-in tool did not disclose it.
 
 ## MP4 metadata
 

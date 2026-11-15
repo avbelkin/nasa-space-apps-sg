@@ -1,6 +1,6 @@
 # Space Apps 2026: advice on the submission and demo
 
-[Slides](demo-slides.md) · [Video script](demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
+[Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](../deliverables/project-description.md) · [Technical note](../deliverables/technical-note.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
 
 This document contains recommendations only: what raises the score and how best to show the project. They rest on the official guides and on our review of the 2025 winners. The conclusions drawn from that review are editorial hypotheses based on a sample of winners alone, not the jury's disclosed reasoning. What is mandatory is covered in the [form fields](form-fields.md) and the [formal requirements](formal-requirements.md).
 
@@ -131,7 +131,7 @@ The winners' materials also contain claims of infallibility and accuracy with no
 | 0:10 | How it works: images or a prototype, the user experience, the role of open data from NASA and partner agencies |
 | 0:20–0:30 | A look ahead: what the solution could give people and the world |
 
-The [video script](demo-video.md) adapts this outline to a 29-second story with Lama, Alexey's plush alpaca assistant. A one-second live shot leads into an animated jump into the monitor; the character then narrates a real screen recording. The project name is spoken; the exact team name is added as a caption when supplied. The outline is the guide's advice, not an eligibility condition. The [shooting plan](../video/README.md) specifies the footage and tools.
+The [video script](../video/demo-video.md) adapts this outline to a 29-second story with Lama, Alexey's plush alpaca assistant. A one-second live shot leads into an animated jump into the monitor; the character then narrates a real screen recording. The project name is spoken; the exact team name is added as a caption when supplied. The outline is the guide's advice, not an eligibility condition. The [shooting plan](../video/README.md) specifies the footage and tools.
 
 | Script shot | Criteria it covers |
 |---|---|
@@ -151,7 +151,7 @@ Our advice, not official:
 - One point and one image per slide; put the methodology and the full bibliography on the project page and in the repository.
 - Duplicate the meaning of colour with text or a symbol and keep text contrast at 4.5:1 or higher: these are guidelines from the Space Apps brand guide that are also useful for the styling of our own map. The review of SpaceGenes+ specifically notes a second visual cue besides colour.
 
-What to show on each of the [seven slides](demo-slides.md):
+What to show on each of the [seven slides](../presentation/demo-slides.md):
 
 | Slide | Image | Criteria |
 |---|---|---|
@@ -163,7 +163,7 @@ What to show on each of the [seven slides](demo-slides.md):
 | 6 | Diagram with "working" and "planned" labels | Validity |
 | 7 | Closing frame, readable links, compact attribution | Impact, Presentation |
 
-The numbers on slide 2 come from the snapshot the app fetched on 15 November at 08:36 UTC, that is, at 16:36 SGT: 79,349 VIIRS and 8,127 MODIS detections, 87,476 together. Its summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](../assets/firms-snapshot-2026-11-15T0836Z.json); the [project page text](project-description.md) and the [technical note](technical-note.md) use the same snapshot. The numbers on the slide must match the numbers in the screenshots: if you take new screenshots, replace the numbers and the snapshot time along with them.
+The numbers on slide 2 come from the snapshot the app fetched on 15 November at 08:36 UTC, that is, at 16:36 SGT: 79,349 VIIRS and 8,127 MODIS detections, 87,476 together. Its summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](../deliverables/firms-snapshot-2026-11-15T0836Z.json); the [project page text](../deliverables/project-description.md) and the [technical note](../deliverables/technical-note.md) use the same snapshot. The numbers on the slide must match the numbers in the screenshots: if you take new screenshots, replace the numbers and the snapshot time along with them.
 
 ## Earth Fire Calendar: what to show and what not to
 

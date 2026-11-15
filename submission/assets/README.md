@@ -1,6 +1,6 @@
-# Shared assets
+# Official assets
 
-Brand material reused across the video, the presentation and the documents.
+Official third-party brand material reused across the video, the presentation and the documents: logos, colours, fonts and patterns. Nothing we made belongs here; our own images, footage and data live next to the material that uses them (see the [folder rules](../README.md)).
 
 ## `space-apps-brand/`
 

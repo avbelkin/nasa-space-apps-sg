@@ -1,6 +1,6 @@
 # Earth Fire Calendar: technical note
 
-[Slides](demo-slides.md) · [Video script](demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
+[Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](../docs/form-fields.md) · [Formal requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
 
 **Challenge:** Harmonization of MODIS and VIIRS Hot Spots · **Team:** `[team name]` · **Version described:** commit `75f89b8`, 15 November 2026 · **App:** [avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0) · **Code:** [github.com/avbelkin/nasa-space-apps-sg](https://github.com/avbelkin/nasa-space-apps-sg)
 
@@ -31,7 +31,7 @@ The app shows no sample or synthetic detections. The one modelled value, the FRP
 
 ## 2. The problem in the data
 
-One snapshot of the app's feed, fetched on 15 November 2026 at 08:36:16 UTC, window 14 November 08:36 – 15 November 08:36 UTC, whole world. The summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](../assets/firms-snapshot-2026-11-15T0836Z.json).
+One snapshot of the app's feed, fetched on 15 November 2026 at 08:36:16 UTC, window 14 November 08:36 – 15 November 08:36 UTC, whole world. The summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](firms-snapshot-2026-11-15T0836Z.json).
 
 | | MODIS (Terra + Aqua) | VIIRS (NOAA-20 + NOAA-21) |
 |---|---|---|
@@ -198,7 +198,7 @@ Apart from the baselines in section 6, nothing in this section is implemented.
 
 **If calibration fails,** the app will show each sensor separately and label the combined view experimental.
 
-The data constraints behind this plan and the design decisions for the measure, the reference scale and the calendar are in the [design notes](harmonization-design-notes.md).
+The data constraints behind this plan and the design decisions for the measure, the reference scale and the calendar are in the [design notes](../docs/harmonization-design-notes.md).
 
 ## 8. Known limitations
 
