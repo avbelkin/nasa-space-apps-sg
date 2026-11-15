@@ -6,7 +6,8 @@ using NasaSpaceApps.Api.Firms;
 namespace NasaSpaceApps.Api.Weather;
 
 internal sealed partial class NoaaSoilMoistureAnomaly(
-    IHttpClientFactory clients, IMemoryCache cache, ILogger<NoaaSoilMoistureAnomaly> logger)
+    IHttpClientFactory clients, IMemoryCache cache, ILogger<NoaaSoilMoistureAnomaly> logger, EncodedWeatherGridCache? grids = null,
+    LocalWeatherCredentials? local = null)
 {
     public const string HttpClientName = "NoaaSoilMoistureAnomaly";
     private const string Product = "https://www.cpc.ncep.noaa.gov/products/Drought/";
@@ -15,12 +16,13 @@ internal sealed partial class NoaaSoilMoistureAnomaly(
     private const int Height = 202;
     private static readonly string[] Depths = ["0_10", "10_40", "40_100"];
     private readonly SemaphoreSlim downloads = new(1);
+    private readonly EncodedWeatherGridCache gridCache = grids ?? EncodedWeatherGridCache.Disabled;
 
     public async Task<HotspotWeatherSource?[]> EnrichAsync(IReadOnlyList<FirmsHotspot?> spots, CancellationToken token)
     {
         if (!spots.Any(spot => spot is not null && InRegion(spot))) return spots.Select(spot => AtSpot(spot, null)).ToArray();
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
-        deadline.CancelAfter(TimeSpan.FromSeconds(8));
+        deadline.CancelAfter(TimeSpan.FromSeconds(local is null ? 8 : 45));
         Snapshot? snapshot = null;
         try
         {
@@ -31,8 +33,7 @@ internal sealed partial class NoaaSoilMoistureAnomaly(
         catch (Exception error) when (!token.IsCancellationRequested && error is
             HttpRequestException or OperationCanceledException or IOException or InvalidDataException or ArgumentException or OverflowException)
         {
-            if (error is not OperationCanceledException)
-                logger.LogWarning("NOAA CPC soil-moisture anomalies were unavailable: {Message}", error.Message);
+            logger.LogWarning("NOAA CPC soil-moisture anomalies were unavailable: {Message}", error.Message);
         }
         return spots.Select(spot => AtSpot(spot, snapshot)).ToArray();
     }
@@ -53,15 +54,15 @@ internal sealed partial class NoaaSoilMoistureAnomaly(
         cache.Set(HttpClientName, snapshot, TimeSpan.FromMinutes(15));
         return snapshot;
 
-        async Task<((double West, double North, double Step) Grid, float[] Values, DateTimeOffset Modified)> ReadRasterAsync(string depth)
+        Task<((double West, double North, double Step) Grid, float[] Values, DateTimeOffset Modified)> ReadRasterAsync(string depth)
         {
             var url = Product + $"GeoTIFF/SurfaceHydrology/NoahSM/weekly/weekly_SMprof_noah.{depth}cm.tif";
-            using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-            var modified = response.Content.Headers.LastModified ?? throw new InvalidDataException("Missing NOAA CPC raster revision timestamp.");
-            await response.Content.LoadIntoBufferAsync(512 * 1024, token).ConfigureAwait(false);
-            var content = await response.Content.ReadAsByteArrayAsync(token).ConfigureAwait(false);
-            return (FloatWeatherTiff.ReadWgs84Grid(content), FloatWeatherTiff.ReadValues(content, Width, Height), modified);
+            var key = FormattableString.Invariant($"{url}|{period.Start:O}|{period.End:O}");
+            return gridCache.GetAsync(key, DateTimeOffset.UtcNow.AddMinutes(15),
+                cancellation => gridCache.DownloadAsync(http, url, 512 * 1024, cancellation),
+                encoded => (FloatWeatherTiff.ReadWgs84Grid(encoded.Bytes),
+                    FloatWeatherTiff.ReadValues(encoded.Bytes, Width, Height),
+                    encoded.ModifiedAt ?? throw new InvalidDataException("Missing NOAA CPC raster revision timestamp.")), token);
         }
     }
 
@@ -77,7 +78,7 @@ internal sealed partial class NoaaSoilMoistureAnomaly(
             CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out date);
     }
 
-    private static bool InRegion(FirmsHotspot spot) =>
+    internal static bool InRegion(FirmsHotspot spot) =>
         spot.Latitude is >= 24 and <= 51 && spot.Longitude is >= -126 and <= -65;
 
     private static HotspotWeatherSource? AtSpot(FirmsHotspot? spot, Snapshot? snapshot)

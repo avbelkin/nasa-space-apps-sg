@@ -9,7 +9,7 @@ export function AttributionFooter() {
         <a href="https://firms.modaps.eosdis.nasa.gov/" {...EXTERNAL}>NASA FIRMS</a> &middot;{' '}
         <a href="https://earthdata.nasa.gov/gibs" {...EXTERNAL}>NASA GIBS</a> &middot;{' '}
         <a href="https://celestrak.org/" {...EXTERNAL}>CelesTrak</a> &middot;{' '}
-        <a href="https://s2maps.eu" {...EXTERNAL}>EOX / Copernicus Sentinel-2</a> &middot;{' '}
+        <a href="https://cloudless.eox.at" {...EXTERNAL}>EOxCloudless / Copernicus Sentinel-2</a> &middot;{' '}
         <a href="https://gis.extremum.org" {...EXTERNAL}>Extremum SAR GIS</a>. Not affiliated with NASA.
       </p>
       <div className="footer-meta">
@@ -75,15 +75,17 @@ export function AttributionFooter() {
               <div className="meta-row">
                 <dt>Earth basemap</dt>
                 <dd>
-                  Sentinel-2 cloudless via{' '}
-                  <a href="https://s2maps.eu" {...EXTERNAL}>
-                    s2maps.eu
+                  EOxCloudless{' '}
+                  <a href="https://cloudless.eox.at" {...EXTERNAL}>
+                    cloudless.eox.at
                   </a>{' '}
                   by{' '}
                   <a href="https://eox.at" {...EXTERNAL}>
                     EOX IT Services GmbH
                   </a>{' '}
-                  (contains modified Copernicus Sentinel data 2025).
+                  (Contains modified Copernicus Sentinel data 2016 &amp; 2017), licensed under{' '}
+                  <a href="https://creativecommons.org/licenses/by/4.0/" {...EXTERNAL}>CC BY 4.0</a>.
+                  Historical imagery, not current surface conditions.
                 </dd>
               </div>
               <div className="meta-row">
@@ -104,11 +106,16 @@ export function AttributionFooter() {
               <div className="meta-row">
                 <dt>Weather at acquisition</dt>
                 <dd>
-                  Modeled weather via <a href="https://open-meteo.com/" {...EXTERNAL}>Open-Meteo</a>, radar and satellite
+                  NOAA GFS and GOES-R, NOAA CPC soil moisture, Copernicus GDO soil-moisture anomalies, and modeled weather / Copernicus CAMS aerosols via <a href="https://open-meteo.com/" {...EXTERNAL}>Open-Meteo</a>, radar and satellite
                   observations from <a href="https://www.noaa.gov/" {...EXTERNAL}>NOAA</a>, fire danger from{' '}
                   <a href="https://gwis.jrc.ec.europa.eu/" {...EXTERNAL}>Copernicus GWIS</a>, and dead fuel moisture from
                   the <a href="https://www.wfas.net/" {...EXTERNAL}>US Forest Service</a>.
                 </dd>
+              </div>
+              <div className="meta-row">
+                <dt>Star background</dt>
+                <dd>Bright-star positions from the Yale Bright Star Catalogue and ESA Hipparcos;
+                  fainter stars are generated procedurally.</dd>
               </div>
               <div className="meta-row">
                 <dt>Satellite clouds</dt>
@@ -123,8 +130,9 @@ export function AttributionFooter() {
               </div>
             </dl>
             <p className="panel-note">
+              <a href="./third-party-notices.txt" {...EXTERNAL}>Software licence notices</a>.{' '}
               Independent project built for the 2026 NASA Space Apps Challenge. Not affiliated
-              with, endorsed by, or an official product of NASA.
+              with, endorsed by, or an official product of NASA. Model estimates are Earth Fire Calendar's own; NASA is not responsible for their accuracy.
             </p>
           </div>
         </details>

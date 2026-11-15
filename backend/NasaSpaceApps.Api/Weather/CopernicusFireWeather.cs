@@ -4,14 +4,16 @@ using NasaSpaceApps.Api.Firms;
 namespace NasaSpaceApps.Api.Weather;
 
 internal sealed class CopernicusFireWeather(
-    IHttpClientFactory clients, IMemoryCache cache, ILogger<CopernicusFireWeather> logger)
+    IHttpClientFactory clients, IMemoryCache cache, ILogger<CopernicusFireWeather> logger, EncodedWeatherGridCache? grids = null,
+    LocalWeatherCredentials? local = null)
 {
     public const string HttpClientName = "CopernicusFireWeather";
     private const string WmsUrl = "https://maps.effis.emergency.copernicus.eu/gwis";
     private const int Size = 64;
     private const int Degrees = 4;
     private const double PixelDegrees = (double)Degrees / Size;
-    private readonly SemaphoreSlim downloads = new(4);
+    private readonly SemaphoreSlim downloads = new(local is null ? 4 : 8);
+    private readonly EncodedWeatherGridCache gridCache = grids ?? EncodedWeatherGridCache.Disabled;
 
     private static readonly Field[] Fields =
     [
@@ -25,7 +27,7 @@ internal sealed class CopernicusFireWeather(
         IReadOnlyList<FirmsHotspot?> spots, CancellationToken cancellationToken)
     {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        deadline.CancelAfter(TimeSpan.FromSeconds(8));
+        deadline.CancelAfter(TimeSpan.FromSeconds(local is null ? 8 : 45));
         var tiles = new Dictionary<Tile, Task<Dictionary<string, Layer>>>();
         return await Task.WhenAll(spots.Select(EnrichSpotAsync)).ConfigureAwait(false);
 
@@ -80,6 +82,12 @@ internal sealed class CopernicusFireWeather(
         return new HotspotWeatherValue(raster[index], field.Unit, null, null, null, null) { ValidDateUtc = date };
     }
 
+    internal static (int West, int South, DateOnly Date) SamplingGroup(FirmsHotspot spot)
+    {
+        var tile = TileAt(spot.Latitude, spot.Longitude, DateOnly.FromDateTime(spot.AcquiredAtUtc.UtcDateTime));
+        return (tile.West, tile.South, tile.Date);
+    }
+
     private static Tile TileAt(double latitude, double longitude, DateOnly date) => new(
         Math.Min(180 - Degrees, (int)Math.Floor((longitude + 180) / Degrees) * Degrees - 180),
         Math.Min(90 - Degrees, (int)Math.Floor((latitude + 90) / Degrees) * Degrees - 90), date);
@@ -110,13 +118,18 @@ internal sealed class CopernicusFireWeather(
                 var query = FormattableString.Invariant(
                     $"{WmsUrl}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&STYLES=&SRS=EPSG:4326&BBOX={tile.West},{tile.South},{tile.West + Degrees},{tile.South + Degrees}&WIDTH={Size}&HEIGHT={Size}&TIME={tile.Date:yyyy-MM-dd}&LAYERS={field.LayerName}");
                 using var http = clients.CreateClient(HttpClientName);
-                var mask = await DownloadAsync(http, query + "&FORMAT=image/png&TRANSPARENT=TRUE", deadline).ConfigureAwait(false);
-                var coverage = FireWeatherRaster.ReadCoverage(mask, Size);
+                var mask = query + "&FORMAT=image/png&TRANSPARENT=TRUE";
+                var coverage = await gridCache.GetAsync(mask, DateTimeOffset.UtcNow.AddMinutes(30),
+                    token => gridCache.DownloadAsync(http, mask, 128 * 1024, token),
+                    encoded => FireWeatherRaster.ReadCoverage(encoded.Bytes, Size), deadline,
+                    alpha => DateTimeOffset.UtcNow.AddMinutes(alpha.Any(pixel => pixel != 0) ? 30 : 5)).ConfigureAwait(false);
                 var values = new float[Size * Size];
                 if (coverage.Any(alpha => alpha != 0))
                 {
-                    var raster = await DownloadAsync(http, query + "&FORMAT=image/tiff", deadline).ConfigureAwait(false);
-                    values = FireWeatherRaster.ReadValues(raster, Size);
+                    var raster = query + "&FORMAT=image/tiff";
+                    values = await gridCache.GetAsync(raster, DateTimeOffset.UtcNow.AddMinutes(30),
+                        token => gridCache.DownloadAsync(http, raster, 128 * 1024, token),
+                        encoded => FireWeatherRaster.ReadValues(encoded.Bytes, Size), deadline).ConfigureAwait(false);
                 }
 
                 var layer = new Layer(values, coverage);
@@ -131,18 +144,9 @@ internal sealed class CopernicusFireWeather(
         catch (Exception error) when (!cancellationToken.IsCancellationRequested && error is
             HttpRequestException or OperationCanceledException or IOException or InvalidDataException or ArgumentOutOfRangeException or OverflowException)
         {
-            if (error is not OperationCanceledException)
-                logger.LogWarning("Could not read the fire-weather layer {Layer}: {Message}", field.LayerName, error.Message);
+            logger.LogWarning("Could not read the fire-weather layer {Layer}: {Message}", field.LayerName, error.Message);
             return new Layer(null, null);
         }
-    }
-
-    private static async Task<byte[]> DownloadAsync(HttpClient http, string url, CancellationToken token)
-    {
-        using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        await response.Content.LoadIntoBufferAsync(128 * 1024, token).ConfigureAwait(false);
-        return await response.Content.ReadAsByteArrayAsync(token).ConfigureAwait(false);
     }
 
     private sealed record Field(string LayerName, string Name, string Unit);

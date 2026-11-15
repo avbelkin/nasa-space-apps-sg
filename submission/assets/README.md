@@ -1,6 +1,6 @@
-# Shared assets
+# Official assets
 
-Brand material reused across the video, the presentation and the documents.
+Official third-party brand material reused across the video, the presentation and the documents: logos, colours, fonts and patterns. Nothing we made belongs here; our own images, footage and data live next to the material that uses them (see the [folder rules](../README.md)).
 
 ## `space-apps-brand/`
 
@@ -41,7 +41,7 @@ Official NASA Space Apps brand elements, taken from <https://www.spaceappschalle
 
 ### Fonts
 
-Both families are free (SIL OFL) and available on Google Fonts; font files are not stored here.
+Both families are free (SIL OFL) and available on Google Fonts. The presentation's selected font files and licences are stored in [`../presentation/assets/fonts/`](../presentation/assets/fonts/), without system installation.
 
 - Titles and headings: Fira Sans Black, Fira Sans Bold, Overpass Bold, Overpass Regular
 - Body copy: Overpass Regular, Overpass Bold, Overpass Italic

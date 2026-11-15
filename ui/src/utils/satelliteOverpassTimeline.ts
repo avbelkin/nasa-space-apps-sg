@@ -353,12 +353,13 @@ function dotProductAtPoint(
 export function buildSatelliteOverpassIndex(
   satellites?: readonly SatelliteOrbit[] | null,
   referenceNowMs = Date.now(),
+  lookaheadMinutes = DEFAULT_LOOKAHEAD_MINUTES,
 ): SatelliteOverpassIndex {
   const anchorStartMs =
     Math.floor((referenceNowMs - DEFAULT_LOOKBACK_HOURS * 3_600_000) / SAMPLE_STEP_MS) *
     SAMPLE_STEP_MS
   const anchorEndMs =
-    Math.ceil((referenceNowMs + DEFAULT_LOOKAHEAD_MINUTES * 60_000) / SAMPLE_STEP_MS) *
+    Math.ceil((referenceNowMs + lookaheadMinutes * 60_000) / SAMPLE_STEP_MS) *
     SAMPLE_STEP_MS
   const sampleCount = Math.max(2, Math.floor((anchorEndMs - anchorStartMs) / SAMPLE_STEP_MS) + 1)
 

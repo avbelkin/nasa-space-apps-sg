@@ -4,7 +4,8 @@ using NasaSpaceApps.Api.Firms;
 
 namespace NasaSpaceApps.Api.Weather;
 
-internal sealed class UsfsFuelMoisture(IHttpClientFactory clients, IMemoryCache cache, ILogger<UsfsFuelMoisture> logger)
+internal sealed class UsfsFuelMoisture(IHttpClientFactory clients, IMemoryCache cache, ILogger<UsfsFuelMoisture> logger,
+    EncodedWeatherGridCache? grids = null, LocalWeatherCredentials? local = null)
 {
     public const string HttpClientName = "UsfsFuelMoisture";
     private const string BaseUrl = "https://www.wfas.net/data/Current/";
@@ -17,6 +18,7 @@ internal sealed class UsfsFuelMoisture(IHttpClientFactory clients, IMemoryCache 
     private static readonly (string Suffix, string Kind, int DayOffset)[] Products =
         [("O_-1", "observation", -1), ("F_0", "forecast", 0), ("F_1", "forecast", 1)];
     private readonly SemaphoreSlim refresh = new(1);
+    private readonly EncodedWeatherGridCache gridCache = grids ?? EncodedWeatherGridCache.Disabled;
 
     public async Task<HotspotWeatherSource?[]> EnrichAsync(IReadOnlyList<FirmsHotspot?> spots, CancellationToken token)
     {
@@ -25,7 +27,7 @@ internal sealed class UsfsFuelMoisture(IHttpClientFactory clients, IMemoryCache 
         if (spots.Any(spot => spot is not null && InRegion(spot)))
         {
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
-            deadline.CancelAfter(TimeSpan.FromSeconds(9));
+            deadline.CancelAfter(TimeSpan.FromSeconds(local is null ? 9 : 45));
             try
             {
                 await refresh.WaitAsync(deadline.Token).ConfigureAwait(false);
@@ -86,14 +88,16 @@ internal sealed class UsfsFuelMoisture(IHttpClientFactory clients, IMemoryCache 
 
         async Task<Raster?> ReadRasterAsync(string suffix, int hours)
         {
-            using var response = await http.GetAsync(BaseUrl + FormattableString.Invariant($"MC{hours}_Current_{suffix}.tif"),
-                HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
-            if (response.StatusCode == HttpStatusCode.NotFound) return null;
-            response.EnsureSuccessStatusCode();
-            var modified = response.Content.Headers.LastModified ?? throw new InvalidDataException("Missing WFAS raster revision timestamp.");
-            await response.Content.LoadIntoBufferAsync(640 * 1024, token).ConfigureAwait(false);
-            var bytes = await response.Content.ReadAsByteArrayAsync(token).ConfigureAwait(false);
-            return new Raster(FloatWeatherTiff.ReadWgs84Grid(bytes), modified, FloatWeatherTiff.ReadValues(bytes, Width, Height));
+            var url = BaseUrl + FormattableString.Invariant($"MC{hours}_Current_{suffix}.tif");
+            try
+            {
+                return await gridCache.GetAsync(url, DateTimeOffset.UtcNow.AddMinutes(15),
+                    cancellation => gridCache.DownloadAsync(http, url, 640 * 1024, cancellation),
+                    encoded => new Raster(FloatWeatherTiff.ReadWgs84Grid(encoded.Bytes),
+                        encoded.ModifiedAt ?? throw new InvalidDataException("Missing WFAS raster revision timestamp."),
+                        FloatWeatherTiff.ReadValues(encoded.Bytes, Width, Height)), token).ConfigureAwait(false);
+            }
+            catch (HttpRequestException error) when (error.StatusCode == HttpStatusCode.NotFound) { return null; }
         }
     }
 
@@ -133,7 +137,7 @@ internal sealed class UsfsFuelMoisture(IHttpClientFactory clients, IMemoryCache 
 
     internal static DateOnly ProductDate(DateTimeOffset time) => DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(time, ProductZone).DateTime);
 
-    private static bool InRegion(FirmsHotspot spot) =>
+    internal static bool InRegion(FirmsHotspot spot) =>
         spot.Latitude is >= 24 and <= 50 && spot.Longitude is >= -125 and <= -67;
 
     private static bool IsRecent(Frame frame, DateTimeOffset now) => now - frame.FetchedAt < GridLifetime;

@@ -1,0 +1,55 @@
+{
+  "checkpoint": "checkpoint-01-r3",
+  "slides": [
+    {
+      "slide": 1,
+      "sourceLines": 6,
+      "wording": "preserved"
+    },
+    {
+      "slide": 2,
+      "sourceLines": 7,
+      "wording": "preserved"
+    },
+    {
+      "slide": 3,
+      "sourceLines": 6,
+      "wording": "preserved"
+    },
+    {
+      "slide": 4,
+      "sourceLines": 7,
+      "wording": "preserved"
+    },
+    {
+      "slide": 5,
+      "sourceLines": 5,
+      "wording": "preserved"
+    },
+    {
+      "slide": 6,
+      "sourceLines": 9,
+      "wording": "preserved"
+    },
+    {
+      "slide": 7,
+      "sourceLines": 7,
+      "wording": "preserved"
+    }
+  ],
+  "slideCount": 7,
+  "pdfPages": 7,
+  "chart": "native with embedded workbook",
+  "counts": {
+    "modis": 8127,
+    "viirs": 79349
+  },
+  "sourceSha256": "b8b7955f2009af184966a8cb50ac0e973a22eb81619f4786efada955798438b1",
+  "pptxSha256": "e26c73db46962c87f4644066b577f245406b51e63da5a159e37230207eef5dd7",
+  "independentReviewerStatus": "pending, not launched",
+  "limitations": [
+    "Visual proof PDF is raster, not searchable.",
+    "Five intentional screenshot placeholders on slides 3–5.",
+    "Fonts supplied separately; not embedded in PPTX."
+  ]
+}

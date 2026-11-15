@@ -1,21 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { apiBaseUrl } from '../state/apiStatus'
 import { fetchPinnedFireGeometry, summarizeFireGeometry, type FireObservationGeometry } from '../utils/fireObservationGeometry'
-import { fetchPinnedFireWeather, summarizeFireWeather } from '../utils/fireObservationWeather'
+import { summarizeFireWeather, type FireObservationWeather } from '../utils/fireObservationWeather'
 import type { FireSpotTooltipInput } from '../utils/fireSpots'
 
-export function FireObservationDetails({ inputs, feedGeometry }: {
+export function FireObservationDetails({ inputs, feedGeometry, weatherObservations }: {
   inputs: readonly FireSpotTooltipInput[]
   feedGeometry?: readonly (FireObservationGeometry | null)[]
+  weatherObservations?: readonly (FireObservationWeather | null)[]
 }) {
   const [result, setResult] = useState<{
     inputs: readonly FireSpotTooltipInput[]
     feedGeometry: typeof feedGeometry
     summary: ReturnType<typeof summarizeFireGeometry>
-  } | null>(null)
-  const [weatherResult, setWeatherResult] = useState<{
-    inputs: readonly FireSpotTooltipInput[]
-    summary: ReturnType<typeof summarizeFireWeather>
   } | null>(null)
 
   useEffect(() => {
@@ -32,24 +29,9 @@ export function FireObservationDetails({ inputs, feedGeometry }: {
     return () => controller.abort()
   }, [inputs, feedGeometry])
 
-  useEffect(() => {
-    const controller = new AbortController()
-    const { signal } = controller
-    void fetchPinnedFireWeather(apiBaseUrl, inputs, signal).then(
-      (observations) => {
-        if (!signal.aborted) setWeatherResult({ inputs, summary: summarizeFireWeather(inputs, observations) })
-      },
-      () => {
-        if (!signal.aborted) setWeatherResult({ inputs, summary: null })
-      },
-    )
-    return () => controller.abort()
-  }, [inputs])
-
   const settled = result?.inputs === inputs && result.feedGeometry === feedGeometry
   const summary = settled ? result.summary : summarizeFireGeometry(inputs, feedGeometry ?? [])
-  const weatherSettled = weatherResult?.inputs === inputs
-  const weather = weatherSettled ? weatherResult.summary : null
+  const weather = useMemo(() => weatherObservations && summarizeFireWeather(inputs, weatherObservations), [inputs, weatherObservations])
 
   return (
     <>
@@ -66,7 +48,7 @@ export function FireObservationDetails({ inputs, feedGeometry }: {
           <ObservationTable label="Weather at acquisition" summary={weather} />
         ) : (
           <p className="fire-observation-status" role="status">
-            {weatherSettled ? 'Weather unavailable' : 'Loading weather…'}
+            {weatherObservations ? 'Weather unavailable' : 'Loading weather…'}
           </p>
         )}
       </details>

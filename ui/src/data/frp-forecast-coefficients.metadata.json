@@ -1,0 +1,14 @@
+{
+  "asset": "frp-forecast-coefficients.json",
+  "sha256": "9b07b1cbb402f797abe2e7d90e94f035a759dac88d19ea89599382e4b34b8b96",
+  "kind": "Team-fitted statistical model coefficients",
+  "input_data": "NASA FIRMS; original observations are not AI-generated",
+  "coding_assistance": [
+    "Anthropic Claude Code",
+    "OpenAI Codex"
+  ],
+  "earlier_fitting_assistance_history": "Not fully reconstructed",
+  "output_attribution": "Earth Fire Calendar statistical model, not NASA",
+  "limitations": "One training snapshot; not validated on additional days. NASA has not validated outputs and is not responsible for their accuracy.",
+  "metadata_scope": "Sidecar for the unchanged coefficient file; no invented record-level generation provenance."
+}

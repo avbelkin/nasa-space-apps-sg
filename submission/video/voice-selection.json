@@ -1,0 +1,14 @@
+{
+  "name": "Flicker - Cheerful Fairy & Sparkly Sweetness",
+  "voice_id": "piI8Kku0DcvcL6TTSeQt",
+  "provider": "ElevenLabs",
+  "model": "elevenlabs/eleven-v4",
+  "route": "OpenRouter synchronous speech",
+  "selection": "Explicitly selected by the user on 2026-11-15; supersedes Laura and the earlier auditions",
+  "source": "https://elevenlabs.io/app/voice-library?voiceId=piI8Kku0DcvcL6TTSeQt",
+  "id_verified_on": "https://elevenlabs.io/voice-library/animation",
+  "route_documentation": "https://openrouter.ai/blog/announcements/elevenlabs-on-openrouter/",
+  "route_verification": "Public voice IDs are documented as supported. This specific voice has not yet been synthesized through OpenRouter.",
+  "narration_status": "On hold: the user will supply new text. Do not synthesize the old script automatically.",
+  "local_pitch_shift_semitones": 0
+}
