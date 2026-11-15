@@ -4,7 +4,7 @@ The complete deck uses the final English copy in [demo-slides.md](demo-slides.md
 
 ## Files
 
-- [Submission PDF](../deliverables/earth-fire-calendar.pdf): the compact published appearance reference.
+- [Submission PDF](../deliverables/Presentation_Earth-Fire-Calendar.pdf): the compact published appearance reference.
 - [Editable PPTX](output/earth-fire-calendar-complete-r16.pptx) and [overview](output/earth-fire-calendar-complete-r16-overview.png): local files, synchronized to the main checkout.
 - [Review record](REVIEW.md): verification, independent acceptance and known export limitations.
 - [Independent review prompt](review-prompt.txt): frozen r16 artifacts and checks for other models; requests a Russian report.
@@ -47,7 +47,7 @@ The PDF contains vector text and shapes, embedded Unicode TrueType fonts and nat
 
 ## Remaining inputs
 
-There are no name, image, numerical or link placeholders in the deck, and no additional user-supplied data is required. The [published PDF](https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/earth-fire-calendar.pdf) is linked in the project's Materials. The separate video and submission-form state are maintained in the shared project description and requirements status; they are outside the slide build.
+There are no name, image, numerical or link placeholders in the deck, and no additional user-supplied data is required. The [published PDF](https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/Presentation_Earth-Fire-Calendar.pdf) is linked in the project's Materials. The separate video and submission-form state are maintained in the shared project description and requirements status; they are outside the slide build.
 
 ## Submission format
 
