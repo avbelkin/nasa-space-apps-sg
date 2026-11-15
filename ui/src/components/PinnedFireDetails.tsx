@@ -117,7 +117,7 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
       )}
       <FireDetectionsTimelineCard timeline={timeline} />
       {expectedMiss && (
-        <div className="fire-second-pass-note">
+        <div className="fire-second-pass-note fire-second-pass-note--error">
           <strong>Expected detection, no match</strong>
           <p>{expectedMiss.pass.satellite} VIIRS · {passTimeFormat.format(expectedMiss.pass.timestampMs)} · {scoreFormat.format(expectedMiss.score)} detection score</p>
           <p>No matching FIRMS detection within 1 km of this spot.</p>

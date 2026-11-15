@@ -619,15 +619,19 @@
 }
 
 .fire-second-pass-note {
-  --fire-second-pass-warning: #92400e;
+  --fire-second-pass-color: #92400e;
   display: grid;
   gap: 0.2rem;
   padding-inline-start: 0.5rem;
-  border-inline-start: 2px solid var(--fire-second-pass-warning);
+  border-inline-start: 2px solid var(--fire-second-pass-color);
+}
+
+.fire-second-pass-note--error {
+  --fire-second-pass-color: #b91c1c;
 }
 
 .fire-second-pass-note strong {
-  color: var(--fire-second-pass-warning);
+  color: var(--fire-second-pass-color);
 }
 
 .fire-second-pass-note p {
@@ -637,7 +641,11 @@
 
 @media (prefers-color-scheme: dark) {
   .fire-second-pass-note {
-    --fire-second-pass-warning: #fde68a;
+    --fire-second-pass-color: #fde68a;
+  }
+
+  .fire-second-pass-note--error {
+    --fire-second-pass-color: #fca5a5;
   }
 
   .fire-second-pass-note p {
