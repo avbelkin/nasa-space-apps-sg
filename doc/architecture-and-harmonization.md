@@ -90,6 +90,19 @@ Pinned details can show a warning for a solo detection when an eligible, settled
 
 **Important retraining follow-up.** When the parallel enrichment work is available, retrain the MODIS and VIIRS baselines separately. Compare the original and enriched feature sets on the same eligible rows and geographic folds, then check improvement on additional held-out days. Report AUROC, average precision and log loss by family, along with feature ablations and enrichment coverage. Use the comparison to decide whether the pinned outlook should change.
 
+## Cross-family second-pass baseline
+
+The cross-family experiment reused the same production snapshot and orbit data. It selected anchors with one reporting satellite in their own family, regardless of whether the other family reported a detection. The target was an inferred miss on a later predicted pass by the other family, within six hours of the anchor. A match required a FIRMS detection from that spacecraft within 1 km and ±25 minutes of the predicted pass. The evaluation excluded passes still within the matching window or expected ingestion delay.
+
+| Direction | Eligible passes | Miss rate | Per-pass AUROC | AUROC for no match on any eligible pass |
+| --- | ---: | ---: | ---: | ---: |
+| MODIS → VIIRS | 3,634 | 57.5% | 0.643 | 0.615 |
+| VIIRS → MODIS | 30,761 | 92.5% | 0.768 | 0.764 |
+
+Models were trained separately and evaluated on held-out 5° geographic blocks. Viewing geometry of the target pass was the strongest feature group in both directions. Removing it lowered per-pass AUROC by 0.062 for MODIS → VIIRS and 0.101 for VIIRS → MODIS. For VIIRS → MODIS, the miss rate was 85.2% within 100 km of the MODIS ground track and 99.6% at 1,000–1,200 km. The initial VIIRS FRP and brightness added signal in that direction. For MODIS → VIIRS, the corresponding near-track miss rate was 46.4%, and it reached 78.3% at 1,200 km or farther. These associations come from a single snapshot. A missing match can reflect predicted coverage error, ingestion, cloud, fire evolution, or sensor sensitivity.
+
+The pinned warning checks for a matching detection across the live feed, including detections hidden by the map's sensor filter. It identifies the unmatched pass by spacecraft and instrument family and uses observed distance and intensity bands to give context. The warning describes a specific predicted pass.
+
 ## Live hotspot weather enrichment
 
 The [24-hour weather enrichment proposal](./live-hotspot-weather-enrichment.md) ranks weather, surface, and sensor fields for comparing recent MODIS and VIIRS detections. It describes how to attach available weather at each spot's acquisition time.
