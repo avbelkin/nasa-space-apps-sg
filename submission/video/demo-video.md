@@ -12,7 +12,7 @@ Editing target: **29 seconds, 1920×1080, 30 fps — 870 frames**. The existing 
 
 | Time | Frames, start inclusive and end exclusive | Visuals and action | Lama's narration | Captions in addition to subtitles |
 |---|---|---|---|---|
-| 0–1.4 s | 0–42 | Full-width close-up of the real toy in profile beside the monitor, using the existing portrait footage cropped to 16:9. No side panels. This framing prioritizes Lama and the screen; Alexey's full face need not be visible. | — | Earth Fire Calendar; Harmonization of MODIS and VIIRS Hot Spots; exact team name when supplied |
+| 0–1.4 s | 0–42 | Full-width close-up of the real toy in profile beside the monitor, using the existing portrait footage cropped to 16:9. No side panels. This framing prioritizes Lama and the screen; Alexey's full face need not be visible. | — | Earth Fire Calendar; Harmonization of MODIS and VIIRS Hot Spots; Team Plush |
 | 1.4–2 s | 42–60 | Hold the final frame. Push into the lower monitor over 8 frames, use 4 frames for motion blur and the cut, then reveal the interface over 6 frames. The toy leaves the frame as the view enlarges; its background is not reconstructed. | — | Earth Fire Calendar |
 | 2–5.5 s | 60–165 | A large display shows the app's globe. The animated Lama stands in the left foreground, greets the viewer, blinks and takes a small step. Cream fur, copper ears and the orange/navy scarf connect him to the toy. | I’m Lama. I help Alexey. Mostly. | Earth Fire Calendar; AI-generated on the character |
 | 5.5–11.5 s | 165–345 | Keep the same map view: MODIS first, then VIIRS. Let the points finish rendering after the switch. Lama turns and points toward the display, then looks back at the viewer. Enlarge the actual counter; keep his gestures clear of it. | Same planet. Same day. But MODIS and VIIRS see different hotspots. | NASA FIRMS · last 24 h; MODIS → VIIRS |
@@ -46,7 +46,7 @@ Compose him as a weather presenter in the foreground, about 700 px tall, with a 
 
 The new opening uses 12.6–14.0 seconds of with_Lama.MOV, converted from HDR to SDR and cropped to a full-width profile close-up. It is softer than a native landscape recording but has no side areas. A fast push into the monitor connects it to the presenter stage. This is an editorial transition, not a generated physical jump. It uses neither without_Lama.MOV nor background reconstruction.
 
-The final frame retains a short NASA FIRMS credit and the note Independent project. Not affiliated with or endorsed by NASA. Add the team name once its exact spelling is supplied; Lama's name does not replace it.
+The final frame retains a short NASA FIRMS credit and the note Independent project. Not affiliated with or endorsed by NASA. Use Team Plush; registered members are Alexey Belkin and Viktoriia Naiman. Lama is a fictional presenter, and Claude / Codex are tools rather than registered members; Lama's name does not replace it.
 
 Disclosure text for the description, AI-use field and export metadata is in [publication disclosures](disclosures.md). The English narration has been synthesized using ElevenLabs Eleven v4 through OpenRouter; disclose it in the video description and MP4 metadata. Check the scarf print after the first edit; do not claim that it contains no third-party branding before its ownership is established.
 
@@ -59,3 +59,7 @@ The app, at `c73d0b5`, also shows experimental estimates fitted on one day of da
 Harmonization is the next step. Do not depict completed calibration, a scientifically verified merging of detections into events, fire forecasting or a working seasonal calendar. Do not read exact detection counts aloud; retain the actual counters from the selected data snapshot on screen.
 
 Asset preparation and recording steps are in the [production plan](README.md).
+
+## Compliance handoff
+
+Before final export, follow the [rights and capture release gate](disclosures.md#rights-release-gate). The live basemap now uses EOX 2016 (CC BY 4.0); old EOX 2025 recordings must be replaced, not relabelled. Include the EOX source / licence near its use and in the description. Keep written adult consent privately even for team members. The final MP4, not this storyboard, must be checked for duration, watermark coverage, English speech/subtitles, metadata and public access.

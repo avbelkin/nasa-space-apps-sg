@@ -1,0 +1,14 @@
+{
+  "asset": "viirs-detection-model.json",
+  "sha256": "bd5d1c95e7c3065989f89671a66b6f566de0670ded81e42b1fd092bfe4e99bcc",
+  "kind": "Team-fitted statistical model coefficients",
+  "input_data": "NASA FIRMS; original observations are not AI-generated",
+  "coding_assistance": [
+    "Anthropic Claude Code",
+    "OpenAI Codex"
+  ],
+  "earlier_fitting_assistance_history": "Not fully reconstructed",
+  "output_attribution": "Earth Fire Calendar statistical model, not NASA",
+  "limitations": "One training snapshot; not validated on additional days. NASA has not validated outputs and is not responsible for their accuracy.",
+  "metadata_scope": "Sidecar for the unchanged coefficient file; no invented record-level generation provenance."
+}

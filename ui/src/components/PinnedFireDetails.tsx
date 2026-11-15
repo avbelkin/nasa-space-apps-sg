@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { apiBaseUrl } from '../state/apiStatus'
 import type { SensorFilter } from '../data/mapTypes'
 import {
   formatFireSpotsTooltip,
@@ -8,8 +9,10 @@ import {
 } from '../utils/fireSpots'
 import type { SatelliteOverpassIndex } from '../utils/satelliteOverpassTimeline'
 import type { FireObservationGeometry } from '../utils/fireObservationGeometry'
-import { getCrossFamilyPassOutlook, getExpectedViirsMiss, getSecondPassOutlook } from '../utils/secondPassOutlook'
+import { getCrossFamilyPassOutlook, getExpectedViirsMiss, getSecondPassOutlook, getUnmatchedSameFamilyPass } from '../utils/secondPassOutlook'
 import { forecastNextPassFrp } from '../utils/frpForecast'
+import { fetchPinnedFireWeather, type FireObservationWeather } from '../utils/fireObservationWeather'
+import { getWeatherPassAdjustment } from '../utils/weatherPassModels'
 import { FireDetectionPowerSummary, FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
 import { FireObservationDetails } from './FireObservationDetails'
 import { CloseIcon } from './icons'
@@ -35,8 +38,25 @@ const frpFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 })
 const differenceFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1, signDisplay: 'exceptZero' })
 const passTimeFormat = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
 const scoreFormat = new Intl.NumberFormat(undefined, { style: 'percent', maximumFractionDigits: 0 })
+const oddsFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 })
 
 export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, overpassIndex, fireFeed, forecastNowMs, onUnpin }: PinnedFireDetailsProps) {
+  const { inputs } = selection
+  const [weatherResult, setWeatherResult] = useState<{
+    inputs: typeof inputs
+    observations: (FireObservationWeather | null)[]
+  } | null>(null)
+  useEffect(() => {
+    const controller = new AbortController()
+    const { signal } = controller
+    void fetchPinnedFireWeather(apiBaseUrl, inputs, signal).then(
+      (observations) => { if (!signal.aborted) setWeatherResult({ inputs, observations }) },
+      () => { if (!signal.aborted) setWeatherResult({ inputs, observations: [] }) },
+    )
+    return () => controller.abort()
+  }, [inputs])
+  const weatherObservations = weatherResult?.inputs === inputs ? weatherResult.observations : undefined
+
   const details = useMemo(
     () => formatFireSpotsTooltip(selection.inputs, selection.nowMs, {
       sensorFilter: selection.sensorFilter,
@@ -65,6 +85,14 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
       solo.spot, solo.passes, forecastNowMs, feedGeometry?.[0], solo.landCoverCode,
     )
   }, [solo, feedGeometry, forecastNowMs])
+  const weatherAdjustment = useMemo(() => {
+    if (!solo || !weatherObservations?.[0]) return null
+    const pass = forecast && forecast.pass.instrument === solo.spot.instrument
+      ? forecast.pass
+      : expectedMiss?.pass ?? (fireFeed ? getUnmatchedSameFamilyPass(solo.spot, solo.passes, fireFeed) : undefined)
+    return pass ? getWeatherPassAdjustment(solo.spot, pass, weatherObservations[0], feedGeometry?.[0], solo.landCoverCode) : null
+  }, [solo, weatherObservations, forecast, expectedMiss, fireFeed, feedGeometry])
+  const weatherFrp = weatherAdjustment?.pass === forecast?.pass ? weatherAdjustment?.predictedFrp : null
   if (!details?.timeline) {
     return null
   }
@@ -107,20 +135,22 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
       </header>
       {forecast && (
         <div className="fire-frp-forecast">
-          <span>Predicted FRP if detected · {forecast.pass.satellite} · {passTimeFormat.format(forecast.pass.timestampMs)}</span>
+          <span>{weatherFrp == null ? 'Predicted FRP if detected' : 'GWIS-adjusted FRP if detected'} · {forecast.pass.satellite} · {passTimeFormat.format(forecast.pass.timestampMs)}</span>
           <div className="fire-frp-forecast-value">
-            <strong>{frpFormat.format(forecast.predictedMw)} MW</strong>
-            <span>{differenceFormat.format(forecast.differenceMw)} MW change</span>
+            <strong>{frpFormat.format(weatherFrp ?? forecast.predictedMw)} MW</strong>
+            <span>{differenceFormat.format(weatherFrp == null ? forecast.differenceMw : weatherFrp - forecast.originalMw)} MW change</span>
           </div>
           <span className="fire-frp-forecast-original">Original detection {frpFormat.format(forecast.originalMw)} MW</span>
         </div>
       )}
+      {forecast && <p className="panel-note">Experimental Earth Fire Calendar model estimate, conditional on a later detection.
+        NASA has not validated this output and is not responsible for its accuracy.</p>}
       <FireDetectionsTimelineCard timeline={timeline} />
       {expectedMiss && (
         <div className="fire-second-pass-note fire-second-pass-note--error">
           <strong>Expected detection, no match</strong>
           <p>{expectedMiss.pass.satellite} VIIRS · {passTimeFormat.format(expectedMiss.pass.timestampMs)} · {scoreFormat.format(expectedMiss.score)} detection score</p>
-          <p>No matching FIRMS detection within 1 km of this spot.</p>
+          <p>No matching FIRMS detection within 1 km of this spot. Experimental Earth Fire Calendar model score, trained on 500 m matches; not a validated probability for this 1 km check. NASA has not validated this output and is not responsible for its accuracy.</p>
         </div>
       )}
       {!expectedMiss && outlook && (
@@ -138,7 +168,14 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
           {crossFamilyOutlook.more.length > 0 && <p>The cross-family baseline saw more misses with {crossFamilyOutlook.more.join(' and ')}.</p>}
         </div>
       )}
-      <FireObservationDetails inputs={selection.inputs} feedGeometry={feedGeometry} />
+      {weatherAdjustment && (
+        <p className="fire-observation-status">
+          {weatherAdjustment.source} context for {weatherAdjustment.pass.satellite} at {passTimeFormat.format(weatherAdjustment.pass.timestampMs)}
+          {' · '}{oddsFormat.format(weatherAdjustment.oddsMultiplier)}× study baseline detection odds
+          {' · '}Experimental Earth Fire Calendar model; NASA has not validated it and is not responsible for its accuracy.
+        </p>
+      )}
+      <FireObservationDetails inputs={inputs} feedGeometry={feedGeometry} weatherObservations={weatherObservations} />
     </section>
   )
 }

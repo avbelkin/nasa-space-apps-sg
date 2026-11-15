@@ -11,7 +11,7 @@ export const LINK_PREVIEW_IMAGE_WIDTH = 1200
 export const LINK_PREVIEW_IMAGE_HEIGHT = 630
 
 export const LINK_PREVIEW_IMAGE_ALT =
-  '3D Earth horizon at night with glowing MODIS and VIIRS active-fire hotspot clusters and polar satellite orbital swaths for Earth Fire Calendar.'
+  'Earth Fire Calendar: MODIS and VIIRS detections provide evidence for future harmonization. Original AI-assisted typographic diagram.'
 
 export const LINK_PREVIEW_THEME_COLOR = '#090f1d'
 

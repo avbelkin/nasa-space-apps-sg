@@ -207,3 +207,12 @@ Full bibliographic entries for all 82 cited works, documents and software reposi
 80. **[S318]** NASA Space Apps Challenge (2026). *Harmonization of MODIS and VIIRS Hot Spots*. URL: <https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/>
 81. **[S325]** Chen, Y., Hall, J., van Wees, D., Andela, N., Hantson, S., et al. (2023). *Global Fire Emissions Database (GFED5) Burned Area*. Zenodo [Dataset]. DOI: [`10.5281/zenodo.7668423`](https://doi.org/10.5281/zenodo.7668423)
 82. **[S327]** sofievm, & Kouznetsov, R. (2026). *rkouznetsov/FRP_OOp: OOp code used for the Egusphere submission on Jan 2026*. DOI: [`10.5281/zenodo.18339604`](https://doi.org/10.5281/zenodo.18339604)
+
+
+## Authorship, reuse and AI provenance
+
+Prepared for Earth Fire Calendar by team Plush (Alexey Belkin and Viktoriia Naiman). The team reports that research collection and reading began before the event, while application development began after the start. This review must not be presented as wholly produced during the hackathon without resolving that distinction with the organizer where needed.
+
+This repository's original contributions use Apache-2.0; cited publications retain their own rights. This file contains a synthesis and references, not permission to redistribute the underlying papers or their figures. The [rights register](third-party-rights.md) distinguishes source citation from asset reuse. The present audit used OpenAI Codex and an API-assisted preliminary compliance review; the earlier source-by-source AI assistance history for assembling this review has not been fully reconstructed. That uncertainty is disclosed rather than replaced by a claim of wholly human authorship.
+
+The hypothesis is a proposed test, not a demonstrated harmonization result. NASA has not reviewed or endorsed this synthesis or the team's model estimates.

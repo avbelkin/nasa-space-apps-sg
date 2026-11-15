@@ -1,0 +1,57 @@
+{
+  "project": "Earth Fire Calendar",
+  "team": "Plush",
+  "human_members": [
+    "Alexey Belkin",
+    "Viktoriia Naiman"
+  ],
+  "updated": "2026-11-15",
+  "code": {
+    "paths": [
+      "ui/src/**",
+      "backend/**",
+      "scripts/**",
+      "submission/**"
+    ],
+    "assistance": [
+      "Anthropic Claude Code",
+      "OpenAI Codex"
+    ],
+    "uses": [
+      "implementation",
+      "review",
+      "tests",
+      "documentation",
+      "presentation layout",
+      "media production"
+    ],
+    "model_identifiers": "Not fully recorded; tool names are not an exhaustive model history."
+  },
+  "model_outputs": {
+    "provider": "Earth Fire Calendar team-fitted statistical models",
+    "input_source": "NASA FIRMS with observation geometry, land cover and selected Copernicus GWIS / CAMS fields",
+    "inference": "Local browser coefficient evaluation; no LLM service call",
+    "files": [
+      "ui/src/data/frp-forecast-coefficients.json",
+      "ui/src/data/viirs-detection-model.json",
+      "ui/src/data/weather-pass-models.json"
+    ],
+    "nasa_responsibility": "NASA has not validated model outputs and is not responsible for their accuracy."
+  },
+  "assets": [
+    {
+      "file": "og-preview.png",
+      "kind": "Original typographic diagram",
+      "creation": "scripts/create-link-preview.mjs; OpenAI Codex-assisted HTML rendered locally in Chrome; no external images",
+      "visible_label": "AI-generated diagram",
+      "sha256": "4588a9c0980b25d0ea9f2b418127813881c5c73f87c37cb2b96a8064b722a7b0"
+    },
+    {
+      "file": "favicon.svg",
+      "kind": "Original geometric icon",
+      "creation": "OpenAI Codex-assisted SVG; no external artwork",
+      "description": "Code-authored SVG; metadata is embedded in the SVG."
+    }
+  ],
+  "video": "See submission/video/disclosures.md for final route, voice and MP4 metadata; pilots are not final."
+}

@@ -2,7 +2,7 @@
 
 [Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](../working/form-fields.md) · [Formal requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
 
-Draft text for the **Project** tab, field by field, in the order of the [form](../working/form-fields.md). It describes the app as of commit `c73d0b5` (15 November 2026, deployed at 20:07 SGT). Replace everything in `[square brackets]` before submitting; the items the team still has to confirm are collected in [Before submitting](#before-submitting).
+Draft text for the **Project** tab, field by field, in the order of the [form](../working/form-fields.md). It describes the app as of commit `c73d0b5` (15 November 2026, deployed at 20:07 SGT). Team Plush: Alexey Belkin and Viktoriia Naiman. Replace unresolved publication links before submitting; the items the team still has to confirm are collected in [Before submitting](#before-submitting).
 
 The live numbers come from one snapshot of the app's feed, fetched on 15 November 2026 at 08:36 UTC; its summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](../working/firms-snapshot-2026-11-15T0836Z.json). If the slides or the video use a different snapshot, use one set of numbers everywhere.
 
@@ -45,13 +45,13 @@ An emergency manager asks a simple question: is fire activity in my area this mo
 
 WHAT WE BUILT
 
-Earth Fire Calendar is a public web app. It works on live NASA FIRMS data, with no sample or synthetic values.
+Earth Fire Calendar is a public web app. It works on live NASA FIRMS data, with no sample or synthetic detections. Experimental model estimates are shown separately.
 
 1. A live globe of detections. The app shows every detection from the last 24 hours in three FIRMS near-real-time datasets: MODIS, VIIRS NOAA-20 and VIIRS NOAA-21. Dot size follows fire radiative power (FRP), brightness follows detection confidence, and the pulse fades with the age of the detection.
 
 2. A sensor switch. "All sensors", "MODIS" and "VIIRS" filter the map, the counters and the satellite tracks. On 15 November 2026 at 08:36 UTC the same 24 hours held 8,127 MODIS detections (Terra 2,614; Aqua 5,513) and 79,349 VIIRS detections (NOAA-20 41,306; NOAA-21 38,043): almost ten times more.
 
-3. Agreement at a glance. With "Color fire spots by sensor" on, each group of neighbouring detections is coloured by who saw it: both sensors, MODIS only, VIIRS only, or a single detection.
+3. Agreement at a glance. With "Color fire spots by sensor" on, each group of neighbouring detections is coloured by the sensors represented: both sensors, MODIS only, VIIRS only, or a single detection. Groups depend on screen-space proximity and zoom; they do not establish the identity of an individual fire.
 
 4. One place, 24 hours. Selecting a fire pins a timeline of all detections at that place, hour by hour and satellite by satellite, against the local Sun elevation. It also marks the hours when a satellite passed over and reported nothing, and the most recent passes whose data is probably still being processed. Both are estimates from orbital elements, not FIRMS data: a pass without a detection does not prove there was no fire.
 
@@ -70,11 +70,11 @@ The interface is a static React and MapLibre GL JS application on GitHub Pages. 
 
 The service then enriches the detections in the background. It estimates the viewing geometry of each detection by propagating the satellite's orbit from CelesTrak orbital elements to the acquisition time. It samples the land cover map over a circle with the same area as the FIRMS scan-by-track pixel. It samples weather at the acquisition time from NOAA model and satellite products, Open-Meteo, Copernicus fire-danger and drought services and the US Forest Service, and keeps the source, valid time and unit of every value: model and fire-danger fields in the background for the most recent detections, every field for the detections you pin. The weather grids the service downloads are stored in a shared cache, so every service instance can sample them; a worker the team starts by hand can fill this cache for the whole feed. Missing values stay empty with no substitute. The side panel shows how far each enrichment stage has progressed.
 
-The notes and the estimate in point 6 come from baselines fitted offline on one 24-hour snapshot of the feed (14–15 November 2026): logistic regressions for a missed second pass and, on 15,869 matched pairs of detections, a regression for the change in fire radiative power. They use the detection attributes, the estimated geometry and the land cover, not yet the weather, and were evaluated on held-out geographic blocks. The interface applies the fitted coefficients in the browser: the regression for the fire radiative power estimate and the calibrated logistic model behind the detection score of the other VIIRS satellite's pass. The scores are in the technical note.
+The first models use one 24-hour snapshot from 14–15 November 2026. They combine the first detection's readings, estimated satellite geometry and land cover to predict whether another pass will report a match and what FRP it may report if it does. We tested weather on the same held-out geographic blocks with and without each source. GWIS fire-weather fields improved both detection ranking and FRP estimates for MODIS → MODIS. CAMS aerosol fields improved detection ranking for VIIRS → VIIRS. Where those fields are available, the pinned card shows how they change the study model's detection odds. It also uses GWIS for the conditional MODIS FRP estimate. The calibrated score for the VIIRS warning is a separate value. [Methods and results](technical-note.md#6-first-baselines-on-matched-passes)
 
 WHY THESE FIELDS
 
-Our literature review (82 sources, linked below) shows that existing harmonization methods convert between the two pixel systems mainly by geometry and statistics: pixel footprint, view angle, overpass time. Land cover is already used too. The open question we want to test is narrower: does the way the MODIS–VIIRS difference changes with view angle depend on the detailed land-cover class, at the level of individual detections, and does accounting for it improve on existing corrections? The enrichment in this prototype produces exactly the per-detection fields that test needs.
+Our literature review (82 sources, linked below) shows that existing harmonization methods convert between the two pixel systems mainly by geometry and statistics: pixel footprint, view angle, overpass time. Land cover is already used too. The open question we want to test is narrower: does the way the MODIS–VIIRS difference changes with view angle depend on the detailed land-cover class, at the level of individual detections, and does accounting for it improve on existing corrections? The prototype collects an initial set of per-detection fields for that test. Estimated geometry and the 1.2 km global land-cover overview require validation and finer sampling before a detailed surface-class test.
 
 WHAT IS LIVE AND WHAT IS PLANNED
 
@@ -84,7 +84,7 @@ Not built yet: the FIRMS archive since 2000, the harmonized record itself, its v
 
 WHAT WE HOPE TO ACHIEVE
 
-The goal is a record in which MODIS and VIIRS are comparable, and a tool that lets researchers see where and under what conditions the two sensors disagree. We also want to test whether a detection's fire radiative power can be predicted from the weather and observation conditions we collect; the first baseline uses observation conditions only, and the next step is to add weather and check the result on other days. A seasonal calendar for emergency managers, the original idea behind the name, could be built on such a record later. The next milestone is a harmonized record for one region that passes a hold-out test: hide one sensor during the years when both flew, reconstruct it from the other, and compare with simple baselines using pass criteria fixed in advance. If calibration fails the test, we will show each sensor separately and label the combined view experimental.
+The goal is a record in which MODIS and VIIRS are comparable, and a tool that lets researchers see where and under what conditions the two sensors disagree. We will repeat the GWIS and CAMS comparisons on additional days and check when the weather products were published. A seasonal calendar for emergency managers, the original idea behind the name, could be built on such a record later. The next milestone is a harmonized record for one region that passes a hold-out test: hide one sensor during the years when both flew, reconstruct it from the other, and compare with simple baselines using pass criteria fixed in advance. If calibration fails the test, we will show each sensor separately and label the combined view experimental.
 
 LIMITATIONS
 
@@ -107,9 +107,10 @@ TypeScript, React, Vite, MapLibre GL JS and WebGL2 shaders for the interface; C#
 
 USE OF AI
 
-AI coding assistants ([Anthropic Claude Code, OpenAI Codex — confirm the list]) were used to write and review code and to draft documentation, the presentation text and the demo script. [Confirm: AI assistance in compiling the literature review.] The app itself makes no calls to AI services and generates no text or images. It contains two small statistical models fitted on NASA FIRMS data: a regression that produces the estimated fire radiative power on the next pass, and a logistic regression that produces the detection score behind the "Expected detection, no match" flag. Everything else it shows comes from the data sources listed below. The idea of the project is the team's own.
+AI coding assistants (Anthropic Claude Code and OpenAI Codex) were used to write and review code and to draft documentation, the presentation text and the demo script. AI assistance in assembling the literature review has not been fully reconstructed; its provenance disclosure states that limitation. The app itself makes no calls to AI services for inference; the link preview is an original code-rendered typographic diagram with a visible AI-assistance label and metadata. It applies fitted statistical models for next-pass FRP, detection scores and GWIS- or CAMS-assisted detection odds. Training inputs come from the sources listed below. The idea belongs to team Plush. The team confirms that application development began after the hackathon start; pre-event preparation consisted of collecting and studying research.
 
 The animated Lama presenter for the demo was designed with the OpenAI ChatGPT image tool from an original photograph of the team's plush alpaca. Character motion was generated with Google Veo 3.1 Lite through OpenRouter. The current concept pilot labels the character "AI-generated" whenever it appears. Live-action footage and application captures are real recordings. Its English narration was synthesized with ElevenLabs Eleven v4 through OpenRouter, using Charlie, then raised by three semitones locally while preserving duration. These tools are disclosed in the video description and file metadata. The user rejected that voice; new Jessica, Bella and Laura auditions use a female-performed little-boy direction without local pitch shifting. No final voice or narration is selected. Update the disclosure to the selected export before submission.
+
 
 Independent project. Not affiliated with or endorsed by NASA.
 
@@ -118,6 +119,8 @@ MATERIALS
 - Slides: [link to the PDF in the repository]
 - Technical note: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/technical-note.md
 - Literature review: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/modis-viirs-harmonization-literature-review.md
+- Third-party rights and licences: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/third-party-rights.md
+- Software licence inventory: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/software-licenses.md
 - Code: https://github.com/avbelkin/nasa-space-apps-sg
 ```
 
@@ -136,11 +139,11 @@ Screenshots to insert in this field, each taken from the version that is submitt
 
 Tick every option that applies. From what the repository shows:
 
-- **Code generation tools** — yes: `Co-Authored-By: Claude` trailers in 43 of 228 commits (counted at `c73d0b5`), branches named `codex/*`, an `AGENTS.md` in the root.
+- **Code generation tools** — yes: Anthropic Claude Code and OpenAI Codex, used for implementation, review, tests and documentation. Commit trailers are incomplete provenance and are not a measure of the extent of assistance.
 - **Large language models for text** — yes: drafts of the documentation, the slide text, the video script and this page.
-- **Image or video generation** — yes: OpenAI ChatGPT image tool for Lama's design, Google Veo 3.1 Lite through OpenRouter for his motion; label the animated character `AI-generated` throughout his appearance. `[Separately confirm: how og-preview.png was made.]`
-- **Generated audio** — yes: ElevenLabs Eleven v4 through OpenRouter, Charlie with a local three-semitone pitch increase in the current concept pilot; disclose the final selection in the video description and MP4 metadata.
-- **Machine learning in the project itself** — yes, if the form's wording covers it: the app applies coefficients fitted on one day of FIRMS detections: a regression for the estimated FRP on the next pass and a calibrated logistic regression for the detection score of the other VIIRS satellite's pass. The notes on unmatched passes quote associations observed in the same data. The app makes no calls to AI services.
+- **Image or video generation** — yes: OpenAI ChatGPT image tool for Lama's design, Google Veo 3.1 Lite through OpenRouter for his motion; label the animated character `AI-generated` throughout his appearance. The older unverified social-preview illustration was replaced with a visibly AI-assisted original typographic diagram, with machine-readable provenance.
+- **Generated audio** — yes: ElevenLabs Eleven v4 through OpenRouter, Charlie with a local three-semitone pitch increase in the rejected pilot; current Jessica/Bella/Laura auditions have no final selection. Disclose the actual selected voice in the video description and MP4 metadata.
+- **Machine learning in the project itself** — yes. The browser applies coefficients fitted on one day of FIRMS detections to estimate FRP, score a later VIIRS detection, and compare detection odds with and without GWIS or CAMS inputs. The app makes no calls to AI services.
 
 The form's exact option names have not been seen; match them on the form.
 
@@ -164,55 +167,27 @@ The backend also has `/api/nasa/epic` and `/api/nasa/wildfires` endpoints (DSCOV
 
 ## 8. Space Agency Partner Data and Other References
 
-The licence column records what we believe applies; the rows marked **check** have not been verified against the provider's terms. The ⛔ rule: licences of all third-party materials must be named in the submitted documentation.
+The submitted [third-party rights and credit register](third-party-rights.md) records the actual licences, primary-source terms, required credits and unresolved permissions. The [software inventory](software-licenses.md) lists every UI lockfile dependency, direct .NET references and presentation fonts. Include both links in this field; do not paste this short summary without them.
 
-**Partner space agency data**
+- NASA FIRMS MODIS / VIIRS; NASA GIBS GPM IMERG, Black Marble and imagery; NASA sensor/algorithm documentation and the ported GPM precipitation colour map — NASA open-data credits and product-specific terms, detailed in field 7 and the register.
+- EOxCloudless 2016 / modified Copernicus Sentinel 2016 & 2017 — **CC BY 4.0**, with EOX credit. The live source has been corrected. Existing 2025 map captures remain **CC BY-NC-SA 4.0** and must be replaced before final release.
+- ESA CCI / Copernicus C3S 2019 land cover via Microsoft Planetary Computer — **ESA CCI Land Cover licence** and applicable C3S terms; the exact COG redistribution terms remain under verification, not an assumed CC BY licence.
+- CelesTrak GP / TLE — publicly available under its usage policy; an unrestricted redistribution licence has not been established. Bright Star / Hipparcos table — exact provenance and terms unresolved.
+- NOAA GFS, GOES-R ABI / GLM and CPC NLDAS Noah — US Government-produced data, public-domain basis under US law, subject to item-specific third-party notices. NOAA nowCOAST / GMGSI mosaic constituents still require confirmation.
+- Open-Meteo forecast and air quality — **data CC BY 4.0**; the free hosted API has non-commercial service conditions and limits. Credit underlying models as well as Open-Meteo.
+- Copernicus GWIS — **CC BY 4.0** for EU-owned content, subject to product-specific third-party terms. Copernicus GDO soil-moisture anomaly — **CC BY 4.0** on the dataset downloads. Credit European Commission JRC and actual product/model versions.
+- US Forest Service WFAS — federal-work public-domain basis; exact raster-level notice still to be verified.
+- Extremum cloud composite and its EUMETSAT / NOAA / JMA / NASA inputs — composite and constituent redistribution permissions unresolved. Do not claim that an accessible tile endpoint supplies a licence.
+- MapLibre GL JS — BSD-3-Clause; React / React DOM, Vite and plugin, oxlint, PureHDF, .NET / ASP.NET Core — MIT; TypeScript and xUnit — Apache-2.0. Transitive UI licences also include ISC, BSD-2-Clause, 0BSD, MPL-2.0 and MIT-or-Apache-2.0. The complete table and notice links are in the software inventory; resolved .NET transitive coverage is still pending.
+- Overpass and Fira Sans fonts — **SIL OFL 1.1**, with bundled licence texts. Space Apps palette / reference kit — official brand-use terms, not a grant over NASA insignia; no NASA or Space Apps logo appears in the inspected deck.
+- Original team code and prose — **Apache-2.0**, with third-party exclusions in NOTICE. Literature: the [review's 82 references](modis-viirs-harmonization-literature-review.md), including the MODIS / VIIRS algorithm papers; US Naval Observatory solar coordinates and Van Flandern & Pulkkinen lunar ephemeris methods. Cited publications retain their own rights; the papers are not redistributed as project files.
+- AI assistance: Anthropic Claude Code and OpenAI Codex (code/review/writing/layout); OpenAI ChatGPT image tool (Lama design); Google Veo 3.1 Lite via OpenRouter (motion); ElevenLabs Eleven v4 / Charlie via OpenRouter (pilot speech, locally pitch-shifted). Final selections and applicable output terms must match the final media. OpenRouter is the intermediary, not the owner of every model's output rights.
+- Hosting / build services: GitHub Pages, GitHub Actions, Google Cloud Run, Firestore, managed presentation tooling, Chrome / Chromium, FFmpeg and PowerPoint. Their executables are not submitted as original team work.
 
-| Source | Role in the project | Licence or terms |
-|---|---|---|
-| **ESA** — Climate Change Initiative Land Cover, continued by the Copernicus Climate Change Service (C3S) land cover map v2.1.1, year 2019; Cloud Optimized GeoTIFFs hosted by Microsoft Planetary Computer. [DOI](https://doi.org/10.24381/cds.006f2c9a) | Land cover inside each detection's footprint | ESA CCI and C3S licences, attribution required — **check** |
-| **ESA** — Hipparcos catalogue; Yale Bright Star Catalogue | About 230 bright stars in the background of the globe | **check**; confirm the exact provenance of the table in `brightStarCatalog.ts` with its author |
-| Contains modified **Copernicus Sentinel** data 2025 — Sentinel-2 cloudless by EOX IT Services GmbH, [s2maps.eu](https://s2maps.eu) | Earth basemap | **CC BY-NC-SA 4.0, non-commercial only** — conflicts with the rule on third-party materials; see [status](../working/requirements-status.md) |
+Rights register: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/third-party-rights.md
+Software inventory: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/software-licenses.md
 
-**Other data**
-
-| Source | Role in the project | Licence or terms |
-|---|---|---|
-| [CelesTrak](https://celestrak.org/) — orbital elements (GP / TLE) for Terra, Aqua, NOAA-20, NOAA-21, including fallback sets embedded in the source | Satellite tracks, swaths, estimated viewing geometry, passes without a detection | **check** |
-| [Extremum SAR GIS](https://gis.extremum.org) — cloud tiles built from EUMETSAT, NOAA and JMA geostationary imagery and NASA/NOAA VIIRS imagery | Cloud layer, proxied through our service | **check**: terms not recorded |
-| NOAA GFS — model fields from NOMADS and the NOAA open data mirrors on Google Cloud Storage and AWS | Weather at acquisition: temperature, humidity, wind, cloud, precipitation type, snow, soil water | US Government work, public domain — **check** |
-| NOAA GOES-R ABI and GLM — open data on AWS | Brightness temperature, cloud class, fraction, optical depth, height and phase, smoke flag, lightning flashes (GOES East and West coverage) | US Government work, public domain — **check** |
-| NOAA nowCOAST — radar mosaic and global satellite mosaic (GMGSI) | Radar reflectivity and satellite imagery samples | US Government work, public domain — **check** |
-| NOAA Climate Prediction Center — weekly NLDAS Noah soil-moisture anomalies | Soil-moisture departures by depth (North America) | US Government work, public domain — **check** |
-| [Open-Meteo](https://open-meteo.com/) — forecast and air-quality APIs | Weather codes, precipitation totals, aerosol and pollutants | Data CC BY 4.0; free API for non-commercial use — **check** |
-| [Copernicus GWIS](https://gwis.jrc.ec.europa.eu/) (European Commission JRC) | Fire Weather Index, danger class, fuel-moisture and drought codes, modelled lightning | European Commission reuse policy (CC BY 4.0) — **check** |
-| Copernicus Global Drought Observatory (European Commission JRC) — [soil-moisture anomaly](https://data.jrc.ec.europa.eu/dataset/4ce9599e-b3e1-406d-a87b-b98b814565da) | Soil-moisture anomaly class | European Commission reuse policy (CC BY 4.0) — **check** |
-| [US Forest Service WFAS](https://www.wfas.net/) | 10-, 100- and 1,000-hour dead-fuel moisture (contiguous United States) | US Government work, public domain — **check** |
-
-**Software**
-
-| Component | Licence |
-|---|---|
-| MapLibre GL JS | BSD-3-Clause |
-| React, React DOM | MIT |
-| Vite, `@vitejs/plugin-react` | MIT |
-| TypeScript | Apache-2.0 |
-| oxlint | MIT — **check** |
-| .NET 10, ASP.NET Core, `Microsoft.AspNetCore.OpenApi` | MIT |
-| PureHDF | MIT — **check** |
-| xUnit (tests) | Apache-2.0 — **check** |
-
-Hosting: GitHub Pages, GitHub Actions, Google Cloud Run, Google Cloud Firestore.
-
-**Methods and references**
-
-- Our [literature review](modis-viirs-harmonization-literature-review.md) with its 82 references — the supporting source for the problem statement and the hypothesis.
-- Our [design notes](../working/harmonization-design-notes.md) for the harmonized calendar, with the documentation and studies they cite.
-- Giglio, Schroeder & Justice (2016), the MODIS Collection 6 active fire detection algorithm; Schroeder et al., the VIIRS 375 m active fire algorithm (ATBD) — definitions of glint and viewing geometry.
-- US Naval Observatory approximate solar coordinates; Van Flandern & Pulkkinen low-precision lunar ephemeris — Sun and Moon positions.
-- NASA GIBS `GPM_Precipitation_Rate` colour map, ported into the code.
-- [NASA Space Apps brand assets](../assets/README.md) — logos, palette and patterns for the slides.
-- AI tools: `[list, as in field 5]`.
+The unresolved entries are release blockers, not compliance confirmations. Retain all applicable notices and resolve permissions before ticking the originality checkbox.
 
 ## 9. Two checkboxes
 
@@ -222,13 +197,15 @@ Tick both after the [checklist](../docs/formal-requirements.md#checklist) is clo
 
 | What | Why |
 |---|---|
-| Team name and member names | Placeholders here, on the slides and in the video |
-| List of AI tools; whether the literature review and `og-preview.png` were AI-assisted | Fields 5, 6 and 8 must say the same |
-| Licence rows marked **check**; the EOX basemap | ⛔ licence rule; the basemap restriction is still open |
-| Project licence | There is no `LICENSE` file; without one NASA distributes the work under Apache 2.0 |
-| Slides PDF link | The deck is not exported yet |
-| Link preview image `og-preview.png` | It still reads "harmonization" and "Seasonal burning baselines & live calendar anomalies"; the app has neither |
+| Team identity | Plush — Alexey Belkin and Viktoriia Naiman. Lama is a fictional presenter; Claude / Codex are AI tools, not registered team members |
+| Final AI/media provenance | Fields 5, 6 and 8, the final video description and metadata must match; preserve the model terms and asset provenance |
+| Remaining third-party rights | Resolve the explicit blockers in the rights register; recapture old EOX 2025 images |
+| Project licence | Apache-2.0 in LICENSE, with third-party exclusions in NOTICE; no permission is asserted over unresolved assets |
+| Slides PDF link | Existing exports are local drafts; publish the final complete deck at a public stable URL after rights/capture checks |
+| Link preview image `og-preview.png` | Replaced with an original labelled diagram; rebuild/deploy the corrected app and verify the public preview |
 | Commit or tag of the submitted version | Replace `c73d0b5` in the first paragraph and in the [technical note](technical-note.md) |
 | Baseline fitting scripts | They are not in the repository; add them or say where they are, and close the placeholder in the [technical note](technical-note.md#6-first-baselines-on-matched-passes) |
 | Backend test run | The technical note records only the interface suite; run the backend suite on the submitted commit |
 | Numbers | One snapshot across this page, the slides and the video |
+
+Model estimates are outputs of Earth Fire Calendar, not NASA products. NASA has not reviewed or validated them and is not responsible for their accuracy.

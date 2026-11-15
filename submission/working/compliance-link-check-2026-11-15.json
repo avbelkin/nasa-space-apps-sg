@@ -1,0 +1,533 @@
+{
+  "checked_at_utc": "2026-11-15T12:49:12.919641+00:00",
+  "method": "Unauthenticated HTTP HEAD, GET on 405; 18 s timeout; no browser sessions or API keys",
+  "limitations": "HTTP status is not proof of rendering, no-login content, scientific validity or full-text licence. Reference errors may be automation blocks; manually investigate before declaring a source broken. New audit documents are not public until pushed.",
+  "local_missing_links": [],
+  "bibliography_urls": 82,
+  "results": [
+    {
+      "url": "https://avbelkin.github.io/nasa-space-apps-sg/",
+      "role": "project-entry",
+      "status": 200,
+      "final_url": "https://avbelkin.github.io/nasa-space-apps-sg/"
+    },
+    {
+      "url": "https://github.com/avbelkin/nasa-space-apps-sg",
+      "role": "project-entry",
+      "status": 200,
+      "final_url": "https://github.com/avbelkin/nasa-space-apps-sg"
+    },
+    {
+      "url": "https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/technical-note.md",
+      "role": "project-entry",
+      "status": 200,
+      "final_url": "https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/technical-note.md"
+    },
+    {
+      "url": "https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/modis-viirs-harmonization-literature-review.md",
+      "role": "project-entry",
+      "status": 200,
+      "final_url": "https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/modis-viirs-harmonization-literature-review.md"
+    },
+    {
+      "url": "https://earth-fire-calendar-api-354cntvldq-as.a.run.app/health",
+      "role": "project-entry",
+      "status": 200,
+      "final_url": "https://earth-fire-calendar-api-354cntvldq-as.a.run.app/health"
+    },
+    {
+      "url": "https://aero.und.edu/atmos/icap/_files/docs/icap-4/source-sink/considerations-for-satellite-based-fire-emissions.pdf",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://aero.und.edu/atmos/icap/_files/docs/icap-4/source-sink/considerations-for-satellite-based-fire-emissions.pdf"
+    },
+    {
+      "url": "https://atmosphere.copernicus.eu/drifting-away-modis-cams-global-fire-assimilation-system",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://atmosphere.copernicus.eu/drifting-away-modis-cams-global-fire-assimilation-system"
+    },
+    {
+      "url": "https://doi.org/10.1002/2013gl059086",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "http://doi.wiley.com/10.1002/2013GL059086"
+    },
+    {
+      "url": "https://doi.org/10.1002/2013jd020453",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://agupubs.onlinelibrary.wiley.com/doi/10.1002/2013JD020453"
+    },
+    {
+      "url": "https://doi.org/10.1002/jgrg.20042",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://agupubs.onlinelibrary.wiley.com/doi/10.1002/jgrg.20042"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.aeaoa.2020.100091",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S2590162120300319"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.isprsjprs.2024.02.014",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0924271624000601"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.jag.2023.103214",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S1569843223000365"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.jag.2024.104064",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S1569843224004187"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2006.11.018",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425706004986"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2007.05.004",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S003442570700199X"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2007.12.008",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425708000023"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2010.09.017",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425710002907"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2012.12.004",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425712004610"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2013.12.008",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425713004483"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2015.10.002",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S003442571530153X"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2016.02.054",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425716300827"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2017.06.028",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425717302870"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2017.07.003",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425717303085"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2017.10.019",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425717304820"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2018.10.028",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425718304826"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2020.111947",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425720303175"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2021.112777",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425721004971"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2022.113237",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425722003431"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2022.113238",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425722003443"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2023.113466",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425723000172"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2023.113963",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425723005151"
+    },
+    {
+      "url": "https://doi.org/10.1016/j.rse.2025.115006",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://linkinghub.elsevier.com/retrieve/pii/S0034425725004109"
+    },
+    {
+      "url": "https://doi.org/10.1029/2005jg000142",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2005JG000142"
+    },
+    {
+      "url": "https://doi.org/10.1029/2017jd027823",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2017JD027823"
+    },
+    {
+      "url": "https://doi.org/10.1038/s41467-024-46168-0",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://www.nature.com/articles/s41467-024-46168-0"
+    },
+    {
+      "url": "https://doi.org/10.1038/s41598-019-43940-x",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://www.nature.com/articles/s41598-019-43940-x"
+    },
+    {
+      "url": "https://doi.org/10.1071/wf22048",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://connectsci.au/wf/article/32/5/694/86699/Consistent-high-accuracy-mapping-of-daily-and-sub"
+    },
+    {
+      "url": "https://doi.org/10.1088/1748-9326/abd0a8",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://validate.perfdrive.com/fb803c746e9148689b3984a31fccd902/?ssa=8a0db1fa-8c02-4614-96bf-f4dc3e50358c&ssb=55220263989&ssc=https%3A%2F%2Fiopscience.iop.org%2Farticle%2F10.1088%2F1748-9326%2Fabd0a8&ssi=d652c774-cnvj-49b2-9d01-56f0e9449dc2&ssk=botmanager_support@radware.com&ssm=66288122455263123106017680544158&ssn=582b07868583a747eeb13ce9d6061cfa14e885db36fe-e7a6-43be-b24321&sso=18e8dc89-2eb3cb6b01097f339717d0bc800cecbf27637ee6e1011e81&ssp=29335205601794722289179474307653022&ssq=31200714693909935899946939353918874126372&ssr=MjE5Ljc0LjEwMy41Mg==&sst=EarthFireCalendar-compliance-link-check/1.0&ssu=&ssv=&ssw=&ssx=eyJyZCI6ImlvcC5vcmciLCJ1em14IjoiN2ZjMDAwMDExY2IwMmMtYTNjNy00ZTYzLThjNmEtNTQ4ODliZGE1Y2Y5MS0xNzk0NzQ2OTM5MjEzMC0wMGQxMDZiYjRlMzIxYmIwMjE2MTAiLCJfX3V6bWYiOiI3ZjkwMDA4NWRiMzZmZS1lN2E2LTQzYmUtYmM4OS0yZWIzY2I2YjAxMDkxLTE3OTQ3NDY5MzkyMTMwLTAwNWQzN2U3NzFiMjZhMjFlZDExMCJ9"
+    },
+    {
+      "url": "https://doi.org/10.1088/2515-7620/ac2e6f",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://validate.perfdrive.com/fb803c746e9148689b3984a31fccd902/?ssa=28b25cb3-36c3-46b6-b105-4367bf4135a4&ssb=55220263989&ssc=https%3A%2F%2Fiopscience.iop.org%2Farticle%2F10.1088%2F2515-7620%2Fac2e6f&ssi=d033e5de-cnvj-49ef-ab28-6981cd26d28c&ssk=botmanager_support@radware.com&ssm=66288122455263123106017680544158&ssn=582b0786b53df5777b57b498f6d81cfa14e8f46cdad4-7174-4af8-b24321&sso=18e8d031-a5a13e30cd1c7f339717d65f5f97cbf4ec46cbbbe1011e81&ssp=29335205601794722289179474307653022&ssq=31200714693909935899946939353918874126372&ssr=MjE5Ljc0LjEwMy41Mg==&sst=EarthFireCalendar-compliance-link-check/1.0&ssu=&ssv=&ssw=&ssx=eyJyZCI6ImlvcC5vcmciLCJ1em14IjoiN2ZjMDAwODhlY2I3ZGItYWRiNS00OTUyLWI4ZTMtYzdmMDY2YzFjNmNlMS0xNzk0NzQ2OTM5MjE2MC0wMGQwN2JlY2QwNjM2MWI5YWE2MTAiLCJfX3V6bWYiOiI3ZjkwMDBmNDZjZGFkNC03MTc0LTRhZjgtYjAzMS1hNWExM2UzMGNkMWMxLTE3OTQ3NDY5MzkyMTYwLTAwNTlhZDdmZWJmMGM1YjQ4NjkxMCJ9"
+    },
+    {
+      "url": "https://doi.org/10.1109/igarss.2015.7326200",
+      "role": "bibliography",
+      "status": 202,
+      "final_url": "https://ieeexplore.ieee.org/document/7326200/"
+    },
+    {
+      "url": "https://doi.org/10.1109/jstars.2020.3019261",
+      "role": "bibliography",
+      "status": 202,
+      "final_url": "https://ieeexplore.ieee.org/document/9177265/"
+    },
+    {
+      "url": "https://doi.org/10.1109/lgrs.2022.3188259",
+      "role": "bibliography",
+      "status": 202,
+      "final_url": "https://ieeexplore.ieee.org/document/9815102/"
+    },
+    {
+      "url": "https://doi.org/10.1109/tgrs.2006.875941",
+      "role": "bibliography",
+      "status": 202,
+      "final_url": "https://ieeexplore.ieee.org/document/1645276/"
+    },
+    {
+      "url": "https://doi.org/10.1109/tgrs.2023.3261664",
+      "role": "bibliography",
+      "status": 202,
+      "final_url": "https://ieeexplore.ieee.org/document/10081011/"
+    },
+    {
+      "url": "https://doi.org/10.1109/tgrs.2024.3470538",
+      "role": "bibliography",
+      "status": 202,
+      "final_url": "https://ieeexplore.ieee.org/document/10699409/"
+    },
+    {
+      "url": "https://doi.org/10.1117/12.2676873",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://www.spiedigitallibrary.org/conference-proceedings-of-spie/12685/2676873/Impact-of-satellite-orbit-drift-on-MODIS-Earth-scene-observations/10.1117/12.2676873.full"
+    },
+    {
+      "url": "https://doi.org/10.1117/12.3040232",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://www.spiedigitallibrary.org/conference-proceedings-of-spie/13267/3040232/Tracking-MODIS-RVS-for-the-reflective-solar-bands-in-drifting/10.1117/12.3040232.full"
+    },
+    {
+      "url": "https://doi.org/10.29150/jhrs.v12.6.p379-390",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://periodicos.ufpe.br/revistas/index.php/jhrs/article/view/256618"
+    },
+    {
+      "url": "https://doi.org/10.3390/atmos8060095",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://www.mdpi.com/2073-4433/8/6/95"
+    },
+    {
+      "url": "https://doi.org/10.3390/fire3020011",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://www.mdpi.com/2571-6255/3/2/11"
+    },
+    {
+      "url": "https://doi.org/10.3390/rs10070978",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://www.mdpi.com/2072-4292/10/7/978"
+    },
+    {
+      "url": "https://doi.org/10.3390/rs11040467",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://www.mdpi.com/2072-4292/11/4/467"
+    },
+    {
+      "url": "https://doi.org/10.3390/rs11101205",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://www.mdpi.com/2072-4292/11/10/1205"
+    },
+    {
+      "url": "https://doi.org/10.3390/rs12101561",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://www.mdpi.com/2072-4292/12/10/1561"
+    },
+    {
+      "url": "https://doi.org/10.3390/rs12182870",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://www.mdpi.com/2072-4292/12/18/2870"
+    },
+    {
+      "url": "https://doi.org/10.3390/rs12193167",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://www.mdpi.com/2072-4292/12/19/3167"
+    },
+    {
+      "url": "https://doi.org/10.3390/rs16122078",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://www.mdpi.com/2072-4292/16/12/2078"
+    },
+    {
+      "url": "https://doi.org/10.3390/rs18101650",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://www.mdpi.com/2072-4292/18/10/1650"
+    },
+    {
+      "url": "https://doi.org/10.3390/s22051713",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://www.mdpi.com/1424-8220/22/5/1713"
+    },
+    {
+      "url": "https://doi.org/10.3832/ifor3754-015",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://iforest.sisef.org/abstract/?id=ifor3754-015"
+    },
+    {
+      "url": "https://doi.org/10.48550/arxiv.2304.12488",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://arxiv.org/abs/2304.12488"
+    },
+    {
+      "url": "https://doi.org/10.5067/opdsws1-l3v1",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://www.earthdata.nasa.gov/data/catalog/pocloud-opera-l3-dswx-s1-v1-1.0"
+    },
+    {
+      "url": "https://doi.org/10.5194/acp-15-8831-2015",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://acp.copernicus.org/articles/15/8831/2015/"
+    },
+    {
+      "url": "https://doi.org/10.5194/essd-15-5227-2023",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://essd.copernicus.org/articles/15/5227/2023/"
+    },
+    {
+      "url": "https://doi.org/10.5194/essd-18-7535-2026",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://essd.copernicus.org/articles/18/7535/2026/"
+    },
+    {
+      "url": "https://doi.org/10.5194/gmd-19-10123-2026",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://gmd.copernicus.org/articles/19/10123/2026/"
+    },
+    {
+      "url": "https://doi.org/10.5194/isprs-archives-xlviii-3-2024-407-2024",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://isprs-archives.copernicus.org/articles/XLVIII-3-2024/407/2024/"
+    },
+    {
+      "url": "https://doi.org/10.5281/zenodo.10570342",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://zenodo.org/records/10570342"
+    },
+    {
+      "url": "https://doi.org/10.5281/zenodo.18339604",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://zenodo.org/records/18339604"
+    },
+    {
+      "url": "https://doi.org/10.5281/zenodo.7668423",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://zenodo.org/records/7668424"
+    },
+    {
+      "url": "https://earthdata.nasa.gov/s3fs-public/2023-09/MODIS_C6_C6.1_Fire_User_Guide_1.0.pdf",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://earthdata.nasa.gov/s3fs-public/2023-09/MODIS_C6_C6.1_Fire_User_Guide_1.0.pdf"
+    },
+    {
+      "url": "https://github.com/fmidev/FRP_OOp",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://github.com/fmidev/FRP_OOp"
+    },
+    {
+      "url": "https://github.com/uiowa-aer-lab/frp-atmospheric-correction",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://github.com/uiowa-aer-lab/frp-atmospheric-correction"
+    },
+    {
+      "url": "https://github.com/ychenzgithub/GFED5NRT",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://github.com/ychenzgithub/GFED5NRT"
+    },
+    {
+      "url": "https://gofcgold.umd.edu/sites/default/files/2024-11/GOFC_GWIS_2024_Roberts_short.pdf",
+      "role": "bibliography",
+      "status": "request_failed",
+      "error": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1000)>"
+    },
+    {
+      "url": "https://kclpure.kcl.ac.uk/portal/en/theses/a-comparison-and-synthesis-of-polarorbiting-and-geostationary-observations-of-african-biomass-burning(d4b1f223-f0d3-4fd8-a948-fa5d3f0a92bf).html",
+      "role": "bibliography",
+      "status": 403,
+      "final_url": "https://kclpure.kcl.ac.uk/portal/en/theses/a-comparison-and-synthesis-of-polarorbiting-and-geostationary-observations-of-african-biomass-burning(d4b1f223-f0d3-4fd8-a948-fa5d3f0a92bf).html",
+      "initial_extractor_error": "The first URI extractor truncated literal parentheses; that 404 did not test the source URL."
+    },
+    {
+      "url": "https://landweb.modaps.eosdis.nasa.gov/data/filePost/LANCE_UWG_Orbit_Drift_Giglio_202505.pdf",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://landweb.modaps.eosdis.nasa.gov/data/filePost/LANCE_UWG_Orbit_Drift_Giglio_202505.pdf"
+    },
+    {
+      "url": "https://landweb.modaps.eosdis.nasa.gov/displayissue?id=1254",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://landweb.modaps.eosdis.nasa.gov/displayissue?id=1254"
+    },
+    {
+      "url": "https://modis-land.gsfc.nasa.gov/news.html",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://modis-land.gsfc.nasa.gov/news.html"
+    },
+    {
+      "url": "https://modis.gsfc.nasa.gov/sci_team/meetings/202305/presentations/boschetti.pdf",
+      "role": "bibliography",
+      "status": "request_failed",
+      "error": "<urlopen error [Errno 61] Connection refused>"
+    },
+    {
+      "url": "https://viirsland.gsfc.nasa.gov/Val/Fire_Val.html",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://viirsland.gsfc.nasa.gov/Val/Fire_Val.html"
+    },
+    {
+      "url": "https://wiki.earthdata.nasa.gov/spaces/FIRMS/blog/2025/02/28/425855667/FIRMS+incorporates+static+thermal+anomalies+data+to+help+users+differentiate+between+vegetation+and+non+vegetation+fires.",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://wiki.earthdata.nasa.gov/spaces/FIRMS/blog/2025/02/28/425855667/FIRMS+incorporates+static+thermal+anomalies+data+to+help+users+differentiate+between+vegetation+and+non+vegetation+fires."
+    },
+    {
+      "url": "https://www.earthdata.nasa.gov/s3fs-public/2025-06/VIIRS_C2_AF-375m_User_Guide_1.2.pdf",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://www.earthdata.nasa.gov/s3fs-public/2025-06/VIIRS_C2_AF-375m_User_Guide_1.2.pdf"
+    },
+    {
+      "url": "https://www.earthdata.nasa.gov/s3fs-public/2026-02/arset-2026-advfirms-part1-qa.pdf",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://www.earthdata.nasa.gov/s3fs-public/2026-02/arset-2026-advfirms-part1-qa.pdf"
+    },
+    {
+      "url": "https://www.nesdis.noaa.gov/news/update-4-cessation-of-suomi-national-polar-orbiting-partnership-s-npp-data-users-november-02-2026-1540-utc-and-decommissioning-issued-november-2-2026-1800-utc",
+      "role": "bibliography",
+      "status": 200,
+      "final_url": "https://www.nesdis.noaa.gov/news/update-4-cessation-of-suomi-national-polar-orbiting-partnership-s-npp-data-users-november-02-2026-1540-utc-and-decommissioning-issued-november-2-2026-1800-utc"
+    },
+    {
+      "url": "https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/",
+      "role": "bibliography",
+      "status": "request_failed",
+      "error": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1000)>"
+    }
+  ],
+  "local_rechecked_at_utc": "2026-11-15T13:00:05.861270+00:00"
+}

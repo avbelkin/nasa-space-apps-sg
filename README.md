@@ -129,3 +129,16 @@ The Cloud Run deployment job runs once the required `GCP_*` repository variables
 | `GCP_CPU` | Optional vCPU allocation per instance | `1` |
 | `GCP_MEMORY` | Optional memory allocation per instance | `1Gi` |
 | `GCP_CONCURRENCY` | Optional max concurrent requests per instance | `80` |
+
+
+## Team, licence and AI provenance
+
+Team **Plush**: **Alexey Belkin** and **Viktoriia Naiman**. Lama is a fictional presenter; Claude Code and Codex are AI tools, not registered participants. The team confirms that the original idea is theirs and application development began after the hackathon start. Pre-event preparation involved collecting and reading research; the [compliance audit](submission/working/submission-compliance-audit.md) records the remaining eligibility question for the pre-existing research material.
+
+Original contributions use [Apache-2.0](LICENSE), with third-party exclusions in [NOTICE](NOTICE). Submitted [rights and source credits](submission/deliverables/third-party-rights.md) and [software licence inventory](submission/deliverables/software-licenses.md) distinguish verified licences from unresolved permissions. The website includes [dependency notices](ui/public/third-party-notices.txt); the root licence does not relicense maps, datasets, fonts or voices.
+
+Anthropic Claude Code and OpenAI Codex assisted with implementation, review, tests, documentation, slide/script drafting and layout. The original image-tool Lama design, Veo animation and ElevenLabs narration are separately disclosed in the [video documentation](submission/video/disclosures.md). The final voice/animation choices must match the published description and file metadata. The prior literature-review assistance history is not fully reconstructed; no claim of wholly human authorship is made.
+
+The app applies team-fitted FRP, detection-score and GWIS/CAMS-assisted pass models in the browser; it makes no calls to AI services for inference. These are Earth Fire Calendar model outputs, not NASA products. NASA has not validated them and is not responsible for their accuracy. Code/model/asset provenance is also recorded in [machine-readable metadata](ui/public/ai-provenance.json).
+
+The live basemap uses **EOxCloudless 2016, CC BY 4.0**, with attribution. Old slide/video captures used EOX 2025 under CC BY-NC-SA 4.0 and must be replaced before release; changing the app URL does not relicense those captures. The current deck/video previews are production drafts, not proof of a complete compliant submission. The [audit](submission/working/submission-compliance-audit.md) is the release checklist.
