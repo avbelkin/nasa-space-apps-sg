@@ -1,6 +1,10 @@
 import { useMemo } from 'react'
 import type { SensorFilter } from '../data/mapTypes'
-import { formatFireSpotsTooltip, type FireSpotTooltipInput } from '../utils/fireSpots'
+import {
+  formatFireSpotsTooltip,
+  type FireSpotLandCoverLookup,
+  type FireSpotTooltipInput,
+} from '../utils/fireSpots'
 import type { SatelliteOverpassIndex } from '../utils/satelliteOverpassTimeline'
 import { FireDetectionPowerSummary, FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
 import { CloseIcon } from './icons'
@@ -14,17 +18,19 @@ export interface PinnedFireSelection {
 
 interface PinnedFireDetailsProps {
   selection: PinnedFireSelection
+  landCoverBySpot: FireSpotLandCoverLookup
   overpassIndex: SatelliteOverpassIndex | null
   onUnpin: () => void
 }
 
-export function PinnedFireDetails({ selection, overpassIndex, onUnpin }: PinnedFireDetailsProps) {
+export function PinnedFireDetails({ selection, landCoverBySpot, overpassIndex, onUnpin }: PinnedFireDetailsProps) {
   const details = useMemo(
     () => formatFireSpotsTooltip(selection.inputs, selection.nowMs, {
       sensorFilter: selection.sensorFilter,
       overpassIndex,
+      landCoverBySpot,
     }),
-    [selection, overpassIndex],
+    [selection, overpassIndex, landCoverBySpot],
   )
   if (!details?.timeline) {
     return null
@@ -48,6 +54,9 @@ export function PinnedFireDetails({ selection, overpassIndex, onUnpin }: PinnedF
               </span>
             )}
             <FireDetectionPowerSummary timeline={timeline} />
+            {details.landCoverLabel && (
+              <span className="fire-land-cover">Land cover · {details.landCoverLabel}</span>
+            )}
           </p>
         </div>
         <button type="button" className="secondary-btn pinned-fire-unpin" onClick={onUnpin}>

@@ -39,6 +39,7 @@ import {
   type SatelliteOrbitsResponse,
 } from './utils/satelliteOrbits'
 import {
+  buildFireSpotLandCoverLookup,
   fetchLiveFireSpots,
   summarizeFireSpotsForSensor,
   type FirmsLiveSpotsResponse,
@@ -442,6 +443,11 @@ function App() {
           ? 'empty'
           : 'ready'
 
+  const landCoverBySpot = useMemo(
+    () => buildFireSpotLandCoverLookup(fireSpotsPayload),
+    [fireSpotsPayload],
+  )
+
   const fireSummary = useMemo(
     () => summarizeFireSpotsForSensor(fireSpotsPayload, sensorFilter),
     [fireSpotsPayload, sensorFilter],
@@ -529,6 +535,7 @@ function App() {
         onGeolocationStateChange={setGeolocationState}
         onReducedMotionChange={setReducedMotion}
         fireSpotsPayload={fireSpotsPayload}
+        landCoverBySpot={landCoverBySpot}
         showFires={showFires}
         onShowFiresChange={(next) => {
           if (!next) {
@@ -544,6 +551,7 @@ function App() {
         pinnedDetails={pinnedFireSelection && (
           <PinnedFireDetails
             selection={pinnedFireSelection}
+            landCoverBySpot={landCoverBySpot}
             overpassIndex={overpassIndex}
             onUnpin={unpinFireSelection}
           />

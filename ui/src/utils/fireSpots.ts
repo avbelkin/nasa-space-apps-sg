@@ -156,7 +156,10 @@ export interface FireSpotTooltipInput {
   dayNight?: string
 }
 
+export type FireSpotLandCoverLookup = ReadonlyMap<string, string>
+
 export interface FormattedFireSpotsTooltip {
+  landCoverLabel: string
   mode: 'individual' | 'timeline'
   header: string
   lines: string[]
@@ -165,6 +168,7 @@ export interface FormattedFireSpotsTooltip {
 }
 
 export interface FormatFireSpotsTooltipOptions {
+  landCoverBySpot?: FireSpotLandCoverLookup
   sensorFilter?: SensorFilter
   timeZone?: string
   overpassIndex?: SatelliteOverpassIndex | null
@@ -604,13 +608,59 @@ export function summarizeFireSpotsForSensor(
   }
 }
 
+function fireSpotKey(lng: number, lat: number, timestamp: number, source: string): string {
+  return `${lng.toFixed(4)}|${lat.toFixed(4)}|${timestamp}|${source}`
+}
+
+export function buildFireSpotLandCoverLookup(
+  payload: FirmsLiveSpotsResponse | null,
+): FireSpotLandCoverLookup {
+  const labels = payload?.landCoverDataset?.classLabels
+  const landCoverBySpot = new Map<string, string>()
+  if (!payload || !labels) return landCoverBySpot
+
+  const sources = buildSourceLookup(payload.sources ?? [])
+  for (const [lng, lat, timestamp, , , , sourceCode, , , landCover] of payload.spots) {
+    if (!landCover || !Number.isFinite(lng) || !Number.isFinite(lat)) continue
+
+    const label = labels[landCover.dominantCode]
+    if (!label) continue
+
+    const source = sources.get(sourceCode) ?? DEFAULT_SOURCE_META[1]
+    landCoverBySpot.set(fireSpotKey(lng, lat, timestamp, source.label), label)
+  }
+  return landCoverBySpot
+}
+
+function summarizeFireSpotLandCover(
+  spots: readonly FireSpotTooltipInput[],
+  landCoverBySpot?: FireSpotLandCoverLookup,
+): string {
+  if (!landCoverBySpot?.size) return ''
+
+  const counts = new Map<string, number>()
+  for (const { lng, lat, timestamp, source } of spots) {
+    if (lng === undefined || lat === undefined || !Number.isFinite(lng) || !Number.isFinite(lat)) continue
+
+    const label = landCoverBySpot.get(fireSpotKey(lng, lat, timestamp, source))
+    if (label) counts.set(label, (counts.get(label) ?? 0) + 1)
+  }
+
+  return [...counts]
+    .sort(([first, firstCount], [second, secondCount]) =>
+      secondCount - firstCount || first.localeCompare(second, 'en'))
+    .slice(0, 3)
+    .map(([label]) => label)
+    .join(', ')
+}
+
 export function deduplicateSpotMatches(spots: readonly FireSpotTooltipInput[]): FireSpotTooltipInput[] {
   const seen = new Set<string>()
   const unique: FireSpotTooltipInput[] = []
 
   for (const spot of spots) {
     if (Number.isFinite(spot.lng) && Number.isFinite(spot.lat)) {
-      const key = `${spot.lng!.toFixed(4)}|${spot.lat!.toFixed(4)}|${spot.timestamp}|${spot.source}`
+      const key = fireSpotKey(spot.lng!, spot.lat!, spot.timestamp, spot.source)
       if (seen.has(key)) {
         continue
       }
@@ -666,6 +716,7 @@ export function formatFireSpotsTooltip(
 
   return {
     mode: 'timeline',
+    landCoverLabel: summarizeFireSpotLandCover(uniqueSpots, options.landCoverBySpot),
     header:
       uniqueSpots.length === 1
         ? '1 Fire Detection'
