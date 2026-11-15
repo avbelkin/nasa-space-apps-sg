@@ -7,7 +7,7 @@ This repository implements the [Harmonization of MODIS and VIIRS Hot Spots](./RE
 ### 1. Frontend (`ui/` — Pure React + TypeScript + Vite on GitHub Pages)
 
 - **Public Availability**: Publicly accessible on GitHub Pages at [https://avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg), deployed via [deploy-ui.yml](../.github/workflows/deploy-ui.yml).
-- **Earth-First Mapping Engine (`maplibre-gl`)**: Keyless **MapLibre GL JS** canvas defaulting to a **3D `globe` projection** (with an optional 2D `mercator` toggle) over **EOX Sentinel-2 Cloudless (`s2cloudless-2025_3857`)** raster WMTS imagery (`{z}/{y}/{x}.jpg` with required EOX/Copernicus attribution) to visualize active-fire hotspots, typical seasonal activity bands, and current calendar anomaly departures directly on Earth.
+- **Earth-First Mapping Engine (`maplibre-gl`)**: Keyless **MapLibre GL JS** canvas defaulting to a **3D `globe` projection** (with an optional 2D `mercator` toggle) over **EOX Sentinel-2 Cloudless (`s2cloudless-2025_3857`)** raster WMTS imagery (`{z}/{y}/{x}.jpg` with required EOX/Copernicus attribution) to visualize live MODIS and VIIRS active-fire hotspots and their observation context directly on Earth.
 - **Two-Tier CSS Grid Layout**:
   - **Outer Controls Wrapper (`.app-frame`)**: CSS Grid page shell wrapping perimeter controls *around* the map (stacked below 60rem):
     - `topbar` holds the **Earth Fire Calendar** title and a short description of the map.
@@ -40,8 +40,6 @@ This repository implements the [Harmonization of MODIS and VIIRS Hot Spots](./RE
   - `POST /api/fires/spots/geometry` — Geometry for up to 512 pinned detections. Send a `spots` array of live row identities (`lng`, `lat`, `timestampMs`, and `satellite`). The response returns the batch status and, when ready, geometry in request order. An unmatched detection has a null entry.
   - `GET /api/satellites/orbits` — Time-bound orbital ground tracks, nadir position, heading, speed, swath parameters, TLE lines (`tleLine1`/`tleLine2` for client-side 24h negative-pass evaluation), computed `swaths` (`nadir`/`wide`), and `satelliteHud` overpass freshness entries (optional `lat`/`lng` query parameters) for Terra, Aqua, NOAA-20, and NOAA-21.
   - `GET /api/weather/satellite/{z}/{x}/{y}.png` — Cached `258×258` live `VIS/IR` satellite cloud tile proxy backed by `layers.extremum.org`.
-  - `GET /api/anomalies/summary` *(planned)* — Regional & AOI current situation summary compared against historical calendar baselines (`fitsTypical`, `anomalyScore`, `zScore`, percentile).
-  - `GET /api/seasonal/profile` *(planned)* — Harmonized multi-decade monthly/pentad climatology vs. current-year trajectory for the bottom seasonal scrubber and side inspector.
   - `GET /api/hotspots` — FIRMS area detections (`bbox=w,s,e,n`, `days=1..5`, `sensor=all|modis|viirs`).
 
 #### Deferred hotspot geometry
