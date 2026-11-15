@@ -34,4 +34,8 @@ The pilot identifies itself as a concept rather than the final submission. Inspe
 
 ## Before publication
 
-The user identified Alexey as a team member and selected the footage. Separate consent is not requested in this workflow. The exact team name and the physical toy's original scarf symbols still need confirmation. The new animated scarf uses an original abstract pattern. The concept pilot has no closing project-link card and is not a publication-ready submission.
+- **People in the frame.** The participant terms ask for written consent from every adult featured in the video. For Alexey, a one-line message from him ("I agree that my image in the Earth Fire Calendar demo may be used by NASA") kept in the team chat is enough; as a registered participant he also grants NASA this permission under the terms. No one under 18 may appear or be named.
+- **Map scenes.** Record them from the live app, which now uses the EOX 2016 basemap (CC BY 4.0). Older recordings show the 2025 layer (CC BY-NC-SA 4.0); if one stays in the final cut, name that licence in the description and in the [register](../deliverables/third-party-rights.md).
+- **Music.** None; add none without a licence that allows reuse.
+- **Metadata.** Write the actual voice ("Flicker"), motion and image tools into the final MP4 comment and the video description, and keep the `AI-generated` label on the character throughout.
+- **Model outputs.** If the video shows the app's estimates, they are Earth Fire Calendar's, not NASA's.

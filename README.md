@@ -129,3 +129,14 @@ The Cloud Run deployment job runs once the required `GCP_*` repository variables
 | `GCP_CPU` | Optional vCPU allocation per instance | `1` |
 | `GCP_MEMORY` | Optional memory allocation per instance | `1Gi` |
 | `GCP_CONCURRENCY` | Optional max concurrent requests per instance | `80` |
+
+
+## Team, licence and AI use
+
+Team **Plush**: **Alexey Belkin** and **Viktoriia Naiman**. The idea of the project is the team's own.
+
+Our code and documents are released under [Apache-2.0](LICENSE); third-party materials keep their own licences (see [NOTICE](NOTICE)). All data sources, their uses and licences are listed in the [third-party materials register](submission/deliverables/third-party-rights.md); software dependencies in the [software inventory](submission/deliverables/software-licenses.md), with licence texts in [`third-party-notices.txt`](ui/public/third-party-notices.txt).
+
+Anthropic Claude Code and OpenAI Codex assisted with implementation, review, tests, documentation and slide and script drafts. The demo's animated presenter Lama was designed with the OpenAI ChatGPT image tool, animated with Google Veo 3.1 Lite and voiced with ElevenLabs Eleven v4 (both through OpenRouter); see the [video disclosures](submission/video/disclosures.md). Machine-readable provenance: [`ai-provenance.json`](ui/public/ai-provenance.json).
+
+The app makes no calls to AI services. Its FRP, detection-score and GWIS/CAMS-assisted estimates come from the team's own statistical models evaluated in the browser; they are not NASA products, and NASA is not responsible for their accuracy.
