@@ -2,9 +2,9 @@
 
 ## Project Purpose
 
-**Earth Fire Calendar** *(provisional title, subject to reconsideration later)* is an independent entry built for the **2026 NASA Space Apps Challenge — [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/?tab=details)**. It is not affiliated with, endorsed by, or an official product of NASA, and does not use NASA branding or logos. Rather than a calendar-first grid, our **Earth-first** visualization uses **MapLibre GL JS** to display seasonal burning dynamics alongside the current situation—showing where fire activity fits typical calendar patterns and where calendar anomalies emerge across harmonized **MODIS** (~1 km, 2000–present) and **VIIRS** (375 m, 2012–present) records, attributing **NASA FIRMS**, **CelesTrak**, and **EOX/Copernicus** data sources.
+**Earth Fire Calendar** *(provisional title, subject to reconsideration later)* is an independent entry built for the **2026 NASA Space Apps Challenge — [Harmonization of MODIS and VIIRS Hot Spots](https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/?tab=details)**. It is not affiliated with, endorsed by, or an official product of NASA, and does not use NASA branding or logos. Our **Earth-first** visualization uses **MapLibre GL JS** to compare live **MODIS** (~1 km) and **VIIRS** (375 m) active-fire detections side by side and to attach viewing geometry, land cover, and weather at acquisition to each detection, as evidence for harmonizing the two records. It attributes **NASA FIRMS**, **CelesTrak**, and **EOX/Copernicus** data sources; the full list is in the app's **Sources and credits**.
 
-- [doc/README.md](doc/README.md) — Challenge background, Earth-first seasonal & anomaly approach, target users, and NASA FIRMS data sources.
+- [doc/README.md](doc/README.md) — Challenge background, application purpose (what works now and what is exploratory), target users, and NASA FIRMS data sources.
 - [doc/architecture-and-harmonization.md](doc/architecture-and-harmonization.md) — MapLibre two-tier CSS Grid layout, UI/backend split, and harmonization pipeline design notes.
 - [doc/cloud-run-and-credits.md](doc/cloud-run-and-credits.md) — Google Cloud Run scaling/hibernation modes, Vertex AI & Secret Manager setup, and Google AI Ultra credits guide.
 

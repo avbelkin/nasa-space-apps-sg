@@ -21,27 +21,35 @@ Because raw hotspot counts and pixel sizes are incompatible across instruments, 
 
 ## Application Purpose
 
-Build an **Earth-first** interactive web application (powered by **MapLibre GL JS**) that harmonizes MODIS and VIIRS active-fire hotspot records into seasonal burning dynamics and live anomaly layers. Rather than presenting a standalone calendar-first grid, our application keeps **Earth** as the primary canvas and overlays how the **current situation fits or departs from typical calendar baselines** across multi-decade records.
+Build an **Earth-first** interactive web application (powered by **MapLibre GL JS**) for studying how MODIS and VIIRS active-fire detections differ. It shows what each instrument recorded over the same place in the same rolling 24 hours, and attaches to every detection the surface and observation conditions needed to explain the difference. The detection-level record it produces is first-hand input for harmonization research.
 
-## How We Address the Challenge: Earth-First Seasonal & Anomaly Intelligence
+## How We Address the Challenge: Compare in Context, Then Harmonize
 
-- **Earth-First, Not Calendar-First**: The interactive Earth map (`globe` / `mercator` via MapLibre) is the center of exploration; temporal and calendar controls drive and contextualize the geospatial view rather than replacing it with a static table or matrix.
-- **Seasonal Dynamics + Current Anomaly Fit/Deviation**: Users scrub across the climatological burning cycle (harmonized 2000–present MODIS + VIIRS baseline) side-by-side with the **current/selected situation**, immediately distinguishing *expected seasonal burning* ("fits typical calendar window") from *calendar anomalies* (unusually early/late season onset, out-of-season ignitions, or above-norm intensity spikes).
-- **Spatial + Perimeter Interaction Model**: Outer wrapper controls surround the map for mode selection, seasonal/calendar timeline scrubbing, and regional anomaly inspection, while tactical layer, projection, and legend HUD controls sit directly over the map inside the map's own CSS Grid container.
+**Working now**
+
+- **Side-by-side sensor comparison on Earth**: The interactive Earth map (`globe` / `mercator` via MapLibre) shows live MODIS and VIIRS detections together or separately, colors fire spots by which instrument saw them, and shows each satellite's passes, including passes that recorded no fire.
+- **The instruments record different hotspots**: Their detections overlap only in part. Whole regions and observation conditions show one instrument and not the other.
+- **Per-detection context**: Each detection carries its viewing geometry, the land cover inside its footprint, and weather conditions at acquisition time, each value with its source and validity time. Published studies link these factors to detection probability and retrieved FRP; see the [literature review](../submission/docs/modis-viirs-harmonization-literature-review.md).
+
+**Exploratory, not yet built**
+
+- **Harmonization rules**: Use the enriched record to find conditions under which MODIS and VIIRS can be brought onto one scale.
+- **FRP from conditions**: Test whether FRP can be predicted from weather and observation conditions.
+
+A seasonal calendar of harmonized activity against a multi-year baseline was the original concept and gave the app its provisional title. It is a possible follow-up, not a current goal. Do not describe seasonal baselines, anomaly scores, or calendar controls as existing features.
 
 ## Target Users
 
-- **Emergency Responders & Early-Warning Agencies**: Anticipate critical fire seasons and spot unusual out-of-season anomalies.
-- **Wildfire Firefighters & Operations Teams**: Assess regional burning baselines and recent thermal escalation.
-- **Land & Forestry Managers**: Track long-term agricultural or peatland burning patterns and policy impacts.
-- **Earth Science Researchers**: Compare sensor coverage, calibration residuals, and decadal climate-fire trends.
+- **Earth Science Researchers**: Compare sensor coverage and detection differences, and collect detection-level conditions for harmonization studies.
+- **Fire Data Analysts & Product Developers**: Check where and under what conditions a MODIS-based record and a VIIRS-based record disagree.
+- **Emergency Responders, Land & Forestry Managers**: See current detections from both instruments with pass times and processing delay. This is a secondary audience.
 
 ## Key Functional Goals
 
-1. **Earth-First AOI & Spatial Exploration**: Interactive MapLibre globe/map allowing users to inspect global or regional fire regimes, draw/select an Area of Interest (AOI), and toggle between harmonized, MODIS (1 km), and VIIRS (375 m) views.
-2. **Sensor Harmonization Pipeline**: Normalize MODIS (1 km) and VIIRS (375 m) hotspot detections onto a consistent spatiotemporal representation—accounting for pixel geometry (`scan` × `track`), multi-pass overlap/deduplication, confidence filtering, and cross-calibrated intensity metrics (e.g., Fire Radiative Power [`FRP`] or gridded burned-cell indices).
-3. **Seasonal & Calendar Baseline Comparison**: Drive the Earth map with a seasonal/calendar timeline scrubber showing typical historical activity alongside current conditions so users can see whether ongoing activity fits expected seasonal windows.
-4. **Anomaly Detection & Decision Support**: Highlight positive/negative calendar departures, out-of-season thermal activity, and extreme intensity episodes using accessible color ramps, clear text badges, and focused metrics.
+1. **Earth-First Sensor Comparison**: Interactive MapLibre globe/map with harmonized (all sensors), MODIS (1 km), and VIIRS (375 m) views, sensor-based coloring, and a 24-hour timeline of detections and passes for a pinned location.
+2. **Per-Detection Enrichment**: Attach viewing geometry, land cover, and weather at acquisition to each detection, and report the source, validity time, and availability of every value.
+3. **Evidence for Harmonization**: Make the differences between instruments inspectable by place and by observation condition, so that harmonization rules can be derived from the record.
+4. **Harmonization Experiments** *(exploratory)*: Normalize MODIS and VIIRS detections onto a consistent representation, accounting for pixel geometry (`scan` × `track`), multi-pass overlap, confidence, and FRP, and test FRP prediction from conditions.
 
 ## Primary Data Sources
 
@@ -54,7 +62,7 @@ Build an **Earth-first** interactive web application (powered by **MapLibre GL J
 
 - **Provisional UI Title**: Use **Earth Fire Calendar** for now (subject to later reconsideration).
 - **No NASA Branding or Logos**: Although built for the 2026 NASA Space Apps Challenge, the application must not be branded as a NASA project/product or display NASA or Space Apps logos/insignias.
-- **Explicit NASA Data Attribution**: Whenever NASA datasets, APIs, or mission/sensor parameters are used (such as NASA FIRMS feeds/archives, Terra/Aqua MODIS, or NOAA/NASA JPSS VIIRS), expose clear factual NASA data attribution alongside a non-affiliation/non-endorsement statement, and clearly indicate when illustrative/stub baselines are displayed.
+- **Explicit NASA Data Attribution**: Whenever NASA datasets, APIs, or mission/sensor parameters are used (such as NASA FIRMS feeds/archives, Terra/Aqua MODIS, or NOAA/NASA JPSS VIIRS), expose clear factual NASA data attribution alongside a non-affiliation/non-endorsement statement.
 - Add or update attribution for map layers and data sources in **Sources and credits** in the side panel footer. List NASA FIRMS first, then other NASA sources, and Extremum last.
 
 See [architecture-and-harmonization.md](./architecture-and-harmonization.md) for how this repository's React UI and ASP.NET Core backend divide the workload.

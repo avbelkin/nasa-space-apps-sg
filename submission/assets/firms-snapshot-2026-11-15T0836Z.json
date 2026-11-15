@@ -1,0 +1,38 @@
+{
+  "source": "GET /api/fires/spots?hours=24&sensor=harmonized (Earth Fire Calendar backend, data from NASA FIRMS Area API)",
+  "fetchedAtUtc": "2026-11-15T08:36:16.1236956+00:00",
+  "windowStartUtc": "2026-11-14T08:36:16.1260537+00:00",
+  "windowEndUtc": "2026-11-15T08:36:16.1260537+00:00",
+  "latestAcquiredAtUtc": "2026-11-15T07:48:00+00:00",
+  "stale": false,
+  "count": 87476,
+  "modisCount": 8127,
+  "viirsCount": 79349,
+  "maxFrpMw": 993.2,
+  "datasets": [
+    {
+      "dataset": "MODIS_NRT",
+      "count": 8127
+    },
+    {
+      "dataset": "VIIRS_NOAA20_NRT",
+      "count": 41306
+    },
+    {
+      "dataset": "VIIRS_NOAA21_NRT",
+      "count": 38043
+    }
+  ],
+  "bySatellite": {
+    "NOAA-21": 38043,
+    "NOAA-20": 41306,
+    "Terra": 2614,
+    "Aqua": 5513
+  },
+  "byInstrumentAndDayNight": {
+    "viirsNight": 21151,
+    "viirsDay": 58198,
+    "modisNight": 2234,
+    "modisDay": 5893
+  }
+}
