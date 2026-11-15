@@ -18,7 +18,11 @@ parser.add_argument('--lines', type=Path, required=True)
 parser.add_argument('--pilot', action='store_true')
 parser.add_argument('--voice', default='will')
 parser.add_argument('--delivery', default='cheerfully')
+parser.add_argument('--stability', type=float, choices=[0.0, 0.5, 1.0])
+parser.add_argument('--similarity', type=float)
 args = parser.parse_args()
+if args.similarity is not None and not 0 <= args.similarity <= 1:
+    parser.error('--similarity must be between 0 and 1')
 spec = importlib.util.spec_from_file_location('lama_gateway', args.gateway_root / 'tools/scripts/external_services.py')
 gateway = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = gateway
@@ -29,6 +33,14 @@ if args.pilot:
 model = 'elevenlabs/eleven-v4'
 voice = args.voice
 inputs = ['[' + args.delivery + '] ' + text for text in lines]
+voice_settings = {}
+if args.stability is not None:
+    voice_settings['stability'] = args.stability
+if args.similarity is not None:
+    voice_settings['similarity_boost'] = args.similarity
+options = {'seed': 38}
+if voice_settings:
+    options['voice_settings'] = voice_settings
 estimate = round(sum(len(text) for text in inputs) * 0.00008, 8)
 if estimate > 0.30:
     raise SystemExit('Run exceeds the existing $0.30 cap.')
@@ -36,7 +48,7 @@ args.output.mkdir(parents=True, exist_ok=True)
 manifest_path = args.output / ('pilot.json' if args.pilot else 'speech-run.json')
 if manifest_path.exists():
     raise SystemExit('A manifest already exists; collect its result instead of resubmitting.')
-manifest = {'id': str(uuid.uuid4()), 'provider': 'ElevenLabs', 'route': 'OpenRouter synchronous speech', 'model': model, 'voice': voice, 'estimated_usd': estimate, 'status': 'starting', 'items': []}
+manifest = {'id': str(uuid.uuid4()), 'provider': 'ElevenLabs', 'route': 'OpenRouter synchronous speech', 'model': model, 'voice': voice, 'delivery': args.delivery, 'provider_options': options, 'estimated_usd': estimate, 'status': 'starting', 'items': []}
 def save():
     manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
 with gateway.ExternalServices() as api:
@@ -51,7 +63,7 @@ with gateway.ExternalServices() as api:
             filename = args.output / (f'pilot-{voice}.mp3' if args.pilot else f'voice-{i + 1}.mp3')
             row = {'item': i + 1, 'text': lines[i], 'characters': len(text), 'estimated_usd': round(len(text) * 0.00008, 8), 'status': 'submitted'}
             manifest['items'].append(row); save()
-            response = api.client.post('https://openrouter.ai/api/v1/audio/speech', headers={'Authorization': 'Bearer ' + api.env['OPENROUTER_API_KEY']}, json={'model': model, 'input': text, 'voice': voice, 'response_format': 'mp3', 'provider': {'options': {'elevenlabs': {'seed': 38}}}}, timeout=120)
+            response = api.client.post('https://openrouter.ai/api/v1/audio/speech', headers={'Authorization': 'Bearer ' + api.env['OPENROUTER_API_KEY']}, json={'model': model, 'input': text, 'voice': voice, 'response_format': 'mp3', 'provider': {'options': {'elevenlabs': options}}}, timeout=120)
             row['http_status'] = response.status_code
             row['generation_id'] = response.headers.get('x-generation-id')
             row['request_id'] = response.headers.get('x-request-id')

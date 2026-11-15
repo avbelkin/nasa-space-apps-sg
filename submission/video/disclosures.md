@@ -8,7 +8,13 @@ AI-generated
 
 Place this visibly on Lama's lower body whenever the generated animation appears. Keep it attached to the moving figure, not below it as a footer. In the current 11.5-second pilot the character appears at 2 seconds. The live opening and application imagery are real recordings. Do not add an extra end card beyond the final 29-second target.
 
-## Video description
+## Current casting status
+
+Charlie with a raised pitch was rejected. New voice-only auditions use Jessica, Bella and Laura (ElevenLabs Eleven v4 through OpenRouter), without local pitch shifting. Generated repetitions were trimmed; each WAV contains its actual provider, voice and edit disclosure in metadata. No replacement is selected. Existing presenter-v2 exports retain their truthful historical Charlie metadata. The narration itself is temporary.
+
+The separate silent jump test uses Google Veo 3.1 Lite through OpenRouter. Its raw jump trajectory was rejected; the empty generated ending is reused as a reconstructed desk background for a locally controlled character flight. The test visibly labels the generated transition and records this provenance in MP4 metadata. It is not entirely real live-action footage. Disclose the actual selected transition in the final export.
+
+## Historical presenter-v2 video description
 
 The animated Lama character was designed with the OpenAI ChatGPT image tool from an original photograph of our plush alpaca. Character motion was generated with Google Veo 3.1 Lite through OpenRouter. The English narration was synthesized with ElevenLabs Eleven v4 through OpenRouter, using Charlie; its pitch was raised locally by three semitones while preserving duration. Live-action footage and application captures are real recordings. OpenAI Codex assisted with the script and video production. Independent project; not affiliated with or endorsed by NASA. Fire-detection data: NASA FIRMS.
 
