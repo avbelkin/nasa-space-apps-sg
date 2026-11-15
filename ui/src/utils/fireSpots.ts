@@ -108,6 +108,7 @@ export interface FirmsLiveSpotsResponse {
     targetCount: number
     eligibleCount: number
     availableCount?: number
+    retryCount?: number
     pendingCount?: number
   }
 }

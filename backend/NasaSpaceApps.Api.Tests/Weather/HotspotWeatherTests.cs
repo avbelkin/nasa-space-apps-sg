@@ -63,7 +63,7 @@ public sealed class HotspotWeatherTests
         Assert.Equal(0, gridHandler.RequestCount);
         var deferred = Assert.IsType<FirmsLiveSpotsResponse>(await client.GetFromJsonAsync<FirmsLiveSpotsResponse>(
             "/api/fires/spots?enrichWeather=true"));
-        Assert.Equal(new HotspotWeatherProgress("ready", 2, 2, 2), deferred.Weather);
+        Assert.Equal(new HotspotWeatherProgress("pending", 2, 2, 2) { RetryCount = 2 }, deferred.Weather);
         Assert.Equal(0, deferred.Weather?.PendingCount);
         var bulkRequests = gridHandler.RequestCount;
         Assert.True(bulkRequests > 0);

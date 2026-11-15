@@ -66,6 +66,7 @@ export function LiveFiresSection({ info, connectionState }: { info: LiveFiresInf
                 <>
                   {count(weather.sampledCount)} of {count(weather.targetCount)} checked &middot; {count(weatherPending)} pending
                   {weather.availableCount !== undefined && <small>{count(weather.availableCount)} with data</small>}
+                  {!!weather.retryCount && <small>{count(weather.retryCount)} awaiting retry</small>}
                   {weather.eligibleCount > weather.targetCount &&
                     <small>{count(weather.eligibleCount - weather.targetCount)} outside the bulk target</small>}
                 </>
