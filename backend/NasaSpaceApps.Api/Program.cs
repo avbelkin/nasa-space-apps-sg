@@ -114,6 +114,8 @@ builder.Services.AddHttpClient(NoaaSoilMoistureAnomaly.HttpClientName, client =>
 builder.Services.AddSingleton<NoaaSoilMoistureAnomaly>();
 builder.Services.AddHttpClient(UsfsFuelMoisture.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
 builder.Services.AddSingleton<UsfsFuelMoisture>();
+builder.Services.AddSingleton<DeferredHotspotWeather>();
+builder.Services.AddHostedService(services => services.GetRequiredService<DeferredHotspotWeather>());
 builder.Services.AddSingleton<FirmsClient>();
 builder.Services.AddSingleton<HotspotGeometryWorker>();
 builder.Services.AddHostedService(services => services.GetRequiredService<HotspotGeometryWorker>());
@@ -261,11 +263,14 @@ app.MapGet("/api/fires/spots", (
     bool? includeGeometry,
     bool? enrichLandCover,
     bool? enrichGeometry,
+    bool? enrichWeather,
     FirmsOptions firms,
     FirmsClient firmsClient,
+    DeferredHotspotWeather deferredWeather,
     CancellationToken cancellationToken) =>
     ExecuteFirmsQueryAsync(firms, () => firmsClient.GetLiveSpotsAsync(sensor, hours, bbox, cancellationToken,
-        includeGeometry: includeGeometry == true, enrichLandCover: enrichLandCover == true, enrichGeometry: enrichGeometry == true)));
+        includeGeometry: includeGeometry == true, enrichLandCover: enrichLandCover == true, enrichGeometry: enrichGeometry == true,
+        weatherEnrichment: enrichWeather == true ? deferredWeather : null)));
 
 app.MapGet("/api/fires/spots.geojson", (
     string? sensor,
@@ -290,13 +295,10 @@ app.MapPost("/api/fires/spots/weather", (
     FirmsOptions firms,
     FirmsClient firmsClient,
     OpenMeteoHotspotWeather weather,
-    CopernicusFireWeather fireWeather,
     NoaaWeatherObservations observations,
-    NoaaGfsWeather gfsWeather,
     NoaaGoesWeather goesWeather,
     CopernicusSoilDrought soilDrought,
-    NoaaSoilMoistureAnomaly soilAnomaly,
-    UsfsFuelMoisture fuelMoisture,
+    DeferredHotspotWeather deferredWeather,
     CancellationToken cancellationToken) =>
     ExecuteFirmsQueryAsync(firms, async () =>
     {
@@ -307,26 +309,19 @@ app.MapPost("/api/fires/spots/weather", (
 
         var spots = await firmsClient.GetSelectedLiveSpotsAsync(keys, cancellationToken);
         var forecastTask = weather.EnrichAsync(spots, cancellationToken);
-        var fireWeatherTask = fireWeather.EnrichAsync(spots, cancellationToken);
+        var gridTask = deferredWeather.GetAsync(spots, cancellationToken);
         var observationsTask = observations.EnrichAsync(spots, cancellationToken);
-        var gfsWeatherTask = gfsWeather.EnrichAsync(spots, cancellationToken);
         var goesWeatherTask = goesWeather.EnrichAsync(spots, cancellationToken);
         var droughtTask = soilDrought.EnrichAsync(spots, cancellationToken);
-        var anomalyTask = soilAnomaly.EnrichAsync(spots, cancellationToken);
-        var fuelMoistureTask = fuelMoisture.EnrichAsync(spots, cancellationToken);
-        await Task.WhenAll(forecastTask, fireWeatherTask, observationsTask, gfsWeatherTask, goesWeatherTask, droughtTask, anomalyTask, fuelMoistureTask);
+        await Task.WhenAll(forecastTask, gridTask, observationsTask, goesWeatherTask, droughtTask);
         var forecast = await forecastTask;
-        var fireWeatherSources = await fireWeatherTask;
+        var gridSources = await gridTask;
         var observationSources = await observationsTask;
-        var gfsSources = await gfsWeatherTask;
         var goesSources = await goesWeatherTask;
         var droughtSources = await droughtTask;
-        var anomalySources = await anomalyTask;
-        var fuelMoistureSources = await fuelMoistureTask;
         return new HotspotWeatherResponse(forecast.Spots.Select((spot, index) =>
-            spot is not null && fireWeatherSources[index] is { } source && droughtSources[index] is { } drought &&
-                anomalySources[index] is { } anomaly && fuelMoistureSources[index] is { } fuel
-                ? spot with { Sources = [.. gfsSources[index], .. spot.Sources, source, .. observationSources[index], .. goesSources[index], drought, anomaly, fuel] }
+            spot is not null && gridSources[index] is { } grid && droughtSources[index] is { } drought
+                ? spot with { Sources = [.. grid.Forecast, .. spot.Sources, grid.Danger, .. observationSources[index], .. goesSources[index], drought, grid.SoilAnomaly, grid.Fuel] }
                 : spot).ToArray());
     }));
 

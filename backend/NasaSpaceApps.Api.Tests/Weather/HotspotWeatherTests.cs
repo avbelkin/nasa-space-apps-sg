@@ -28,6 +28,7 @@ public sealed class HotspotWeatherTests
             """;
         using var weatherHandler = new WeatherHandler(forecast);
         using var firmsHandler = new FirmsHandler(first, last, old);
+        using var gridHandler = new OfflineHandler();
         await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
@@ -42,14 +43,28 @@ public sealed class HotspotWeatherTests
                 services.AddHttpClient(NoaaWeatherObservations.HttpClientName)
                     .ConfigurePrimaryHttpMessageHandler(() => new OfflineHandler());
                 services.AddHttpClient(NoaaGfsWeather.HttpClientName)
-                    .ConfigurePrimaryHttpMessageHandler(() => new OfflineHandler());
+                    .ConfigurePrimaryHttpMessageHandler(() => gridHandler);
                 services.AddHttpClient(NoaaGoesWeather.HttpClientName)
                     .ConfigurePrimaryHttpMessageHandler(() => new OfflineHandler());
                 services.AddHttpClient(CopernicusSoilDrought.HttpClientName)
                     .ConfigurePrimaryHttpMessageHandler(() => new OfflineHandler());
+                services.AddHttpClient(NoaaSoilMoistureAnomaly.HttpClientName)
+                    .ConfigurePrimaryHttpMessageHandler(() => new OfflineHandler());
+                services.AddHttpClient(UsfsFuelMoisture.HttpClientName)
+                    .ConfigurePrimaryHttpMessageHandler(() => new OfflineHandler());
+                services.AddHttpClient("CelesTrak").ConfigurePrimaryHttpMessageHandler(() => new OfflineHandler());
             });
         });
         using var client = factory.CreateClient();
+        var initial = Assert.IsType<FirmsLiveSpotsResponse>(await client.GetFromJsonAsync<FirmsLiveSpotsResponse>("/api/fires/spots"));
+        Assert.Null(initial.Weather);
+        Assert.Equal(0, gridHandler.RequestCount);
+        var deferred = Assert.IsType<FirmsLiveSpotsResponse>(await client.GetFromJsonAsync<FirmsLiveSpotsResponse>(
+            "/api/fires/spots?enrichWeather=true"));
+        Assert.Equal(new HotspotWeatherProgress("ready", 2, 2, 2), deferred.Weather);
+        var bulkRequests = gridHandler.RequestCount;
+        Assert.True(bulkRequests > 0);
+
         using var response = await client.PostAsJsonAsync("/api/fires/spots/weather", new FirmsSpotGeometryRequest(
             [Key(last), Key(old), Key(first), Key(first.AddMinutes(1))]));
 
@@ -63,6 +78,7 @@ public sealed class HotspotWeatherTests
         Assert.Equal(277.15, body.Spots[0]?.Sources.Single(source => source.Model == "NOAA GFS Seamless").Values["temperature_2m"].Value);
         Assert.Equal(276.15, body.Spots[2]?.Sources.Single(source => source.Model == "NOAA GFS Seamless").Values["temperature_2m"].Value);
         Assert.Equal(2, weatherHandler.RequestCount);
+        Assert.Equal(bulkRequests, gridHandler.RequestCount);
         Assert.Equal("source_unavailable", body.Spots[0]?.Sources.Single(source => source.Provider == "Copernicus GWIS").Status);
     }
 
@@ -172,7 +188,12 @@ public sealed class HotspotWeatherTests
 
     private sealed class OfflineHandler : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+        private int requestCount;
+        public int RequestCount => requestCount;
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref requestCount);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+        }
     }
 }

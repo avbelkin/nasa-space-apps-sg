@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using NasaSpaceApps.Api.LandCover;
+using NasaSpaceApps.Api.Weather;
 
 namespace NasaSpaceApps.Api.Firms;
 
@@ -184,9 +185,12 @@ public sealed record FirmsLiveSpotsResponse(
 
     public string GeometryStatus { get; init; } = "pending";
 
-    public string EnrichmentStatus => LandCoverPending || GeometryStatus == "pending"
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public HotspotWeatherProgress? Weather { get; init; }
+
+    public string EnrichmentStatus => LandCoverPending || GeometryStatus == "pending" || Weather?.Status == "pending"
         ? "pending"
-        : GeometryStatus == "ready" ? "complete" : "incomplete";
+        : GeometryStatus == "ready" && Weather?.Status != "partial" ? "complete" : "incomplete";
 }
 
 public sealed record FirmsGeoJsonPointGeometry(

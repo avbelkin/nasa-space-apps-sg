@@ -53,7 +53,7 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
             if (spot is null) return [];
             var lon = spot.Longitude == 180 ? -180 : spot.Longitude;
             var lat = spot.Latitude;
-            var time = HourFloor(spot.AcquiredAtUtc);
+            var (west, south, time) = SamplingGroup(spot);
             var weather = SampleAsync(false);
             var snow = SampleAsync(true);
             await Task.WhenAll(weather, snow).ConfigureAwait(false);
@@ -65,8 +65,7 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
                 Dictionary<Parameter, Frame>? data = null;
                 if (frame is not null)
                 {
-                    var tile = new Tile(Math.Min(176, (int)Math.Floor((lon + 180) / TileDegrees) * TileDegrees - 180),
-                        Math.Min(86, (int)Math.Floor((lat + 90) / TileDegrees) * TileDegrees - 90), frame.Run, time, isSnow);
+                    var tile = new Tile(west, south, frame.Run, time, isSnow);
                     data = await GetAsync(tile).ConfigureAwait(false);
                 }
                 var values = isSnow ? new Dictionary<string, HotspotWeatherValue>
@@ -105,6 +104,14 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
                 return pending;
             }
         }
+    }
+
+    internal static (int West, int South, DateTimeOffset Hour) SamplingGroup(FirmsHotspot spot)
+    {
+        var longitude = spot.Longitude == 180 ? -180 : spot.Longitude;
+        var west = Math.Min(176, (int)Math.Floor((longitude + 180) / TileDegrees) * TileDegrees - 180);
+        var south = Math.Min(86, (int)Math.Floor((spot.Latitude + 90) / TileDegrees) * TileDegrees - 90);
+        return (west, south, HourFloor(spot.AcquiredAtUtc));
     }
 
     private static async Task<PublishedFrame?> FindPublishedAsync(DateTimeOffset at, DateTimeOffset acquisition, bool snow,
