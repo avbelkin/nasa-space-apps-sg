@@ -324,6 +324,26 @@ public sealed class FirmsClient(
         return response;
     }
 
+    public async Task<FirmsEnrichedSpotsResponse> GetEnrichedLiveSpotsAsync(
+        string? sensor, string? bbox, CancellationToken cancellationToken)
+    {
+        var (_, sources) = ResolveSources(string.IsNullOrWhiteSpace(sensor) ? "harmonized" : sensor);
+        var area = ResolveLiveArea(bbox);
+        // Two FIRMS calendar days cover the rolling 24-hour window across UTC midnight.
+        var snapshot = await GetAreaSnapshotAsync(area, 2, sources, cancellationToken).ConfigureAwait(false);
+        var windowEnd = DateTimeOffset.UtcNow;
+        var selected = FilterSnapshotSpots(snapshot.Spots, windowEnd, DefaultLiveWindowHours);
+        selected.RemoveAll(spot => spot.AcquiredAtUtc > windowEnd);
+        var batch = await geometryWorker.GetGeometryAsync(snapshot.Spots, selected, cancellationToken).ConfigureAwait(false);
+        var rows = batch.Spots is { } geometry
+            ? selected.Select((spot, index) => new FirmsEnrichedSpot(spot, geometry[index])).ToArray()
+            : null;
+
+        return new FirmsEnrichedSpotsResponse(
+            batch.Status, windowEnd.AddHours(-DefaultLiveWindowHours), windowEnd,
+            snapshot.FetchedAtUtc, snapshot.Stale, selected.Count, FirmsDefaults.Attribution, rows);
+    }
+
     public async Task<HotspotGeometryBatch> GetSelectedSpotGeometryAsync(
         FirmsSpotGeometryRequest request, CancellationToken cancellationToken)
     {

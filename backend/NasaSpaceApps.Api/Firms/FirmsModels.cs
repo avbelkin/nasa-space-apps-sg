@@ -49,6 +49,18 @@ public readonly record struct FirmsSpotGeometryKey(double Lng, double Lat, long 
 
 public sealed record FirmsSpotGeometryRequest(IReadOnlyList<FirmsSpotGeometryKey>? Spots);
 
+public sealed record FirmsEnrichedSpot(FirmsHotspot Spot, HotspotGeometry? Geometry);
+
+public sealed record FirmsEnrichedSpotsResponse(
+    string Status,
+    DateTimeOffset WindowStartUtc,
+    DateTimeOffset WindowEndUtc,
+    DateTimeOffset FetchedAtUtc,
+    bool Stale,
+    int Count,
+    string Attribution,
+    IReadOnlyList<FirmsEnrichedSpot>? Spots);
+
 public sealed record FirmsHotspotsResponse(
     string Area,
     int DayRange,
