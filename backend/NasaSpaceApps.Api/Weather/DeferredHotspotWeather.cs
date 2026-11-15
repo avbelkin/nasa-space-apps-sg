@@ -8,7 +8,10 @@ public sealed record HotspotWeatherProgress(string Status, int SampledCount, int
     public int PendingCount => TargetCount - SampledCount;
     public int AvailableCount { get; init; }
     public int RetryCount { get; init; }
+    public HotspotWeatherCoverage? Coverage { get; init; }
 }
+
+public sealed record HotspotWeatherCoverage(int CachedCount, DateTimeOffset CheckedAtUtc);
 
 internal sealed class DeferredHotspotWeather(
     NoaaGfsWeather forecasts,
@@ -19,18 +22,19 @@ internal sealed class DeferredHotspotWeather(
     TimeProvider clock,
     ILogger<DeferredHotspotWeather> logger) : BackgroundService
 {
-    private const int BatchSize = 64;
+    internal const int BatchSize = 64;
     private const int MaximumTargets = 512;
     private readonly object gate = new();
     private readonly Dictionary<WeatherSpotKey, Work> inProgress = [];
     private readonly Channel<Work> queue = Channel.CreateBounded<Work>(new BoundedChannelOptions(4) { SingleReader = true });
 
     internal async Task<HotspotWeatherProgress> ObserveAsync(IReadOnlyList<FirmsHotspot> spots, DateTimeOffset now,
-        bool enrich, CancellationToken token)
+        bool enrich, CancellationToken token, bool includeCoverage = false)
     {
         var eligible = spots.Where(spot => Key(spot).ExpiresAt > now && spot.AcquiredAtUtc <= now)
             .OrderByDescending(spot => spot.AcquiredAtUtc).DistinctBy(Key).ToArray();
         var targets = eligible.Take(MaximumTargets).ToArray();
+        var coverage = includeCoverage ? samples.GetCoverageAsync(token) : null;
         await samples.HydrateAsync(targets.Select(Key), token).ConfigureAwait(false);
         Work? work = null;
         if (enrich)
@@ -62,6 +66,7 @@ internal sealed class DeferredHotspotWeather(
         {
             AvailableCount = results.Count(result => result.Sources.HasData),
             RetryCount = retries,
+            Coverage = coverage is null ? null : await coverage.ConfigureAwait(false),
         };
     }
 
@@ -103,6 +108,13 @@ internal sealed class DeferredHotspotWeather(
 
     private async Task<Dictionary<WeatherSpotKey, WeatherCacheEntry>> LoadAsync(IReadOnlyList<FirmsHotspot> spots, CancellationToken token)
     {
+        var result = await SampleAsync(spots, token).ConfigureAwait(false);
+        await samples.SaveAsync(result, token).ConfigureAwait(false);
+        return result;
+    }
+
+    internal async Task<Dictionary<WeatherSpotKey, WeatherCacheEntry>> SampleAsync(IReadOnlyList<FirmsHotspot> spots, CancellationToken token)
+    {
         var forecast = forecasts.EnrichAsync(spots, token);
         var danger = fireWeather.EnrichAsync(spots, token);
         var anomaly = soilAnomaly.EnrichAsync(spots, token);
@@ -119,7 +131,6 @@ internal sealed class DeferredHotspotWeather(
             var sources = new GridSources(forecastsBySpot[i], dangersBySpot[i]!, anomaliesBySpot[i]!, fuelsBySpot[i]!);
             result[Key(spots[i])] = WeatherCacheEntry.FromSample(sources, now);
         }
-        await samples.SaveAsync(result, token).ConfigureAwait(false);
         return result;
     }
 

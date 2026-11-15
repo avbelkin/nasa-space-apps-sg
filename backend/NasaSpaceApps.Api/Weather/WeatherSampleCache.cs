@@ -65,6 +65,7 @@ internal interface ISharedWeatherSampleStore
     Task<IReadOnlyDictionary<WeatherSpotKey, WeatherCacheEntry>> ReadAsync(WeatherSpotKey[] keys, CancellationToken token);
     Task<IReadOnlyDictionary<WeatherSpotKey, WeatherCacheEntry>> WriteAsync(
         IReadOnlyDictionary<WeatherSpotKey, WeatherCacheEntry> entries, CancellationToken token);
+    Task<HotspotWeatherCoverage?> CountAsync(DateTimeOffset now, CancellationToken token);
 }
 
 internal sealed class WeatherSampleCache(ISharedWeatherSampleStore shared, TimeProvider clock, ILogger<WeatherSampleCache> logger) : IDisposable
@@ -73,10 +74,32 @@ internal sealed class WeatherSampleCache(ISharedWeatherSampleStore shared, TimeP
     private readonly MemoryCache local = new(new MemoryCacheOptions { SizeLimit = Capacity });
     private readonly ConcurrentDictionary<WeatherSpotKey, WeatherCacheEntry> pendingWrites = new();
     private readonly SemaphoreSlim writeGate = new(1);
+    private readonly SemaphoreSlim coverageGate = new(1);
     private readonly object localGate = new();
     private long sharedBackoffUntil;
+    private long coverageRefreshAt;
+    private HotspotWeatherCoverage? coverage;
 
     internal WeatherCacheEntry? Read(WeatherSpotKey key) => key.ExpiresAt > clock.GetUtcNow() ? local.Get<WeatherCacheEntry>(key) : null;
+
+    internal async Task<HotspotWeatherCoverage?> GetCoverageAsync(CancellationToken token)
+    {
+        var now = clock.GetUtcNow();
+        if (Volatile.Read(ref coverageRefreshAt) > now.UtcTicks ||
+            !await coverageGate.WaitAsync(0, token).ConfigureAwait(false)) return Volatile.Read(ref coverage);
+        try
+        {
+            Volatile.Write(ref coverageRefreshAt, now.AddMinutes(2).UtcTicks);
+            Volatile.Write(ref coverage, await shared.CountAsync(now, token).ConfigureAwait(false));
+        }
+        catch (Exception error) when (!token.IsCancellationRequested && IsStoreError(error))
+        {
+            Volatile.Write(ref coverageRefreshAt, now.AddSeconds(20).UtcTicks);
+            logger.LogWarning("Shared hotspot weather coverage is unavailable: {Message}", error.Message);
+        }
+        finally { coverageGate.Release(); }
+        return Volatile.Read(ref coverage);
+    }
 
     internal async Task HydrateAsync(IEnumerable<WeatherSpotKey> keys, CancellationToken token)
     {
@@ -172,5 +195,6 @@ internal sealed class WeatherSampleCache(ISharedWeatherSampleStore shared, TimeP
     {
         local.Dispose();
         writeGate.Dispose();
+        coverageGate.Dispose();
     }
 }

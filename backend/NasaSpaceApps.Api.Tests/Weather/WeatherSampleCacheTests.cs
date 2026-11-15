@@ -120,6 +120,9 @@ public sealed class WeatherSampleCacheTests
         internal bool Offline { get; set; }
         internal int Reads { get; private set; }
 
+        public Task<HotspotWeatherCoverage?> CountAsync(DateTimeOffset now, CancellationToken token) =>
+            Task.FromResult<HotspotWeatherCoverage?>(new(Entries.Count(entry => entry.Key.ExpiresAt > now), now));
+
         public Task<IReadOnlyDictionary<WeatherSpotKey, WeatherCacheEntry>> ReadAsync(WeatherSpotKey[] keys, CancellationToken token)
         {
             Reads++;
