@@ -10,6 +10,7 @@ interface SatelliteDetailsProps {
   snapshots: readonly LiveSatelliteSnapshot[]
   selectedSatelliteId: string | null
   onSelectSatellite: (satellite: LiveSatelliteSnapshot) => void
+  onRetry?: () => void
 }
 
 function formatDeg(value: number, posHemisphere: string, negHemisphere: string): string {
@@ -23,8 +24,17 @@ export function SatelliteDetails({
   snapshots,
   selectedSatelliteId,
   onSelectSatellite,
+  onRetry,
 }: SatelliteDetailsProps) {
   const [open, setOpen] = useState(false)
+  const [retrying, setRetrying] = useState(false)
+  const [seenFeedState, setSeenFeedState] = useState(feedState)
+  if (feedState !== seenFeedState) {
+    setSeenFeedState(feedState)
+    if (feedState !== 'unavailable') {
+      setRetrying(false)
+    }
+  }
   const [seenSelectionId, setSeenSelectionId] = useState(selectedSatelliteId)
   if (selectedSatelliteId !== seenSelectionId) {
     setSeenSelectionId(selectedSatelliteId)
@@ -45,7 +55,24 @@ export function SatelliteDetails({
       </summary>
       <div className="panel-details-body">
         {feedState === 'unavailable' ? (
-          <p className="panel-note">Satellite positions are unavailable right now.</p>
+          <>
+            <p className="panel-note">Satellite positions are unavailable right now.</p>
+            {onRetry && (
+              <button
+                type="button"
+                className="secondary-btn"
+                aria-disabled={retrying}
+                onClick={() => {
+                  if (!retrying) {
+                    setRetrying(true)
+                    onRetry()
+                  }
+                }}
+              >
+                {retrying ? 'Retrying…' : 'Retry'}
+              </button>
+            )}
+          </>
         ) : feedState === 'loading' ? (
           <p className="panel-note">Loading satellite positions…</p>
         ) : feedState === 'empty' ? (

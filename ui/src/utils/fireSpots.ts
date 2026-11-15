@@ -161,10 +161,25 @@ export interface FireSpotTooltipInput {
   dayNight?: string
 }
 
-export type FireSpotLandCoverLookup = ReadonlyMap<string, string>
+export interface FireSpotLandCover {
+  dominantCode: number
+  dominantLabel: string
+  coverage: number
+  classes: Array<{ code: number; label: string; fraction: number }>
+}
+
+export type FireSpotLandCoverLookup = ReadonlyMap<string, FireSpotLandCover>
+
+export interface AggregatedFireSpotLandCover {
+  // Detections that had a land cover summary; group fractions average per detection.
+  detectionCount: number
+  coverage: number
+  classes: Array<{ code: number; label: string; fraction: number }>
+}
 
 export interface FormattedFireSpotsTooltip {
   landCoverLabel: string
+  landCoverSummary: AggregatedFireSpotLandCover | null
   mode: 'individual' | 'timeline'
   header: string
   lines: string[]
@@ -579,8 +594,10 @@ export function summarizeFireSpotsForSensor(
 
   const sourceLookup = buildSourceLookup(payload.sources ?? [])
   let totalCount = 0
-  let modisCount = 0
-  let viirsCount = 0
+  // Global per-sensor counts stay global under a filter: a filtered view must not
+  // present the other sensor as zero detections.
+  const modisCount = payload.modisCount
+  const viirsCount = payload.viirsCount
   let maxFrpMw = 0
   let latestMs = -Infinity
 
@@ -592,11 +609,6 @@ export function summarizeFireSpotsForSensor(
     }
 
     totalCount += 1
-    if (meta.instrument === 'modis') {
-      modisCount += 1
-    } else {
-      viirsCount += 1
-    }
 
     if (Number.isFinite(frp) && frp > maxFrpMw) {
       maxFrpMw = frp
@@ -623,20 +635,38 @@ export function buildFireSpotLandCoverLookup(
   payload: FirmsLiveSpotsResponse | null,
 ): FireSpotLandCoverLookup {
   const labels = payload?.landCoverDataset?.classLabels
-  const landCoverBySpot = new Map<string, string>()
+  const landCoverBySpot = new Map<string, FireSpotLandCover>()
   if (!payload || !labels) return landCoverBySpot
 
   const sources = buildSourceLookup(payload.sources ?? [])
   for (const [lng, lat, timestamp, , , , sourceCode, , , landCover] of payload.spots) {
     if (!landCover || !Number.isFinite(lng) || !Number.isFinite(lat)) continue
 
-    const label = labels[landCover.dominantCode]
-    if (!label) continue
+    const dominantLabel = labels[landCover.dominantCode]
+    if (!dominantLabel) continue
 
     const source = sources.get(sourceCode) ?? DEFAULT_SOURCE_META[1]
-    landCoverBySpot.set(fireSpotKey(lng, lat, timestamp, source.label), label)
+    landCoverBySpot.set(fireSpotKey(lng, lat, timestamp, source.label), {
+      dominantCode: landCover.dominantCode,
+      dominantLabel,
+      coverage: landCover.coverage,
+      classes: landCover.classes
+        .filter(({ code, fraction }) => labels[code] && Number.isFinite(fraction) && fraction > 0)
+        .map(({ code, fraction }) => ({ code, label: labels[code], fraction })),
+    })
   }
   return landCoverBySpot
+}
+
+function lookupSpotLandCover(
+  spot: FireSpotTooltipInput,
+  landCoverBySpot?: FireSpotLandCoverLookup,
+): FireSpotLandCover | undefined {
+  const { lng, lat, timestamp, source } = spot
+  if (lng === undefined || lat === undefined || !Number.isFinite(lng) || !Number.isFinite(lat)) {
+    return undefined
+  }
+  return landCoverBySpot?.get(fireSpotKey(lng, lat, timestamp, source))
 }
 
 function summarizeFireSpotLandCover(
@@ -646,10 +676,8 @@ function summarizeFireSpotLandCover(
   if (!landCoverBySpot?.size) return ''
 
   const counts = new Map<string, number>()
-  for (const { lng, lat, timestamp, source } of spots) {
-    if (lng === undefined || lat === undefined || !Number.isFinite(lng) || !Number.isFinite(lat)) continue
-
-    const label = landCoverBySpot.get(fireSpotKey(lng, lat, timestamp, source))
+  for (const spot of spots) {
+    const label = lookupSpotLandCover(spot, landCoverBySpot)?.dominantLabel
     if (label) counts.set(label, (counts.get(label) ?? 0) + 1)
   }
 
@@ -659,6 +687,57 @@ function summarizeFireSpotLandCover(
     .slice(0, 3)
     .map(([label]) => label)
     .join(', ')
+}
+
+export function aggregateFireSpotLandCover(
+  spots: readonly FireSpotTooltipInput[],
+  landCoverBySpot?: FireSpotLandCoverLookup,
+): AggregatedFireSpotLandCover | null {
+  const summaries: FireSpotLandCover[] = []
+  for (const spot of spots) {
+    const summary = lookupSpotLandCover(spot, landCoverBySpot)
+    if (summary) summaries.push(summary)
+  }
+  if (summaries.length === 0) return null
+
+  const fractionSums = new Map<number, { label: string; sum: number }>()
+  let coverageSum = 0
+  for (const summary of summaries) {
+    coverageSum += Number.isFinite(summary.coverage) ? summary.coverage : 0
+    for (const { code, label, fraction } of summary.classes) {
+      const entry = fractionSums.get(code) ?? { label, sum: 0 }
+      entry.sum += fraction
+      fractionSums.set(code, entry)
+    }
+  }
+
+  return {
+    detectionCount: summaries.length,
+    coverage: coverageSum / summaries.length,
+    classes: [...fractionSums.entries()]
+      .map(([code, { label, sum }]) => ({ code, label, fraction: sum / summaries.length }))
+      .sort((a, b) => b.fraction - a.fraction || a.label.localeCompare(b.label, 'en')),
+  }
+}
+
+export function isFireSelectionInPayload(
+  inputs: readonly FireSpotTooltipInput[],
+  payload: FirmsLiveSpotsResponse | null,
+): boolean {
+  if (!payload) return false
+  const sources = buildSourceLookup(payload.sources ?? [])
+  const keys = new Set<string>()
+  for (const [lng, lat, timestamp, , , , sourceCode] of payload.spots) {
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue
+    const source = sources.get(sourceCode) ?? DEFAULT_SOURCE_META[1]
+    keys.add(fireSpotKey(lng, lat, timestamp, source.label))
+  }
+  return inputs.some(
+    (spot) =>
+      Number.isFinite(spot.lng) &&
+      Number.isFinite(spot.lat) &&
+      keys.has(fireSpotKey(spot.lng!, spot.lat!, spot.timestamp, spot.source)),
+  )
 }
 
 export function deduplicateSpotMatches(spots: readonly FireSpotTooltipInput[]): FireSpotTooltipInput[] {
@@ -724,6 +803,7 @@ export function formatFireSpotsTooltip(
   return {
     mode: 'timeline',
     landCoverLabel: summarizeFireSpotLandCover(uniqueSpots, options.landCoverBySpot),
+    landCoverSummary: aggregateFireSpotLandCover(uniqueSpots, options.landCoverBySpot),
     header:
       uniqueSpots.length === 1
         ? '1 Fire Detection'

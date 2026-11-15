@@ -40,6 +40,7 @@ import {
 } from './utils/satelliteOrbits'
 import {
   buildFireSpotLandCoverLookup,
+  isFireSelectionInPayload,
   fetchLiveFireSpots,
   summarizeFireSpotsForSensor,
   type FirmsLiveSpotsResponse,
@@ -129,6 +130,8 @@ function App() {
   const [fireEnrichmentStopped, setFireEnrichmentStopped] = useState(false)
   const [fireSpotsLoading, setFireSpotsLoading] = useState<boolean>(!isProdUnconfigured)
   const [fireSpotsError, setFireSpotsError] = useState<string | null>(null)
+  const [firesRetrying, setFiresRetrying] = useState(false)
+  const retryFiresRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     lastSyncedHashRef.current = syncUrlHashAndStorage({
@@ -199,12 +202,19 @@ function App() {
     setFireSpotsPayload(data)
     setFireSpotsError(null)
     setFireSpotsLoading(false)
+    setFiresRetrying(false)
   }
 
   const applyFiresFailure = (error: unknown) => {
     setFireSpotsError(error instanceof Error ? error.message : 'NASA FIRMS feed unavailable')
     setFireSpotsLoading(false)
+    setFiresRetrying(false)
   }
+
+  const handleRetryFires = useCallback(() => {
+    setFiresRetrying(true)
+    retryFiresRef.current?.()
+  }, [])
 
   const requestSatelliteOrbits = useCallback((center: { lat: number; lng: number }) => {
     if (isProdUnconfigured) {
@@ -365,6 +375,7 @@ function App() {
       }
     }
 
+    retryFiresRef.current = refreshFires
     requestSatelliteOrbits(viewportRef.current)
     refreshFires()
     const orbitsTimer = window.setInterval(
@@ -397,6 +408,20 @@ function App() {
     }, SATELLITE_HUD_VIEWPORT_DEBOUNCE_MS)
     return () => window.clearTimeout(timer)
   }, [viewport.lat, viewport.lng, showOrbits, requestSatelliteOrbits])
+
+  // Keep a pinned card's relative times honest while it stays open across feed refreshes.
+  useEffect(() => {
+    if (!pinnedFireSelection) {
+      return
+    }
+    const timer = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return
+      }
+      setNowUnixMs(Date.now())
+    }, 15_000)
+    return () => window.clearInterval(timer)
+  }, [pinnedFireSelection])
 
   useEffect(() => {
     if (!orbitsPayload || !showOrbits) {
@@ -581,6 +606,11 @@ function App() {
         pinnedDetails={pinnedFireSelection && (
           <PinnedFireDetails
             selection={pinnedFireSelection}
+            nowMs={nowUnixMs}
+            notInLatestSnapshot={
+              fireSpotsPayload !== null &&
+              !isFireSelectionInPayload(pinnedFireSelection.inputs, fireSpotsPayload)
+            }
             feedGeometry={pinnedFeedGeometry}
             landCoverBySpot={landCoverBySpot}
             overpassIndex={overpassIndex}
@@ -615,6 +645,9 @@ function App() {
         satellites={orbitalState.snapshots}
         selectedSatelliteId={selectedSatelliteId}
         onSelectSatellite={handleSelectSatellite}
+        onRetrySatellites={
+          isProdUnconfigured ? undefined : () => requestSatelliteOrbits(viewportRef.current)
+        }
         connectionState={connectionState}
         liveFires={{
           state: isProdUnconfigured
@@ -628,8 +661,11 @@ function App() {
                   : 'loading',
           payload: fireSpotsPayload,
           summary: fireSummary,
+          sensorFilter,
           refreshFailed: fireSpotsPayload !== null && fireSpotsError !== null,
           enrichmentStopped: fireEnrichmentStopped,
+          onRetry: isProdUnconfigured ? undefined : handleRetryFires,
+          retrying: firesRetrying,
         }}
       />
     </div>

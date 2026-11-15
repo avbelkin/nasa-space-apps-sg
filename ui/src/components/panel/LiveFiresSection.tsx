@@ -1,4 +1,7 @@
+import type { SensorFilter } from '../../data/mapTypes'
+import { downloadFireSlice } from '../../utils/exportSlice'
 import type { FireSpotsSensorSummary, FirmsLiveSpotsResponse } from '../../utils/fireSpots'
+import { SurfaceSensorTable } from './SurfaceSensorTable'
 
 export type LiveFiresState = 'unconfigured' | 'unavailable' | 'loading' | 'ready'
 
@@ -6,9 +9,18 @@ export interface LiveFiresInfo {
   state: LiveFiresState
   payload: FirmsLiveSpotsResponse | null
   summary: FireSpotsSensorSummary
+  sensorFilter: SensorFilter
   // A later refresh failed while an earlier snapshot is still shown
   refreshFailed: boolean
   enrichmentStopped: boolean
+  onRetry?: () => void
+  retrying?: boolean
+}
+
+const SENSOR_FILTER_LABELS: Record<SensorFilter, string> = {
+  harmonized: 'All sensors',
+  modis: 'MODIS',
+  viirs: 'VIIRS',
 }
 
 const ENRICHMENT_LABELS = {
@@ -30,8 +42,11 @@ function formatUtcTimestamp(iso: string | null): string {
 
 // Live NASA FIRMS detections of the last 24 hours.
 export function LiveFiresSection({ info }: { info: LiveFiresInfo }) {
-  const { state, payload, summary, refreshFailed, enrichmentStopped } = info
+  const { state, payload, summary, sensorFilter, refreshFailed, enrichmentStopped, onRetry, retrying } = info
   const enrichmentStatus = enrichmentStopped ? 'incomplete' : payload?.enrichmentStatus
+  const classifiedCount = payload
+    ? payload.spots.reduce((count, spot) => (spot[9] ? count + 1 : count), 0)
+    : 0
 
   return (
     <section className="panel-section" aria-labelledby="live-fires-heading">
@@ -41,15 +56,32 @@ export function LiveFiresSection({ info }: { info: LiveFiresInfo }) {
           Live NASA FIRMS fire spots need the data service, which this build is not connected to.
         </p>
       ) : state === 'unavailable' ? (
-        <p className="panel-note">
-          Live NASA FIRMS fire spots are unavailable right now.
-        </p>
+        <>
+          <p className="panel-note">
+            Live NASA FIRMS fire spots are unavailable right now.
+          </p>
+          {onRetry && (
+            <button
+              type="button"
+              className="secondary-btn"
+              aria-disabled={retrying}
+              onClick={() => {
+                if (!retrying) onRetry()
+              }}
+            >
+              {retrying ? 'Retrying…' : 'Retry'}
+            </button>
+          )}
+        </>
       ) : state === 'loading' || !payload ? (
         <p className="panel-note">
           Fetching global 24h NASA FIRMS hotspots (MODIS 1 km &amp; VIIRS 375 m)&hellip;
         </p>
       ) : (
         <>
+          <p className="panel-note">
+            Global &middot; last 24 h &middot; Filter: {SENSOR_FILTER_LABELS[sensorFilter]}
+          </p>
           <div className="baseline-compare">
             <div className="metric-tile">
               <span className="metric-label">Active spots (24h)</span>
@@ -82,6 +114,11 @@ export function LiveFiresSection({ info }: { info: LiveFiresInfo }) {
             </p>
           )}
           <p className="panel-note">
+            Surface classified for {classifiedCount.toLocaleString('en-US')} of{' '}
+            {payload.spots.length.toLocaleString('en-US')} detections (ESA CCI Land Cover 2019)
+            {payload.landCoverPending ? ' — still loading…' : ''}.
+          </p>
+          <p className="panel-note">
             Pulse strength reflects detection age (&lt;24h), dot scale reflects Fire Radiative Power
             (MW), and dot brightness reflects sensor confidence. Hover over a spot to preview its
             details or select it to pin them under Sensors.
@@ -89,6 +126,20 @@ export function LiveFiresSection({ info }: { info: LiveFiresInfo }) {
           {refreshFailed && (
             <p className="panel-note">Latest refresh failed; showing the earlier snapshot.</p>
           )}
+          <div>
+            <button
+              type="button"
+              className="secondary-btn"
+              onClick={() => downloadFireSlice(payload, sensorFilter)}
+            >
+              Download slice (CSV)
+            </button>
+            <p className="panel-note">
+              Raw detections as loaded, before harmonization — one row per detection with its
+              surface-class fractions.
+            </p>
+          </div>
+          <SurfaceSensorTable payload={payload} sensorFilter={sensorFilter} />
         </>
       )}
     </section>

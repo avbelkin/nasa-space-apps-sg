@@ -8,6 +8,7 @@ import {
 import type { SatelliteOverpassIndex } from '../utils/satelliteOverpassTimeline'
 import type { FireObservationGeometry } from '../utils/fireObservationGeometry'
 import { FireDetectionPowerSummary, FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
+import { FireLandCoverBar } from './FireLandCoverBar'
 import { FireObservationDetails } from './FireObservationDetails'
 import { CloseIcon } from './icons'
 
@@ -20,20 +21,24 @@ export interface PinnedFireSelection {
 
 interface PinnedFireDetailsProps {
   selection: PinnedFireSelection
+  // Live clock from App while a pin is open; falls back to the click time.
+  nowMs?: number
+  // True when the pinned detections no longer appear in the latest feed snapshot.
+  notInLatestSnapshot?: boolean
   feedGeometry?: readonly (FireObservationGeometry | null)[]
   landCoverBySpot: FireSpotLandCoverLookup
   overpassIndex: SatelliteOverpassIndex | null
   onUnpin: () => void
 }
 
-export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, overpassIndex, onUnpin }: PinnedFireDetailsProps) {
+export function PinnedFireDetails({ selection, nowMs, notInLatestSnapshot, feedGeometry, landCoverBySpot, overpassIndex, onUnpin }: PinnedFireDetailsProps) {
   const details = useMemo(
-    () => formatFireSpotsTooltip(selection.inputs, selection.nowMs, {
+    () => formatFireSpotsTooltip(selection.inputs, nowMs ?? selection.nowMs, {
       sensorFilter: selection.sensorFilter,
       overpassIndex,
       landCoverBySpot,
     }),
-    [selection, overpassIndex, landCoverBySpot],
+    [selection, nowMs, overpassIndex, landCoverBySpot],
   )
   if (!details?.timeline) {
     return null
@@ -57,16 +62,19 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
               </span>
             )}
             <FireDetectionPowerSummary timeline={timeline} />
-            {details.landCoverLabel && (
-              <span className="fire-land-cover">Land cover · {details.landCoverLabel}</span>
-            )}
           </p>
+          {notInLatestSnapshot && (
+            <p className="pinned-fire-stale-badge">Not in latest snapshot</p>
+          )}
         </div>
         <button type="button" className="secondary-btn pinned-fire-unpin" onClick={onUnpin}>
           <CloseIcon />
           Unpin
         </button>
       </header>
+      {details.landCoverSummary && (
+        <FireLandCoverBar summary={details.landCoverSummary} />
+      )}
       <FireDetectionsTimelineCard timeline={timeline} />
       <FireObservationDetails inputs={selection.inputs} feedGeometry={feedGeometry} />
     </section>
