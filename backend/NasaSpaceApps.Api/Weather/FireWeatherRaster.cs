@@ -69,7 +69,7 @@ internal static class FireWeatherRaster
         return alpha;
     }
 
-    private static int Paeth(int left, int up, int diagonal)
+    internal static int Paeth(int left, int up, int diagonal)
     {
         var prediction = left + up - diagonal;
         var a = Math.Abs(prediction - left);

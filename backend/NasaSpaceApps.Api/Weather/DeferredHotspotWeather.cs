@@ -11,6 +11,8 @@ internal sealed class DeferredHotspotWeather(
     CopernicusFireWeather fireWeather,
     NoaaSoilMoistureAnomaly soilAnomaly,
     UsfsFuelMoisture fuelMoisture,
+    NoaaMrmsRadar radar,
+    NoaaGoesWeather goes,
     ILogger<DeferredHotspotWeather> logger) : BackgroundService
 {
     private const int BatchSize = 64;
@@ -79,15 +81,20 @@ internal sealed class DeferredHotspotWeather(
         var danger = fireWeather.EnrichAsync(spots, token);
         var anomaly = soilAnomaly.EnrichAsync(spots, token);
         var fuel = fuelMoisture.EnrichAsync(spots, token);
-        await Task.WhenAll(forecast, danger, anomaly, fuel).ConfigureAwait(false);
+        var radarTask = radar.EnrichAsync(spots, token);
+        var goesTask = goes.EnrichAsync(spots, token);
+        await Task.WhenAll(forecast, danger, anomaly, fuel, radarTask, goesTask).ConfigureAwait(false);
         var forecastsBySpot = await forecast;
         var dangersBySpot = await danger;
         var anomaliesBySpot = await anomaly;
         var fuelsBySpot = await fuel;
+        var radarBySpot = await radarTask;
+        var goesBySpot = await goesTask;
         var result = new GridSources[spots.Count];
         for (var i = 0; i < result.Length; i++)
         {
-            var sources = new GridSources(forecastsBySpot[i], dangersBySpot[i]!, anomaliesBySpot[i]!, fuelsBySpot[i]!);
+            var sources = new GridSources(forecastsBySpot[i], dangersBySpot[i]!, anomaliesBySpot[i]!, fuelsBySpot[i]!,
+                radarBySpot[i], goesBySpot[i]);
             result[i] = sources;
             // Retry upstream failures on a later pass without blocking the current snapshot.
             var lifetime = sources.All.Any(source => source.Status == "source_unavailable")
@@ -132,8 +139,8 @@ internal sealed class DeferredHotspotWeather(
     }
 
     internal sealed record GridSources(HotspotWeatherSource[] Forecast, HotspotWeatherSource Danger,
-        HotspotWeatherSource SoilAnomaly, HotspotWeatherSource Fuel)
+        HotspotWeatherSource SoilAnomaly, HotspotWeatherSource Fuel, HotspotWeatherSource? Radar, HotspotWeatherSource[] Goes)
     {
-        internal IEnumerable<HotspotWeatherSource> All => [.. Forecast, Danger, SoilAnomaly, Fuel];
+        internal IEnumerable<HotspotWeatherSource> All => [.. Forecast, Danger, SoilAnomaly, Fuel, .. Goes];
     }
 }

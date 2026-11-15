@@ -15,10 +15,15 @@ internal static class GoesMeasurements
 
     internal enum Product { Infrared, Cloud, Smoke, OpticalDepth, CloudTopHeight, CloudTopPhase }
 
-    public static IReadOnlyDictionary<string, double?> ReadRaster(Stream stream, Product product, FirmsHotspot spot)
+    public static IReadOnlyDictionary<string, double?>[] ReadRasters(Stream stream, Product product, IReadOnlyList<FirmsHotspot> spots)
     {
         using var file = H5File.Open(stream, leaveOpen: true);
         var grid = new Grid(file);
+        return spots.Select(spot => ReadRaster(file, grid, product, spot)).ToArray();
+    }
+
+    private static IReadOnlyDictionary<string, double?> ReadRaster(IH5Group file, Grid grid, Product product, FirmsHotspot spot)
+    {
         var center = grid.Pixel(spot.Latitude, spot.Longitude);
         if (product == Product.Cloud)
             return ReadCloud(file, grid, spot, center);
@@ -120,12 +125,11 @@ internal static class GoesMeasurements
         };
     }
 
-    internal static (int Count, double? NearestKm) ReadFlashes(Stream stream, double latitude, double longitude,
-        DateTimeOffset sceneStart, DateTimeOffset windowStart, DateTimeOffset windowEnd, double radiusKm)
+    internal static Flash[] ReadFlashes(Stream stream, DateTimeOffset sceneStart)
     {
         using var file = H5File.Open(stream, leaveOpen: true);
         var latitudes = file.Dataset("flash_lat").Read<float[]>();
-        if (latitudes.Length == 0) return (0, null);
+        if (latitudes.Length == 0) return [];
         var longitudes = file.Dataset("flash_lon").Read<float[]>();
         var quality = file.Dataset("flash_quality_flag").Read<short[]>();
         var time = file.Dataset("flash_time_offset_of_first_event");
@@ -141,16 +145,28 @@ internal static class GoesMeasurements
         {
             throw new InvalidDataException("Invalid GOES lightning time origin.");
         }
-        var count = 0;
-        double? nearest = null;
+        var flashes = new List<Flash>();
         for (var i = 0; i < latitudes.Length; i++)
         {
             var acquired = origin.AddSeconds(offsets[i] * scale + offset);
-            if (quality[i] != 0 || acquired < windowStart || acquired >= windowEnd ||
+            if (quality[i] != 0 ||
                 !float.IsFinite(latitudes[i]) || !float.IsFinite(longitudes[i]) ||
                 latitudes[i] is < -90 or > 90 || longitudes[i] is < -180 or > 180)
                 continue;
-            var distance = DistanceKm(latitude, longitude, latitudes[i], longitudes[i]);
+            flashes.Add(new Flash(acquired, latitudes[i], longitudes[i]));
+        }
+        return flashes.ToArray();
+    }
+
+    internal static (int Count, double? NearestKm) SummarizeFlashes(IEnumerable<Flash> flashes, double latitude, double longitude,
+        DateTimeOffset start, DateTimeOffset end, double radiusKm)
+    {
+        var count = 0;
+        double? nearest = null;
+        foreach (var flash in flashes)
+        {
+            if (flash.Time < start || flash.Time >= end) continue;
+            var distance = DistanceKm(latitude, longitude, flash.Latitude, flash.Longitude);
             if (distance <= radiusKm)
             {
                 count++;
@@ -159,6 +175,8 @@ internal static class GoesMeasurements
         }
         return (count, nearest);
     }
+
+    internal readonly record struct Flash(DateTimeOffset Time, double Latitude, double Longitude);
 
     private static double DistanceKm(double lat, double lon, double otherLat, double otherLon)
     {

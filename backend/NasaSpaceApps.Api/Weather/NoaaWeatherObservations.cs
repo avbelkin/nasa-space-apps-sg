@@ -20,30 +20,47 @@ internal sealed class NoaaWeatherObservations(IHttpClientFactory clients, IMemor
         ["global_visible_imagery_mosaic"]);
     private readonly SemaphoreSlim requests = new(4);
 
-    public async Task<HotspotWeatherSource[][]> EnrichAsync(IReadOnlyList<FirmsHotspot?> spots, CancellationToken cancellationToken)
+    public async Task<HotspotWeatherSource[][]> EnrichAsync(IReadOnlyList<FirmsHotspot?> spots, CancellationToken cancellationToken,
+        Task<DeferredHotspotWeather.GridSources?[]>? grids = null)
     {
         if (spots.All(spot => spot is null))
             return spots.Select(_ => Array.Empty<HotspotWeatherSource>()).ToArray();
 
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(TimeSpan.FromSeconds(8));
-        var radarCatalogue = CatalogueAsync(Radar.Workspace, deadline.Token, cancellationToken);
+        var radarCatalogue = new Lazy<Task<Dictionary<string, Layer>?>>(LoadRadarCatalogue);
         var satelliteCatalogue = CatalogueAsync(Infrared.Workspace, deadline.Token, cancellationToken);
         return await Task.WhenAll(spots.Select(EnrichSpotAsync)).ConfigureAwait(false);
 
-        async Task<HotspotWeatherSource[]> EnrichSpotAsync(FirmsHotspot? spot)
+        async Task<HotspotWeatherSource[]> EnrichSpotAsync(FirmsHotspot? spot, int index)
         {
             if (spot is null)
                 return [];
 
-            var radar = SampleAsync(Radar, radarCatalogue, spot, deadline.Token, cancellationToken);
+            var radar = ResolveRadar(spot, index);
             var infrared = SampleAsync(Infrared, satelliteCatalogue, spot, deadline.Token, cancellationToken);
             var visible = SampleAsync(Visible, satelliteCatalogue, spot, deadline.Token, cancellationToken);
             await Task.WhenAll(radar, infrared, visible).ConfigureAwait(false);
             var radarValue = await radar;
             var infraredValue = await infrared;
             var visibleValue = await visible;
-            return [ToSource(Radar, radarValue), ToSource(Infrared, infraredValue, visibleValue)];
+            return [radarValue, ToSource(Infrared, infraredValue, visibleValue)];
+        }
+
+        async Task<HotspotWeatherSource> ResolveRadar(FirmsHotspot spot, int index)
+        {
+            if (grids is not null && (await grids.ConfigureAwait(false))[index]?.Radar is { } native) return native;
+            using var radarDeadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            radarDeadline.CancelAfter(TimeSpan.FromSeconds(8));
+            var radar = await SampleAsync(Radar, radarCatalogue.Value, spot, radarDeadline.Token, cancellationToken).ConfigureAwait(false);
+            return ToSource(Radar, radar);
+        }
+
+        async Task<Dictionary<string, Layer>?> LoadRadarCatalogue()
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(8));
+            return await CatalogueAsync(Radar.Workspace, timeout.Token, cancellationToken).ConfigureAwait(false);
         }
     }
 

@@ -31,35 +31,68 @@ internal sealed class NoaaGoesWeather(IHttpClientFactory clients, IMemoryCache c
         using var http = clients.CreateClient(HttpClientName);
         var store = new WeatherObjectStore(http, deadline.Token);
         var lists = new System.Collections.Concurrent.ConcurrentDictionary<(Satellite, string, DateTimeOffset), Lazy<Task<Scene[]>>>();
-        return await Task.WhenAll(spots.Select(EnrichSpot)).ConfigureAwait(false);
-
-        async Task<HotspotWeatherSource[]> EnrichSpot(FirmsHotspot? spot)
+        var flashFiles = new System.Collections.Concurrent.ConcurrentDictionary<(Satellite, Scene), Lazy<Task<GoesMeasurements.Flash[]>>>();
+        var targets = spots.Select((spot, index) =>
         {
-            if (spot is null) return [];
-            var satellite = Satellites.MinBy(satellite => Math.Abs(Math.IEEERemainder(spot.Longitude - satellite.Longitude, 360)))!;
+            if (spot is null) return null;
+            var satellite = Satellites.MinBy(candidate => Math.Abs(Math.IEEERemainder(spot.Longitude - candidate.Longitude, 360)))!;
             var view = GoesMeasurements.Project(spot.Latitude, spot.Longitude, satellite.Longitude, 6_378_137, 6_356_752.31414, 35_786_023);
-            var abi = Rasters.Select(product => SafeSource(product.Folder, satellite, spot,
-                view is not null, product.Fields, () => ReadRaster(product, satellite, spot))).ToArray();
-            var glm = SafeSource(LightningProduct, satellite, spot,
-                view is { } angles && Math.Abs(spot.Latitude) < 50 && angles.X * angles.X + angles.Y * angles.Y < 0.12 * 0.12,
-                [("observed_lightning_flash_count_50km", "flashes"), ("observed_lightning_nearest_50km", "km")],
-                () => ReadLightning(satellite, spot));
-            return await Task.WhenAll(abi.Append(glm)).ConfigureAwait(false);
+            return new Target(index, spot, satellite, view);
+        }).OfType<Target>().ToArray();
+        var rasters = Task.WhenAll(Rasters.Select(EnrichRaster));
+        var flashes = Task.WhenAll(targets.Select(EnrichLightning));
+        await Task.WhenAll(rasters, flashes).ConfigureAwait(false);
+        var rasterSources = await rasters;
+        var flashSources = await flashes;
+        var result = Enumerable.Range(0, spots.Count).Select(_ => Array.Empty<HotspotWeatherSource>()).ToArray();
+        for (var i = 0; i < targets.Length; i++)
+            result[targets[i].Index] = [.. rasterSources.Select(product => product[i]), flashSources[i]];
+        return result;
+
+        async Task<HotspotWeatherSource[]> EnrichRaster(RasterProduct product)
+        {
+            var plans = await Task.WhenAll(targets.Select(SelectScene)).ConfigureAwait(false);
+            var sampling = new Dictionary<int, Task<Measurement?>>();
+            foreach (var group in plans.Where(plan => plan.Scene is not null).GroupBy(plan => (plan.Target.Satellite, Scene: plan.Scene!)))
+            {
+                var groupTargets = group.Select(plan => plan.Target).ToArray();
+                var scene = group.Key.Scene;
+                var batch = ReadAsync(() =>
+                {
+                    using var stream = store.Open(ObjectUri(group.Key.Satellite, scene.Key), scene.Size);
+                    return GoesMeasurements.ReadRasters(stream, product.Kind, groupTargets.Select(target => target.Spot).ToArray());
+                });
+                for (var i = 0; i < groupTargets.Length; i++)
+                    sampling.Add(groupTargets[i].Index, AtIndex(batch, scene, i));
+            }
+            return await Task.WhenAll(plans.Select(plan => SafeSource(product.Folder, plan.Target.Satellite, plan.Target.Spot,
+                plan.Target.View is not null, product.Fields, () => plan.Error is { } error
+                    ? Task.FromException<Measurement?>(error)
+                    : sampling.GetValueOrDefault(plan.Target.Index) ?? Task.FromResult<Measurement?>(null)))).ConfigureAwait(false);
+
+            async Task<(Target Target, Scene? Scene, Exception? Error)> SelectScene(Target target)
+            {
+                if (target.View is null) return (target, null, null);
+                try
+                {
+                    var frames = await Recent(target.Satellite, product.Folder, target.Spot.AcquiredAtUtc, TimeSpan.FromMinutes(20)).ConfigureAwait(false);
+                    return (target, frames.Where(frame => product.Kind != GoesMeasurements.Product.Infrared ||
+                        frame.Key.Contains("C13_", StringComparison.Ordinal)).MaxBy(frame => frame.End), null);
+                }
+                catch (Exception error) when (!token.IsCancellationRequested && error is not OutOfMemoryException)
+                {
+                    return (target, null, error);
+                }
+            }
+
+            static async Task<Measurement?> AtIndex(Task<IReadOnlyDictionary<string, double?>[]> batch, Scene scene, int i) =>
+                new Measurement(scene.Start, scene.End, (await batch.ConfigureAwait(false))[i]);
         }
 
-        async Task<Measurement?> ReadRaster(RasterProduct product, Satellite satellite, FirmsHotspot spot)
-        {
-            var frames = await Recent(satellite, product.Folder, spot.AcquiredAtUtc, TimeSpan.FromMinutes(20)).ConfigureAwait(false);
-            var scene = frames.Where(frame => product.Kind != GoesMeasurements.Product.Infrared || frame.Key.Contains("C13_", StringComparison.Ordinal))
-                .MaxBy(frame => frame.End);
-            if (scene is null) return null;
-            var values = await ReadAsync(() =>
-            {
-                using var stream = store.Open(ObjectUri(satellite, scene.Key), scene.Size);
-                return GoesMeasurements.ReadRaster(stream, product.Kind, spot);
-            }).ConfigureAwait(false);
-            return new Measurement(scene.Start, scene.End, values);
-        }
+        Task<HotspotWeatherSource> EnrichLightning(Target target) => SafeSource(LightningProduct, target.Satellite, target.Spot,
+            target.View is { } angles && Math.Abs(target.Spot.Latitude) < 50 && angles.X * angles.X + angles.Y * angles.Y < 0.12 * 0.12,
+            [("observed_lightning_flash_count_50km", "flashes"), ("observed_lightning_nearest_50km", "km")],
+            () => ReadLightning(target.Satellite, target.Spot));
 
         async Task<Measurement?> ReadLightning(Satellite satellite, FirmsHotspot spot)
         {
@@ -68,15 +101,17 @@ internal sealed class NoaaGoesWeather(IHttpClientFactory clients, IMemoryCache c
             if (window.Length < 3) return null;
             var start = window[0].Start;
             var end = window[^1].End;
-            var samples = await Task.WhenAll(window.Select(scene => ReadAsync(() =>
-            {
-                using var stream = store.Open(ObjectUri(satellite, scene.Key), scene.Size);
-                return GoesMeasurements.ReadFlashes(stream, spot.Latitude, spot.Longitude, scene.Start, start, end, LightningRadiusKm);
-            }))).ConfigureAwait(false);
+            var frames = await Task.WhenAll(window.Select(scene => flashFiles.GetOrAdd((satellite, scene), key =>
+                new Lazy<Task<GoesMeasurements.Flash[]>>(() => ReadAsync(() =>
+                {
+                    using var stream = store.Open(ObjectUri(key.Item1, key.Item2.Key), key.Item2.Size);
+                    return GoesMeasurements.ReadFlashes(stream, key.Item2.Start);
+                }))).Value)).ConfigureAwait(false);
+            var sample = GoesMeasurements.SummarizeFlashes(frames.SelectMany(frame => frame), spot.Latitude, spot.Longitude, start, end, LightningRadiusKm);
             return new Measurement(start, end, new Dictionary<string, double?>
             {
-                ["observed_lightning_flash_count_50km"] = samples.Sum(sample => sample.Count),
-                ["observed_lightning_nearest_50km"] = samples.Select(sample => sample.NearestKm).Min(),
+                ["observed_lightning_flash_count_50km"] = sample.Count,
+                ["observed_lightning_nearest_50km"] = sample.NearestKm,
             });
         }
 
@@ -191,5 +226,6 @@ internal sealed class NoaaGoesWeather(IHttpClientFactory clients, IMemoryCache c
     internal sealed record Scene(string Key, long Size, DateTimeOffset Start, DateTimeOffset End);
     private sealed record RasterProduct(string Folder, GoesMeasurements.Product Kind, (string Name, string Unit)[] Fields);
     private sealed record Satellite(string Name, string Host, double Longitude);
+    private sealed record Target(int Index, FirmsHotspot Spot, Satellite Satellite, (double X, double Y)? View);
     private sealed record Measurement(DateTimeOffset Start, DateTimeOffset End, IReadOnlyDictionary<string, double?> Values);
 }

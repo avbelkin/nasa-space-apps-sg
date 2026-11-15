@@ -107,6 +107,8 @@ builder.Services.AddSingleton<NoaaGfsWeather>();
 builder.Services.AddHttpClient(NoaaGoesWeather.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(6))
     .RemoveAllLoggers();
 builder.Services.AddSingleton<NoaaGoesWeather>();
+builder.Services.AddHttpClient(NoaaMrmsRadar.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(6));
+builder.Services.AddSingleton<NoaaMrmsRadar>();
 builder.Services.AddHttpClient(CopernicusSoilDrought.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(7))
     .RemoveAllLoggers();
 builder.Services.AddSingleton<CopernicusSoilDrought>();
@@ -296,7 +298,6 @@ app.MapPost("/api/fires/spots/weather", (
     FirmsClient firmsClient,
     OpenMeteoHotspotWeather weather,
     NoaaWeatherObservations observations,
-    NoaaGoesWeather goesWeather,
     CopernicusSoilDrought soilDrought,
     DeferredHotspotWeather deferredWeather,
     CancellationToken cancellationToken) =>
@@ -310,18 +311,16 @@ app.MapPost("/api/fires/spots/weather", (
         var spots = await firmsClient.GetSelectedLiveSpotsAsync(keys, cancellationToken);
         var forecastTask = weather.EnrichAsync(spots, cancellationToken);
         var gridTask = deferredWeather.GetAsync(spots, cancellationToken);
-        var observationsTask = observations.EnrichAsync(spots, cancellationToken);
-        var goesWeatherTask = goesWeather.EnrichAsync(spots, cancellationToken);
+        var observationsTask = observations.EnrichAsync(spots, cancellationToken, gridTask);
         var droughtTask = soilDrought.EnrichAsync(spots, cancellationToken);
-        await Task.WhenAll(forecastTask, gridTask, observationsTask, goesWeatherTask, droughtTask);
+        await Task.WhenAll(forecastTask, gridTask, observationsTask, droughtTask);
         var forecast = await forecastTask;
         var gridSources = await gridTask;
         var observationSources = await observationsTask;
-        var goesSources = await goesWeatherTask;
         var droughtSources = await droughtTask;
         return new HotspotWeatherResponse(forecast.Spots.Select((spot, index) =>
             spot is not null && gridSources[index] is { } grid && droughtSources[index] is { } drought
-                ? spot with { Sources = [.. grid.Forecast, .. spot.Sources, grid.Danger, .. observationSources[index], .. goesSources[index], drought, grid.SoilAnomaly, grid.Fuel] }
+                ? spot with { Sources = [.. grid.Forecast, .. spot.Sources, grid.Danger, .. observationSources[index], .. grid.Goes, drought, grid.SoilAnomaly, grid.Fuel] }
                 : spot).ToArray());
     }));
 

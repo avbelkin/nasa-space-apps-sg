@@ -22,7 +22,9 @@ public sealed class NoaaGoesWeatherTests
         var service = new NoaaGoesWeather(new ClientFactory(handler), cache, NullLogger<NoaaGoesWeather>.Instance);
         var acquired = Six.AddMinutes(9).AddSeconds(50);
 
-        var results = await service.EnrichAsync([Spot(acquired), Spot(Six.AddMinutes(4)), Spot(acquired, 100)], CancellationToken.None);
+        var results = await service.EnrichAsync(
+            [Spot(acquired), Spot(Six.AddMinutes(4)), Spot(acquired, 100), Spot(acquired.AddSeconds(3), -74.99), null],
+            CancellationToken.None);
 
         var sources = results[0];
         Assert.Equal(250d, sources[0].Values["satellite_infrared_brightness_temperature"].Value);
@@ -43,6 +45,10 @@ public sealed class NoaaGoesWeatherTests
         Assert.Equal(0d, sources[6].Values["observed_lightning_nearest_50km"].Value);
         Assert.Equal("no_matching_frame", results[1][0].Status);
         Assert.All(results[2], source => Assert.Equal("outside_coverage", source.Status));
+        Assert.Equal(250d, results[3][0].Values["satellite_infrared_brightness_temperature"].Value);
+        Assert.Equal(3d, results[3][6].Values["observed_lightning_flash_count_50km"].Value);
+        Assert.InRange(Assert.IsType<double>(results[3][6].Values["observed_lightning_nearest_50km"].Value), 1, 1.2);
+        Assert.Empty(results[4]);
     }
 
     [Fact]
