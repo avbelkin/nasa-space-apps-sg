@@ -21,6 +21,6 @@ for name in "$@"; do
     --output "$tmp/$base.html"
   "$chrome" --headless=new --disable-gpu --no-pdf-header-footer \
     --virtual-time-budget=20000 --run-all-compositor-stages-before-draw \
-    --print-to-pdf="$here/$base.pdf" "file://$tmp/$base.html" 2>/dev/null
-  echo "$here/$base.pdf"
+    --print-to-pdf="$docs/$base.pdf" "file://$tmp/$base.html" 2>/dev/null
+  echo "$docs/$base.pdf"
 done
