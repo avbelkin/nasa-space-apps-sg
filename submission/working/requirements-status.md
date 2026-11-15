@@ -31,9 +31,11 @@ The [anonymous link-check record](compliance-link-check-2026-11-15.json) disting
 
 The application and materials changed in parallel during the audit. Earlier AUROC/FRP baselines, the new GWIS/CAMS comparisons, source edits and voice rejections are retained; no old test count is substituted for the final integrated check. See the detailed audit's verification/accounting section for actual collected results and limitations. No Space Apps form was submitted or edited by this work.
 
+Published correction checkpoint: Pages run 43716738502 for `c16b7b7` completed successfully. A clean production-browser check showed the data service online and 65,158 loaded detections; the EOX 2016 endpoint and updated credits were present. New public preview/provenance/notices matched repository hashes. Final video/deck, cold start and full pinned-output checks remain open.
+
 ## Last check of the published version
 
-Checked on 15 November 2026 at 20:59–21:03 SGT (12:59–13:03 UTC) against `c16b7b7`, the current `main`. GitHub Pages deployed it at 21:01 SGT. The backend still runs `4686c3c`, deployed at 20:08 SGT; its code has not changed since. Nothing here lifts a gate in the table above.
+Checked on 15 November 2026 at 20:59–21:03 SGT (12:59–13:03 UTC) against `c16b7b7`, the last commit that changed the app; later commits on `main` change only submission materials. GitHub Pages deployed it at 21:01 SGT. The backend still runs `4686c3c`, deployed at 20:08 SGT; its code has not changed since. Nothing here lifts a gate in the table above.
 
 | What | Result |
 |---|---|
@@ -45,4 +47,4 @@ Checked on 15 November 2026 at 20:59–21:03 SGT (12:59–13:03 UTC) against `c1
 | Backend tests | Not run: no .NET SDK on this machine. The backend code is the same as at `4686c3c` |
 | Repository counts | 250 commits; `Co-Authored-By: Claude` trailers in 46 of them. The trailers do not measure the extent of AI assistance |
 
-Not done in this check: the app was not opened in a browser, so rendering, the pinned card and a cold start of the backend were not observed. The Space Apps team page was not opened.
+Not done in this check: the app was not opened in a browser. The checkpoint above records a separate browser check of the page; the pinned-card outputs and a cold start of the backend remain unobserved. The Space Apps team page was not opened.

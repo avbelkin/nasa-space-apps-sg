@@ -1,7 +1,8 @@
 """Generate and collect one bounded character-motion pilot through the existing gateway.
 
 The manifest survives polling and process exits. Re-running collects the original job;
-it never silently resubmits a generation. Only the generated character image is sent.
+it never silently resubmits a generation. Only the explicitly selected reference
+frames are sent; those may include the user-authorized desk footage for a jump test.
 """
 import argparse
 import base64
@@ -14,6 +15,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--gateway-root', type=Path, required=True)
 parser.add_argument('--directory', type=Path, required=True)
 parser.add_argument('--reference', type=Path)
+parser.add_argument('--last-frame', type=Path)
 parser.add_argument('--prompt-file', type=Path)
 parser.add_argument('--duration', type=int, choices=[4, 6, 8], default=8)
 parser.add_argument('--output-name', default='lama-motion-green.mp4')
@@ -43,6 +45,11 @@ with gateway.ExternalServices() as api:
         reference = args.reference or args.directory / 'lama-character-green.png'
         image = base64.b64encode(reference.read_bytes()).decode()
         mime = 'image/jpeg' if reference.suffix.lower() in {'.jpg', '.jpeg'} else 'image/png'
+        frames = [{'type': 'image_url', 'image_url': {'url': 'data:' + mime + ';base64,' + image}, 'frame_type': 'first_frame'}]
+        if args.last_frame:
+            last_mime = 'image/jpeg' if args.last_frame.suffix.lower() in {'.jpg', '.jpeg'} else 'image/png'
+            last_image = base64.b64encode(args.last_frame.read_bytes()).decode()
+            frames.append({'type': 'image_url', 'image_url': {'url': 'data:' + last_mime + ';base64,' + last_image}, 'frame_type': 'last_frame'})
         models = api.client.get('https://openrouter.ai/api/v1/videos/models', timeout=30).json()['data']
         selected = next(m for m in models if m['id'] == model)
         rate = float(selected['pricing_skus']['duration_seconds_without_audio_720p'])
@@ -52,10 +59,13 @@ with gateway.ExternalServices() as api:
         reservation = api._reserve('openrouter', model, {'usd': estimate}, out_dir=str(args.directory), persistent=True)
         state = {'model': model, 'provider': 'Google Vertex via OpenRouter', 'estimated_usd': estimate, 'duration': duration, 'resolution': '720p', 'status': 'submitting', 'reservation_id': reservation, 'prompt': prompt, 'reference': reference.name, 'output_file': args.output_name}
         save(state)
+        if args.last_frame:
+            state['last_frame'] = args.last_frame.name
+            save(state)
         response = api.client.post('https://openrouter.ai/api/v1/videos', headers=headers, json={
             'model': model, 'prompt': prompt, 'duration': duration, 'resolution': '720p',
             'aspect_ratio': '16:9', 'generate_audio': False,
-            'frame_images': [{'type': 'image_url', 'image_url': {'url': 'data:' + mime + ';base64,' + image}, 'frame_type': 'first_frame'}],
+            'frame_images': frames,
             'provider': {'only': ['google-vertex']},
         }, timeout=120)
         if response.status_code >= 400:
