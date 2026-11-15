@@ -41,7 +41,7 @@ Official NASA Space Apps brand elements, taken from <https://www.spaceappschalle
 
 ### Fonts
 
-Both families are free (SIL OFL) and available on Google Fonts; font files are not stored here.
+Both families are free (SIL OFL) and available on Google Fonts. The presentation's selected font files and licences are stored in [`../presentation/assets/fonts/`](../presentation/assets/fonts/), without system installation.
 
 - Titles and headings: Fira Sans Black, Fira Sans Bold, Overpass Bold, Overpass Regular
 - Body copy: Overpass Regular, Overpass Bold, Overpass Italic

@@ -1,0 +1,66 @@
+{
+  "retrievedAt": "2026-11-15",
+  "systemInstalled": false,
+  "files": [
+    {
+      "name": "FiraSans-Black.ttf",
+      "bytes": 507204,
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/firasans/FiraSans-Black.ttf",
+      "sha256": "0ab27e9178d7f74898dd26e3a5f10eb7922bb2a88a2903e00796c4f7c7e08cc0"
+    },
+    {
+      "name": "FiraSans-Bold.ttf",
+      "bytes": 489720,
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/firasans/FiraSans-Bold.ttf",
+      "sha256": "a4d8e149ecdd4874a0726eb0af894488b3b31c423d6b0017c8f415ed1b795b45"
+    },
+    {
+      "name": "FiraSans-OFL.txt",
+      "bytes": 4370,
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/firasans/OFL.txt",
+      "sha256": "8f24842e9174beda18a556c2ae7d54f5dc444340c19a3a9ef77e23bca366adbd"
+    },
+    {
+      "name": "Overpass-Regular.otf",
+      "bytes": 144432,
+      "url": "https://raw.githubusercontent.com/RedHatOfficial/Overpass/master/fonts/otf/Overpass-Regular.otf",
+      "sha256": "ba4a841494ae6e9e742df8f223060007fd98be06f31fc236913926dc2864d094"
+    },
+    {
+      "name": "Overpass-Bold.otf",
+      "bytes": 152820,
+      "url": "https://raw.githubusercontent.com/RedHatOfficial/Overpass/master/fonts/otf/Overpass-Bold.otf",
+      "sha256": "ff9c2948cce560e7e41a7a65d328f96220678522f9c67f2d6b3a5084100e92bc"
+    },
+    {
+      "name": "Overpass-Italic.otf",
+      "bytes": 136328,
+      "url": "https://raw.githubusercontent.com/RedHatOfficial/Overpass/master/fonts/otf/Overpass-Italic.otf",
+      "sha256": "01bbf6b41a3cec51703103d07b1c5b8f959290fc567144f8453a5091b23441cd"
+    },
+    {
+      "name": "Overpass-OFL.txt",
+      "bytes": 4392,
+      "url": "https://raw.githubusercontent.com/RedHatOfficial/Overpass/master/OFL.txt",
+      "sha256": "86e5ff25c701ec446d20b1a85b02ee6d36de8503a7288a4c948f5459809af1f0"
+    },
+    {
+      "name": "Overpass-Regular.ttf",
+      "bytes": 210416,
+      "url": "https://raw.githubusercontent.com/RedHatOfficial/Overpass/master/fonts/ttf/Overpass-Regular.ttf",
+      "sha256": "bf107d7ae99031c2193cd187acc9d4e5ebd45b6ea0e6845159ce68f87eb623aa"
+    },
+    {
+      "name": "Overpass-Bold.ttf",
+      "bytes": 215496,
+      "url": "https://raw.githubusercontent.com/RedHatOfficial/Overpass/master/fonts/ttf/Overpass-Bold.ttf",
+      "sha256": "623f1f421fecc29095d76b3aa472c409e1b0b5db70ef2b3ba4b699546ce3d4af"
+    },
+    {
+      "name": "Overpass-Italic.ttf",
+      "bytes": 200948,
+      "url": "https://raw.githubusercontent.com/RedHatOfficial/Overpass/master/fonts/ttf/Overpass-Italic.ttf",
+      "sha256": "226e7f1ee190a0b233fd17687c1856780471abe0558a8f46d296bdb7aa958363"
+    }
+  ]
+}

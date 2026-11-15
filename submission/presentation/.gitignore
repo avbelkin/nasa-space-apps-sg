@@ -1,0 +1,10 @@
+.build/
+.codex-finalizer/
+.chart-data-*/
+node_modules/
+
+# Generated presentation binaries stay local; keep scripts and JSON reports.
+output/*.pdf
+output/*.pptx
+output/*.png
+assets/screenshots/*.png
