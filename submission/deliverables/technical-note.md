@@ -1,6 +1,6 @@
 # Earth Fire Calendar: technical note
 
-[Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](../docs/form-fields.md) · [Formal requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
+[Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](../working/form-fields.md) · [Formal requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
 
 **Challenge:** Harmonization of MODIS and VIIRS Hot Spots · **Team:** `[team name]` · **Version described:** commit `75f89b8`, 15 November 2026 · **App:** [avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0) · **Code:** [github.com/avbelkin/nasa-space-apps-sg](https://github.com/avbelkin/nasa-space-apps-sg)
 
@@ -198,7 +198,7 @@ Apart from the baselines in section 6, nothing in this section is implemented.
 
 **If calibration fails,** the app will show each sensor separately and label the combined view experimental.
 
-The data constraints behind this plan and the design decisions for the measure, the reference scale and the calendar are in the [design notes](../docs/harmonization-design-notes.md).
+The data constraints behind this plan and the design decisions for the measure, the reference scale and the calendar are in the [design notes](../working/harmonization-design-notes.md).
 
 ## 8. Known limitations
 
