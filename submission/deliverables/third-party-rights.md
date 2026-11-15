@@ -23,6 +23,8 @@ The team's original code, documentation and media are released under the [Apache
 | ESA Hipparcos catalogue and the Yale Bright Star Catalogue | Positions of about 230 bright stars in the globe's background; fainter stars are generated procedurally | Public astronomical catalogues; star positions are factual data |
 | Copernicus Sentinel-2 via EOxCloudless 2016 by EOX IT Services GmbH, layer `s2cloudless_3857` | Earth basemap | **CC BY 4.0** ([EOX licence page](https://cloudless.eox.at/license-non-commercial/)). Credit: EOxCloudless https://cloudless.eox.at by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016 & 2017) |
 
+The current video review also retains the earlier desk footage and a derived generated desk background, whose physical monitor shows **EOxCloudless 2025, CC BY-NC-SA 4.0**. This is distinct from the new live-app screen recordings. The older monitor imagery remains a publication review item; successful rendering is not a rights-clearance verdict.
+
 ## Other data
 
 | Source | Use in the project | Licence / terms |
@@ -52,7 +54,7 @@ Presentation fonts Overpass and Fira Sans: **SIL Open Font License 1.1**, licenc
 | Lama animation | Google Veo 3.1 Lite via OpenRouter (paid) | [OpenRouter terms](https://openrouter.ai/terms) and the model provider's terms; the generated character carries a visible `AI-generated` label |
 | English narration | ElevenLabs Eleven v4 via OpenRouter (paid), voice "Flicker" from the ElevenLabs Voice Library | [ElevenLabs terms of use](https://elevenlabs.io/terms-of-use); disclosed in the video description and file metadata |
 
-Live-action footage and app screen recordings are the team's own. The demo uses no music.
+Live-action footage and app screen recordings are the team's own. The jump also uses an AI-edited photographic toy cutout and a generated empty desk background, both disclosed in the video metadata and description. The demo uses no music.
 
 ## Literature
 
