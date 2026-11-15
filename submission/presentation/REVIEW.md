@@ -2,7 +2,7 @@
 
 ## Current work
 
-The user rejected the visual direction of scaffold-r6 as dated. Technical acceptance of that revision does not imply visual approval. The next checkpoint is a new visual direction, with the original wording and team placeholders retained.
+The full seven-slide deck now uses the approved direction and the final source text. Current export: complete-r14, independently accepted with no blocking findings. Team names are filled; no slide placeholders remain. Automated verification, root PDF and native PowerPoint inspection, and independent Codex acceptance are complete. Earlier checkpoint records below are historical.
 
 All presentation source files, local captures, outputs, fonts, reference copies and work files are now under `submission/presentation` in the main checkout. Builders read `demo-slides.md`, `assets/data/` and `assets/brand/` inside this folder. Large generated files remain Git-ignored. Shared project references outside this folder are not build dependencies.
 
@@ -77,3 +77,21 @@ PPTX: bb20e0532a55d4527e9666effade2763be9c6546785372fa95b98e151b6ed730
 ```
 
 No LLM API provider/model/route was used; measured API cost is $0. One independent Codex review is running; subscription allowance usage is unavailable.
+
+## Final-copy correction: complete-r14
+
+The user confirmed that raw CSV export already exists. Slide 4 now says **harmonized data export** in its unfinished-work list; all other source wording is unchanged. Slide 7 separates the rights line from the sources, gives the separator explicit space, and brings the AI attribution and non-affiliation note upwards.
+
+All seven automated copy/font/link/chart/package checks passed again. Root inspected both changed pages in the actual PDF and in the native PowerPoint 16.109.3 proof. PowerPoint opened and exported seven slides; it substitutes Calibri for Overpass and renders thinner native bars. The submitted PDF embeds Overpass and remains the appearance reference. The independent reviewer accepted r14: all seven actual r13 PDF pages and the r14 changes on pages 4 and 7 were inspected, and source wording, twelve links, both charts/workbooks, fixed scales, embedded PDF fonts, image/alt text provenance and team details were checked against primary inputs. No blocking findings remain.
+
+```text
+Source: fceaf511c485b6e471f89abf8ccb37163cb857ea720bdc598112e723be772ef2
+PDF:    94963dc5dc559b9c272a93c467b9ff918c89f72f7b9c3d770197d5e25821b509
+PPTX:   04ff06ae15722fad780b04c2714be0042c268eefc4c49c8d1d25bfbbb23ea022
+```
+
+The official Project Submission Guide (13 November 2026) was retrieved again from the official site. It requires a public link to up to seven English slides and does not specify a PPTX requirement. PDF suitability follows from those requirements; the guide does not enumerate allowed file extensions. The retrieved page is retained locally under `.build/`.
+
+Final reconciliation: the independent `/root/deck_acceptance` review returned a terminal acceptance for the exact r14 hashes above; its commands are finished and all results were collected and accepted. All root captures, builds, native PowerPoint exports and verification commands also finished. Earlier failed capture, verification and push attempts were resolved and are not pending jobs. The final public PDF was fetched without authentication, fully collected and byte-checked against the local file. Its size is 1,244,994 bytes. The local PPTX is 1,223,051 bytes. Both artifacts and their source are synchronized to the main checkout, and r14 is published on main.
+
+No LLM API provider, model or processing route was used; measured API cost is $0. Work used the primary Codex session and one independent Codex reviewer. Subscription allowance consumption is unavailable. No Claude job was launched by this session; `review-prompt.txt` is provided for user-initiated reviews by other models.

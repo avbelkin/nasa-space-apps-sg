@@ -17,6 +17,8 @@ Everything for the NASA Space Apps submission. Each folder has one purpose; put 
   - [project page text](deliverables/project-description.md)
   - [technical note](deliverables/technical-note.md)
   - [literature review](deliverables/modis-viirs-harmonization-literature-review.md)
+  - [third-party materials and rights](deliverables/third-party-rights.md)
+  - [software licence inventory](deliverables/software-licenses.md)
 - `presentation/`
   - [slide text](presentation/demo-slides.md)
   - [slide images and numbers](presentation/slide-images.md)

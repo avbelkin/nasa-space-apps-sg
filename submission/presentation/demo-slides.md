@@ -46,7 +46,7 @@ A live globe that compares the two sensors and attaches to each detection the co
 - **Experimental, from one day of data:** for a single selected detection, unmatched-pass notes, the "Expected detection, no match" flag, an estimate of fire radiative power on the next pass, and GWIS or CAMS detection odds. Our own models; not validated by NASA.
 - **Context layers:** GPM IMERG precipitation and VIIRS Black Marble night lights from NASA GIBS; cloud imagery via Extremum; satellite tracks from CelesTrak.
 
-**Not built yet:** historical archive, harmonization, validation, area and date selection, and data export.
+**Not built yet:** historical archive, harmonization, validation, area and date selection, and harmonized data export.
 
 ## Slide 5 — Three steps in the prototype
 

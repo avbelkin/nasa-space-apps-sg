@@ -84,7 +84,7 @@ Exceeding the limit makes the project ineligible for global judging; the guide n
 - a file in a GitHub repository;
 - any other external site, cloud service or code repository: the guide ends the list with "etc.".
 
-Both formats have draft source material for Earth Fire Calendar; final exports and publication are not complete: the [video script](../video/demo-video.md) and the [slide text](../presentation/demo-slides.md). The video goes in the field; the deck is linked from field 5 ([materials map](#earth-fire-calendar-materials-map)).
+Earth Fire Calendar has a completed [public seven-slide PDF](../presentation/earth-fire-calendar.pdf), now linked in field 3 and in the supporting materials. The preferred video remains in production and has no final public URL; the local 29-second assembly is superseded. The public PDF supplies a usable demo link until the video is published.
 
 ## 4. Link to Final Project
 
@@ -178,7 +178,7 @@ For Earth Fire Calendar the current, complete list is [field 8 of the project pa
 - the 2019 global land cover map of the ESA Climate Change Initiative and the Copernicus Climate Change Service, read as GeoTIFFs from Microsoft Planetary Computer; ESA is a partner agency;
 - weather at acquisition: NOAA GFS model fields (NOMADS and the NOAA open data mirrors on Google Cloud Storage and AWS), NOAA GOES-R and nowCOAST radar and satellite observations, NOAA Climate Prediction Center soil-moisture anomalies, modeled weather and Copernicus CAMS aerosol and air-quality fields via Open-Meteo, fire danger from Copernicus GWIS, the soil-moisture anomaly of the Copernicus Global Drought Observatory, dead fuel moisture from the US Forest Service;
 - CelesTrak orbital elements, including the fallback sets hard-coded in the source;
-- the bright-star catalogue for the star background: the code names the source as "Bright Star / Hipparcos"; confirm the exact provenance with the author; Hipparcos is a catalogue of ESA, a partner agency;
+- the bright-star catalogue for the star background: the code and app credits identify Yale Bright Star and ESA Hipparcos; Hipparcos is a catalogue of ESA, a partner agency;
 - the NASA GIBS precipitation colour scale, ported into the code;
 - interface libraries: MapLibre GL JS (BSD-3-Clause), React (MIT), Vite (MIT), TypeScript (Apache-2.0); licenses as recorded in `ui/package-lock.json`;
 - the server side: .NET 10 and ASP.NET Core;

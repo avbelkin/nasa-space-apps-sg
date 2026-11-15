@@ -2,9 +2,9 @@
 
 [Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](../working/form-fields.md) · [Formal requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
 
-Draft text for the **Project** tab, field by field, in the order of the [form](../working/form-fields.md). It describes the app as of commit `09b25a0` (15 November 2026, deployed at 21:26 SGT). Team Plush: Alexey Belkin and Viktoriia Naiman. Replace unresolved publication links before submitting; the items the team still has to confirm are collected in [Before submitting](#before-submitting).
+Text for the **Project** tab, field by field, in the order of the [form](../working/form-fields.md). Checked against repository commit `7bbe91a` on 15 November 2026. The application code matches the UI deployed from `5b66aec` at 13:37 UTC and the backend deployed from `4686c3c` at 12:08 UTC. Team Plush: Alexey Belkin and Viktoriia Naiman. The seven-slide PDF is public; the video remains in production and has no final public URL.
 
-The live numbers come from one snapshot of the app's feed, fetched on 15 November 2026 at 08:36 UTC; its summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](../working/firms-snapshot-2026-11-15T0836Z.json). If the slides or the video use a different snapshot, use one set of numbers everywhere.
+The numerical comparison comes from one snapshot of the app's feed, fetched on 15 November 2026 at 08:36 UTC; its summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](../working/firms-snapshot-2026-11-15T0836Z.json). The slides use the same counts. Later interface captures illustrate functionality and do not establish the earlier totals.
 
 ## 1. Project Name
 
@@ -26,7 +26,13 @@ The app is a tool for studying this difference and a source of detection-level d
 
 ## 3. Link to Project Demo
 
-`[public link to the 30-second video]` — recorded from the [video script](../video/demo-video.md).
+The completed, publicly accessible demo is the seven-slide presentation:
+
+```text
+https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/presentation/earth-fire-calendar.pdf
+```
+
+The [video](../video/README.md) is still being edited. Its local 29-second assembly is a superseded review artifact, not a published final demo.
 
 ## 4. Link to Final Project
 
@@ -55,14 +61,16 @@ Earth Fire Calendar is a public web app. It works on live NASA FIRMS data, with 
 
 4. One place, 24 hours. Selecting a detection or a group pins a timeline of all detections at that place, hour by hour and satellite by satellite, against the local Sun elevation. It also marks the hours when a satellite passed over and reported nothing, and the most recent passes whose data is probably still being processed. Both are estimates from orbital elements, not FIRMS data: a pass without a detection does not prove there was no fire.
 
-5. The conditions of each observation. For the pinned detections the app shows, side by side for MODIS and VIIRS:
+5. The conditions of each observation. For the pinned detections the app shows viewing geometry and weather side by side for MODIS and VIIRS, plus a surface-composition bar for the selection:
 - estimated viewing geometry: off-nadir angle, distance to the satellite, Sun and Moon elevation, glint angles;
-- land cover inside the pixel footprint, from the 2019 ESA CCI / Copernicus C3S land cover map;
+- land cover inside the pixel footprint, from the 2019 ESA CCI / Copernicus C3S land cover map, shown as class fractions with classified coverage; for a group, the bar averages the available detection summaries;
 - weather at the acquisition time: temperature, humidity, wind, cloud over the footprint, precipitation, lightning, snow, aerosol, soil moisture, fire-weather index and dead-fuel moisture, where each source has coverage.
 
 6. What the next pass may show. For a single pinned detection the app notes a predicted pass by another satellite, of the same sensor or the other one, that reported nothing there, and says under which conditions our one-day baseline saw fewer or more such misses. When the other VIIRS satellite passed over a VIIRS detection, our model scored that pass at 70% or more for detecting it, and FIRMS has no detection within 1 km, the app flags it as "Expected detection, no match". It also shows the fire radiative power the next pass would report if it detects the fire. For a pass by the other satellite of the same sensor, it shows how weather changes the model's detection odds: Copernicus GWIS fire-weather fields for MODIS (in this version only for an Aqua detection and a Terra pass), Copernicus CAMS aerosol fields for the two VIIRS satellites. For an Aqua detection whose next pass is by Terra, when GWIS fields for the acquisition day are available, the GWIS model also gives the power estimate. All of these are experimental outputs of our own models, labelled as such next to each value: they are fitted on one 24-hour snapshot and have not been checked on other days, and the detection score is not a validated probability.
 
 7. Context layers. Satellite ground tracks and scan swaths, cloud imagery, GPM IMERG precipitation and VIIRS Black Marble night lights can be switched on and off. The precipitation layer shows the latest available data and refreshes every 10 minutes while visible.
+
+8. Surface comparison and a research export. The sidebar counts raw MODIS and VIIRS detections by dominant surface class, retaining both columns when a sensor is selected. Classes with fewer than five detections combined are folded into Other; detections without a recognised class are counted separately. "Download slice (CSV)" exports one row per loaded detection for the selected sensor or both sensors, with position, acquisition time, satellite, instrument, FRP, brightness, display confidence, day/night and the available land-cover fractions and coverage. It exports the loaded global feed, not the map viewport or a pinned group. It contains no weather, viewing geometry or model estimates; absent land-cover values stay empty. This is a raw research slice, not a harmonized dataset.
 
 HOW IT WORKS
 
@@ -78,9 +86,9 @@ Our literature review (82 sources, linked below) shows that existing harmonizati
 
 WHAT IS LIVE AND WHAT IS PLANNED
 
-Working today, on live data: the 24-hour detections, the sensor switch and counters, colouring by sensor, the pinned timeline, the geometry, land-cover and weather enrichment, and the context layers. Experimental, from a one-day baseline: the notes on unmatched passes, the "Expected detection, no match" flag, the estimated fire radiative power on the next pass, and the GWIS- and CAMS-assisted detection odds.
+Working today, on live data: the 24-hour detections, the sensor switch and counters, colouring by sensor, the pinned timeline, the geometry, land-cover and weather enrichment, the surface-composition bar, the surface-class comparison, the raw CSV download and the context layers. Experimental, from a one-day baseline: the notes on unmatched passes, the "Expected detection, no match" flag, the estimated fire radiative power on the next pass, and the GWIS- and CAMS-assisted detection odds.
 
-Not built yet: the FIRMS archive since 2000, the harmonized record itself, its validation, free selection of an area and dates, and data export. "All sensors" shows the two sensors together without calibration or removal of duplicates; it is not a harmonized product.
+Not built yet: the FIRMS archive since 2000, the harmonized record itself, its validation, free selection of an area and dates in the interface, and export of a harmonized record. The public API accepts a bounding box and serves raw JSON and GeoJSON; the interface downloads raw CSV. "All sensors" shows the two sensors together without calibration or removal of duplicates; it is not a harmonized product.
 
 WHAT WE HOPE TO ACHIEVE
 
@@ -111,13 +119,13 @@ USE OF AI
 
 AI coding assistants (Anthropic Claude Code and OpenAI Codex) were used to write and review code and to draft documentation, the presentation text and the demo script. The link preview uses a screenshot of the public app with Codex-assisted layout and typography. AI research and writing assistants (Anthropic Claude, OpenAI Codex, Google Antigravity, Muse Code, Kimi Code, models accessed through the OpenRouter API, and the Orca agent workspace) helped compile the literature review. The app itself makes no calls to AI services. It applies the team's own fitted statistical models for next-pass FRP, detection scores and GWIS- or CAMS-assisted detection odds; their estimates are not NASA products, and NASA is not responsible for their accuracy. Training inputs come from the sources listed below. The idea of the project is the team's own.
 
-The animated Lama presenter for the demo was designed with the OpenAI ChatGPT image tool from an original photograph of the team's plush alpaca. Character motion was generated with Google Veo 3.1 Lite through OpenRouter. The character is labelled "AI-generated" whenever it appears. Live-action footage and application captures are real recordings. The English narration is synthesized with ElevenLabs Eleven v4 through OpenRouter, using the Voice Library voice "Flicker". These tools are also disclosed in the video description and file metadata.
+The video in production uses Lama, designed with the OpenAI ChatGPT image tool from an original photograph of the team's plush alpaca. The photographic cutout was also edited with that tool. Google Veo 3.1 Lite through OpenRouter supplied character motion and a reconstructed desk background. The reviewed assembly uses local compositing and forward/reverse motion cycles; its animated character is labelled "AI-generated". Live-action footage and application captures come from real recordings or screenshots; the reconstructed desk and animated character are generated. The English narration is synthesized with ElevenLabs Eleven v4 through OpenRouter, using "Flicker - Cheerful Fairy & Sparkly Sweetness", with loudness normalization and no pitch or tempo shift. These tools are recorded in the local assembly metadata. The final video and its publication description are not yet published.
 
 Independent project. Not affiliated with or endorsed by NASA.
 
 MATERIALS
 
-- Slides: [link to the PDF in the repository]
+- Slides (seven-slide public demo): https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/presentation/earth-fire-calendar.pdf
 - Technical note: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/technical-note.md
 - Literature review: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/modis-viirs-harmonization-literature-review.md
 - Third-party rights and licences: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/third-party-rights.md
@@ -125,28 +133,25 @@ MATERIALS
 - Code: https://github.com/avbelkin/nasa-space-apps-sg
 ```
 
-Screenshots to insert in this field, each taken from the version that is submitted and after the basemap change of 15 November, 21:01 SGT:
+Available interface illustrations, captured after the basemap change to EOxCloudless 2016; [capture provenance](../presentation/assets/screenshots/capture-scenes.json) records the times and source layer. These later captures do not reproduce the 08:36 UTC count snapshot.
 
 | No. | Screenshot | Caption |
 |---|---|---|
-| 1 | Globe, **MODIS** selected, counters visible | `Live NASA FIRMS · last 24 h · MODIS` |
-| 2 | Same view, **VIIRS** selected | `Live NASA FIRMS · same 24 h · VIIRS` |
-| 3 | **All sensors** with **Color fire spots by sensor** on, zoomed to one region | `Who saw it: both sensors, MODIS only, VIIRS only` |
-| 4 | Pinned group: timeline plus the geometry table with MODIS and VIIRS columns | `One place, 24 hours: detections, passes and viewing geometry` |
-| 5 | Same pinned group with **Weather at acquisition** open and the land-cover line visible | `Conditions of each observation` |
-| 6 | One pinned detection with **Predicted FRP if detected** or **GWIS-adjusted FRP if detected**, the model note under it, and a note on an unmatched pass or the GWIS or CAMS context line | `Experimental Earth Fire Calendar model estimates: what the next pass may show` |
+| 1 | [MODIS map](../presentation/assets/evidence/step-modis.jpg) | `Live NASA FIRMS · last 24 h · MODIS` |
+| 2 | [VIIRS map](../presentation/assets/evidence/step-viirs.jpg) | `Live NASA FIRMS · last 24 h · VIIRS` |
+| 3 | [All sensors](../presentation/assets/evidence/regional-sensors.jpg), [colour key](../presentation/assets/evidence/sensor-key.png) | `Visual groups: both sensors, MODIS only, VIIRS only, single detection` |
+| 4 | [Pinned timeline](../presentation/assets/evidence/pinned-timeline.png), [geometry](../presentation/assets/evidence/pinned-geometry.png) | `One selection, 24 hours: detections, predicted passes and estimated geometry` |
+| 5 | [Weather at acquisition](../presentation/assets/evidence/pinned-weather.png) | `Available conditions of each observation` |
 
 ## 6. Use of Super Intelligence (SI)
 
-Tick every option that applies. From what the repository shows:
+AI uses to declare in the form:
 
 - **Code generation tools** — yes: Anthropic Claude Code and OpenAI Codex, used for implementation, review, tests and documentation.
 - **Large language models for text** — yes: drafts of the documentation, the literature review, the slide text, the video script and this page.
-- **Image or video generation** — yes: OpenAI ChatGPT image tool for Lama's design, Google Veo 3.1 Lite through OpenRouter for his motion; label the animated character `AI-generated` throughout his appearance.
-- **Generated audio** — yes: ElevenLabs Eleven v4 through OpenRouter, voice "Flicker"; disclosed in the video description and MP4 metadata.
+- **Image or video generation** — yes: OpenAI ChatGPT image tool for Lama's design and photographic cutout; Google Veo 3.1 Lite through OpenRouter for character motion and a reconstructed desk background. The local assembly labels the animated character `AI-generated`.
+- **Generated audio** — yes: ElevenLabs Eleven v4 through OpenRouter, voice "Flicker"; recorded in the local assembly metadata. The video has not been published.
 - **Machine learning in the project itself** — yes. The browser applies coefficients fitted on one day of FIRMS detections to estimate FRP, score a later VIIRS detection, and compare detection odds with and without GWIS or CAMS inputs. The app makes no calls to AI services.
-
-The form's exact option names have not been seen; match them on the form.
 
 ## 7. NASA Data
 
@@ -168,7 +173,7 @@ The backend also has `/api/nasa/epic` and `/api/nasa/wildfires` endpoints (DSCOV
 
 ## 8. Space Agency Partner Data and Other References
 
-Paste the block below. The full table of sources, uses and licences is the [third-party materials register](third-party-rights.md); the [software inventory](software-licenses.md) lists every dependency with its licence.
+The full table of sources, uses and licences is the [third-party materials register](third-party-rights.md); the [software inventory](software-licenses.md) lists the complete locked UI graph and the direct backend references.
 
 ```text
 Full list of sources, uses and licences:
@@ -184,7 +189,7 @@ Partner space agency data
 Other data
 - CelesTrak GP/TLE orbital elements — satellite tracks, swaths, viewing geometry. Public data, CelesTrak usage policy.
 - NOAA GFS, GOES-R ABI/GLM, nowCOAST, CPC soil moisture — weather at acquisition. US Government work, public domain.
-- Open-Meteo forecast and air quality (incl. Copernicus CAMS) — weather, aerosols. CC BY 4.0.
+- Open-Meteo forecast and air quality (incl. Copernicus CAMS) — weather, aerosols. Data: CC BY 4.0; the free API service permits non-commercial use within its rate limits.
 - Copernicus GWIS and Global Drought Observatory (European Commission JRC) — fire danger, drought. CC BY 4.0.
 - US Forest Service WFAS — dead-fuel moisture. US Government work, public domain.
 - Extremum SAR GIS cloud tiles (EUMETSAT, NOAA, JMA, NASA/NOAA VIIRS imagery) — optional cloud layer. Used with Extremum's permission, credited in the app.
@@ -194,7 +199,7 @@ Software
 - Our own code and documents: Apache-2.0.
 
 AI tools
-- Anthropic Claude Code, OpenAI Codex — code, review, documentation drafts. Literature review: Anthropic Claude, OpenAI Codex, Google Antigravity, Muse Code, Kimi Code, models accessed through the OpenRouter API, and the Orca agent workspace. OpenAI ChatGPT image — Lama character design. Google Veo 3.1 Lite via OpenRouter — character animation. ElevenLabs Eleven v4 via OpenRouter — narration.
+- Anthropic Claude Code, OpenAI Codex — code, review, documentation drafts. Literature review: Anthropic Claude, OpenAI Codex, Google Antigravity, Muse Code, Kimi Code, models accessed through the OpenRouter API, and the Orca agent workspace. OpenAI ChatGPT image — Lama character design and photographic cutout. Google Veo 3.1 Lite via OpenRouter — character animation and reconstructed desk background. ElevenLabs Eleven v4 via OpenRouter — narration. The video remains in production.
 
 Methods and literature
 - Literature review with 82 references: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/modis-viirs-harmonization-literature-review.md
@@ -208,14 +213,6 @@ Hosting: GitHub Pages, GitHub Actions, Google Cloud Run, Google Cloud Firestore.
 
 Tick both after the [checklist](../docs/formal-requirements.md#checklist) is closed.
 
-## Before submitting
+## Publication and verification status
 
-| What | Why |
-|---|---|
-| Map images in the slides and the video | Frames captured before 15 November 20:54 SGT show the old EOX 2025 basemap (CC BY-NC-SA 4.0, non-commercial). The live app now uses the 2016 layer (CC BY 4.0); re-capture map scenes from it. If an old frame stays, add "EOxCloudless 2025, CC BY-NC-SA 4.0" to the [register](third-party-rights.md) |
-| Slides PDF link | Publish the final deck and put its link in Materials |
-| Video | Final export ≤ 30 s, public link, voice and AI label as described in field 5 |
-| Commit or tag of the submitted version | This page and the [technical note](technical-note.md) describe `09b25a0`. If the app changes again, update both; tag the submitted commit |
-| Baseline fitting scripts | Not in the repository; add them or keep the limitation stated in the [technical note](technical-note.md#6-first-baselines-on-matched-passes) |
-| Backend test run | Run `dotnet test` on the submitted commit and record it in the technical note |
-| Numbers | One snapshot across this page, the slides and the video |
+The app, source repository and seven-slide PDF are public. This page describes `7bbe91a`; it does not claim that the team has submitted that version on the Space Apps form. The final video is not public and is not the demo link above. Model-fitting scripts and the frozen training observations are absent from the repository; the reported evaluation cannot be rerun from this checkout. Current UI verification and the unrerun backend tests are recorded in the [technical note](technical-note.md#9-verification). The team's remaining publication actions belong in the [requirements status](../working/requirements-status.md).

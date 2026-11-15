@@ -1,27 +1,23 @@
 # Lama voice and character direction
 
-[Production plan](README.md) · [Working script](demo-video.md)
+[Production plan](README.md) · [Script](demo-video.md) · [Selected voice](voice-selection.json)
 
-## Current scope
+## Current scope and voice
 
-Work only on Lama's voice, character performance and physical desk-to-screen jump. The narration and story will be revised later. Existing lines are audition copy, not locked submission text. Do not rebuild the full film or record final UI actions in this block.
+The user authorized full assembly on 15 November with the updated 47-word narration. The selected voice is **Flicker - Cheerful Fairy & Sparkly Sweetness**, ElevenLabs voice ID `piI8Kku0DcvcL6TTSeQt`, through OpenRouter using `elevenlabs/eleven-v4`. The five completed takes use cheerful delivery, stability 0.5, similarity boost 0.8 and seed 38. No local pitch or tempo change is applied; the final mix is loudness-normalized.
 
-## Voice brief
+Lama is a little boy: smart, curious and lively. Preserve the selected voice rather than reopening casting. Will, Charlie, Jessica, Bella and Puck were rejected; Laura was superseded by the explicit Flicker selection. Historical audition artifacts retain their actual original metadata.
 
-An adult female cartoon performer voicing a little boy, approximately seven. Lama is small, clever, curious, energetic and mischievous. Use a bright childlike register, clear diction, lively questions and a knowing comic pause. The character should sound like a little boy in an animated film.
+The raw narration lasts 23.36 seconds across five files. Scribe v2 through OpenRouter checked coverage and supplied word timings. Its transcript spells Lama as Llama and joins Earth Fire; captions retain the team's exact spelling and wording. Transcription does not establish perceived age, acting quality or phoneme lip sync. The manifests, billing, transcript and acceptance evidence are in `lama/prepared/assembly-v1/`.
 
-The user rejected both Will and Charlie with a three-semitone pitch increase. The current audition changes the underlying voice and acting direction. It uses three female voice presets — Jessica, Bella and Laura — with no local pitch shift. The choice remains pending listening review; the presets and prompts do not establish that the resulting performance meets the brief.
+## Physical jump and transformation
 
-Provider: ElevenLabs Eleven v4 through OpenRouter synchronous speech. Initial creative stability was 0; Jessica was also tried at 0.5, and that take is audition A. Similarity boost is 0.35, seed 38. The same two temporary lines are synthesized in one request per candidate. Generated repetitions were trimmed using recorded word timestamps; raw files remain intact. `prepare-voice-auditions.mjs` reproduces the three review WAV files and records the edits. The exact request direction, IDs, raw MP3 and transcription are preserved in `lama/prepared/voice-v3/`.
+**The real plush Lama must jump first. He becomes the animated character only inside the physical monitor.** A camera zoom alone does not satisfy this. The current local composite uses the photographic toy cutout for the entire squash and airborne arc, including entry into the monitor. Only after that image disappears does the animated reference appear inside the screen. A short camera push then connects to the presenter stage.
 
-Reference: the [OpenRouter speech guide](https://openrouter.ai/docs/guides/overview/multimodal/tts) and live `models?output_modalities=speech` catalogue. The three chosen presets are advertised by the active endpoint. Free-form `instructions` are not supported for ElevenLabs on this route, so direction is passed as inline audio tags. The ordinary voice parameter does not create a custom designed voice. Transcription checks whether directions were accidentally spoken, but perceived age and boyish acting require listening.
+The photographic cutout was edited with the OpenAI ChatGPT image tool, so do not call it a pixel-exact extraction. The empty desk background comes from a collected Google Veo 3.1 Lite take whose original trajectory was rejected. Visible watermarks and metadata disclose both. The live/composite pose and background cut remains visible; the controlled arc is not articulated plush-leg animation.
 
-## Physical jump
+## Living presenter
 
-The preceding pilot contains a camera push, not the requested jump. The new test must visibly show Lama crouch, push off the desk, leave the surface, travel through the air and pass into the physical monitor. His original position must be empty afterward. The monitor and camera should stay still enough for the trajectory to read.
+Use the cream toy's long muzzle and neck, black eyes with gold rims, copper ears and orange/navy/ivory scarf. Alpacas have toes, not hooves. The corrected character still has four limbs. The newer Veo take introduced an extra limb in its full-body view, which remains rejected. Use only the independently inspected waist-up 1.0–2.6-second excerpt; it has one visible presenting foreleg. The assembly repeats it forward and backward with a modest slowdown, preserving blinks, head turns and gestures. Do not describe this as accepted full-body walking or exact lip sync.
 
-The real desk/monitor frame was used for one bounded four-second Google Veo 3.1 Lite image-to-video test through OpenRouter. That raw trajectory missed the screen and is rejected. Its empty ending supplies a generated background for a controlled composite: the existing living character squashes, rises toward the screen, shrinks into a glow, then drops into the presenter scene. `render-jump-pilot.mjs` produces the silent 3.5-second test in `lama/prepared/jump-v1/jump-pilot.mp4`.
-
-This remains a rough test: transformation happens before takeoff, the body waves during flight, and the hand/background changes at the cut. These are creative review points, not an accepted final jump. Review it separately from speech. A visible AI watermark and metadata disclose the generated transition. The full film's timing will be revised with its text; the earlier 0.6-second transition allocation is provisional.
-
-Review continuity of cream fur, orange/navy scarf, soft toes, full-body motion, monitor entry and the transformation into the existing living presenter. Do not accept a zoom or disappearance in place as a completed jump.
+Lama stands in the left foreground like a weather presenter; the actual app display is behind and to his right. Keep meaningful data and attribution clear of his gestures, and keep `AI-generated` visibly on the body. The user's current screen recordings replace earlier temporary captures; narration remains unchanged.

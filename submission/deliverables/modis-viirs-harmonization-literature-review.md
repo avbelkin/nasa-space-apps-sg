@@ -1,5 +1,7 @@
 # Harmonizing MODIS and VIIRS Data: A Review of Existing Approaches and a Hypothesis on the Role of Detailed Land-Surface Type
 
+**Scope:** 82 cited sources and a proposed research hypothesis. Implementation status checked against Earth Fire Calendar commit `7bbe91a` on 15 November 2026; current functionality and evaluation are documented in the [technical note](technical-note.md). A proposal below is not a claim that the app implements or validates that method.
+
 ## 1. Introduction: three fundamental barriers to MODIS–VIIRS comparability
 
 The NASA Space Apps Challenge 2026 problem statement [S318] spells out why the more than twenty-year MODIS archive (Terra since 2000, Aqua since 2002) and the records of the new-generation VIIRS (Suomi NPP since 2012, NOAA-20 since 2018, NOAA-21 since 2024; see [S294]; [S260]) cannot be combined by simply merging tables of active-fire hotspots: according to the statement, the two records cannot be compared directly without harmonization, because MODIS and VIIRS differ in spatial resolution, sensitivity and observation schedules [S318].
@@ -118,6 +120,12 @@ In contrast to global angular curves and corrections based on the dominant class
 * If an improvement is confirmed on independent validation, use the resulting class-angular response functions (together with normalization for the overpass schedule and filtering of static thermal anomalies) for a harmonized burning calendar that accounts for land-cover heterogeneity; the quality of dating and of event duration should be assessed separately from sensor agreement and total FRP.
 
 The limitations of such a test follow from the review itself: detection probability, number of fire pixels, FRP and burned area are different quantities; a result for matched detections does not describe missed events, whose assessment requires information on observations that took place without a detection, or independent reference data; the class at the pixel centre is not the composition of a large oblique footprint, and a 100–300 m map does not by itself remove mixing within the thermal pixel; individual 375-m detections are not independent FRP measurements, because several I-pixels share a single M13 measurement (§5.3), and this must be taken into account when assessing significance; a "day / night" split does not replace the continuous illumination geometry.
+
+### What the current prototype implements
+
+The live app reads the latest 24 hours from MODIS on Terra/Aqua and VIIRS on NOAA-20/NOAA-21. It estimates geometry from orbital elements, samples the fixed 2019 ESA CCI / C3S land-cover map (300 m native grid; 1.2 km overview for the worldwide feed), and retrieves available weather at acquisition. The pinned surface bar shows class fractions and classified coverage; for a group it averages available detection summaries. The sidebar compares raw detection counts by dominant surface class, and a CSV download exports the loaded sensor-filtered detections with their available surface fractions. Neither display nor export applies an inter-sensor correction.
+
+The app's one-day pass-matching and FRP baselines, including the GWIS and CAMS variants, are preliminary uses of these fields, not a test of the detailed class-by-angle hypothesis. The live feed has no static-source type flag or corresponding filter; the app does not read a 100 m CGLS layer, reconstruct archive years, fit class-angular response functions, or produce a harmonized calendar. Its CSV does not include viewing geometry, weather, scan/track dimensions or model outputs. Validating the estimated geometry, obtaining finer footprint classification and observation opportunities without detections, and testing independent days and regions remain research work. The precise current model results and their reproduction limits are in [technical note §6](technical-note.md#6-first-baselines-on-matched-passes).
 
 ---
 
