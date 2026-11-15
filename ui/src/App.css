@@ -600,6 +600,23 @@
   color: var(--text-muted);
 }
 
+.fire-second-pass-note {
+  --fire-second-pass-warning: light-dark(#92400e, #fde68a);
+  display: grid;
+  gap: 0.2rem;
+  padding-inline-start: 0.5rem;
+  border-inline-start: 2px solid var(--fire-second-pass-warning);
+}
+
+.fire-second-pass-note strong {
+  color: var(--fire-second-pass-warning);
+}
+
+.fire-second-pass-note p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
 .fire-weather-details > summary {
   cursor: pointer;
   padding-block: 0.25rem;

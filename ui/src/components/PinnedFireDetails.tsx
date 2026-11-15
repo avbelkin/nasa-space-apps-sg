@@ -7,6 +7,7 @@ import {
 } from '../utils/fireSpots'
 import type { SatelliteOverpassIndex } from '../utils/satelliteOverpassTimeline'
 import type { FireObservationGeometry } from '../utils/fireObservationGeometry'
+import { getSecondPassOutlook } from '../utils/secondPassOutlook'
 import { FireDetectionPowerSummary, FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
 import { FireObservationDetails } from './FireObservationDetails'
 import { CloseIcon } from './icons'
@@ -23,10 +24,11 @@ interface PinnedFireDetailsProps {
   feedGeometry?: readonly (FireObservationGeometry | null)[]
   landCoverBySpot: FireSpotLandCoverLookup
   overpassIndex: SatelliteOverpassIndex | null
+  fetchedAtUtc?: string
   onUnpin: () => void
 }
 
-export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, overpassIndex, onUnpin }: PinnedFireDetailsProps) {
+export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, overpassIndex, fetchedAtUtc, onUnpin }: PinnedFireDetailsProps) {
   const details = useMemo(
     () => formatFireSpotsTooltip(selection.inputs, selection.nowMs, {
       sensorFilter: selection.sensorFilter,
@@ -40,6 +42,14 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
   }
 
   const { timeline } = details
+  const outlook = details.count === 1 && fetchedAtUtc
+    ? getSecondPassOutlook(
+      selection.inputs[0],
+      timeline.slots.flatMap((slot) => slot?.subBars.filter((bar) => bar.kind !== 'detection') ?? []),
+      details.landCoverLabel,
+      Date.parse(fetchedAtUtc),
+    )
+    : null
 
   return (
     <section className="pinned-fire-details wrapper-surface" aria-labelledby="pinned-fire-heading">
@@ -68,6 +78,13 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
         </button>
       </header>
       <FireDetectionsTimelineCard timeline={timeline} />
+      {outlook && (
+        <div className="fire-second-pass-note">
+          <strong>No matching detection for {outlook.satellite}’s predicted pass in this selection.</strong>
+          {outlook.fewer.length > 0 && <p>The baseline saw fewer misses with {outlook.fewer.join(' and ')}.</p>}
+          {outlook.more.length > 0 && <p>The baseline saw more misses with {outlook.more.join(' and ')}.</p>}
+        </div>
+      )}
       <FireObservationDetails inputs={selection.inputs} feedGeometry={feedGeometry} />
     </section>
   )

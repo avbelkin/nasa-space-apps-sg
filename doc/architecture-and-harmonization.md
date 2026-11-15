@@ -71,6 +71,25 @@ All three hotspot routes return cached land cover with their normal response. Wh
 - A populated object reports `dominantCode`, `coverage` (the fraction of the footprint with classified data), and `classes` (code/fraction pairs sorted by descending share, with ties resolved by the lower code). Class shares use only classified area. `landCoverDataset` identifies the year, sampling resolution and class labels.
 - `landCover` is null for unclassified footprints and for footprints awaiting required blocks. FIRMS detections remain available.
 
+## Same-family second-pass baseline
+
+The initial baseline used one production FIRMS snapshot from 14 November 2026 at 10:10 UTC through 15 November at 10:10 UTC. It grouped detections within six hours and within 1 km of a MODIS anchor or 500 m of a VIIRS anchor. The training target was an inferred miss on a later predicted pass by another satellite in the same family. A pass needed enough time for both the ±25 minute detection match window and the expected feed delay. The eligible dataset contained 4,458 MODIS and 31,515 VIIRS passes.
+
+Separate regularized logistic regressions used five folds of held-out 5° geographic blocks. Feature importance measured the change in held-out performance after refitting without a feature group.
+
+| Family | Miss rate | AUROC | Average precision for misses | Largest AUROC loss after removing a feature group |
+| --- | ---: | ---: | ---: | --- |
+| MODIS | 92.1% | 0.752 | 0.971 | Land cover (0.034) |
+| VIIRS | 63.0% | 0.756 | 0.841 | First detection FRP and brightness (0.025) |
+
+- **MODIS.** In the observed sample, 81.0% of passes over broadleaved evergreen cover had no match, compared with 98.7% over open broadleaved deciduous cover. Land cover may track regional differences, and only 354 MODIS passes had a matched second detection.
+- **VIIRS.** Passes following a first detection of 2–5 MW missed 70.1% of the time, compared with 49.3% at 20–50 MW. The miss rate was 44.6% within 100 km of the second ground track and 87.7% at 1,200 km or farther.
+- Lighting and second-pass viewing geometry added signal in both families. The observed miss labels cannot identify which physical mechanism caused any individual miss.
+
+Pinned details can show a warning for a solo detection when an eligible, settled pass by another satellite in the same family has no matching detection. The note highlights matching baseline associations using land cover or first-detection FRP and predicted distance to the second ground track. It gives no per-spot probability. The timeline uses the current map selection to see whether a pass has a match, so its results can differ from the dataset's fixed-radius groups.
+
+**Important retraining follow-up.** When the parallel enrichment work is available, retrain the MODIS and VIIRS baselines separately. Compare the original and enriched feature sets on the same eligible rows and geographic folds, then check improvement on additional held-out days. Report AUROC, average precision and log loss by family, along with feature ablations and enrichment coverage. Use the comparison to decide whether the pinned outlook should change.
+
 ## Live hotspot weather enrichment
 
 The [24-hour weather enrichment proposal](./live-hotspot-weather-enrichment.md) ranks weather, surface, and sensor fields for comparing recent MODIS and VIIRS detections. It describes how to attach available weather at each spot's acquisition time.
