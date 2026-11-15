@@ -10,11 +10,14 @@
     "neonBlue": "#0960E1",
     "blue": "#2E96F5",
     "yellow": "#EAFE07",
-    "white": "#FFFFFF"
+    "white": "#FFFFFF",
+    "muted": "#52627E",
+    "onDarkMuted": "#B6C6E2",
+    "onDarkBody": "#DCE5F3",
+    "rule": "#D9E0EA",
+    "ruleDark": "#34466A"
   },
   "fonts": {
-    "display": "Fira Sans Black",
-    "heading": "Fira Sans",
     "body": "Overpass"
   },
   "sizes": {
@@ -25,6 +28,11 @@
     "body": 25,
     "small": 20
   },
-  "patternOpacity": 0.25,
-  "reference": "assets/brand/palette.json"
+  "reference": "assets/brand/palette.json",
+  "sensorColors": {
+    "both": "#ff5a52",
+    "single": "#ffd84d",
+    "modis": "#68d5a0",
+    "viirs": "#b89cf0"
+  }
 }

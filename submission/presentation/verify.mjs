@@ -11,7 +11,7 @@ const {xml2js}=require('xml-js');
 const {PDFDocument,PDFName,PDFString,PDFHexString}=require('pdf-lib');
 const firstBlock=process.env.DECK_SCOPE==='first-block';
 const expectedSlideCount=firstBlock?2:7;
-const version=process.env.DECK_VERSION || (firstBlock?'direction-r8':'scaffold-r7');
+const version=process.env.DECK_VERSION || (firstBlock?'direction-r11':'complete-r11');
 const buildDir=path.join(root,'.build',version);
 const tokens=JSON.parse(await fs.readFile(path.join(root,'design-tokens.json'),'utf8'));
 const allowedSizes=new Set(Object.values(tokens.sizes).map(n=>String(n*75)));
@@ -106,10 +106,10 @@ for(const section of sections)for(const m of section[3].matchAll(/\[([^\]]+)\]\(
 }
 const pdfFonts=execFileSync(path.join(poppler,'pdffonts'),[pdfPath],{encoding:'utf8'});
 await fs.writeFile(path.join(buildDir,'pdf-fonts.txt'),pdfFonts);
-if(!/Overpass/.test(pdfFonts)||(!firstBlock&&!/FiraSans/.test(pdfFonts))||/Calibri/.test(pdfFonts))throw Error('PDF brand fonts missing or substituted');
+if(!/Overpass/.test(pdfFonts)||/Calibri/.test(pdfFonts))throw Error('PDF brand fonts missing or substituted');
 if(/Type 3/.test(pdfFonts))throw Error('Use the supplied TrueType fonts for the presentation PDF');
 const embeddedFaces=[...pdfFonts.matchAll(/^\S+\s+CID TrueType\s+Identity-H\s+yes\s+yes\s+yes\s+\d+\s+\d+\s*$/gm)].length;
-if(embeddedFaces<(firstBlock?3:4))throw Error('Expected embedded Unicode TrueType faces for the selected layout');
+if(embeddedFaces!==3)throw Error('Expected embedded Unicode TrueType faces for the selected layout');
 if(pdf.getTitle()!=='Earth Fire Calendar'||pdf.getAuthor()!=='Earth Fire Calendar')throw Error('Wrong PDF metadata');
 const core=await zip.file('docProps/core.xml').async('string');
 if(/Walnut Exporter|<dc:title>Presentation<\/dc:title>/.test(core))throw Error('Wrong PPTX metadata');
