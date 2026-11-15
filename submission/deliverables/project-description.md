@@ -124,7 +124,7 @@ Independent project. Not affiliated with or endorsed by NASA.
 MATERIALS
 
 - Demo video: https://youtu.be/K_RLqjW4eNk
-- Slides: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/presentation/earth-fire-calendar.pdf
+- Slides: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/earth-fire-calendar.pdf
 - Technical note: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/technical-note.md
 - Literature review: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/modis-viirs-harmonization-literature-review.md
 - Third-party rights and licences: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/third-party-rights.md

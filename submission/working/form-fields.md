@@ -84,7 +84,7 @@ Exceeding the limit makes the project ineligible for global judging; the guide n
 - a file in a GitHub repository;
 - any other external site, cloud service or code repository: the guide ends the list with "etc.".
 
-The demo is the public video https://youtu.be/K_RLqjW4eNk, linked in field 3. The [seven-slide PDF](../presentation/earth-fire-calendar.pdf) is linked in the Materials block of field 5.
+The demo is the public video https://youtu.be/K_RLqjW4eNk, linked in field 3. The [seven-slide PDF](../deliverables/earth-fire-calendar.pdf) is linked in the Materials block of field 5.
 
 ## 4. Link to Final Project
 

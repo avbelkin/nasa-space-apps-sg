@@ -69,7 +69,7 @@ Maps and evidence panels were captured again after the current EOxCloudless 2016
 
 Root inspection covered all seven actual PDF pages rendered by Poppler. Automated verification passed exact source wording, seven pages, twelve URI annotations, three embedded Unicode Overpass faces, all token sizes, nine image/chart descriptions, both native charts and embedded workbooks, fixed 0–100,000 scales, metadata and the finalizer receipt. Microsoft PowerPoint 16.109.3 opened and exported all seven slides; its visual proof is being checked. Independent Codex acceptance is in progress; this is a review checkpoint, not a claim that the review has finished.
 
-The compact PDF is tracked as `earth-fire-calendar.pdf`; full-sized original captures and versioned export history remain ignored. Local PDF/PPTX/overview copies are also in the main checkout.
+The compact PDF is tracked as `submission/deliverables/earth-fire-calendar.pdf`; full-sized original captures and versioned export history remain ignored. Local PDF/PPTX/overview copies are also in the main checkout.
 
 ```text
 PDF:  85aaab71706cb5a9f4cd677031314abe8824853a7214871c4e92300ac9a8018b
