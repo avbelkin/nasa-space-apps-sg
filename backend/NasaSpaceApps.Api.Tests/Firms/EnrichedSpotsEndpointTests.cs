@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NasaSpaceApps.Api.Firms;
+using NasaSpaceApps.Api.LandCover;
 using Xunit;
 
 namespace NasaSpaceApps.Api.Tests.Firms;
@@ -32,6 +33,7 @@ public sealed class EnrichedSpotsEndpointTests
             {
                 services.AddHttpClient("Firms").ConfigurePrimaryHttpMessageHandler(() => new StubHandler(csv));
                 services.AddHttpClient("CelesTrak").ConfigurePrimaryHttpMessageHandler(() => new StubHandler(""));
+                services.AddSingleton<ILandCoverEnricher, StubLandCover>();
             });
         });
         using var client = factory.CreateClient();
@@ -40,6 +42,7 @@ public sealed class EnrichedSpotsEndpointTests
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var initial = (await client.GetFromJsonAsync<FirmsLiveSpotsResponse>(feedUrl, timeout.Token))!;
         Assert.Equal("pending", initial.GeometryStatus);
+        Assert.Equal("pending", initial.EnrichmentStatus);
         Assert.DoesNotContain("geometry", initial.Columns);
         Assert.Equal(2, initial.Count);
 
@@ -51,6 +54,7 @@ public sealed class EnrichedSpotsEndpointTests
         } while (batch.GeometryStatus == "pending");
 
         Assert.Equal("ready", batch.GeometryStatus);
+        Assert.Equal("pending", batch.EnrichmentStatus);
         Assert.Equal(TimeSpan.FromHours(24), batch.WindowEndUtc - batch.WindowStartUtc);
         Assert.Equal(initial.Columns.Append("geometry"), batch.Columns);
         Assert.Null(batch.Geometry);
@@ -67,6 +71,10 @@ public sealed class EnrichedSpotsEndpointTests
 
         var unaugmented = (await client.GetFromJsonAsync<FirmsLiveSpotsResponse>(feedUrl, timeout.Token))!;
         Assert.DoesNotContain("geometry", unaugmented.Columns);
+
+        var complete = await client.GetFromJsonAsync<JsonElement>(
+            feedUrl + "&enrichGeometry=true&enrichLandCover=true", timeout.Token);
+        Assert.Equal("complete", complete.GetProperty("enrichmentStatus").GetString());
     }
 
     private static string? JsonText(object? value) => ((JsonElement?)value)?.GetRawText();
@@ -79,5 +87,12 @@ public sealed class EnrichedSpotsEndpointTests
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body) });
+    }
+
+    private sealed class StubLandCover : ILandCoverEnricher
+    {
+        public Task<LandCoverResult> EnrichAsync(
+            IReadOnlyList<FirmsHotspot> spots, bool fetchMissing, CancellationToken cancellationToken, bool world = false) =>
+            Task.FromResult(new LandCoverResult(spots, Pending: !fetchMissing));
     }
 }

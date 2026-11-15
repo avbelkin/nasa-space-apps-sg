@@ -126,6 +126,7 @@ function App() {
   }, [showOrbits])
 
   const [fireSpotsPayload, setFireSpotsPayload] = useState<FirmsLiveSpotsResponse | null>(null)
+  const [fireEnrichmentStopped, setFireEnrichmentStopped] = useState(false)
   const [fireSpotsLoading, setFireSpotsLoading] = useState<boolean>(!isProdUnconfigured)
   const [fireSpotsError, setFireSpotsError] = useState<string | null>(null)
 
@@ -283,12 +284,16 @@ function App() {
             setFireSpotsPayload(data)
             landCoverPending = data.landCoverPending === true
             geometryPending = data.geometryStatus === 'pending'
+            setFireEnrichmentStopped(
+              (landCoverPending || geometryPending) && enrichmentPasses >= MAX_FIRE_ENRICHMENT_PASSES_PER_REFRESH,
+            )
           }
         } catch {
           // Keep the working fire feed when a deferred request fails.
-          if (refreshId === firesRefreshId) {
+          if (!controller.signal.aborted && refreshId === firesRefreshId) {
             landCoverPending = false
             geometryPending = false
+            setFireEnrichmentStopped(true)
           }
         } finally {
           enrichmentInProgress = false
@@ -310,6 +315,7 @@ function App() {
         (data) => {
           if (!controller.signal.aborted && refreshId === firesRefreshId) {
             applyFiresSuccess(data)
+            setFireEnrichmentStopped(false)
             landCoverPending = data.landCoverPending === true
             geometryPending = data.geometryStatus === 'pending'
             requestGeometry = geometryPending
@@ -617,6 +623,7 @@ function App() {
           payload: fireSpotsPayload,
           summary: fireSummary,
           refreshFailed: fireSpotsPayload !== null && fireSpotsError !== null,
+          enrichmentStopped: fireEnrichmentStopped,
         }}
       />
     </div>

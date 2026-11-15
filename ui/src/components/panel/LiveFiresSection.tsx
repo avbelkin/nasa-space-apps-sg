@@ -8,7 +8,14 @@ export interface LiveFiresInfo {
   summary: FireSpotsSensorSummary
   // A later refresh failed while an earlier snapshot is still shown
   refreshFailed: boolean
+  enrichmentStopped: boolean
 }
+
+const ENRICHMENT_LABELS = {
+  pending: 'Spot enrichment in progress',
+  complete: 'Spot enrichment complete',
+  incomplete: 'Spot enrichment incomplete',
+} as const
 
 function formatUtcTimestamp(iso: string | null): string {
   if (!iso) {
@@ -23,7 +30,8 @@ function formatUtcTimestamp(iso: string | null): string {
 
 // Live NASA FIRMS detections of the last 24 hours.
 export function LiveFiresSection({ info }: { info: LiveFiresInfo }) {
-  const { state, payload, summary, refreshFailed } = info
+  const { state, payload, summary, refreshFailed, enrichmentStopped } = info
+  const enrichmentStatus = enrichmentStopped ? 'incomplete' : payload?.enrichmentStatus
 
   return (
     <section className="panel-section" aria-labelledby="live-fires-heading">
@@ -67,6 +75,12 @@ export function LiveFiresSection({ info }: { info: LiveFiresInfo }) {
             &middot; Snapshot fetched {formatUtcTimestamp(payload.fetchedAtUtc)}
             {payload.stale ? ' (cached fallback)' : ''}.
           </p>
+          {enrichmentStatus && (
+            <p className="panel-note" role="status"
+              title="Observation geometry and land cover processing for this snapshot. Fields can be missing where source data is unavailable.">
+              {ENRICHMENT_LABELS[enrichmentStatus]}
+            </p>
+          )}
           <p className="panel-note">
             Pulse strength reflects detection age (&lt;24h), dot scale reflects Fire Radiative Power
             (MW), and dot brightness reflects sensor confidence. Hover over a spot to preview its

@@ -50,6 +50,8 @@ Loading a FIRMS snapshot queues one enrichment job per cached snapshot. A bounde
 
 The app loads `/api/fires/spots` immediately and follows up with `enrichGeometry=true`, sharing the deferred refresh with land cover. On the follow-up, `geometryStatus` reports `pending`, `unavailable`, or `ready`. A ready response appends `geometry` to `columns` and the geometry object or null to each spot tuple. Existing indexes are preserved. Pinned Observation Details reads those fields from the feed and uses the pinned lookup for missing rows.
 
+The feed also reports `enrichmentStatus` for the snapshot. It is `pending` while geometry or land cover work remains, `complete` when both finish, and `incomplete` when work has stopped and geometry is unavailable. A completed batch can contain null fields when a source has no usable data.
+
 Add `includeGeometry=true` to any of the three hotspot endpoints. The response can wait up to one second for the worker and includes a top-level `geometry` object:
 
 - `geometry.status` is `pending` while work is queued or running (including when the queue is full), `unavailable` if the batch failed and is backing off, or `ready` on completion. Fetch the same query again to check progress. The base detections are returned in all cases.

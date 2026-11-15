@@ -100,6 +100,7 @@ export interface FirmsLiveSpotsResponse {
   landCoverDataset?: LandCoverDataset
   landCoverPending?: boolean
   geometryStatus?: 'pending' | 'unavailable' | 'ready'
+  enrichmentStatus?: 'pending' | 'complete' | 'incomplete'
 }
 
 export interface FireSpotFeatureProperties {
