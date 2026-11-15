@@ -30,8 +30,8 @@ The form has two link fields (3 and 4). All other materials go in as links insid
 | 2. High-Level Project Summary | Two or three sentences: the problem, what is built, what is still planned | — |
 | 3. Link to Project Demo | **Video** recorded from the [script](../video/demo-video.md) | Public video link that opens without sign-in |
 | 4. Link to Final Project | **App** | [Link with the prepared view](#4-link-to-final-project) |
-| 5. Detailed Project Description | [Project text](../deliverables/project-description.md#5-detailed-project-description), screenshots and a closing **Materials** block of four links: slide deck, technical note, literature review, repository | Each link goes straight to the file in `submission/docs`; the repository link goes to the README |
-| 6. Use of Super Intelligence (SI) | AI-use selections: code, text drafts and the generated Lama presenter image; add synthetic narration if used | — |
+| 5. Detailed Project Description | [Project text](../deliverables/project-description.md#5-detailed-project-description), screenshots and a closing **Materials** block of four links: slide deck, technical note, literature review, repository | Each link goes straight to the file in `submission/deliverables` or `submission/presentation`; the repository link goes to the README |
+| 6. Use of Super Intelligence (SI) | AI-use selections: code, text drafts and the generated Lama presenter image, and ElevenLabs synthetic narration through OpenRouter | — |
 | 7. NASA Data | FIRMS and GIBS with the role of each dataset | Links to the NASA product pages |
 | 8. Space Agency Partner Data and Other References | Third-party data, libraries and licences; the literature review as the supporting source | The same link to the review file as in field 5 |
 | 9. Two checkboxes | Tick both | — |

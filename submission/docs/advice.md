@@ -131,7 +131,7 @@ The winners' materials also contain claims of infallibility and accuracy with no
 | 0:10 | How it works: images or a prototype, the user experience, the role of open data from NASA and partner agencies |
 | 0:20–0:30 | A look ahead: what the solution could give people and the world |
 
-The [video script](../video/demo-video.md) adapts this outline to a 29-second story with Lama, Alexey's plush alpaca assistant. A one-second live shot leads into an animated jump into the monitor; the character then narrates a real screen recording. The project name is spoken; the exact team name is added as a caption when supplied. The outline is the guide's advice, not an eligibility condition. The [shooting plan](../video/README.md) specifies the footage and tools.
+The [video script](../video/demo-video.md) adapts this outline to a 29-second story with Lama, Alexey's plush alpaca assistant. A 1.4-second live shot leads into a 0.6-second animated push into the monitor; the character then narrates a real screen recording. The project name is spoken; the exact team name is added as a caption when supplied. The outline is the guide's advice, not an eligibility condition. The [shooting plan](../video/README.md) specifies the footage and tools.
 
 | Script shot | Criteria it covers |
 |---|---|

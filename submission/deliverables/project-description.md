@@ -109,7 +109,7 @@ USE OF AI
 
 AI coding assistants ([Anthropic Claude Code, OpenAI Codex — confirm the list]) were used to write and review code and to draft documentation, the presentation text and the demo script. [Confirm: AI assistance in compiling the literature review.] The app itself makes no calls to AI services and generates no text or images. It contains one small statistical model, a regression fitted on NASA FIRMS data, which produces the estimated fire radiative power on the next pass; everything else it shows comes from the data sources listed below. The idea of the project is the team's own.
 
-The Lama presenter image for the demo was generated with OpenAI ChatGPT from an original photograph of the team's plush alpaca. It is an AI-edited depiction, not an exact photographic cutout. The video will label it "AI-edited image" whenever it appears. Live-action footage and application captures are real recordings. Voiceover has not yet been produced; if synthesized, its provider will be disclosed in the video description and file metadata.
+The Lama presenter image for the demo was generated with OpenAI ChatGPT from an original photograph of the team's plush alpaca. It is an AI-edited depiction, not an exact photographic cutout. The video will label it "AI-edited image" whenever it appears. Live-action footage and application captures are real recordings. The English narration was synthesized with ElevenLabs Eleven v4 through OpenRouter, using the Will voice. The provider is disclosed in the video description and file metadata.
 
 Independent project. Not affiliated with or endorsed by NASA.
 
@@ -139,7 +139,7 @@ Tick every option that applies. From what the repository shows:
 - **Code generation tools** — yes: `Co-Authored-By: Claude` trailers in 35 of 193 commits, branches named `codex/*`, an `AGENTS.md` in the root.
 - **Large language models for text** — yes: drafts of the documentation, the slide text, the video script and this page.
 - **Image or video generation** — yes: the Lama presenter image was generated with OpenAI ChatGPT from an original photograph; label it `AI-edited image` throughout its appearance. `[Separately confirm: how og-preview.png was made.]`
-- **Generated audio** — not produced yet. If the narration is synthesized, add the actual provider to the disclosure and video metadata before submission.
+- **Generated audio** — yes: English narration synthesized with ElevenLabs Eleven v4 through OpenRouter (Will voice); disclose it in the video description and MP4 metadata.
 - **Machine learning in the project itself** — yes, if the form's wording covers it: the app applies regression coefficients fitted on one day of FIRMS detections (the estimated FRP on the next pass), and the notes on unmatched passes use logistic-regression baselines. The app makes no calls to AI services.
 
 The form's exact option names have not been seen; match them on the form.
