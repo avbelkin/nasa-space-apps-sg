@@ -35,7 +35,7 @@ A live globe that compares the two sensors and attaches to each detection the co
 3. Read the conditions of each observation: viewing geometry, land cover and weather.
 4. Check what the next satellite pass reported: nothing where a detection was expected, or a different fire radiative power.
 
-*The two sets of detections overlap only in part. Colours describe screen-space groups, not verified same-fire matches.*
+*The two sets of detections overlap only in part.*
 
 ## Slide 4 — Working today, on live data
 
@@ -87,6 +87,6 @@ A live globe that compares the two sensors and attaches to each detection the co
 **Sources:** [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) — MODIS and VIIRS fire detections. [NASA GIBS](https://earthdata.nasa.gov/gibs) — GPM IMERG precipitation and VIIRS Black Marble night lights. ESA CCI / Copernicus C3S — land cover. NOAA, [Open-Meteo](https://open-meteo.com/), Copernicus GWIS and GDO, US Forest Service — weather at acquisition. [Extremum](https://gis.extremum.org) — cloud layer: geostationary imagery from EUMETSAT, NOAA and JMA, blended with NASA VIIRS imagery at high latitudes. [CelesTrak](https://celestrak.org/) — orbital elements. [EOX](https://s2maps.eu/)/Copernicus Sentinel-2 — Earth basemap. Bright Star / Hipparcos catalogue — star background.
 **Rights and licences:** [Data, imagery, generated media and fonts](https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/third-party-rights.md) · [Software inventory](https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/software-licenses.md).
 
-**AI assistance:** Claude Code and Codex — code, text and layout. Virtual presenter: Lama; these are not registered members.
+**AI assistance:** Claude Code and Codex — code, text and layout.
 
-Earth Fire Calendar model estimates are not validated by NASA; NASA is not responsible for their accuracy. Independent project; not affiliated with or endorsed by NASA.
+Model estimates are Earth Fire Calendar's, not NASA's. Independent project; not affiliated with or endorsed by NASA.

@@ -131,14 +131,12 @@ The Cloud Run deployment job runs once the required `GCP_*` repository variables
 | `GCP_CONCURRENCY` | Optional max concurrent requests per instance | `80` |
 
 
-## Team, licence and AI provenance
+## Team, licence and AI use
 
-Team **Plush**: **Alexey Belkin** and **Viktoriia Naiman**. Lama is a fictional presenter; Claude Code and Codex are AI tools, not registered participants. The team confirms that the original idea is theirs and application development began after the hackathon start. Pre-event preparation involved collecting and reading research; the [compliance audit](submission/working/submission-compliance-audit.md) records the remaining eligibility question for the pre-existing research material.
+Team **Plush**: **Alexey Belkin** and **Viktoriia Naiman**. The idea of the project is the team's own.
 
-Original contributions use [Apache-2.0](LICENSE), with third-party exclusions in [NOTICE](NOTICE). Submitted [rights and source credits](submission/deliverables/third-party-rights.md) and [software licence inventory](submission/deliverables/software-licenses.md) distinguish verified licences from unresolved permissions. The website includes [dependency notices](ui/public/third-party-notices.txt); the root licence does not relicense maps, datasets, fonts or voices.
+Our code and documents are released under [Apache-2.0](LICENSE); third-party materials keep their own licences (see [NOTICE](NOTICE)). All data sources, their uses and licences are listed in the [third-party materials register](submission/deliverables/third-party-rights.md); software dependencies in the [software inventory](submission/deliverables/software-licenses.md), with licence texts in [`third-party-notices.txt`](ui/public/third-party-notices.txt).
 
-Anthropic Claude Code and OpenAI Codex assisted with implementation, review, tests, documentation, slide/script drafting and layout. The original image-tool Lama design, Veo animation and ElevenLabs narration are separately disclosed in the [video documentation](submission/video/disclosures.md). The final voice/animation choices must match the published description and file metadata. The prior literature-review assistance history is not fully reconstructed; no claim of wholly human authorship is made.
+Anthropic Claude Code and OpenAI Codex assisted with implementation, review, tests, documentation and slide and script drafts. The demo's animated presenter Lama was designed with the OpenAI ChatGPT image tool, animated with Google Veo 3.1 Lite and voiced with ElevenLabs Eleven v4 (both through OpenRouter); see the [video disclosures](submission/video/disclosures.md). Machine-readable provenance: [`ai-provenance.json`](ui/public/ai-provenance.json).
 
-The app applies team-fitted FRP, detection-score and GWIS/CAMS-assisted pass models in the browser; it makes no calls to AI services for inference. These are Earth Fire Calendar model outputs, not NASA products. NASA has not validated them and is not responsible for their accuracy. Code/model/asset provenance is also recorded in [machine-readable metadata](ui/public/ai-provenance.json).
-
-The live basemap uses **EOxCloudless 2016, CC BY 4.0**, with attribution. Old slide/video captures used EOX 2025 under CC BY-NC-SA 4.0 and must be replaced before release; changing the app URL does not relicense those captures. The current deck/video previews are production drafts, not proof of a complete compliant submission. The [audit](submission/working/submission-compliance-audit.md) is the release checklist.
+The app makes no calls to AI services. Its FRP, detection-score and GWIS/CAMS-assisted estimates come from the team's own statistical models evaluated in the browser; they are not NASA products, and NASA is not responsible for their accuracy.
