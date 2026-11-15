@@ -14,14 +14,14 @@ Earth Fire Calendar
 
 ## 2. High-Level Project Summary
 
-143 words; the official video recommends 50–200.
+170 words; the official video recommends 50–200.
 
 ```text
-Earth Fire Calendar shows, on a live 3D globe, every active-fire detection that NASA FIRMS published in the last 24 hours from MODIS (Terra, Aqua) and VIIRS (NOAA-20, NOAA-21), and lets you switch between the two sensors. The same day looks very different: on 15 November 2026 at 08:36 UTC, VIIRS reported 79,349 detections and MODIS 8,127. That gap is why the MODIS record since 2000 and the newer VIIRS record cannot simply be joined.
+Earth Fire Calendar shows, on a live 3D globe, every active-fire detection that NASA FIRMS published in the last 24 hours from MODIS (Terra, Aqua) and VIIRS (NOAA-20, NOAA-21), and lets you switch between the two sensors. The same day looks very different: on 15 November 2026 at 08:36 UTC, VIIRS reported 79,349 detections and MODIS 8,127. The two sets of detections overlap only in part, which is why the MODIS record since 2000 and the newer VIIRS record cannot simply be joined.
 
 To explain the gap, not only show it, the app attaches to each detection the conditions under which it was observed: viewing geometry, land cover inside the pixel footprint and weather at acquisition time. This is the evidence a harmonization method needs.
 
-The harmonized archive and the seasonal calendar that tells an emergency manager whether this month is unusual are our next step, not part of this prototype.
+The app is a tool for studying this difference and a source of detection-level data for research. Harmonization rules, and a test of whether fire radiative power can be predicted from weather conditions, are what we explore next; they are not part of this prototype.
 ```
 
 ## 3. Link to Project Demo
@@ -76,11 +76,11 @@ WHAT IS LIVE AND WHAT IS PLANNED
 
 Working today, on live data: the 24-hour detections, the sensor switch and counters, colouring by sensor, the pinned timeline, the geometry, land-cover and weather enrichment, and the context layers.
 
-Not built yet: the FIRMS archive since 2000, the harmonized record itself, its validation, the seasonal calendar with typical and current levels, free selection of an area and dates, and data export. "All sensors" shows the two sensors together without calibration or removal of duplicates; it is not a harmonized product.
+Not built yet: the FIRMS archive since 2000, the harmonized record itself, its validation, free selection of an area and dates, and data export. "All sensors" shows the two sensors together without calibration or removal of duplicates; it is not a harmonized product.
 
 WHAT WE HOPE TO ACHIEVE
 
-The goal is a calendar that shows emergency managers when an area usually burns and whether the current period is unusual, built on a record in which MODIS and VIIRS are comparable. The next milestone is a harmonized record for one region that passes a hold-out test: hide one sensor during the years when both flew, reconstruct it from the other, and compare with simple baselines using pass criteria fixed in advance. If calibration fails the test, we will show each sensor separately and label the combined view experimental.
+The goal is a record in which MODIS and VIIRS are comparable, and a tool that lets researchers see where and under what conditions the two sensors disagree. We also want to test whether a detection's fire radiative power can be predicted from the weather and observation conditions we collect. A seasonal calendar for emergency managers, the original idea behind the name, could be built on such a record later. The next milestone is a harmonized record for one region that passes a hold-out test: hide one sensor during the years when both flew, reconstruct it from the other, and compare with simple baselines using pass criteria fixed in advance. If calibration fails the test, we will show each sensor separately and label the combined view experimental.
 
 LIMITATIONS
 

@@ -8,7 +8,7 @@ This note answers the questions the demo and the project page leave open: what e
 
 ## 1. Summary and status
 
-Earth Fire Calendar is a web app that compares MODIS and VIIRS active-fire detections from the last 24 hours of NASA FIRMS data and attaches to each detection the conditions under which it was observed. It is the first stage of a harmonized fire calendar: it makes the gap between the sensors visible and collects the per-detection evidence needed to model it.
+Earth Fire Calendar is a web app that compares MODIS and VIIRS active-fire detections from the last 24 hours of NASA FIRMS data and attaches to each detection the conditions under which it was observed. It is a tool for studying the difference between the sensors: it makes the gap visible and collects the per-detection evidence needed to model it.
 
 | Part | Status |
 |---|---|
@@ -20,7 +20,8 @@ Earth Fire Calendar is a web app that compares MODIS and VIIRS active-fire detec
 | Weather at acquisition | Working for pinned detections; coverage depends on the source |
 | FIRMS archive since 2000 | Not built |
 | Harmonized record, calibration, validation | Not built; design in [section 6](#6-from-enrichment-to-harmonization) |
-| Seasonal calendar, area and date selection, export | Not built |
+| FRP prediction from weather and observation conditions | Not built; exploratory |
+| Area and date selection, export | Not built |
 
 The app shows no sample or synthetic values.
 
@@ -125,6 +126,8 @@ Nothing in this section is implemented.
 
 **The hypothesis we want to test** (review, §6): the residual MODIS–VIIRS difference in detections and FRP, especially by day and at oblique view angles, depends on the interaction of detailed land-cover class and viewing geometry at the level of individual detections. The test is whether class-specific angular response functions improve on existing corrections under comparable observing conditions. One published result limits it: for matched fire clusters and the 750 m VIIRS product, the MODIS/VIIRS FRP ratio did not depend on view angle in any of five ecosystems.
 
+**A second, exploratory question.** Can a detection's FRP be predicted from weather and observation conditions? The weather fields in section 5.3 are collected with this in mind; no model exists yet.
+
 **Why the prototype collects these fields.** The test needs, for each detection, the actual pixel size, the view angle, the illumination, the land-cover composition of the footprint and the state of the atmosphere along the view path. Sections 5.1–5.3 produce these for the live feed.
 
 **Planned pipeline.**
@@ -133,8 +136,8 @@ Nothing in this section is implemented.
 2. A daily grid per satellite, day and night kept separate, with repeated passes counted once.
 3. Pairing of near-simultaneous MODIS and VIIRS observations by footprint overlap and time difference, during the years when both flew.
 4. Response functions from the paired data: first by view angle and pixel area, then with land-cover class added.
-5. One reference scale for the whole record, then the typical season and the departures from it for an area.
-6. Calendar and export.
+5. One reference scale for the whole record.
+6. Export. A seasonal calendar built on the record is a possible follow-up.
 
 **How we will test it.**
 
