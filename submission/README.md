@@ -4,10 +4,10 @@ Everything for the NASA Space Apps submission. Each folder has one purpose; put 
 
 | Folder | What belongs there |
 |---|---|
-| `deliverables/` | Documents we submit or show to judges, and the data they cite. Nothing else. |
+| `deliverables/` | Documents we submit or show to judges, and the data they cite. Nothing else. **Living**: keep them in step with the project at all times. |
 | `presentation/` | Everything about the slide deck: slide text, sources, builds, screenshots. |
 | `video/` | Everything about the demo video: script, production plan, disclosures, footage. |
-| `docs/` | Our own working documents that are not submitted or shown anywhere. |
+| `docs/` | Reference material that predates the hackathon work: external requirements and guidance the submission must or should meet. Not submitted or shown. **Frozen**: do not edit. |
 | `assets/` | Official third-party material only: logos, colours, fonts, patterns. Nothing we made. |
 
 ## Contents
@@ -33,6 +33,7 @@ Everything for the NASA Space Apps submission. Each folder has one purpose; put 
 ## Rules
 
 - A file about the presentation goes in `presentation/`, a file about the video goes in `video/`, whatever its format. Do not put scripts, slide text or footage in `docs/` or `assets/`.
-- `deliverables/` holds only what is submitted or shown. Drafts, guides and notes stay in `docs/`.
+- `deliverables/` holds only what is submitted or shown, and it must change as the project develops: whenever the app, the data or the findings change, update these documents in the same piece of work.
+- `docs/` is frozen. It records what was set before the hackathon work, as external requirements and guidance to comply with. Read it, follow it, link to it, but do not edit, add or remove files there unless the user explicitly asks. If a deliverable disagrees with `docs/`, change the deliverable.
 - `assets/` holds only official material that is not ours. Our own screenshots, images, footage and data go next to the material that uses them.
 - Do not add new top-level folders here without a reason the table above cannot cover.
