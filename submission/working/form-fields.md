@@ -174,12 +174,14 @@ For Earth Fire Calendar the current, complete list is [field 8 of the project pa
 
 - the EOX Sentinel-2 cloudless basemap (Copernicus Sentinel);
 - EUMETSAT, NOAA and JMA cloud imagery and the VIIRS polar mosaic via Extremum;
+- the 2019 global land cover map of the ESA Climate Change Initiative and the Copernicus Climate Change Service, read as GeoTIFFs from Microsoft Planetary Computer; ESA is a partner agency;
+- weather at acquisition: modeled weather via Open-Meteo, NOAA radar and satellite observations, fire danger from Copernicus GWIS, dead fuel moisture from the US Forest Service;
 - CelesTrak orbital elements, including the fallback sets hard-coded in the source;
 - the bright-star catalogue for the star background: the code names the source as "Bright Star / Hipparcos"; confirm the exact provenance with the author; Hipparcos is a catalogue of ESA, a partner agency;
 - the NASA GIBS precipitation colour scale, ported into the code;
 - interface libraries: MapLibre GL JS (BSD-3-Clause), React (MIT), Vite (MIT), TypeScript (Apache-2.0); licenses as recorded in `ui/package-lock.json`;
 - the server side: .NET 10 and ASP.NET Core;
-- hosting: GitHub Pages and Google Cloud Run.
+- hosting: GitHub Pages, Google Cloud Run and a Firestore cache.
 
 ## 9. Two checkboxes
 
