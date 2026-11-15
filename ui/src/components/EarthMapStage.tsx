@@ -87,6 +87,7 @@ import {
   deduplicateSpotMatches,
   expandHoveredFireSpots,
   formatFireSpotsTooltip,
+  FULL_DETAIL_FIRE_SPOT_ZOOM,
   MIN_FIRE_SPOT_ZOOM,
   type BuiltFireSpotsData,
   type FireSpotFeatureProperties,
@@ -94,6 +95,12 @@ import {
   type FirmsLiveSpotsResponse,
   type PhaseCohort,
 } from '../utils/fireSpots'
+import {
+  FIRE_SPOT_HIT_PADDING,
+  readFireSpotScreenGroups,
+  updateFireSpotScreenColors,
+  type FireSpotScreenGroup,
+} from '../utils/fireSpotScreenGroups'
 import type { SatelliteOverpassIndex } from '../utils/satelliteOverpassTimeline'
 import {
   buildFireSpotLayers,
@@ -388,13 +395,14 @@ function queryFireSelectionAtPoint(
   point: { x: number; y: number },
   sensorFilter: SensorFilter,
   builtFireSpots: BuiltFireSpotsData,
+  screenGroups: ReadonlyMap<number, FireSpotScreenGroup> | undefined,
 ): PinnedFireSelection | null {
   if (map.getZoom() < MIN_FIRE_SPOT_ZOOM || !map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
     return null
   }
   const bbox: [PointLike, PointLike] = [
-    [point.x - 8, point.y - 8],
-    [point.x + 8, point.y + 8],
+    [point.x - FIRE_SPOT_HIT_PADDING, point.y - FIRE_SPOT_HIT_PADDING],
+    [point.x + FIRE_SPOT_HIT_PADDING, point.y + FIRE_SPOT_HIT_PADDING],
   ]
   const rendered = map.queryRenderedFeatures(bbox, {
     layers: [FIRMS_SPOTS_CORE_LAYER_ID],
@@ -415,13 +423,15 @@ function queryFireSelectionAtPoint(
     }
   }
 
+  // Use the same group as the map marker when several rendered dots hit the pointer box.
+  const screenGroup = screenGroups?.get(hitIndices[0])
   const expanded = expandHoveredFireSpots(
     builtFireSpots,
-    hitIndices,
+    screenGroup?.members ?? hitIndices,
     map.getZoom(),
     sensorFilter,
   )
-  const inputs = deduplicateSpotMatches([...expanded, ...fallbackInputs])
+  const inputs = deduplicateSpotMatches(screenGroup ? expanded : [...expanded, ...fallbackInputs])
   if (inputs.length === 0) {
     return null
   }
@@ -471,6 +481,7 @@ function createBaseStyle(
       },
       [FIRMS_SPOTS_SOURCE_ID]: {
         type: 'geojson',
+        promoteId: 'spotIndex',
         data: initialLiveFiresData,
       },
       'fire-spot-focus': {
@@ -790,6 +801,8 @@ export function EarthMapStage({
   const latestFocusSpotGeoJsonRef = useRef(focusSpotGeoJson)
   const latestSensorFilterRef = useRef(sensorFilter)
   const latestFireSensorColorsRef = useRef(colorFireSpotsBySensor)
+  const screenGroupsRef = useRef<ReadonlyMap<number, FireSpotScreenGroup> | undefined>(undefined)
+  const screenGroupsDirtyRef = useRef(true)
   const onPinFireSelectionRef = useRef(onPinFireSelection)
   const latestOnReducedMotionChangeRef = useRef(onReducedMotionChange)
   const fireAnimControllerRef = useRef<FireSpotsAnimationController | null>(null)
@@ -818,9 +831,12 @@ export function EarthMapStage({
 
   useEffect(() => {
     const map = mapInstanceRef.current
+    screenGroupsRef.current = undefined
+    screenGroupsDirtyRef.current = true
     if (!isMapStyleReady(map)) {
       return
     }
+    map.removeFeatureState({ source: FIRMS_SPOTS_SOURCE_ID })
     setGeoJsonSourceData(map, FIRMS_SPOTS_SOURCE_ID, builtFireSpots.featureCollection)
     fireAnimControllerRef.current?.sync()
   }, [builtFireSpots])
@@ -873,11 +889,16 @@ export function EarthMapStage({
 
   useEffect(() => {
     latestFireSensorColorsRef.current = colorFireSpotsBySensor
+    screenGroupsDirtyRef.current = true
     const map = mapInstanceRef.current
     if (isMapStyleReady(map)) {
       setFireSpotSensorColors(map, colorFireSpotsBySensor)
     }
   }, [colorFireSpotsBySensor])
+
+  useEffect(() => {
+    screenGroupsDirtyRef.current = true
+  }, [projectionMode, showFires])
 
   useEffect(() => {
     latestOnReducedMotionChangeRef.current = onReducedMotionChange
@@ -1087,6 +1108,11 @@ export function EarthMapStage({
 
       mapInstanceRef.current = map
 
+      const getScreenGroups = () =>
+        latestFireSensorColorsRef.current && (map?.getZoom() ?? 0) >= FULL_DETAIL_FIRE_SPOT_ZOOM
+          ? screenGroupsRef.current
+          : undefined
+
       const canvas = map.getCanvas()
       const handleCanvasMouseLeave = () => {
         canvas.style.cursor = ''
@@ -1109,6 +1135,7 @@ export function EarthMapStage({
           event.point,
           latestSensorFilterRef.current,
           latestBuiltFireSpotsRef.current,
+          getScreenGroups(),
         )
         map.getCanvas().style.cursor = hit ? 'pointer' : ''
         const { clientX, clientY } = event.originalEvent
@@ -1128,6 +1155,7 @@ export function EarthMapStage({
           event.point,
           latestSensorFilterRef.current,
           latestBuiltFireSpotsRef.current,
+          getScreenGroups(),
         )
         if (hit) {
           userInteractedRef.current = true
@@ -1143,6 +1171,7 @@ export function EarthMapStage({
       })
 
       map.on('moveend', () => {
+        screenGroupsDirtyRef.current = true
         if (!map) {
           return
         }
@@ -1157,6 +1186,11 @@ export function EarthMapStage({
       })
 
       let styleLoaded = false
+      map.on('sourcedata', (event) => {
+        if (event.sourceId === FIRMS_SPOTS_SOURCE_ID && event.isSourceLoaded) {
+          screenGroupsDirtyRef.current = true
+        }
+      })
       // The style is parsed and its sources exist: re-apply whatever changed while it loaded,
       // without waiting for 'load' (which also waits for every basemap tile).
       map.once('style.load', () => {
@@ -1284,6 +1318,16 @@ export function EarthMapStage({
         if (!map) {
           return
         }
+        if (screenGroupsDirtyRef.current && styleLoaded && !map.isMoving() &&
+          map.isSourceLoaded(FIRMS_SPOTS_SOURCE_ID)) {
+          screenGroupsDirtyRef.current = false
+          const next = latestFireSensorColorsRef.current && latestShowFiresRef.current &&
+            map.getZoom() >= FULL_DETAIL_FIRE_SPOT_ZOOM
+            ? readFireSpotScreenGroups(map, latestBuiltFireSpotsRef.current)
+            : undefined
+          updateFireSpotScreenColors(map, screenGroupsRef.current, next)
+          screenGroupsRef.current = next
+        }
         const center = map.getCenter()
         starfieldControllerRef.current?.updateCamera({
           lngDeg: center.lng,
@@ -1311,6 +1355,7 @@ export function EarthMapStage({
       })
 
       resizeObserver = new ResizeObserver(() => {
+        screenGroupsDirtyRef.current = true
         map?.resize()
       })
       resizeObserver.observe(container)

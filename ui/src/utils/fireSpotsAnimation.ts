@@ -45,14 +45,20 @@ export function buildFireSensorGroupColor(): ExpressionSpecification {
     const zoom = MIN_FIRE_SPOT_ZOOM + index + 1
     return [zoom, colorAtZoom(zoom)]
   })
-  // Full detail renders separate detections, so every marker uses the single-detection color.
   return [
     'step',
     ['zoom'],
     colorAtZoom(MIN_FIRE_SPOT_ZOOM),
     ...tierStops,
     FULL_DETAIL_FIRE_SPOT_ZOOM,
-    FIRE_SENSOR_GROUP_COLORS.single,
+    [
+      'match',
+      ['feature-state', 'screenSensorGroup'],
+      'both', FIRE_SENSOR_GROUP_COLORS.both,
+      'modis', FIRE_SENSOR_GROUP_COLORS.modis,
+      'viirs', FIRE_SENSOR_GROUP_COLORS.viirs,
+      FIRE_SENSOR_GROUP_COLORS.single,
+    ],
   ] as ExpressionSpecification
 }
 

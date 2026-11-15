@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
+import { groupProjectedFireSpots } from '../src/utils/fireSpotScreenGroups.ts'
 import { FIRE_SPOT_COLORS } from '../src/data/dataPalette.ts'
 import {
   ACTIVE_AGE_SECONDS,
@@ -484,6 +485,21 @@ describe('hierarchical z1..z7 spatial decluttering', () => {
 })
 
 describe('active fire spot palette and MapLibre layers', () => {
+  it('assigns a mixed sensor color to every high-zoom group member before a pointer hit', () => {
+    const detection = { timestamp: 1000, frp: 80, source: 'MODIS' }
+    const groups = groupProjectedFireSpots([
+      { index: 0, x: 14, y: 14, detection: { ...detection, instrument: 'modis' } },
+      { index: 1, x: 21, y: 21, detection: { ...detection, source: 'VIIRS', instrument: 'viirs', frp: 10 } },
+      { index: 2, x: 58, y: 21, detection: { ...detection, instrument: 'modis' } },
+      { index: 3, x: 77, y: 21, detection: { ...detection, instrument: 'modis' } },
+      { index: 4, x: 80, y: 22, detection: { ...detection, instrument: 'modis' } },
+    ])
+    assert.deepEqual(groups.get(0), { members: [0, 1], color: 'both' })
+    assert.strictEqual(groups.get(0), groups.get(1))
+    assert.deepEqual(groups.get(2), { members: [2], color: 'single' })
+    assert.deepEqual(groups.get(3), { members: [3, 4], color: 'modis' })
+  })
+
   it('uses uniform saturated non-pink red across core and pulse layers', () => {
     assert.equal(FIRE_SPOT_COLORS.fill, '#ff1a00')
     assert.equal(FIRE_SPOT_COLORS.pulse, '#ff1a00')

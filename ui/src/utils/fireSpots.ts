@@ -451,7 +451,7 @@ export function buildFireSpotsGeoJson(
   }
 }
 
-function featureToTooltipInput(
+export function featureToTooltipInput(
   feature: Feature<Point, FireSpotFeatureProperties>,
 ): FireSpotTooltipInput {
   const [lng, lat] = feature.geometry.coordinates
