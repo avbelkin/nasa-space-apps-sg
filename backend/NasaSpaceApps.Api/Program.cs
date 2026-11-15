@@ -110,6 +110,8 @@ builder.Services.AddSingleton<NoaaGoesWeather>();
 builder.Services.AddHttpClient(CopernicusSoilDrought.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(7))
     .RemoveAllLoggers();
 builder.Services.AddSingleton<CopernicusSoilDrought>();
+builder.Services.AddHttpClient(NoaaSoilMoistureAnomaly.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddSingleton<NoaaSoilMoistureAnomaly>();
 builder.Services.AddSingleton<FirmsClient>();
 builder.Services.AddSingleton<HotspotGeometryWorker>();
 builder.Services.AddHostedService(services => services.GetRequiredService<HotspotGeometryWorker>());
@@ -289,6 +291,7 @@ app.MapPost("/api/fires/spots/weather", (
     NoaaGfsWeather gfsWeather,
     NoaaGoesWeather goesWeather,
     CopernicusSoilDrought soilDrought,
+    NoaaSoilMoistureAnomaly soilAnomaly,
     CancellationToken cancellationToken) =>
     ExecuteFirmsQueryAsync(firms, async () =>
     {
@@ -304,16 +307,18 @@ app.MapPost("/api/fires/spots/weather", (
         var gfsWeatherTask = gfsWeather.EnrichAsync(spots, cancellationToken);
         var goesWeatherTask = goesWeather.EnrichAsync(spots, cancellationToken);
         var droughtTask = soilDrought.EnrichAsync(spots, cancellationToken);
-        await Task.WhenAll(forecastTask, fireWeatherTask, observationsTask, gfsWeatherTask, goesWeatherTask, droughtTask);
+        var anomalyTask = soilAnomaly.EnrichAsync(spots, cancellationToken);
+        await Task.WhenAll(forecastTask, fireWeatherTask, observationsTask, gfsWeatherTask, goesWeatherTask, droughtTask, anomalyTask);
         var forecast = await forecastTask;
         var fireWeatherSources = await fireWeatherTask;
         var observationSources = await observationsTask;
         var gfsSources = await gfsWeatherTask;
         var goesSources = await goesWeatherTask;
         var droughtSources = await droughtTask;
+        var anomalySources = await anomalyTask;
         return new HotspotWeatherResponse(forecast.Spots.Select((spot, index) =>
-            spot is not null && fireWeatherSources[index] is { } source && droughtSources[index] is { } drought
-                ? spot with { Sources = [.. spot.Sources, source, .. observationSources[index], .. gfsSources[index], .. goesSources[index], drought] }
+            spot is not null && fireWeatherSources[index] is { } source && droughtSources[index] is { } drought && anomalySources[index] is { } anomaly
+                ? spot with { Sources = [.. spot.Sources, source, .. observationSources[index], .. gfsSources[index], .. goesSources[index], drought, anomaly] }
                 : spot).ToArray());
     }));
 

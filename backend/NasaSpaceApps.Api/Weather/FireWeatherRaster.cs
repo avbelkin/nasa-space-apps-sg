@@ -7,41 +7,8 @@ namespace NasaSpaceApps.Api.Weather;
 // matching transparent RGBA PNGs that mask sea and unavailable data.
 internal static class FireWeatherRaster
 {
-    public static float[] ReadValues(ReadOnlySpan<byte> tiff, int size)
-    {
-        if (ReadUInt32(tiff, 0) != 0x002A4949)
-            throw new InvalidDataException("Expected a classic little-endian fire-weather TIFF.");
-
-        var directory = checked((int)ReadUInt32(tiff, 4));
-        var tags = new Dictionary<int, uint>();
-        var entries = ReadUInt16(tiff, directory);
-        for (var i = 0; i < entries; i++)
-        {
-            var offset = checked(directory + 2 + i * 12);
-            var tag = ReadUInt16(tiff, offset);
-            var type = ReadUInt16(tiff, offset + 2);
-            if (ReadUInt32(tiff, offset + 4) == 1 && type is 3 or 4)
-                tags[tag] = type == 3 ? ReadUInt16(tiff, offset + 8) : ReadUInt32(tiff, offset + 8);
-        }
-
-        var length = checked(size * size * sizeof(float));
-        if (tags.GetValueOrDefault(256) != size || tags.GetValueOrDefault(257) != size ||
-            tags.GetValueOrDefault(258) != 32 || tags.GetValueOrDefault(259, 1u) != 1 ||
-            tags.GetValueOrDefault(277, 1u) != 1 || tags.GetValueOrDefault(278) < size ||
-            tags.GetValueOrDefault(279) != length || tags.GetValueOrDefault(339) != 3)
-        {
-            throw new InvalidDataException("Unexpected fire-weather TIFF dimensions or pixel format.");
-        }
-
-        var start = checked((int)tags.GetValueOrDefault(273));
-        if (start < 8 || start > tiff.Length - length)
-            throw new InvalidDataException("The fire-weather TIFF pixel strip is missing.");
-
-        var pixels = new float[size * size];
-        for (var i = 0; i < pixels.Length; i++)
-            pixels[i] = BinaryPrimitives.ReadSingleLittleEndian(tiff[(start + i * sizeof(float))..]);
-        return pixels;
-    }
+    public static float[] ReadValues(ReadOnlySpan<byte> tiff, int size) =>
+        FloatWeatherTiff.ReadValues(tiff, size, size);
 
     public static byte[] ReadCoverage(ReadOnlySpan<byte> png, int size)
     {
@@ -110,10 +77,4 @@ internal static class FireWeatherRaster
         var c = Math.Abs(prediction - diagonal);
         return a <= b && a <= c ? left : b <= c ? up : diagonal;
     }
-
-    private static ushort ReadUInt16(ReadOnlySpan<byte> bytes, int offset) =>
-        BinaryPrimitives.ReadUInt16LittleEndian(bytes[offset..]);
-
-    private static uint ReadUInt32(ReadOnlySpan<byte> bytes, int offset) =>
-        BinaryPrimitives.ReadUInt32LittleEndian(bytes[offset..]);
 }
