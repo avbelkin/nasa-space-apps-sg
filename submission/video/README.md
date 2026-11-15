@@ -2,65 +2,70 @@
 
 [Script and narration](demo-video.md) · [AI disclosures](disclosures.md) · [Requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
 
-The review draft targets **29 seconds, 1920×1080, 30 fps — 870 frames**. The accepted asset-preparation block is followed by one combined animation and full-draft block, then a review stop. Media and local review pages remain in the Git-ignored submission/video/lama/ folder.
+The full film targets **29 seconds, 1920×1080, 30 fps — 870 frames**. The current block is an **11.5-second concept pilot**, followed by a user/external review stop. The first full draft was rejected for its adult voice, photo-based character and portrait opening with wide blurred side areas. It is retained as a superseded version, not an approved direction. Media and local review pages stay in the Git-ignored `lama/` folder.
 
 ## Current production decisions
 
 | Element | Decision |
 |---|---|
-| Opening | 1.4 seconds of live footage, then a 0.6-second push into the lower monitor |
-| Title | Earth Fire Calendar and Harmonization of MODIS and VIIRS Hot Spots over the opening; insert the exact team name when supplied |
-| Narration | The agreed 46 English words, starting at 2 seconds; no additional spoken opening |
-| Voice | ElevenLabs Eleven v4, Will, through OpenRouter; a young adult male with bright, energetic, playful delivery |
-| Transition | Final live frame → 8-frame push → 4 blurred frames → 6-frame interface reveal; no reconstructed background |
-| Live portrait | 608×1080 centered over a blurred enlarged copy; the selected shot includes Alexey |
-| Character | Existing AI-edited Lama PNG; keep the scarf and direction, do not mirror or regenerate |
-| Motion | Small entrance bounce and one short shift; no separate mouth or toe animation |
-| Composition | Interface at x=16, y=24, 1600×900; Lama at x≈1640, y=700, 255×340 |
-| Watermark | AI-edited image burned into the lower part of the character, over the feet at y≈984–1012; it moves with him |
-| Subtitles | x=48, y=940, width 1490, at most two 44-pixel lines; no ordinary-scene credit footer |
-| Detail scenes | Magnify the real counter at 5.5–11.5 seconds and actual context rows at 17–23 seconds |
-| Closing card | Project title, next step, URL, NASA FIRMS credit and non-endorsement statement |
+| Opening | 1.4-second full-width close-up of the real toy in profile; no side panels |
+| Transition | 0.6-second push into the monitor; no reconstructed background; physical jump remains unimplemented |
+| Title | Earth Fire Calendar and Harmonization of MODIS and VIIRS Hot Spots; add the exact team name to the final edit when supplied |
+| Narration | Preserve the 46 English words and the 29-second total target |
+| Voice | A little, smart, lively boy alpaca; ElevenLabs Eleven v4 through OpenRouter. Pilot: Charlie plus three semitones with duration preserved; listening review pending |
+| Character | Living animated interpretation of the toy: cream fur, copper ears, expressive face, orange/navy/ivory scarf, soft two-toed feet |
+| Performance | Weather-presenter staging: greet, step, turn to the display, point, look back at the viewer, nod |
+| Composition | Large presenter in the left foreground; real app display behind and to his right; protect the important data from his gestures |
+| Motion source | OpenAI image generation, then Google Veo 3.1 Lite through OpenRouter; generated green background removed locally |
+| Watermark | AI-generated visibly overlaps the lower body and follows the movement |
+| Captions | English, inside safe margins; large real counter crops; NASA FIRMS attribution with the map |
+| Closing | Project title, next step, URL, NASA FIRMS credit and non-endorsement statement; still required for the full edit |
+
+Weather-presenter styling does not imply fire forecasting. The narration still describes comparison and future harmonization. The generated motion has expressive mouth movement, not exact lip sync. The generated source introduced an unwanted display at its far right; the composition crops it out and uses only real app imagery.
 
 ## Tools and reproduction
 
-Use the installed FFmpeg, Chrome and Node. Chrome renders English text and transparent overlays; FFmpeg assembles the transition, character motion, narration and MP4. No Remotion or new packages are required. Speech parameters follow the [OpenRouter ElevenLabs integration](https://openrouter.ai/blog/announcements/elevenlabs-on-openrouter/). chrome.mjs, capture-details.mjs and render-draft.mjs implement this route.
+Use installed FFmpeg, Chrome and Node; no packages need installation. `chrome.mjs` renders layouts, `render-presenter-pilot.mjs` assembles the current pilot, and `render-draft.mjs` preserves the superseded full draft. The pilot renderer makes no API calls:
 
-Run from the repository root: node submission/video/render-draft.mjs /absolute/path/to/submission/video/lama/prepared
+```sh
+node submission/video/render-presenter-pilot.mjs /absolute/path/to/submission/video/lama/prepared
+```
 
-Set LAMA_TEAM_NAME to the team's exact spelling. An unset name produces an explicit draft placeholder; that export is not ready to submit. The renderer requires the five completed ElevenLabs files under prepared/draft/elevenlabs/ and does not make API calls.
+The renderer needs the collected motion, full-width intro and two completed Charlie speech files in `presenter-v2/`. `synthesize.py` supports explicit `--voice` and `--delivery`. `animate-character.py` submits one bounded motion job and, on subsequent calls, collects the original saved job ID without resubmitting. Run both with the existing research gateway's managed Python interpreter and `--gateway-root`; credentials, redaction, persistent budget reservations and the spending ledger come from that gateway. The $0.30 run cap and shared provider daily cap remain enforced. No keys or private gateway paths belong in tracked files.
 
-synthesize.py is the bounded speech adapter for the user-selected existing research gateway. Run it with that gateway's managed Python interpreter and --gateway-root; it uses the gateway's credential loader, HTTP client, redaction, shared reservation and spending ledger. The text-only gateway has no binary speech command, so the adapter adds that transport without changing its text-model allowlist. The $0.30 run cap and shared provider daily cap remain enforced. No keys or private gateway paths belong in this repository. A saved run manifest prevents accidental resubmission; retain generation IDs for billing and review.
+API references: [OpenRouter speech](https://openrouter.ai/blog/announcements/elevenlabs-on-openrouter/) and [video generation](https://openrouter.ai/docs/guides/overview/multimodal/video-generation). Public-library voice ID DusUNVZxLmrLjz9sJF1w and the legacy Jeremy name were both rejected with HTTP 400; those attempts produced no audio and their reservations were settled. Charlie succeeded. The local manifests preserve every attempt and generation ID.
 
 ## Local review files
 
-Under lama/prepared/:
+Under `lama/prepared/presenter-v2/`:
 
-- draft/lama-draft.mp4 — completed 29-second draft for review;
-- draft/render-report.json — actual duration, streams, frame counts, scene timing and voice alignment;
-- draft/elevenlabs/ — generated narration, original generation IDs and accounting manifests;
-- review.html and REVIEW.md — local review player and findings/status;
-- lama-presenter.png — existing 1086×1448 RGBA image generated from the original photo;
-- intro-centered.mp4 — selected 42-frame muted opening;
-- ui/01-modis.png through 04-map.png — temporary production screenshots from one earlier snapshot;
-- ui/05-geometry.png, 05-land.png, 05-weather.png, 05-context.json — real populated detail rows captured from a mixed MODIS/VIIRS group on production; separate, later snapshot.
+- `review.html` and `REVIEW.md`: current pilot player, voice comparison and scope;
+- `pilot.mp4`: 11.5-second concept pilot, not the final submission;
+- `render-report.json`: measured export parameters and source-motion timing;
+- `lama-character-green.png`, `lama-motion-green.mp4`, `motion-job.json`: generated reference and collected animation;
+- `voice-charlie/`, `young-voice-1.wav`, `young-voice-2.wav`: original and processed voice;
+- `transcript.json`: transcription check, which does not establish perceived age or acting quality;
+- `intro-full-bleed.mp4`: 42-frame cropped SDR opening.
 
-The current detail example is the group near latitude −14.906°, longitude 126.865°, with 123 detections at capture. The JSON retains actual rows and capture time. It is a screen-proximity group, not a confirmed matched fire. The three detail crops come from that same selection. Show only Sat. off-nadir, Land cover and selected Weather at acquisition rows; exclude the FRP forecast, pass predictions and FRP totals.
+The old `draft/lama-draft.mp4`, `review.html`, `intro-centered.mp4` and `lama-presenter.png` remain historical material. Do not treat them as the latest creative direction.
+
+Temporary UI captures remain under `prepared/ui/`. MODIS and VIIRS screenshots share one earlier snapshot. The populated context rows are a separate, later capture of a group near −14.906°, 126.865° with 123 detections. `05-context.json` records that example. These are screen-proximity groups, not confirmed matched fires. Show only Sat. off-nadir, Land cover and selected Weather at acquisition rows; exclude FRP forecast, pass predictions and totals.
 
 ## Review blocks and deadline
 
-1. Asset preparation and its corrections — accepted by the user.
-2. Transition, character motion and complete draft with synthetic narration — one combined block; stop for external review here.
-3. Apply review, replace the remaining interface placeholders with final actions, confirm the team caption and export the submission version.
+1. Asset preparation and its corrections — accepted.
+2. First full draft — technically reviewed, then rejected by the user on creative grounds.
+3. New character, voice and weather-presenter concept — short pilot; stop for user/external review here.
+4. Apply that review, complete the remaining scenes, replace UI placeholders and export the final 29-second film.
 
-Working cutoffs for 15 November 2026 (SGT): full draft with sound by 21:30; upload by 23:00; official submission deadline 23:59. If the character version is not ready by 21:30, use the agreed fallback of screen recording, voice and English subtitles. These are production targets, not scheduled uploads or automatic tasks.
+Commit and push each verified block from its feature worktree into main. Do not accumulate the entire film before sharing the changes. Media remains local and ignored.
+
+Working targets for 15 November 2026 (SGT): full draft with sound by 21:30; upload by 23:00; deadline 23:59. These are production targets, not scheduled actions. The previously suggested screen-recording fallback would omit the user's requested animated host; discuss that tradeoff if it becomes necessary rather than silently substituting it.
 
 ## Final capture and acceptance
 
-Follow the [recording checklist](recording-checklist.md#recording-the-video) alongside the scene-specific directions below.
+Follow the [recording checklist](recording-checklist.md). Keep one viewport and feed snapshot for MODIS→VIIRS, preserve actual counts and timestamps, exclude enrichment statuses, and retain readable NASA FIRMS attribution. Start the context scene from the saved selection; current values may differ.
 
-Keep one viewport and data load for the MODIS→VIIRS comparison. Preserve the actual counts and snapshot timestamp together. The later context capture is a separate example; do not imply that its group generated the earlier global counters. Exclude enrichment-status rows in the final framing and retain legible NASA FIRMS attribution. Start from the saved group to reduce capture time; live values and selection counts can change.
+Listen to the voice and check Lama, Alexey, MODIS, VIIRS and NASA FIRMS. Watch continuous playback and on a phone. Stills, transcripts and ffprobe do not establish acting, lip sync or transition quality. Keep Next in the last phrase and show harmonization as future work.
 
-Check the pronunciation of Lama, Alexey, MODIS, VIIRS and NASA FIRMS, as well as the requested youthful energy. Watch the transition and full edit in motion and on a phone. Technical duration checks and still frames do not establish motion or voice quality. Keep the final phrase's Next: harmonization wording; do not claim completed harmonization or forecast future fires.
-
-Export H.264/AAC MP4 with the [actual AI disclosures](disclosures.md) in its description and metadata. Verify the exported duration is at most 30 seconds, all narration is present, and the watermark/subtitles remain visible. The user selected the shot showing Alexey; separate consent is not being requested in this workflow. Scarf-symbol ownership remains an unresolved publication item.
+Export H.264/AAC with the [actual disclosures](disclosures.md) in its description and metadata. Check duration ≤30 seconds, narration completeness, watermark placement and caption margins. The user selected footage with Alexey, a team member; separate consent is not requested in this workflow. The new character's scarf is abstract; the physical toy's original scarf symbols still need review before publication. The exact team name remains pending.

@@ -4,7 +4,7 @@
 
 ## Shots and criteria
 
-The [video script](demo-video.md) adapts the [official 30-second outline](../docs/advice.md#the-official-30-second-video-outline) to a 29-second story with Lama, Alexey's plush alpaca assistant. A 1.4-second live shot leads into a 0.6-second animated push into the monitor; the character then narrates a real screen recording. The project name is spoken; the exact team name is added as a caption when supplied. The outline is the guide's advice, not an eligibility condition. The [shooting plan](README.md) specifies the footage and tools.
+The [video script](demo-video.md) adapts the [official 30-second outline](../docs/advice.md#the-official-30-second-video-outline) to a 29-second story with Lama, Alexey's little alpaca assistant. A 1.4-second full-width close-up leads into a 0.6-second push into the monitor. The living character then presents in front of the real app display like a weather presenter, turning and pointing to the data. The current 11.5-second pilot tests this direction; it is not the full film. The project name is spoken in the full narration; the exact team name is added as a caption when supplied. The outline is advice, not an eligibility condition. The [production plan](README.md) specifies the footage and tools.
 
 | Script shot | Criteria it covers |
 |---|---|
@@ -29,4 +29,8 @@ The [video script](demo-video.md) adapts the [official 30-second outline](../doc
 - [ ] The duration is set by the recorded take, not by the storyboard. Our recommendation is a margin of one or two seconds below the limit in case the video host rounds up: the Astro Sweepers and QUEÑARIS videos as available today run 30.5 and 30.4 seconds. If the video does not fit, cut text or pauses rather than speeding up the speech.
 - [ ] Check the duration of the exported file, not of the project in the editor.
 - [ ] English subtitles are useful even with an English voiceover: the video then makes sense without sound.
+- [ ] Review the childlike male voice by listening. A transcript does not establish perceived age or natural delivery; check Alexey explicitly because the pilot transcription rendered it as Alexi.
+- [ ] Watch the presenter in motion: clear gesture toward the display, alternating eye contact, stable face/scarf, visible toes, no invented UI or green fringe. Exact lip sync is not implemented in the pilot.
+- [ ] Keep the AI-generated watermark on the moving character, clear of subtitles. Check the first appearance, pointing pose and final pose.
+- [ ] Review the full-width live crop and fast monitor transition. A new landscape shot would be sharper, but the existing recording is sufficient for the current concept review.
 - [ ] Open the finished link on a phone as well.

@@ -16,6 +16,8 @@ parser.add_argument('--gateway-root', type=Path, required=True)
 parser.add_argument('--output', type=Path, required=True)
 parser.add_argument('--lines', type=Path, required=True)
 parser.add_argument('--pilot', action='store_true')
+parser.add_argument('--voice', default='will')
+parser.add_argument('--delivery', default='cheerfully')
 args = parser.parse_args()
 spec = importlib.util.spec_from_file_location('lama_gateway', args.gateway_root / 'tools/scripts/external_services.py')
 gateway = importlib.util.module_from_spec(spec)
@@ -25,8 +27,8 @@ lines = json.loads(args.lines.read_text())
 if args.pilot:
     lines = lines[:1]
 model = 'elevenlabs/eleven-v4'
-voice = 'will'
-inputs = ['[cheerfully] ' + text for text in lines]
+voice = args.voice
+inputs = ['[' + args.delivery + '] ' + text for text in lines]
 estimate = round(sum(len(text) for text in inputs) * 0.00008, 8)
 if estimate > 0.30:
     raise SystemExit('Run exceeds the existing $0.30 cap.')
@@ -54,7 +56,8 @@ with gateway.ExternalServices() as api:
             row['generation_id'] = response.headers.get('x-generation-id')
             row['request_id'] = response.headers.get('x-request-id')
             if response.status_code >= 400:
-                row['status'] = 'rejected'
+                definitive = 400 <= response.status_code < 500 and response.status_code != 408
+                row['status'] = 'rejected' if definitive else 'submission_unknown'
                 row['error'] = api.redact_text(response.text)[:1000]
                 save()
                 raise RuntimeError(f'Speech request rejected: HTTP {response.status_code}')
