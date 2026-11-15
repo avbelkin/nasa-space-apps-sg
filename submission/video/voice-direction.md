@@ -8,7 +8,7 @@ The user authorized full assembly on 15 November with the updated 47-word narrat
 
 Lama is a little boy: smart, curious and lively. Preserve the selected voice rather than reopening casting. Will, Charlie, Jessica, Bella and Puck were rejected; Laura was superseded by the explicit Flicker selection. Historical audition artifacts retain their actual original metadata.
 
-The raw narration lasts 23.36 seconds across five files. Scribe v2 through OpenRouter checked coverage and supplied word timings. Its transcript spells Lama as Llama and joins Earth Fire; captions retain the team's exact spelling and wording. Transcription does not establish perceived age, acting quality or phoneme lip sync. The manifests, billing, transcript and acceptance evidence are in `lama/prepared/assembly-v1/`.
+The original raw narration lasted 23.36 seconds. The user replaced the final line with “We apply cross-satellite corrections — a first step toward comparable records.” Its selected Flicker replacement lasts 4.8 seconds; the five selected files now total 22.64 seconds. Scribe v2 through OpenRouter checked coverage and supplied word timings. Its transcript spells Lama as Llama and joins Earth Fire; captions retain the team's exact spelling and wording. Transcription does not establish perceived age, acting quality or phoneme lip sync. The manifests, billing, transcript and acceptance evidence are in `lama/prepared/assembly-v1/`.
 
 ## Physical jump and transformation
 

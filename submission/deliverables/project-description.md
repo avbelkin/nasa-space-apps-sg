@@ -21,7 +21,7 @@ Earth Fire Calendar shows, on a live 3D globe, every active-fire detection that 
 
 To explain the gap, not only show it, the app attaches to each detection the conditions under which it was observed: viewing geometry, land cover inside the pixel footprint and weather at acquisition time. This is the evidence a harmonization method needs.
 
-The app is a tool for studying this difference and a source of detection-level data for research. As a first use of that evidence, it notes predicted passes of another satellite that reported nothing, and gives experimental one-day estimates of what the next pass would report; GWIS fields improved held-out MODIS-to-MODIS estimates, CAMS fields VIIRS-to-VIIRS detection ranking. A harmonized record is what we explore next; it is not part of this prototype.
+The app is a tool for studying this difference and a source of detection-level data for research. As a first use of that evidence, it notes predicted passes of another satellite that reported nothing, and gives experimental one-day estimates of what the next pass would report; GWIS fields improved held-out MODIS-to-MODIS estimates, CAMS fields VIIRS-to-VIIRS detection ranking. These experimental cross-satellite corrections are an initial harmonization step; a validated unified record is not yet part of this prototype.
 ```
 
 ## 3. Link to Project Demo
@@ -80,7 +80,7 @@ WHAT IS LIVE AND WHAT IS PLANNED
 
 Working today, on live data: the 24-hour detections, the sensor switch and counters, colouring by sensor, the pinned timeline, the geometry, land-cover and weather enrichment, and the context layers. Experimental, from a one-day baseline: the notes on unmatched passes, the "Expected detection, no match" flag, the estimated fire radiative power on the next pass, and the GWIS- and CAMS-assisted detection odds.
 
-Not built yet: the FIRMS archive since 2000, the harmonized record itself, its validation, free selection of an area and dates, and data export. "All sensors" shows the two sensors together without calibration or removal of duplicates; it is not a harmonized product.
+The app now exports the current raw detection slice as CSV. Not built yet: the FIRMS archive since 2000, a validated unified harmonized record, and free selection of an area and dates. "All sensors" shows the two sensors together without calibration or removal of duplicates; it is not a harmonized product.
 
 WHAT WE HOPE TO ACHIEVE
 
