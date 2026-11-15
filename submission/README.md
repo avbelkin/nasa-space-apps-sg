@@ -1,9 +1,38 @@
 # Submission materials
 
-Final deliverables for the NASA Space Apps submission.
+Everything for the NASA Space Apps submission. Each folder has one purpose; put new files where the rules below say.
 
-- `video/` — [Lama filming and production plan](video/README.md); [script and narration](docs/demo-video.md)
-- `presentation/` — slide deck and its sources
-- `docs/` — [project page text](docs/project-description.md), [technical note](docs/technical-note.md), [slide text](docs/demo-slides.md), [video script](docs/demo-video.md), [literature review](docs/modis-viirs-harmonization-literature-review.md) and the submission guides
+| Folder | What belongs there |
+|---|---|
+| `deliverables/` | Documents we submit or show to judges, and the data they cite. Nothing else. |
+| `presentation/` | Everything about the slide deck: slide text, sources, builds, screenshots. |
+| `video/` | Everything about the demo video: script, production plan, disclosures, footage. |
+| `docs/` | Our own working documents that are not submitted or shown anywhere. |
+| `assets/` | Official third-party material only: logos, colours, fonts, patterns. Nothing we made. |
+
+## Contents
+
+- `deliverables/`
+  - [project page text](deliverables/project-description.md)
+  - [technical note](deliverables/technical-note.md)
+  - [literature review](deliverables/modis-viirs-harmonization-literature-review.md)
+  - [`firms-snapshot-2026-11-15T0836Z.json`](deliverables/firms-snapshot-2026-11-15T0836Z.json): summary of the feed snapshot behind the live numbers
+- `presentation/`
+  - [slide text](presentation/demo-slides.md)
+- `video/`
+  - [script and narration](video/demo-video.md)
+  - [Lama filming and production plan](video/README.md)
+  - [AI disclosures](video/disclosures.md)
+  - `lama/`: source footage and prepared clips, Git-ignored
+- `docs/`
+  - [advice](docs/advice.md), [form fields](docs/form-fields.md), [formal requirements](docs/formal-requirements.md)
   - [design notes for the harmonized calendar](docs/harmonization-design-notes.md): what the challenge asks for, FIRMS data constraints, design decisions and validation plan
-- `assets/` — shared screenshots, logos and images used across the materials
+- `assets/`
+  - [official NASA Space Apps brand elements](assets/README.md)
+
+## Rules
+
+- A file about the presentation goes in `presentation/`, a file about the video goes in `video/`, whatever its format. Do not put scripts, slide text or footage in `docs/` or `assets/`.
+- `deliverables/` holds only what is submitted or shown. Drafts, guides and notes stay in `docs/`.
+- `assets/` holds only official material that is not ours. Our own screenshots, images, footage and data go next to the material that uses them.
+- Do not add new top-level folders here without a reason the table above cannot cover.

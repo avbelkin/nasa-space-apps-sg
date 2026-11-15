@@ -1,6 +1,6 @@
 # Earth Fire Calendar video script with Lama
 
-[Slides](demo-slides.md) · [Production plan](../video/README.md) · [Project description](project-description.md) · [Technical note](technical-note.md) · [Requirements](formal-requirements.md) · [Advice](advice.md)
+[Slides](../presentation/demo-slides.md) · [Production plan](README.md) · [Project description](../deliverables/project-description.md) · [Technical note](../deliverables/technical-note.md) · [Requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
 
 Lama, a plush alpaca, is Alexey's assistant. The opening uses 1.4 seconds of live footage followed by a 0.6-second transition into the monitor. Lama then appears beside the interface and begins narrating. Narration, captions and production instructions are all in English. The working edit uses temporary production-site captures; replace them with recordings of the required actions before the final export.
 
@@ -46,7 +46,7 @@ Build the opening from intro-candidate.mp4 using the selected 608×1080 centered
 
 The final frame retains a short NASA FIRMS credit and the note Independent project. Not affiliated with or endorsed by NASA. Add the team name once its exact spelling is supplied; Lama's name does not replace it.
 
-Disclosure text for the description, AI-use field and export metadata is in [publication disclosures](../video/disclosures.md). Disclose synthesized narration after it has actually been generated. Check the scarf print after the first edit; do not claim that it contains no third-party branding before its ownership is established.
+Disclosure text for the description, AI-use field and export metadata is in [publication disclosures](disclosures.md). Disclose synthesized narration after it has actually been generated. Check the scarf print after the first edit; do not claim that it contains no third-party branding before its ownership is established.
 
 ## Scope of claims
 
@@ -54,4 +54,4 @@ Compare real detections from the same 24-hour window. All sensors combines them 
 
 Harmonization is the next step. Do not depict completed calibration, a scientifically verified merging of detections into events, fire forecasting or a working seasonal calendar. Do not read exact detection counts aloud; retain the actual counters from the selected data snapshot on screen.
 
-Asset preparation and recording steps are in the [production plan](../video/README.md).
+Asset preparation and recording steps are in the [production plan](README.md).

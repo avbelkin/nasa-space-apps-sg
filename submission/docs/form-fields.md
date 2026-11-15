@@ -1,6 +1,6 @@
 # Space Apps 2026: submission form fields
 
-[Slides](demo-slides.md) · [Video script](demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
+[Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](../deliverables/project-description.md) · [Technical note](../deliverables/technical-note.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
 
 The form is on the **Project** tab of the team page (**My Team → Project → Edit**). This is the page the judges score. Below is every field in order: what must go in it and what may. Requirements common to all fields (language, link access, rights, AI, deadlines) are in the [formal requirements](formal-requirements.md).
 
@@ -28,9 +28,9 @@ The form has two link fields (3 and 4). All other materials go in as links insid
 |---|---|---|
 | 1. Project Name | `Earth Fire Calendar` | — |
 | 2. High-Level Project Summary | Two or three sentences: the problem, what is built, what is still planned | — |
-| 3. Link to Project Demo | **Video** recorded from the [script](demo-video.md) | Public video link that opens without sign-in |
+| 3. Link to Project Demo | **Video** recorded from the [script](../video/demo-video.md) | Public video link that opens without sign-in |
 | 4. Link to Final Project | **App** | [Link with the prepared view](#4-link-to-final-project) |
-| 5. Detailed Project Description | [Project text](project-description.md#5-detailed-project-description), screenshots and a closing **Materials** block of four links: slide deck, technical note, literature review, repository | Each link goes straight to the file in `submission/docs`; the repository link goes to the README |
+| 5. Detailed Project Description | [Project text](../deliverables/project-description.md#5-detailed-project-description), screenshots and a closing **Materials** block of four links: slide deck, technical note, literature review, repository | Each link goes straight to the file in `submission/docs`; the repository link goes to the README |
 | 6. Use of Super Intelligence (SI) | AI-use selections: code, text drafts and the generated Lama presenter image; add synthetic narration if used | — |
 | 7. NASA Data | FIRMS and GIBS with the role of each dataset | Links to the NASA product pages |
 | 8. Space Agency Partner Data and Other References | Third-party data, libraries and licences; the literature review as the supporting source | The same link to the review file as in field 5 |
@@ -42,9 +42,9 @@ How a judge reaches each material:
 |---|---|---|
 | Video | Field 3 | — |
 | App | Field 4 | Slides 5 and 7, README |
-| [Seven-slide](demo-slides.md) deck, PDF in the repository | First link of the Materials block in field 5 | README |
-| [Technical note](technical-note.md), draft | Second link of the Materials block | Slide 6, README |
-| [Literature review](modis-viirs-harmonization-literature-review.md) | Third link of the Materials block | Field 8, technical note |
+| [Seven-slide](../presentation/demo-slides.md) deck, PDF in the repository | First link of the Materials block in field 5 | README |
+| [Technical note](../deliverables/technical-note.md), draft | Second link of the Materials block | Slide 6, README |
+| [Literature review](../deliverables/modis-viirs-harmonization-literature-review.md) | Third link of the Materials block | Field 8, technical note |
 | Code | Fourth link of the Materials block | The README is the table of contents for the whole set |
 
 Not checked on the live form: whether field 5 accepts clickable links and images. If it does not, the Materials addresses go in as plain text.
@@ -83,7 +83,7 @@ Exceeding the limit makes the project ineligible for global judging; the guide n
 - a file in a GitHub repository;
 - any other external site, cloud service or code repository: the guide ends the list with "etc.".
 
-Both options are ready for Earth Fire Calendar: the [video script](demo-video.md) and the [slide text](demo-slides.md). The video goes in the field; the deck is linked from field 5 ([materials map](#earth-fire-calendar-materials-map)).
+Both options are ready for Earth Fire Calendar: the [video script](../video/demo-video.md) and the [slide text](../presentation/demo-slides.md). The video goes in the field; the deck is linked from field 5 ([materials map](#earth-fire-calendar-materials-map)).
 
 ## 4. Link to Final Project
 

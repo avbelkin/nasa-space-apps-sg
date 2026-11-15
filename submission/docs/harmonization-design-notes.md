@@ -1,6 +1,6 @@
 # Earth Fire Calendar: design notes for the harmonized calendar
 
-Companion to the [literature review](modis-viirs-harmonization-literature-review.md). The review covers what is published; these notes record what the challenge asks for, what the FIRMS data can and cannot support, and the design decisions that follow for the harmonized record and the calendar.
+Companion to the [literature review](../deliverables/modis-viirs-harmonization-literature-review.md). The review covers what is published; these notes record what the challenge asks for, what the FIRMS data can and cannot support, and the design decisions that follow for the harmonized record and the calendar.
 
 **Status.** Nothing in sections 3, 5 and 6 is implemented. Metrics, reference scale and calibration method are candidates until they pass the validation in [section 5](#5-validation). Statements about the prototype refer to commit `82f1a17` (15 November 2026).
 

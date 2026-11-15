@@ -1,8 +1,8 @@
 # Production plan for the Lama video
 
-[Script and narration](../docs/demo-video.md) · [AI disclosures](disclosures.md) · [Requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
+[Script and narration](demo-video.md) · [AI disclosures](disclosures.md) · [Requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
 
-The video targets 29 seconds, 1920×1080 and 30 fps. Source material has been received; the presenter image, a short opening and four temporary production-site captures are prepared. The English voice, transition and full edit have not yet been produced. Media and review materials remain local in the Git-ignored submission/assets/lama directory.
+The video targets 29 seconds, 1920×1080 and 30 fps. Source material has been received; the presenter image, a short opening and four temporary production-site captures are prepared. The English voice, transition and full edit have not yet been produced. Media and review materials remain local in the Git-ignored submission/video/lama directory.
 
 ## Decisions following review
 
@@ -22,7 +22,7 @@ The opening is included in the new total timing, not prepended to the previous 2
 
 ## Local assets
 
-The following files are in submission/assets/lama/prepared:
+The following files are in submission/video/lama/prepared:
 
 - lama-presenter.png — 1086×1448 RGBA, regenerated from IMG_1081 rather than an exact photographic cutout;
 - intro-candidate.mp4 — the original portrait excerpt from 8.2–9.6 seconds of with_Lama.MOV; 1.4 seconds, SDR, muted;
@@ -54,7 +54,7 @@ Before recording, find a group containing both sensors with populated geometry, 
 
 ## Voice, captions and export
 
-Record the voice from the [script](../docs/demo-video.md), then align pauses and English subtitles with the actual audio. Do not lengthen the text. The first edit has no music; a short transition sound can be synthesized locally.
+Record the voice from the [script](demo-video.md), then align pauses and English subtitles with the actual audio. Do not lengthen the text. The first edit has no music; a short transition sound can be synthesized locally.
 
 At 1920×1080, place the 1600×900 interface at x=16, y=24; Lama on the right starting at y=700; AI-edited image below him; and subtitles at the lower left. Scaling must not obscure the MODIS/VIIRS tiles, sources or required values. Enlarge excerpts for the detail scene.
 
