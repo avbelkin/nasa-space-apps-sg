@@ -2,7 +2,7 @@
 
 [Slides](demo-slides.md) · [Video script](demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
 
-Draft text for the **Project** tab, field by field, in the order of the [form](form-fields.md). It describes the app as of commit `82f1a17` (15 November 2026, 16:34 SGT). Replace everything in `[square brackets]` before submitting; the items the team still has to confirm are collected in [Before submitting](#before-submitting).
+Draft text for the **Project** tab, field by field, in the order of the [form](form-fields.md). It describes the app as of commit `3da451f` (15 November 2026, 17:47 SGT). Replace everything in `[square brackets]` before submitting; the items the team still has to confirm are collected in [Before submitting](#before-submitting).
 
 The live numbers come from one snapshot of the app's feed, fetched on 15 November 2026 at 08:36 UTC; its summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](../assets/firms-snapshot-2026-11-15T0836Z.json). If the slides or the video use a different snapshot, use one set of numbers everywhere.
 
@@ -66,7 +66,7 @@ HOW IT WORKS
 
 The interface is a static React and MapLibre GL JS application on GitHub Pages. A small ASP.NET Core service on Google Cloud Run queries the NASA FIRMS Area API, keeps the FIRMS key on the server, caches a snapshot for 20 minutes and serves a rolling 24-hour window.
 
-The service then enriches the detections in the background. It estimates the viewing geometry of each detection by propagating the satellite's orbit from CelesTrak orbital elements to the acquisition time. It samples the land cover map over a circle with the same area as the FIRMS scan-by-track pixel. For pinned detections it samples weather at the acquisition time from NOAA model and satellite products, Open-Meteo, Copernicus fire-danger and drought services and the US Forest Service, and keeps the source, valid time and unit of every value. Missing values stay empty with no substitute.
+The service then enriches the detections in the background. It estimates the viewing geometry of each detection by propagating the satellite's orbit from CelesTrak orbital elements to the acquisition time. It samples the land cover map over a circle with the same area as the FIRMS scan-by-track pixel. It samples weather at the acquisition time from NOAA model and satellite products, Open-Meteo, Copernicus fire-danger and drought services and the US Forest Service, and keeps the source, valid time and unit of every value: model and fire-danger fields in the background for the most recent detections, every field for the detections you pin. Weather samples are shared between service instances and expire 24 hours after the acquisition. Missing values stay empty with no substitute. The side panel shows how far each enrichment stage has progressed.
 
 WHY THESE FIELDS
 
@@ -98,7 +98,7 @@ WHAT WE CONSIDERED
 
 TOOLS
 
-TypeScript, React, Vite, MapLibre GL JS and WebGL2 shaders for the interface; C# on .NET 10 with ASP.NET Core for the service; GitHub Actions, GitHub Pages and Google Cloud Run for build and hosting. Automated tests cover FIRMS parsing, the orbit and geometry calculations, land-cover sampling and the weather samplers.
+TypeScript, React, Vite, MapLibre GL JS and WebGL2 shaders for the interface; C# on .NET 10 with ASP.NET Core for the service; GitHub Actions, GitHub Pages, Google Cloud Run and Firestore for build, hosting and the shared weather cache. Automated tests cover FIRMS parsing, the orbit and geometry calculations, land-cover sampling, the weather samplers and the weather cache.
 
 USE OF AI
 
@@ -193,7 +193,7 @@ The licence column records what we believe applies; the rows marked **check** ha
 | PureHDF | MIT — **check** |
 | xUnit (tests) | Apache-2.0 — **check** |
 
-Hosting: GitHub Pages, GitHub Actions, Google Cloud Run.
+Hosting: GitHub Pages, GitHub Actions, Google Cloud Run, Google Cloud Firestore.
 
 **Methods and references**
 
@@ -218,6 +218,6 @@ Tick both after the [checklist](formal-requirements.md#checklist) is closed.
 | Licence rows marked **check**; the EOX basemap | ⛔ licence rule; the basemap restriction is still open |
 | Project licence | There is no `LICENSE` file; without one NASA distributes the work under Apache 2.0 |
 | Slides PDF link | The deck is not exported yet |
-| Slides 1, 3, 4, 5 and video shot 4 | They show a calendar with sample values; that interface is no longer in the app |
-| Commit or tag of the submitted version | Replace `82f1a17` in the first paragraph and in the [technical note](technical-note.md) |
+| Link preview image `og-preview.png` | It still reads "harmonization" and "Seasonal burning baselines & live calendar anomalies"; the app has neither |
+| Commit or tag of the submitted version | Replace `3da451f` in the first paragraph and in the [technical note](technical-note.md) |
 | Numbers | One snapshot across this page, the slides and the video |

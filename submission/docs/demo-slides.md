@@ -4,19 +4,19 @@
 
 ## Slide 1 — Earth Fire Calendar
 
-**Is this month's fire activity normal for this place, or unusual?**
+**Why do MODIS and VIIRS report different fires over the same place?**
 
-An Earth-first map and calendar built on NASA FIRMS active-fire data.
+A live globe that compares the two sensors and records the conditions of every detection, built on NASA FIRMS active-fire data.
 
 **Challenge:** Harmonization of MODIS and VIIRS Hot Spots
 
 **Team:** [team name] — [team member names]
 
-**Stage:** Working prototype with live NASA FIRMS detections; calendar values are still samples.
+**Stage:** Working prototype on live NASA FIRMS detections. It collects evidence for harmonization; the harmonized record is not built yet.
 
 ## Slide 2 — Two sensors, two different counts
 
-**Same 24 hours of NASA FIRMS data: 82,977 VIIRS detections and 7,359 MODIS detections worldwide.**
+**Same 24 hours of NASA FIRMS data: 79,349 VIIRS detections and 8,127 MODIS detections worldwide.**
 
 - MODIS on Terra and Aqua: about 1 km pixels at nadir; the record starts in 2000.
 - VIIRS on NOAA-20 and NOAA-21: 375 m pixels; the record starts in 2012 with Suomi NPP, whose data delivery ended on 2 November 2026.
@@ -24,26 +24,27 @@ An Earth-first map and calendar built on NASA FIRMS active-fire data.
 
 **Joined without adjustment, the record would show a jump in burning when VIIRS starts, even if nothing changed on the ground.**
 
-*Snapshot: 14 November 2026, 21:19 UTC.*
+*Snapshot: 15 November 2026, 08:36 UTC.*
 
 ## Slide 3 — The question we answer
 
-**An emergency manager asks: is fire activity in my area this month normal for the season?**
+**A researcher joining the two records asks: where, and under what conditions, do MODIS and VIIRS disagree?**
 
-1. Choose an area on the globe.
-2. See its typical fire season, month by month.
-3. Compare this year with the typical level.
+1. Compare what each sensor recorded over the same place in the same 24 hours.
+2. See who saw each group of detections: both sensors, MODIS only or VIIRS only.
+3. Read the conditions of each observation: viewing geometry, land cover and weather.
 
-*Calendar values shown are samples until the harmonized record is built.*
+*The two sets of detections overlap only in part.*
 
-## Slide 4 — Working today
+## Slide 4 — Working today, on live data
 
 - **Live NASA FIRMS hotspots** from the last 24 hours: MODIS on Terra and Aqua, VIIRS on NOAA-20 and NOAA-21.
-- **Sensor switch:** compare MODIS and VIIRS over the same 24 hours.
+- **Sensor switch and colouring by sensor:** the same 24 hours for MODIS, VIIRS or both, with each group of detections coloured by who saw it.
+- **One place, 24 hours:** a timeline of detections by satellite, with the passes that reported nothing. Passes are our estimate from orbits, not FIRMS data.
+- **Conditions of each detection:** estimated viewing geometry, land cover inside the pixel footprint, weather at acquisition time. Every value keeps its source and time.
 - **Context layers:** GPM IMERG precipitation and VIIRS Black Marble night lights from NASA GIBS; cloud imagery via Extremum; satellite tracks from CelesTrak.
-- **Calendar interface:** month strip, typical-versus-this-year comparison and location cards, with sample values.
 
-**Not built yet:** historical archive, harmonization, validation, area drawing, date-range selection and CSV export.
+**Not built yet:** historical archive, harmonization, validation, area and date selection, and data export.
 
 ## Slide 5 — Three steps in the prototype
 
@@ -51,13 +52,15 @@ An Earth-first map and calendar built on NASA FIRMS active-fire data.
 
 **2. Switch from MODIS to VIIRS.** The same hours show many more detections.
 
-**3. Pick an area and a month.** Compare this year with the typical level. *Sample values.*
+**3. Select a fire.** Its 24-hour timeline and the conditions of each observation appear side by side for MODIS and VIIRS.
 
 **Try it:** [avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0)
 
-## Slide 6 — From live feed to a harmonized calendar
+## Slide 6 — From evidence to a harmonized record
 
-**Planned pipeline:** FIRMS archive since 2000 → daily grid per satellite, with day and night kept separate → one reference scale → typical season and departures → calendar and CSV export.
+**Hypothesis:** the MODIS–VIIRS difference depends on land-cover class together with view angle, at the level of individual detections. The prototype already collects the fields this test needs.
+
+**Planned pipeline:** FIRMS archive since 2000 → daily grid per satellite, with day and night kept separate → paired MODIS and VIIRS observations → response functions by view angle, pixel area and land cover → one reference scale → export.
 
 **How we will test it:**
 
@@ -69,15 +72,15 @@ An Earth-first map and calendar built on NASA FIRMS active-fire data.
 
 **If calibration fails, we will show each sensor separately and label the combined view experimental.**
 
-## Slide 7 — A consistent fire calendar
+## Slide 7 — One comparable fire record
 
-**Goal:** Show emergency managers when an area usually burns and whether the current period is unusual.
+**Goal:** A record in which MODIS and VIIRS are comparable, and a tool that shows researchers where and why the two sensors disagree.
 
 **Next milestone:** A harmonized record for one region that passes the hold-out test.
 
-**Links:** [App](https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0) · [Code](https://github.com/avbelkin/nasa-space-apps-sg)
+**Links:** [App](https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0) · [Code](https://github.com/avbelkin/nasa-space-apps-sg) · [Technical note](https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/docs/technical-note.md)
 
-**Sources:** [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) — MODIS and VIIRS fire detections. [NASA GIBS](https://earthdata.nasa.gov/gibs) — GPM IMERG precipitation and VIIRS Black Marble night lights. [Extremum](https://extremum.org/) — cloud layer: geostationary imagery from EUMETSAT, NOAA and JMA, blended with NASA VIIRS imagery at high latitudes. [CelesTrak](https://celestrak.org/) — orbital elements. [EOX](https://s2maps.eu/)/Copernicus Sentinel-2 — Earth basemap. Bright Star / Hipparcos catalogue — star background.
+**Sources:** [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) — MODIS and VIIRS fire detections. [NASA GIBS](https://earthdata.nasa.gov/gibs) — GPM IMERG precipitation and VIIRS Black Marble night lights. ESA CCI / Copernicus C3S — land cover. NOAA, [Open-Meteo](https://open-meteo.com/), Copernicus GWIS and GDO, US Forest Service — weather at acquisition. [Extremum](https://extremum.org/) — cloud layer: geostationary imagery from EUMETSAT, NOAA and JMA, blended with NASA VIIRS imagery at high latitudes. [CelesTrak](https://celestrak.org/) — orbital elements. [EOX](https://s2maps.eu/)/Copernicus Sentinel-2 — Earth basemap. Bright Star / Hipparcos catalogue — star background.
 
 **AI assistance:** code development, and drafting of this presentation text and the demo script.
 
