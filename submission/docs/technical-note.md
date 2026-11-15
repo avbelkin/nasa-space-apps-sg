@@ -2,7 +2,7 @@
 
 [Slides](demo-slides.md) · [Video script](demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
 
-**Challenge:** Harmonization of MODIS and VIIRS Hot Spots · **Team:** `[team name]` · **Version described:** commit `82f1a17`, 15 November 2026 · **App:** [avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0) · **Code:** [github.com/avbelkin/nasa-space-apps-sg](https://github.com/avbelkin/nasa-space-apps-sg)
+**Challenge:** Harmonization of MODIS and VIIRS Hot Spots · **Team:** `[team name]` · **Version described:** commit `3da451f`, 15 November 2026 · **App:** [avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0) · **Code:** [github.com/avbelkin/nasa-space-apps-sg](https://github.com/avbelkin/nasa-space-apps-sg)
 
 This note answers the questions the demo and the project page leave open: what exactly is computed, from which data, how it was checked, and what is still a plan. Draft: replace the text in `[square brackets]`.
 
@@ -17,7 +17,8 @@ Earth Fire Calendar is a web app that compares MODIS and VIIRS active-fire detec
 | Pinned 24-hour timeline with satellite passes | Working; passes are an orbital estimate |
 | Viewing-geometry enrichment | Working; an estimate from public orbital elements |
 | Land-cover enrichment | Working; fixed 2019 map |
-| Weather at acquisition | Working for pinned detections; coverage depends on the source |
+| Weather at acquisition | Working: every field for pinned detections, gridded fields in the background for the most recent detections; coverage depends on the source |
+| Enrichment progress in the side panel | Working |
 | FIRMS archive since 2000 | Not built |
 | Harmonized record, calibration, validation | Not built; design in [section 6](#6-from-enrichment-to-harmonization) |
 | FRP prediction from weather and observation conditions | Not built; exploratory |
@@ -47,13 +48,14 @@ flowchart LR
   LC[ESA CCI / C3S land cover 2019] --> API
   WX[NOAA, Open-Meteo, Copernicus, USFS weather] --> API
   EXT[Extremum cloud tiles] --> API
+  API <--> FS[Firestore<br/>shared weather samples]
   API[ASP.NET Core service<br/>Google Cloud Run] --> UI[React + MapLibre GL JS<br/>GitHub Pages]
   GIBS[NASA GIBS<br/>IMERG precipitation, Black Marble] --> UI
   EOX[EOX Sentinel-2 cloudless basemap] --> UI
 ```
 
 - **Interface** (`ui/`): TypeScript, React 19, Vite, MapLibre GL JS with custom WebGL2 layers. A static site, rebuilt by GitHub Actions on every push to `main` that touches `ui/`.
-- **Service** (`backend/`): C#, .NET 10, ASP.NET Core minimal API in a container on Google Cloud Run (`asia-southeast1`). It holds the FIRMS key, caches upstream data in memory and does all enrichment. There is no database: every cache is rebuilt from public sources.
+- **Service** (`backend/`): C#, .NET 10, ASP.NET Core minimal API in a container on Google Cloud Run (`asia-southeast1`). It holds the FIRMS key, caches upstream data in memory and does all enrichment. The only stored data is a Firestore cache of weather samples, shared between service instances; every cache can be rebuilt from public sources.
 - The view state (position, sensor, layers) lives in the URL hash, so any view can be shared as a link.
 
 ## 4. Detections: ingestion and display
@@ -82,7 +84,7 @@ The grouping is by screen distance, so it changes with zoom. It is a visual aid 
 
 ## 5. Per-detection enrichment
 
-Each enrichment is optional and deferred: the detections are served first, and a missing value stays `null` with no substitute.
+Each enrichment is optional and deferred: the detections are served first, and a missing value stays `null` with no substitute. The side panel reports the progress of each stage: detections loaded, geometry ready and pending, land cover, and weather checked and pending.
 
 ### 5.1 Viewing geometry
 
@@ -104,6 +106,8 @@ The map is a fixed 2019 reference, not the cover on the day of the fire. On the 
 ### 5.3 Weather at acquisition
 
 For pinned detections (up to 16 per request) the service samples each source at the detection's acquisition time and returns, for every value, the source, model run, valid time or interval, unit and sampled grid point. For NOAA GFS a model run is used only if its file was published before the acquisition; the other forecast sources report validity but not publication time.
+
+A background pass samples the gridded sources (NOAA GFS, Copernicus GWIS, NOAA CPC, WFAS) without waiting for a selection. It covers the 512 most recent unique locations and acquisition times in the 24-hour window, up to 64 per feed refresh; older detections get weather only when pinned. Pinned requests reuse these samples and fetch the remaining fields. Each sample is stored once per location and acquisition time in the shared cache and expires 24 hours after the acquisition.
 
 | Source | Fields | Coverage and time matching |
 |---|---|---|
@@ -158,13 +162,13 @@ The data constraints behind this plan and the design decisions for the measure, 
 - **Estimated geometry.** Section 5.1 is an approximation from two-line elements with a simplified propagator. It is suitable for comparing nadir with swath-edge observations, not for per-pixel geolocation.
 - **FRP is not additive across passes,** and several 375 m VIIRS detections can share one 750 m FRP retrieval, so individual VIIRS detections are not independent FRP measurements.
 - **Near-real-time data.** NRT records are replaced later by standard-quality products; the numbers in this note will not match the archive exactly.
-- **One instance, in memory.** Enrichment caches are per service instance and are lost on restart; a newly started instance returns detections first and enrichment later.
+- **Mostly in memory.** Geometry and land-cover results are kept per service instance and are lost on restart; only weather samples are shared between instances. A newly started instance returns detections first and enrichment later.
 
 ## 8. Verification
 
-- **Automated tests:** 41 backend test cases (xUnit) and 99 interface test cases (Node test runner). They cover FIRMS CSV parsing and confidence normalization, the orbit, swath and geometry calculations, land-cover footprint sampling including tile edges and the antimeridian, each weather sampler against recorded fixtures, the enriched-feed endpoint, and the interface's grouping, timeline and URL-state logic. `[Run both suites on the submitted commit and record the result here.]`
-- **Build:** GitHub Actions builds the service in Release mode and the interface on every push; both deployments of `82f1a17` completed successfully on 15 November 2026 at 08:34 UTC.
-- **Live check:** on 15 November 2026 at 08:36 UTC the public app returned HTTP 200, the service reported healthy, and the feed returned the snapshot in section 2.
+- **Automated tests:** 45 backend test cases (xUnit) and 101 interface test cases (Node test runner). They cover FIRMS CSV parsing and confidence normalization, the orbit, swath and geometry calculations, land-cover footprint sampling including tile edges and the antimeridian, each weather sampler against recorded fixtures, the shared weather cache, the enriched-feed endpoint, and the interface's grouping, timeline, enrichment-progress and URL-state logic. `[Run both suites on the submitted commit and record the result here.]`
+- **Build:** GitHub Actions builds the service in Release mode and the interface on every push; both deployments of `3da451f`, started on 15 November 2026 at 09:47 UTC, completed successfully.
+- **Live check:** on 15 November 2026 at 08:36 UTC, on the previous version `82f1a17`, the public app returned HTTP 200, the service reported healthy, and the feed returned the snapshot in section 2. Repeated on `3da451f` at 09:59 UTC: the app returned HTTP 200, the service reported healthy, and the feed returned 89,512 detections with geometry ready for all of them and weather checked for 512 locations.
 - **Not verified:** the estimated view angles against the instruments' own geolocation products; the weather samples against station observations; any harmonization result, because none exists yet.
 
 ## 9. Reproducing the numbers

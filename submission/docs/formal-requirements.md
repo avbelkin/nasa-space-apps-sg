@@ -130,7 +130,7 @@ The app was checked on 15 November at 05:15–05:30 SGT against commit `38f0407`
 | Music in the demo | Not checked: there was no finished demo | Only with a license that permits such use, and with a line in References; otherwise no music |
 | Brand | No files with NASA logos were found in the repository; by the team's decision the app does not use the Space Apps logo | Do not add the NASA Insignia or Logotype to the demo |
 | Personal data | The email addresses of two authors are visible in the public commit history | The team should decide whether this is acceptable |
-| Availability during judging | The app is hosted on `github.io`, the backend on Cloud Run (`run.app`). The live points, orbits and clouds depend on the backend and the FIRMS key; without them only samples remain | Do not shut down the backend or the key before 26 January 2027; after Cloud Run goes into hibernate mode, check the cold start. Do not delete or replace the demo file at the link |
+| Availability during judging | The app is hosted on `github.io`, the backend on Cloud Run (`run.app`). The live points, orbits and clouds depend on the backend and the FIRMS key; without them the map shows no detections | Do not shut down the backend or the key before 26 January 2027; after Cloud Run goes into hibernate mode, check the cold start. Do not delete or replace the demo file at the link |
 
 **Not checked:** the project page on the Space Apps site, the Members tab, the Team Contact Information field, the team name and roster, the local judging schedule and the demo itself. These require signing in to the team account or a reply from the organizer; there was no finished video or presentation among the materials checked.
 
