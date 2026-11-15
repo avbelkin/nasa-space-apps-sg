@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { NegativeTimelineSubBar } from '../src/utils/fireTimeline.ts'
-import { getCrossFamilyPassOutlook, getSecondPassOutlook } from '../src/utils/secondPassOutlook.ts'
+import { getCrossFamilyPassOutlook, getExpectedViirsMiss, getSecondPassOutlook } from '../src/utils/secondPassOutlook.ts'
 import type { FirmsSpotTuple } from '../src/utils/fireSpots.ts'
 import type { ComputedOverpass } from '../src/utils/satelliteOverpassTimeline.ts'
 
@@ -81,4 +81,35 @@ test('checks the shared feed and ignores passes still awaiting data', () => {
   assert.equal(getCrossFamilyPassOutlook(anchor, [crossPass], { ...feed, spots: [distant] })?.satellite, 'Aqua')
   const fetchedAtUtc = new Date(crossPass.timestampMs + 120 * minute).toISOString()
   assert.equal(getCrossFamilyPassOutlook(anchor, [crossPass], { ...feed, fetchedAtUtc }), null)
+})
+
+test('flags high-scoring VIIRS misses only after settling and checking the 1 km radius', () => {
+  const viirs = {
+    ...anchor, satellite: 'NOAA-21', timestamp: 1_794_668_700_000,
+    frp: 11, brightnessK: 351, confidence: 65, dayNight: 'N',
+  }
+  const predicted: ComputedOverpass = {
+    ...crossPass, instrument: 'viirs', satelliteId: 'noaa20', satellite: 'NOAA-20', noradId: 43013,
+    timestampMs: 1_794_672_100_000, distanceKm: 305.9, typicalIngestionLagMinutes: 90,
+  }
+  const geometry = {
+    orbit: { offNadirDeg: 47.3, slantRangeKm: 1340 },
+    sun: { elevationDeg: -51.6, glintAngleDeg: null },
+    moon: { elevationDeg: -25.7, glintAngleDeg: null },
+    moonIlluminatedFraction: 0.2381,
+  }
+  const available = {
+    ...feed, windowStartUtc: new Date(viirs.timestamp - 900 * minute).toISOString(),
+    windowEndUtc: new Date(viirs.timestamp + 300 * minute).toISOString(),
+    fetchedAtUtc: new Date(viirs.timestamp + 300 * minute).toISOString(),
+  }
+  const warning = getExpectedViirsMiss(viirs, [predicted], available, geometry, 122)
+  assert.ok(warning)
+  assert.ok(Math.abs(warning.score - 0.9159038216673636) < 1e-9)
+  const nearby: FirmsSpotTuple = [35, 10.007, predicted.timestampMs, 20, 350, 80, 1, 'NOAA-20', 'N']
+  assert.equal(getExpectedViirsMiss(viirs, [predicted], { ...available, spots: [nearby] }, geometry, 122), null)
+  const awaiting = { ...available, fetchedAtUtc: new Date(predicted.timestampMs + 90 * minute).toISOString() }
+  assert.equal(getExpectedViirsMiss(viirs, [predicted], awaiting, geometry, 122), null)
+  const farTrack = { ...predicted, distanceKm: 1_300 }
+  assert.equal(getExpectedViirsMiss(viirs, [farTrack], available, geometry, 122), null)
 })

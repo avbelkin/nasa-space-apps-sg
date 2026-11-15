@@ -8,7 +8,7 @@ import {
 } from '../utils/fireSpots'
 import type { SatelliteOverpassIndex } from '../utils/satelliteOverpassTimeline'
 import type { FireObservationGeometry } from '../utils/fireObservationGeometry'
-import { getCrossFamilyPassOutlook, getSecondPassOutlook } from '../utils/secondPassOutlook'
+import { getCrossFamilyPassOutlook, getExpectedViirsMiss, getSecondPassOutlook } from '../utils/secondPassOutlook'
 import { forecastNextPassFrp } from '../utils/frpForecast'
 import { FireDetectionPowerSummary, FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
 import { FireObservationDetails } from './FireObservationDetails'
@@ -34,6 +34,7 @@ interface PinnedFireDetailsProps {
 const frpFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 })
 const differenceFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1, signDisplay: 'exceptZero' })
 const passTimeFormat = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
+const scoreFormat = new Intl.NumberFormat(undefined, { style: 'percent', maximumFractionDigits: 0 })
 
 export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, overpassIndex, fireFeed, forecastNowMs, onUnpin }: PinnedFireDetailsProps) {
   const details = useMemo(
@@ -44,23 +45,26 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
     }),
     [selection, overpassIndex, landCoverBySpot],
   )
-  const crossFamilyOutlook = useMemo(() => {
-    if (details?.count !== 1 || !fireFeed || !overpassIndex) return null
+  const solo = useMemo(() => {
+    if (details?.count !== 1 || !overpassIndex) return null
     const spot = selection.inputs[0]
     if (spot.lat === undefined || spot.lng === undefined) return null
-    return getCrossFamilyPassOutlook(spot, overpassIndex.evaluateAtLatLng(spot.lat, spot.lng), fireFeed)
-  }, [details?.count, fireFeed, overpassIndex, selection.inputs])
-  const forecast = useMemo(() => {
-    if (details?.count !== 1 || forecastNowMs === undefined || !overpassIndex) return null
-    const spot = selection.inputs[0]
-    if (spot.lng === undefined || spot.lat === undefined) return null
     const row = fireFeed?.spots.find(([lng, lat, timestamp, , , , , satellite]) =>
       lng === spot.lng && lat === spot.lat && timestamp === spot.timestamp && satellite === spot.satellite)
+    return { spot, passes: overpassIndex.evaluateAtLatLng(spot.lat, spot.lng), landCoverCode: row?.[9]?.dominantCode }
+  }, [details?.count, fireFeed, overpassIndex, selection.inputs])
+  const crossFamilyOutlook = useMemo(() => solo && fireFeed
+    ? getCrossFamilyPassOutlook(solo.spot, solo.passes, fireFeed)
+    : null, [solo, fireFeed])
+  const expectedMiss = useMemo(() => solo && fireFeed
+    ? getExpectedViirsMiss(solo.spot, solo.passes, fireFeed, feedGeometry?.[0], solo.landCoverCode)
+    : null, [solo, fireFeed, feedGeometry])
+  const forecast = useMemo(() => {
+    if (!solo || forecastNowMs === undefined) return null
     return forecastNextPassFrp(
-      spot, overpassIndex.evaluateAtLatLng(spot.lat, spot.lng), forecastNowMs,
-      feedGeometry?.[0], row?.[9]?.dominantCode,
+      solo.spot, solo.passes, forecastNowMs, feedGeometry?.[0], solo.landCoverCode,
     )
-  }, [details?.count, feedGeometry, fireFeed, forecastNowMs, overpassIndex, selection.inputs])
+  }, [solo, feedGeometry, forecastNowMs])
   if (!details?.timeline) {
     return null
   }
@@ -112,7 +116,14 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
         </div>
       )}
       <FireDetectionsTimelineCard timeline={timeline} />
-      {outlook && (
+      {expectedMiss && (
+        <div className="fire-second-pass-note">
+          <strong>Expected detection, no match</strong>
+          <p>{expectedMiss.pass.satellite} VIIRS · {passTimeFormat.format(expectedMiss.pass.timestampMs)} · {scoreFormat.format(expectedMiss.score)} detection score</p>
+          <p>No matching FIRMS detection within 1 km of this spot.</p>
+        </div>
+      )}
+      {!expectedMiss && outlook && (
         <div className="fire-second-pass-note">
           <strong>No matching detection for {outlook.satellite}’s predicted pass in this selection.</strong>
           {outlook.fewer.length > 0 && <p>The baseline saw fewer misses with {outlook.fewer.join(' and ')}.</p>}
