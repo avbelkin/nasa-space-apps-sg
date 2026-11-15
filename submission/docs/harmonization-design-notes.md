@@ -1,8 +1,8 @@
 # Earth Fire Calendar: design notes for the harmonized calendar
 
-Companion to the [literature review](modis-viirs-harmonization-literature-review.md). The review covers what is published; these notes record what the challenge asks for, what the FIRMS data can and cannot support, one check we ran on archived FIRMS data, and the design decisions that follow for the harmonized record and the calendar.
+Companion to the [literature review](modis-viirs-harmonization-literature-review.md). The review covers what is published; these notes record what the challenge asks for, what the FIRMS data can and cannot support, and the design decisions that follow for the harmonized record and the calendar.
 
-**Status.** Nothing in sections 4–7 is implemented. Metrics, reference scale and calibration method are candidates until they pass the validation in [section 6](#6-validation). Statements about the prototype refer to commit `82f1a17` (15 November 2026).
+**Status.** Nothing in sections 3, 5 and 6 is implemented. Metrics, reference scale and calibration method are candidates until they pass the validation in [section 5](#5-validation). Statements about the prototype refer to commit `82f1a17` (15 November 2026).
 
 ## 1. What the challenge asks for
 
@@ -33,7 +33,7 @@ The brief names early-warning and emergency responders, scientists, land manager
 - Suomi NPP data distribution ended on 2 November 2026 ([NOAA notice](https://www.nesdis.noaa.gov/news/update-4-cessation-of-suomi-national-polar-orbiting-partnership-s-npp-data-users-november-02-2026-1540-utc-and-decommissioning-issued-november-2-2026-1800-utc)). No single satellite pair spans the whole record.
 - The archive is delivered on request as CSV, JSON or Shapefile. Near-real-time (NRT) records are replaced by standard products after about five months.
 - The [Area API](https://firms.modaps.eosdis.nasa.gov/api/area/) returns 1–5 days per request. Twenty-five years cannot be assembled during an interactive request: history has to be precomputed from the archive.
-- The [missing-data table](https://firms.modaps.eosdis.nasa.gov/api/missing_data/) lists gaps in the FIRMS database by satellite and data type. It is not a record of cloud cover, and absence from the table does not prove normal coverage (see the Aqua example in section 3).
+- The [missing-data table](https://firms.modaps.eosdis.nasa.gov/api/missing_data/) lists gaps in the FIRMS database by satellite and data type. It is not a record of cloud cover, and absence from the table does not prove normal coverage: check each satellite's daily count against adjacent days and the other platforms before reading a low count as low activity.
 - A FIRMS table holds positive detections only. Cloud, water and unprocessed pixels are in the swath-level products: the VIIRS Level 2 fire mask and QA layers ([VIIRS user guide](https://www.earthdata.nasa.gov/s3fs-public/2025-06/VIIRS_C2_AF-375m_User_Guide_1.2.pdf), section 3.1).
 
 **Record fields that matter for harmonization:**
@@ -48,75 +48,46 @@ The brief names early-warning and emergency responders, scientists, land manager
 | `frp` | Fire radiative power in MW: instantaneous, per pixel |
 | `daynight` | Day and night differ in sensitivity for both sensors |
 | `version` | Collection and processing stream (NRT or standard) |
-| `type` | Standard products only; see below |
+| `type` | Inferred source type; see below |
 
 **Confidence.** The MODIS guide groups its 0–100 value into low (below 30), nominal (30 to below 80) and high (80 and above) ([MODIS user guide](https://earthdata.nasa.gov/s3fs-public/2023-09/MODIS_C6_C6.1_Fire_User_Guide_1.0.pdf)). VIIRS supplies the class directly. The same class name does not mean the same reliability, so a filter needs a documented rule per product, not one threshold.
 
-**Source type.** The MODIS guide defines `type` 0 as presumed vegetation fire, 1 as active volcano, 2 as other static land source (repeatedly detected on 16 or more days in a calendar year, or in an urban area) and 3 as offshore. In the files we read (section 3), standard-product rows end with a `type` column and NRT rows have none.
+**Source type.** The MODIS guide defines `type` 0 as presumed vegetation fire, 1 as active volcano, 2 as other static land source (repeatedly detected on 16 or more days in a calendar year, or in an urban area) and 3 as offshore. The field is part of the standard products; its presence has to be checked for each download, and the near-real-time feed the prototype reads does not carry it.
 
-## 3. Check on archived FIRMS slices
+## 3. Design decisions
 
-To see how large the sensor gap is in historical data, and how much of it a coarse grid removes, we read FIRMS Area API responses archived in a public repository: [the-aris-club/flare-chronos](https://github.com/the-aris-club/flare-chronos) (MIT licence, commit `c5bd0fd`, directory `data/raw`). The files were read as they are; no FIRMS request was made for this check. It is a third-party capture, so the figures describe these files, not what FIRMS returns today.
+### 3.1 Measures and units
 
-**What was read.** 96 standard-product files (51 `MODIS_SP`, 29 `VIIRS_SNPP_SP`, 16 `VIIRS_NOAA20_SP`), 1,247,446 rows, no confidence or type filtering. Each file is one five-day window in one year over one region:
-
-- Mekong: 15–19 March, 100–109.5°E, 8.6–23.5°N;
-- Amazon: 20–24 August, 62–50°W, 14–4°S.
-
-An active cell-day is a distinct combination of `floor(latitude / 0.25)`, `floor(longitude / 0.25)` and `acq_date`. MODIS means Terra and Aqua together. A range is the lowest and highest yearly ratio; a share pools all years.
-
-| Measure | Mekong, 15–19 March | Amazon, 20–24 August |
-|---|---|---|
-| S-NPP / MODIS detections | 2.95–5.97 (2012–2026) | 3.23–6.28 (2012–2025) |
-| S-NPP / MODIS active 0.25° cell-days | 1.99–3.01 | 1.42–2.20 |
-| Same, night rows only | 3.29–8.03 | 1.81–3.30 |
-| NOAA-20 / S-NPP detections | 0.88–1.19 (2019–2026) | 0.90–1.01 (2018–2025) |
-| NOAA-20 / S-NPP active 0.25° cell-days | 0.97–1.06 | 1.00–1.04 |
-| Rows with non-zero `type`: MODIS; S-NPP; NOAA-20 | 1.80%; 0.45%; 0.60% | 1.31%; 0.11%; 0.13% |
-| MODIS detections with `scan` of at least 2 km | 21.4% | 25.8% |
-
-**What this shows.**
-
-- **A coarse grid narrows the gap and does not close it.** Counting active 0.25° cell-days instead of detections brings the S-NPP / MODIS ratio from 3–6 down to 1.4–3.0, and at night it stays at 1.8–8.0. Cell-days are less sensitive to resolution, but they are not a common scale by themselves.
-- **The two VIIRS platforms are close to each other.** NOAA-20 reports 0.97–1.06 times the S-NPP cell-days. A VIIRS-only series, S-NPP continued by NOAA-20, is a candidate continuous record from 2012 that needs no MODIS conversion.
-- **Static sources are flagged differently by product.** The share of non-zero `type` rows is several times higher in MODIS than in VIIRS, so one product's classification is not a mask for the other. Type 1 (volcano) does not occur in these windows.
-- **A nominal radius misstates MODIS.** A fifth to a quarter of MODIS detections have a `scan` of 2 km or more.
-- **Gaps exist that the daily count reveals.** In the Amazon window for 2020, Aqua has 4, 116 and 36 detections on 21–23 August against 351, 777 and 196 from Terra; in 2019 Aqua had 268, 836 and 439 on the same dates. We did not establish the cause. A check of each satellite's daily count against adjacent days and the other platforms is needed before a low count is read as low activity.
-
-**Limits.** These windows say nothing about other months, complete seasons or other regions. The S-NPP / MODIS ratios set one VIIRS platform against two MODIS platforms, so they are not per-overpass sensitivity ratios. `VIIRS_NOAA21_SP` was not in the sample.
-
-## 4. Design decisions
-
-### 4.1 Measures and units
-
+- **Cell-days are not a common scale by themselves.** Counting active grid cell-days is less sensitive to pixel size than counting detections, but it still needs a response model or a same-sensor comparison.
 - **One primary quantity with a unit.** The brief asks for the number of hotspots. Candidates: detections on a declared reference scale (an estimate, possibly fractional) or active cell-days. Native per-satellite counts are shown next to it. Native counts, estimated counts and cell-days are three different measures, and none is a number of fires.
 - **A fixed, versioned analytical grid** and an explicit rule for including cells in an area. A value must not change when the user zooms the map; screen-distance grouping is a display aid only.
 - **Two different area statistics**, never mixed: summed cell-days, and days with any activity anywhere in the area.
 - **FRP is instantaneous power.** Sum non-duplicate pixel FRP within one satellite overpass and one spatial unit. Across overpasses show separate observations or a named summary (latest per-pass total, maximum per-pass total) with times. A sum over repeated observations is neither current power nor energy; energy needs time integration, and burned area needs a different product.
 - **Duplicate VIIRS pixels.** The Level 2 product flags residual bow-tie pixels (algorithm QA bit 22) so that FRP is not counted twice. FIRMS CSV rows carry no QA field: on that data path, test for near-coincident detections from one satellite and acquisition time.
 
-### 4.2 Observation status
+### 3.2 Observation status
 
 - **Zero is not "no data".** Store the value and the status separately: detections recorded, usable observation with no detection, obscured or invalid, no coverage, missing delivery, coverage unknown. Do not fill unknown bins with zero.
 - **Keep on every aggregate:** satellite, day/night, collection, processing stream. A total over "whichever satellites were flying" changes its meaning over time.
 - **Provisional data.** Mark partial first and last months, and NRT records not yet replaced by standard ones. Replace NRT with standard records by a reproducible rule; do not append both.
 - **Predicted is not confirmed.** An orbit calculation gives an opportunity to observe, not a valid observation: cloud, outages and processing failures still matter. Keep predicted pass time, actual FIRMS acquisition time, age of the orbital elements and confirmed data availability as separate fields. Orbital elements are usable only near their epoch; current ones cannot reconstruct the historical record.
 
-### 4.3 Vegetation fires and other heat sources
+### 3.3 Vegetation fires and other heat sources
 
 - Say "active-fire detections and thermal anomalies" where the data does not establish a vegetation fire, and keep an "unknown" source category. Repeated detections alone do not identify a cause.
-- For the NRT feed, which has no `type` field, a candidate is a static-source flag built from the locations of non-zero-type standard records. The matching distance and the persistence rule are choices to validate.
+- Where the feed has no `type` field, a candidate is a static-source flag built from the locations of non-zero-type standard records. The matching distance and the persistence rule are choices to validate.
 - Context layers to evaluate: the FIRMS [static thermal anomalies](https://wiki.earthdata.nasa.gov/spaces/FIRMS/blog/2025/02/28/425855667/FIRMS+incorporates+static+thermal+anomalies+data+to+help+users+differentiate+between+vegetation+and+non+vegetation+fires.) layer and the global industrial heat source polygons ([Ma, 2024](https://doi.org/10.5281/zenodo.10570342)). Check geometry, coverage, classification and version before use, and keep the flag reversible.
 
-### 4.4 Reference scale
+### 3.4 Reference scale
 
 - **Fix the reference convention before the method.** Default candidate: express VIIRS on a MODIS-equivalent scale, fitted on overlap years with a fixed set of satellites and with day and night separate. This leaves 2000–2011 as observed. Scaling MODIS up to VIIRS is possible in aggregate, but it cannot recover individual missed detections and turns those years into model output with nothing to check it against.
 - **State how both ends are bridged:** Terra alone before July 2002; NOAA-20 and NOAA-21 after S-NPP.
+- **A VIIRS-only series** (S-NPP from 2012, continued by NOAA-20) is a candidate continuous record that needs no MODIS conversion. Test the handover on complete seasons and place it inside the overlap of the two platforms, not at the end of S-NPP.
 - **Orbit drift is a break in the reference itself.** Aqua's final inclination adjustment and drag make-up manoeuvres were in 2021 and Terra's in 2022; significant sampling effects were reported from late 2024, and the effect on fire products is still under investigation ([Giglio, 2025](https://landweb.modaps.eosdis.nasa.gov/data/filePost/LANCE_UWG_Orbit_Drift_Giglio_202505.pdf); [NASA LDOPE note](https://landweb.modaps.eosdis.nasa.gov/displayissue?id=1254)). Prefer fitting on overlap years before those dates and evaluate later years as a separate stratum.
 - **A calibration is valid at the scale it was fitted.** A nonlinear fit on region-month totals cannot be applied per cell and then summed over an arbitrary area. The fitting unit, grid and area rule belong in the method description.
 - **Quantile matching refitted per period can erase real change.** Fit once on a declared period.
 
-### 4.5 Method candidates and their limits
+### 3.5 Method candidates and their limits
 
 | Candidate | Use | Limit |
 |---|---|---|
@@ -128,13 +99,13 @@ An active cell-day is a distinct combination of `floor(latitude / 0.25)`, `floor
 
 **Note on the observation-operator coefficients.** Evaluating the paper's detection-limit relation (Eq. 5) with Table 1 at a 1 km² pixel gives 4.96 MW by day and 5.44 MW by night for MODIS; the paper's conclusions give 5.7 and 3.7 MW for the smallest pixels. For VIIRS, Table 2 at a 0.375 km × 0.375 km pixel gives 2.31 and 0.54 MW; the conclusions give 3.7 and 0.7 MW. We have not reconciled the two sets, which may rest on different definitions. Neither should be copied as an implementation constant before the equations, tables and code are reconciled.
 
-### 4.6 A shortcut to a MODIS baseline
+### 3.6 A shortcut to a MODIS baseline
 
 The MODIS guide documents monthly 0.25° climate-modelling-grid products, `MOD14CMQ` and `MYD14CMQ`, with layers including `RawFirePix`, `CorrFirePix`, `CloudCorrFirePix`, `MeanCloudFraction`, `CloudPix`, `TotalPix` and `MeanFRP`. They can reduce the work for a coarse MODIS historical baseline. Limits: the files are a time series from which a climatology still has to be computed; `CloudCorrFirePix` is a corrected estimate, not a detection count; monthly 0.25° data cannot serve daily history or a small arbitrary polygon; Terra and Aqua stay separate until their combination is defined. We have not downloaded these products or tested a reader for their HDF4 format.
 
 The same guide warns of large sampling bias in MODIS analyses over periods shorter than about eight days. Start with monthly comparisons, keep daily records so that other summaries stay possible, and require coverage evidence before publishing daily or five-day statistics.
 
-### 4.7 Seasonal baseline and anomaly
+### 3.7 Seasonal baseline and anomaly
 
 - Show the baseline interval, the number of contributing years, the median, the spread and the completeness.
 - Compare a partial current period with the same elapsed dates in every historical year, and keep the target period out of its own baseline.
@@ -143,7 +114,7 @@ The same guide warns of large sampling bias in MODIS analyses over periods short
 - Same-satellite percentiles avoid a cross-sensor conversion but do not remove changes in coverage, processing or overpass time.
 - Seasonal timing from MODIS and VIIRS does not agree everywhere: tropical forest is a reported exception ([Giglio et al., 2006](https://doi.org/10.1029/2005JG000142)), and regional caution is advised for long-term changes ([Zubkova et al., 2024](https://doi.org/10.1016/j.jag.2024.104064)).
 
-### 4.8 Calendar, area selection and export
+### 3.8 Calendar, area selection and export
 
 - A year × month matrix for a selected area and date range, with native and adjusted series on the same measure, unit and coverage rules.
 - Two exports: the detections returned by the search, and the analytical series, both with provenance and quality fields.
@@ -151,7 +122,7 @@ The same guide warns of large sampling bias in MODIS analyses over periods short
 - Label the area and time window of every view. The live layer is global and covers the last 24 hours; it must not look as if it had been filtered to a selected area or month.
 - The shared link carries area, period, measure and the data and method versions, so that it reproduces the same numbers.
 
-## 5. Prototype against these notes
+## 4. Prototype against these notes
 
 Checked in the code at `82f1a17`:
 
@@ -165,7 +136,7 @@ Checked in the code at `82f1a17`:
 | Nominal crossing times | The orbit API still returns the historical 10:30 and 13:30 local-time notes for Terra and Aqua | Both satellites have drifted; label as historical nominal times if shown |
 | Storage | In-memory cache only | Raw inputs and daily aggregates for the history need durable files or object storage |
 
-## 6. Validation
+## 5. Validation
 
 - Hold out whole years and one contrasting region.
 - Inside the overlap, hide the reference sensor for an interval, reconstruct the declared reference measure from the other sensor, and compare with the withheld data.
@@ -173,10 +144,20 @@ Checked in the code at `82f1a17`:
 - Set the acceptance thresholds before looking at the held-out results.
 - Report signed bias, the timing of the seasonal peak, and behaviour in sparse periods, in extreme periods and at the dates when satellites enter or leave the record.
 - "The curves look continuous" is not evidence.
+- **Same test for every alternative:** plain merge; common grid with duplicates removed; one coefficient from the overlap; corrections by geometry, season and land cover; quantile mapping or an observation operator. Each added step has to earn its place on the held-out data.
+- **Break tests at sensor transitions:** the start of VIIRS in 2012, NOAA-20 in 2018, the Terra and Aqua drift years, NOAA-21, the end of S-NPP in November 2026. Repeat the test at placebo dates to see how often a break appears by chance.
+- **Changing the satellite set on purpose.** Inside the overlap, recompute the measure with different subsets of the available platforms. The burning is the same and only the observing system changes, so the measure should not move.
+- **Injected signals.** Add a known step or trend to one sensor's era and confirm that the pipeline returns it. This tests whether real change survives harmonization.
+- **Real anomalies are preserved:** ranks of extreme years, the size of unusual periods, the onset and the peak of the season. Do not force every year to one historical distribution.
+- **Residuals** must not depend systematically on view angle, cloudiness, local time, platform or processing version.
+- **Cells seen by one sensor only.** Check MODIS-only, VIIRS-only and no-detection cells separately; a calibration fitted on matched detections learns mostly from burning that is easy to detect.
+- **Results by class:** cropland burning, forest fires, savanna, peat; day and night; weak and strong sources. A good overall score must not hide a class that got worse.
+- **Uncertainty.** Resample whole space-time blocks or fire episodes, not single pixels, so that dependent pixels do not produce intervals that are too narrow.
+- Split held-out data by whole seasons and spatial blocks; never distribute neighbouring pixels of one event between training and test.
 - Burned-area products can serve as a secondary check, with two cautions: a burn scar does not establish active combustion at a given overpass, and products that share active-fire inputs are not independent.
 - If the calibration fails, publish the source-separated history and label the adjusted view experimental.
 
-## 7. Order of work
+## 6. Order of work
 
 | Stage | Result |
 |---|---|
@@ -186,7 +167,7 @@ Checked in the code at `82f1a17`:
 
 Candidate regions: one for the demonstration and a contrasting one for validation, subject to actual data coverage. A successful first delivery traces a displayed number back to source records, distinguishes missing observations from low activity, and shows whether the harmonized result passes the held-out comparison.
 
-## 8. Existing products to compare with
+## 7. Existing products to compare with
 
 | Product | What to look at |
 |---|---|
@@ -196,7 +177,7 @@ Candidate regions: one for the demonstration and a contrasting one for validatio
 | [Global Fire Atlas](https://doi.org/10.5194/essd-11-529-2019) | Individual fire size, duration and spread from burned-area data |
 | MODIS–VIIRS land product continuity ([Román et al., 2024](https://doi.org/10.1016/j.rse.2023.113963)) | How NASA documents continuity between the two instrument records |
 
-## 9. Data documentation and further sources
+## 8. Data documentation and further sources
 
 Documentation and studies that the literature review does not cite and that are useful when building the pipeline.
 
@@ -231,9 +212,9 @@ Documentation and studies that the literature review does not cite and that are 
 | [Kato et al., 2021](https://doi.org/10.1016/j.jag.2021.102491) and [Ma et al., 2022](https://doi.org/10.3390/rs14040835), heat-source classification | Separating industrial sources from fires |
 | [Karlsson et al., 2025](https://doi.org/10.1007/978-3-031-95918-9_5), next-day predictability with MODIS and VIIRS | A public MODIS–VIIRS benchmark; Australia only |
 
-## 10. Not checked
+## 9. Not checked
 
-- The `type` and `version` values were read from one third-party capture. Confirm them, and the `VIIRS_NOAA21_SP` schema, on fresh FIRMS responses before keying logic to them.
+- The `type` and `version` fields of the standard products, including `VIIRS_NOAA21_SP`, were not read from FIRMS responses. Confirm them before keying logic to them.
 - No calibration was run. No CMG file was downloaded.
 - The static-source layers were not opened: geometry, coverage and classification are unverified.
 - Current overpass times of the satellites were not measured.
