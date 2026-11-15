@@ -20,6 +20,35 @@ The form is on the **Project** tab of the team page (**My Team → Project → E
 
 The project cannot be submitted until all required fields are filled in. The guide does not list which fields the form marks as required: the "Type" and "Required" columns are compiled from its text and the official video and have not been checked on the form itself. The guide speaks of the link in fields 3 and 4 in the singular.
 
+## Earth Fire Calendar materials map
+
+The form has two link fields (3 and 4). All other materials go in as links inside the text of field 5. This is the team's decision, not a requirement of the guide.
+
+| Field | What goes in | Entry point |
+|---|---|---|
+| 1. Project Name | `Earth Fire Calendar` | — |
+| 2. High-Level Project Summary | Two or three sentences: the problem, what is built, what is still a sample | — |
+| 3. Link to Project Demo | **Video** recorded from the [script](demo-video.md) | Public video link that opens without sign-in |
+| 4. Link to Final Project | **App** | [Link with the prepared view](#4-link-to-final-project) |
+| 5. Detailed Project Description | Project text, screenshots and a closing **Materials** block of four links: slide deck, technical note, literature review, repository | Each link goes straight to the file in `submission/docs`; the repository link goes to the README |
+| 6. Use of Super Intelligence (SI) | AI-use selections: code and text drafts | — |
+| 7. NASA Data | FIRMS and GIBS with the role of each dataset | Links to the NASA product pages |
+| 8. Space Agency Partner Data and Other References | Third-party data, libraries and licences; the literature review as the supporting source | The same link to the review file as in field 5 |
+| 9. Two checkboxes | Tick both | — |
+
+How a judge reaches each material:
+
+| Material | Main entry | Other entries |
+|---|---|---|
+| Video | Field 3 | — |
+| App | Field 4 | Slides 5 and 7, README |
+| [Seven-slide](demo-slides.md) deck, PDF in the repository | First link of the Materials block in field 5 | README |
+| Technical note (not written yet) | Second link of the Materials block | Slide 6, README |
+| [Literature review](modis-viirs-harmonization-literature-review.md) | Third link of the Materials block | Field 8, technical note |
+| Code | Fourth link of the Materials block | The README is the table of contents for the whole set |
+
+Not checked on the live form: whether field 5 accepts clickable links and images. If it does not, the Materials addresses go in as plain text.
+
 ## 1. Project Name
 
 **Required:** the project name.
@@ -54,7 +83,7 @@ Exceeding the limit makes the project ineligible for global judging; the guide n
 - a file in a GitHub repository;
 - any other external site, cloud service or code repository: the guide ends the list with "etc.".
 
-Both options are ready for Earth Fire Calendar: the [video script](demo-video.md) and the [slide text](demo-slides.md). Only one goes in the field.
+Both options are ready for Earth Fire Calendar: the [video script](demo-video.md) and the [slide text](demo-slides.md). The video goes in the field; the deck is linked from field 5 ([materials map](#earth-fire-calendar-materials-map)).
 
 ## 4. Link to Final Project
 
