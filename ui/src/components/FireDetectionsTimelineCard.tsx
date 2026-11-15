@@ -4,9 +4,19 @@ import { SunriseIcon, SunsetIcon } from './icons'
 
 interface FireDetectionsTimelineCardProps {
   timeline: FireDetectionsTimeline
+  interactive?: boolean
 }
 
-export function FireDetectionsTimelineCard({ timeline }: FireDetectionsTimelineCardProps) {
+export function FireDetectionPowerSummary({ timeline }: FireDetectionsTimelineCardProps) {
+  return (
+    <span>
+      {timeline.singleSpotDetail ??
+        `Peak ${timeline.peakFrpMw.toLocaleString('en-US')} MW (${timeline.totalFrpMw.toLocaleString('en-US')} MW total)`}
+    </span>
+  )
+}
+
+export function FireDetectionsTimelineCard({ timeline, interactive = true }: FireDetectionsTimelineCardProps) {
   const clipBaseId = useId()
   const dayClipId = `${clipBaseId}-day`
   const nightClipId = `${clipBaseId}-night`
@@ -47,13 +57,14 @@ export function FireDetectionsTimelineCard({ timeline }: FireDetectionsTimelineC
             ))
           )}
         </div>
-        <span className="fire-timeline-peak">
-          {timeline.singleSpotDetail ??
-            `Peak ${timeline.peakFrpMw.toLocaleString('en-US')} MW (${timeline.totalFrpMw.toLocaleString('en-US')} MW total)`}
-        </span>
       </div>
 
-      <div className="fire-timeline-scroll">
+      <div
+        className="fire-timeline-scroll"
+        role={interactive ? 'region' : undefined}
+        aria-label={interactive ? '24-hour detection chart' : undefined}
+        tabIndex={interactive ? 0 : undefined}
+      >
         <div className="fire-timeline-frame">
           <div
             className="fire-timeline-plot"
@@ -199,27 +210,29 @@ export function FireDetectionsTimelineCard({ timeline }: FireDetectionsTimelineC
         </div>
       </div>
 
-      <table className="visually-hidden">
-        <caption>{timeline.accessibleSummary}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Time</th>
-            <th scope="col">Satellite</th>
-            <th scope="col">Status</th>
-            <th scope="col">Details</th>
-          </tr>
-        </thead>
-        <tbody>
-          {timeline.accessibleRows.map((row, index) => (
-            <tr key={`${index}-${row.timeLabel}-${row.satellite}`}>
-              <td>{row.timeLabel}</td>
-              <td>{row.satellite}</td>
-              <td>{row.status}</td>
-              <td>{row.detail}</td>
+      <div className="visually-hidden">
+        <table>
+          <caption>{timeline.accessibleSummary}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Time</th>
+              <th scope="col">Satellite</th>
+              <th scope="col">Status</th>
+              <th scope="col">Details</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {timeline.accessibleRows.map((row, index) => (
+              <tr key={`${index}-${row.timeLabel}-${row.satellite}`}>
+                <td>{row.timeLabel}</td>
+                <td>{row.satellite}</td>
+                <td>{row.status}</td>
+                <td>{row.detail}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

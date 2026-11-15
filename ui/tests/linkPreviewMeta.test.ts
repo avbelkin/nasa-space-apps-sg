@@ -78,7 +78,7 @@ test('ui/index.html declares approved link preview metadata and transforms clean
 
   assert.match(indexHtml, /<title>Earth Fire Calendar<\/title>/)
   assert.match(indexHtml, new RegExp(`property="og:site_name"\\s+content="${LINK_PREVIEW_SITE_NAME}"`))
-  assert.match(indexHtml, /property="og:title"\s+content="Earth Fire Calendar — Harmonized MODIS &amp; VIIRS Fire Anomalies"/)
+  assert.match(indexHtml, /property="og:title"\s+content="Earth Fire Calendar — MODIS &amp; VIIRS Active Fires"/)
   assert.match(indexHtml, /name="twitter:card"\s+content="summary_large_image"/)
   assert.match(indexHtml, new RegExp(`property="og:image:width"\\s+content="${LINK_PREVIEW_IMAGE_WIDTH}"`))
   assert.match(indexHtml, new RegExp(`property="og:image:height"\\s+content="${LINK_PREVIEW_IMAGE_HEIGHT}"`))

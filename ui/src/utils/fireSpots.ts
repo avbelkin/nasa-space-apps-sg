@@ -1,5 +1,5 @@
 import type { Feature, FeatureCollection, Point } from 'geojson'
-import type { SensorFilter } from '../data/stubSeasonalData.ts'
+import type { SensorFilter } from '../data/mapTypes.ts'
 import {
   buildFireDetectionsTimeline,
   compareMatchedFireSpots,
@@ -25,7 +25,6 @@ export const SLOW_FREQUENCY_HZ = 1 / SLOW_PERIOD_SECONDS
 export const MID_FREQUENCY_HZ = (FAST_FREQUENCY_HZ + SLOW_FREQUENCY_HZ) / 2
 export const SPOT_RADIUS = 12
 export const SPOT_EXPANSION = 8
-export const STILL_OPACITY = 0.55
 export const SPOT_OPACITY = 0.85
 export const MIN_FRP = 1
 export const MAX_FRP = 250
@@ -41,6 +40,7 @@ export const FULL_DETAIL_FIRE_SPOT_ZOOM = 7
 export const DECLUTTER_CELL_DEGREES = [2.5, 1.25, 0.6, 0.3, 0.14, 0.06] as const
 
 export type FireInstrument = 'modis' | 'viirs'
+export type FireSensorGroup = FireInstrument | 'both' | 'single'
 export type PhaseCohort = 0 | 1 | 2 | 3
 
 export interface FirmsSourceSummary {
@@ -85,6 +85,7 @@ export interface FirmsLiveSpotsResponse {
 
 export interface FireSpotFeatureProperties {
   spotIndex: number
+  screenSensorGroup?: FireSensorGroup
   timestamp: number
   frp: number
   brightnessK: number
@@ -101,6 +102,7 @@ export interface FireSpotFeatureProperties {
   minZoomAll: number
   minZoomModis: number
   minZoomViirs: number
+  [key: `sensorGroupAtZoom${number}`]: FireInstrument | 'both' | undefined
 }
 
 export type DeclutterGroupMembersBySensor = Record<
@@ -207,7 +209,7 @@ export function computePowerScale(frpMw: number): number {
   return MIN_SCALE + (MAX_SCALE - MIN_SCALE) * t
 }
 
-export function computeConfidenceOpacity(confidence: number): number {
+export function computeConfidenceBrightness(confidence: number): number {
   if (!Number.isFinite(confidence)) {
     return MIN_CONFIDENCE_OPACITY
   }
@@ -388,7 +390,7 @@ export function buildFireSpotsGeoJson(
         dayNight: dayNight ?? '',
         radiusMeters: sourceMeta.radiusMeters,
         powerScale: computePowerScale(frp),
-        certainty: computeConfidenceOpacity(confidence),
+        certainty: computeConfidenceBrightness(confidence),
         activity,
         phaseCohort,
         minZoomAll: FULL_DETAIL_FIRE_SPOT_ZOOM,
@@ -402,6 +404,18 @@ export function buildFireSpotsGeoJson(
     (a, b) => compareMatchedFireSpots(features[a].properties, features[b].properties) || a - b,
   )
   const harmonizedGroups = assignDeclutterTierProperty(features, sortedIndices, 'minZoomAll')
+  for (const [tier, groups] of harmonizedGroups.entries()) {
+    const key = `sensorGroupAtZoom${MIN_FIRE_SPOT_ZOOM + tier}` as const
+    for (const [leader, members] of groups) {
+      if (members.length > 1) {
+        const properties = features[leader].properties
+        const instrument = properties.instrument
+        properties[key] = members.some((member) => features[member].properties.instrument !== instrument)
+          ? 'both'
+          : instrument
+      }
+    }
+  }
   const modisGroups = assignDeclutterTierProperty(
     features,
     sortedIndices.filter((i) => features[i].properties.instrument === 'modis'),
@@ -437,7 +451,7 @@ export function buildFireSpotsGeoJson(
   }
 }
 
-function featureToTooltipInput(
+export function featureToTooltipInput(
   feature: Feature<Point, FireSpotFeatureProperties>,
 ): FireSpotTooltipInput {
   const [lng, lat] = feature.geometry.coordinates
@@ -571,7 +585,7 @@ export function summarizeFireSpotsForSensor(
   }
 }
 
-function deduplicateSpotMatches(spots: readonly FireSpotTooltipInput[]): FireSpotTooltipInput[] {
+export function deduplicateSpotMatches(spots: readonly FireSpotTooltipInput[]): FireSpotTooltipInput[] {
   const seen = new Set<string>()
   const unique: FireSpotTooltipInput[] = []
 
@@ -587,6 +601,21 @@ function deduplicateSpotMatches(spots: readonly FireSpotTooltipInput[]): FireSpo
   }
 
   return unique
+}
+
+export function classifyFireSensorGroup(
+  spots: readonly Pick<FireSpotTooltipInput, 'instrument'>[],
+): FireSensorGroup | null {
+  if (spots.length === 1) {
+    return 'single'
+  }
+  const hasModis = spots.some((spot) => spot.instrument === 'modis')
+  const hasViirs = spots.some((spot) => spot.instrument === 'viirs')
+  if (hasModis && hasViirs) {
+    return 'both'
+  }
+  const instrument = spots[0]?.instrument
+  return instrument && spots.every((spot) => spot.instrument === instrument) ? instrument : null
 }
 
 export function formatFireSpotsTooltip(

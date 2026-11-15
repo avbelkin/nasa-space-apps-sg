@@ -6,22 +6,15 @@ import {
   type GeolocationLegendState,
 } from './components/EarthMapStage'
 import { MapLegend } from './components/MapLegend'
-import { MonthStrip } from './components/MonthStrip'
+import { PinnedFireDetails, type PinnedFireSelection } from './components/PinnedFireDetails'
 import type { SatelliteFeedState } from './components/panel/SatelliteDetails'
 import { SidePanel } from './components/SidePanel'
 import { DATA_PALETTE_CSS_VARIABLES } from './data/dataPalette'
-import {
-  evaluateRegionsForMonth,
-  MONTHLY_PROFILE,
-  type ProjectionMode,
-  type RegionalEvaluatedRegime,
-  type SensorFilter,
-} from './data/stubSeasonalData'
+import type { ProjectionMode, SensorFilter } from './data/mapTypes'
 import {
   apiBaseUrl,
   fetchApiStatus,
   isProdUnconfigured,
-  type ApiStatusResponse,
   type ConnectionState,
 } from './state/apiStatus'
 import {
@@ -58,7 +51,6 @@ const FOCUS_ZOOM = 3.6
 const EMPTY_SATELLITES: readonly SatelliteOrbit[] = []
 
 function App() {
-  const [todayMonth] = useState(() => new Date().getMonth())
   const [initialResolution] = useState(() => resolveInitialUrlHashState())
   const [sensorFilter, setSensorFilter] = useState<SensorFilter>(
     initialResolution.state.sensorFilter,
@@ -66,12 +58,8 @@ function App() {
   const [projectionMode, setProjectionMode] = useState<ProjectionMode>(
     initialResolution.state.projectionMode,
   )
-  const [selectedMonth, setSelectedMonth] = useState<number>(
-    initialResolution.state.selectedMonth,
-  )
   const [showOrbits, setShowOrbits] = useState<boolean>(initialResolution.state.showOrbits)
   const [showClouds, setShowClouds] = useState<boolean>(initialResolution.state.showClouds)
-  const [cloudRefreshNonce, setCloudRefreshNonce] = useState<number>(0)
   const [showRain, setShowRain] = useState<boolean>(initialResolution.state.showRain)
   const [rainBackMinutes, setRainBackMinutes] = useState<number>(
     initialResolution.state.rainBackMinutes,
@@ -85,6 +73,10 @@ function App() {
     initialResolution.state.showNightLights,
   )
   const [showFires, setShowFires] = useState<boolean>(initialResolution.state.showFires)
+  const [sensorGroupColors, setSensorGroupColors] = useState(false)
+  const colorFireSpotsBySensor = sensorFilter === 'harmonized' && sensorGroupColors
+  const [pinnedFireSelection, setPinnedFireSelection] = useState<PinnedFireSelection | null>(null)
+  const appFrameRef = useRef<HTMLDivElement | null>(null)
   const [pulsePaused, setPulsePaused] = useState<boolean>(false)
   const [reducedMotion, setReducedMotion] = useState<boolean>(false)
   const [viewport, setViewport] = useState<MapViewportState>(() => ({
@@ -94,9 +86,6 @@ function App() {
   }))
   const [extraParams, setExtraParams] = useState<Record<string, string> | undefined>(
     initialResolution.state.extraParams,
-  )
-  const [selectedRegionId, setSelectedRegionId] = useState<string | null>(
-    initialResolution.state.selectedRegionId ?? null,
   )
   const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null)
   const [geolocationState, setGeolocationState] = useState<GeolocationLegendState>({
@@ -109,9 +98,6 @@ function App() {
   const [connectionState, setConnectionState] = useState<ConnectionState>(() =>
     isProdUnconfigured ? 'unconfigured' : 'checking',
   )
-  const [payload, setPayload] = useState<ApiStatusResponse | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [lastChecked, setLastChecked] = useState<string>('Never')
 
   const [orbitsPayload, setOrbitsPayload] = useState<SatelliteOrbitsResponse | null>(null)
   const [orbitsError, setOrbitsError] = useState<string | null>(null)
@@ -144,28 +130,24 @@ function App() {
       ...viewport,
       sensorFilter,
       projectionMode,
-      selectedMonth,
       showOrbits,
       showClouds,
       showRain,
       rainBackMinutes,
       showNightLights,
       showFires,
-      ...(selectedRegionId ? { selectedRegionId } : {}),
       extraParams,
     })
   }, [
     viewport,
     sensorFilter,
     projectionMode,
-    selectedMonth,
     showOrbits,
     showClouds,
     showRain,
     rainBackMinutes,
     showNightLights,
     showFires,
-    selectedRegionId,
     extraParams,
   ])
 
@@ -180,14 +162,15 @@ function App() {
       }
       setSensorFilter(parsed.sensorFilter)
       setProjectionMode(parsed.projectionMode)
-      setSelectedMonth(parsed.selectedMonth)
       setShowOrbits(parsed.showOrbits)
       setShowClouds(parsed.showClouds)
       setShowRain(parsed.showRain)
       setRainBackMinutes(parsed.rainBackMinutes)
       setShowNightLights(parsed.showNightLights)
       setShowFires(parsed.showFires)
-      setSelectedRegionId(parsed.selectedRegionId ?? null)
+      setPinnedFireSelection((selection) =>
+        parsed.showFires && selection?.sensorFilter === parsed.sensorFilter ? selection : null,
+      )
       setExtraParams(parsed.extraParams)
       setViewport({
         zoom: parsed.zoom,
@@ -206,20 +189,6 @@ function App() {
     window.addEventListener('hashchange', handleHashChange)
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
-
-  const applySuccess = (data: ApiStatusResponse) => {
-    setPayload(data)
-    setConnectionState('connected')
-    setErrorMessage(null)
-    setLastChecked(new Date().toLocaleTimeString())
-  }
-
-  const applyFailure = (error: unknown) => {
-    setPayload(null)
-    setConnectionState('unreachable')
-    setLastChecked(new Date().toLocaleTimeString())
-    setErrorMessage(error instanceof Error ? error.message : 'Request failed')
-  }
 
   const applyFiresSuccess = (data: FirmsLiveSpotsResponse) => {
     setFireSpotsPayload(data)
@@ -263,38 +232,20 @@ function App() {
     )
   }, [])
 
-  const handleCheckBackend = () => {
-    if (isProdUnconfigured) {
-      setConnectionState('unconfigured')
-      setPayload(null)
-      setErrorMessage(null)
-      return
-    }
-    setConnectionState('checking')
-    setErrorMessage(null)
-    setOrbitsError(null)
-    setCloudRefreshNonce((value) => value + 1)
-    setFireSpotsError(null)
-    setFireSpotsLoading(true)
-    void fetchApiStatus().then(applySuccess, applyFailure)
-    requestSatelliteOrbits(viewportRef.current)
-    void fetchLiveFireSpots(apiBaseUrl).then(applyFiresSuccess, applyFiresFailure)
-  }
-
   useEffect(() => {
     if (isProdUnconfigured) {
       return
     }
     const controller = new AbortController()
     void fetchApiStatus(controller.signal).then(
-      (data) => {
+      () => {
         if (!controller.signal.aborted) {
-          applySuccess(data)
+          setConnectionState('connected')
         }
       },
-      (error: unknown) => {
+      () => {
         if (!controller.signal.aborted) {
-          applyFailure(error)
+          setConnectionState('unreachable')
         }
       },
     )
@@ -419,12 +370,6 @@ function App() {
 
   const hasOrbitSnapshots = showOrbits && orbitalState.snapshots.length > 0
 
-  const monthProfile = MONTHLY_PROFILE[selectedMonth]
-  const evaluatedRegions = useMemo(
-    () => evaluateRegionsForMonth(selectedMonth, sensorFilter),
-    [selectedMonth, sensorFilter],
-  )
-
   const handleSelectSatellite = (satellite: LiveSatelliteSnapshot) => {
     // The snapshot can be minutes old (positions only tick while orbits are shown): fly to where
     // the satellite is now.
@@ -443,22 +388,6 @@ function App() {
     })
   }
 
-  const handleSelectRegion = (region: RegionalEvaluatedRegime) => {
-    setSelectedRegionId(region.id)
-    setCameraFocusRequest({
-      lng: region.coordinates[0],
-      lat: region.coordinates[1],
-      zoom: region.focusZoom ?? FOCUS_ZOOM,
-      animate: true,
-      requestId: ++focusRequestSeqRef.current,
-    })
-  }
-
-  // A map click selects in place: the user is already looking at the mark, so the camera stays.
-  const handleSelectRegionOnMap = (regionId: string) => {
-    setSelectedRegionId(regionId)
-  }
-
   const satelliteFeedState: SatelliteFeedState =
     isProdUnconfigured || (orbitsError && !orbitsPayload)
       ? 'unavailable'
@@ -473,14 +402,6 @@ function App() {
     [fireSpotsPayload, sensorFilter],
   )
 
-  const tleSourceSummary = useMemo(() => {
-    if (!orbitsPayload || orbitsPayload.satellites.length === 0) {
-      return null
-    }
-    const sources = new Set(orbitsPayload.satellites.map((sat) => sat.tleSource))
-    return [...sources].join(', ')
-  }, [orbitsPayload])
-
   const rainSummaryLabel = useMemo(() => {
     let utcHhMm = ''
     if (rainMetadata.effectiveTimeIso) {
@@ -494,23 +415,38 @@ function App() {
     return `IMERG 30m · ${formatRainLookbackLabel(rainBackMinutes)}${utcHhMm ? ` · ${utcHhMm}` : ''}`
   }, [rainBackMinutes, rainMetadata.effectiveTimeIso])
 
+  const unpinFireSelection = useCallback(() => {
+    const appFrame = appFrameRef.current
+    if (appFrame?.querySelector('.pinned-fire-details')?.contains(document.activeElement)) {
+      appFrame.querySelector<HTMLCanvasElement>('.maplibregl-canvas')?.focus()
+    }
+    setPinnedFireSelection(null)
+  }, [])
+
+  useEffect(() => {
+    if (!pinnedFireSelection) {
+      return
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !event.defaultPrevented) {
+        event.preventDefault()
+        unpinFireSelection()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
+  }, [pinnedFireSelection, unpinFireSelection])
+
   return (
-    <div className="app-frame" style={DATA_PALETTE_CSS_VARIABLES}>
+    <div ref={appFrameRef} className="app-frame" style={DATA_PALETTE_CSS_VARIABLES}>
       <header className="top-bar wrapper-surface">
         <h1>Earth Fire Calendar</h1>
-        <p className="brand-subtitle">See where fire activity is above or below typical</p>
-        <p className="sample-badge top-bar-badge">
-          {/* Fire spots are live NASA FIRMS detections; the regional index is not, yet */}
-          Sample index
-          <span className="visually-hidden">
-            : the regional fire activity index and the month strip use illustrative values
-          </span>
-        </p>
+        <p className="brand-subtitle">Explore active fires detected by satellites</p>
       </header>
 
       <EarthMapStage
-        selectedMonth={selectedMonth}
         sensorFilter={sensorFilter}
+        colorFireSpotsBySensor={colorFireSpotsBySensor}
         projectionMode={projectionMode}
         onProjectionModeChange={setProjectionMode}
         initialViewport={initialResolution.state}
@@ -528,11 +464,12 @@ function App() {
         onRainBackMinutesChange={setRainBackMinutes}
         rainMetadata={rainMetadata}
         onRainMetadataChange={setRainMetadata}
-        cloudRefreshNonce={cloudRefreshNonce}
         showNightLights={showNightLights}
         onShowNightLightsChange={setShowNightLights}
         satellites={satellites}
         orbitalState={orbitalState}
+        pinnedFireSelection={pinnedFireSelection}
+        onPinFireSelection={setPinnedFireSelection}
         overpassIndex={overpassIndex}
         satelliteHudSection={satelliteHudSection}
         showOrbits={showOrbits}
@@ -544,43 +481,57 @@ function App() {
         }}
         selectedSatelliteId={selectedSatelliteId}
         onSelectSatellite={handleSelectSatellite}
-        selectedRegionId={selectedRegionId}
-        onSelectRegion={handleSelectRegionOnMap}
         onGeolocationStateChange={setGeolocationState}
         onReducedMotionChange={setReducedMotion}
         fireSpotsPayload={fireSpotsPayload}
         showFires={showFires}
-        onShowFiresChange={setShowFires}
+        onShowFiresChange={(next) => {
+          if (!next) {
+            setPinnedFireSelection(null)
+          }
+          setShowFires(next)
+        }}
         pulsePaused={pulsePaused}
         onPulsePausedChange={setPulsePaused}
       />
 
-      <MonthStrip
-        selectedMonth={selectedMonth}
-        todayMonth={todayMonth}
-        onSelectMonth={setSelectedMonth}
-      />
-
       <SidePanel
-        selectedMonth={selectedMonth}
-        monthProfile={monthProfile}
+        pinnedDetails={pinnedFireSelection && (
+          <PinnedFireDetails
+            selection={pinnedFireSelection}
+            overpassIndex={overpassIndex}
+            onUnpin={unpinFireSelection}
+          />
+        )}
+        legend={
+          <MapLegend
+            viewport={viewport}
+            showSwaths={hasOrbitSnapshots}
+            showModisOrbits={hasOrbitSnapshots && sensorFilter !== 'viirs'}
+            showViirsOrbits={hasOrbitSnapshots && sensorFilter !== 'modis'}
+            showRain={showRain}
+            rainSummaryLabel={rainSummaryLabel}
+            showUserLocation={geolocationState.hasUserLocation}
+            hasLiveFires={fireSpotsPayload !== null}
+            showFires={showFires}
+            colorFireSpotsBySensor={colorFireSpotsBySensor}
+            reducedMotion={reducedMotion}
+          />
+        }
         sensorFilter={sensorFilter}
-        onSensorFilterChange={setSensorFilter}
-        regions={evaluatedRegions}
-        selectedRegionId={selectedRegionId}
-        onSelectRegion={handleSelectRegion}
-        onClearRegion={() => setSelectedRegionId(null)}
+        colorFireSpotsBySensor={colorFireSpotsBySensor}
+        onFireSensorColorsChange={setSensorGroupColors}
+        onSensorFilterChange={(next) => {
+          if (next !== sensorFilter) {
+            setPinnedFireSelection(null)
+          }
+          setSensorFilter(next)
+        }}
         satelliteFeedState={satelliteFeedState}
         satellites={orbitalState.snapshots}
         selectedSatelliteId={selectedSatelliteId}
         onSelectSatellite={handleSelectSatellite}
         connectionState={connectionState}
-        apiPayload={payload}
-        apiErrorMessage={errorMessage}
-        lastChecked={lastChecked}
-        onCheckApi={handleCheckBackend}
-        tleSourceSummary={tleSourceSummary}
-        orbitsError={orbitsError}
         liveFires={{
           state: isProdUnconfigured
             ? 'unconfigured'
@@ -595,20 +546,6 @@ function App() {
           summary: fireSummary,
           refreshFailed: fireSpotsPayload !== null && fireSpotsError !== null,
         }}
-      />
-
-      <MapLegend
-        selectedMonth={selectedMonth}
-        viewport={viewport}
-        showSwaths={hasOrbitSnapshots}
-        showModisOrbits={hasOrbitSnapshots && sensorFilter !== 'viirs'}
-        showViirsOrbits={hasOrbitSnapshots && sensorFilter !== 'modis'}
-        showRain={showRain}
-        rainSummaryLabel={rainSummaryLabel}
-        showUserLocation={geolocationState.hasUserLocation}
-        hasLiveFires={fireSpotsPayload !== null}
-        showFires={showFires}
-        reducedMotion={reducedMotion}
       />
     </div>
   )

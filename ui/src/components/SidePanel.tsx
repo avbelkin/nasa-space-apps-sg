@@ -1,113 +1,57 @@
-import { useEffect, useRef } from 'react'
-import type {
-  MonthlyBaselinePoint,
-  RegionalEvaluatedRegime,
-  SensorFilter,
-} from '../data/stubSeasonalData'
-import { MONTH_NAMES } from '../data/statusDisplay'
-import type { ApiStatusResponse, ConnectionState } from '../state/apiStatus'
+import type { ReactNode } from 'react'
+import { FIRE_SENSOR_GROUP_COLORS } from '../data/dataPalette'
+import type { SensorFilter } from '../data/mapTypes'
+import type { ConnectionState } from '../state/apiStatus'
 import type { LiveSatelliteSnapshot } from '../utils/satelliteOrbits'
 import { AttributionFooter } from './panel/AttributionFooter'
-import { DiagnosticsDetails } from './panel/DiagnosticsDetails'
 import { LiveFiresSection, type LiveFiresInfo } from './panel/LiveFiresSection'
-import { PanelSummary } from './panel/PanelSummary'
-import { RegionList } from './panel/RegionList'
 import { SatelliteDetails, type SatelliteFeedState } from './panel/SatelliteDetails'
-import { ScopeRow } from './panel/ScopeRow'
 import { SegmentedControl, type SegmentedOption } from './SegmentedControl'
 
 const SENSOR_FILTER_OPTIONS: readonly SegmentedOption<SensorFilter>[] = [
-  // The challenge's own term; the accessible name says what is harmonized
-  { value: 'harmonized', label: 'Harmonized', ariaLabel: 'Harmonized MODIS and VIIRS' },
+  { value: 'harmonized', label: 'All sensors' },
   { value: 'modis', label: 'MODIS' },
   { value: 'viirs', label: 'VIIRS' },
 ]
 
+const FIRE_SENSOR_COLOR_LEGEND = [
+  { label: 'Both sensors', color: FIRE_SENSOR_GROUP_COLORS.both },
+  { label: 'Single detection', color: FIRE_SENSOR_GROUP_COLORS.single },
+  { label: 'MODIS only (2+)', color: FIRE_SENSOR_GROUP_COLORS.modis },
+  { label: 'VIIRS only (2+)', color: FIRE_SENSOR_GROUP_COLORS.viirs },
+] as const
+
 interface SidePanelProps {
-  selectedMonth: number
-  monthProfile: MonthlyBaselinePoint
   sensorFilter: SensorFilter
   onSensorFilterChange: (next: SensorFilter) => void
-  regions: readonly RegionalEvaluatedRegime[]
-  selectedRegionId: string | null
-  onSelectRegion: (region: RegionalEvaluatedRegime) => void
-  onClearRegion: () => void
+  colorFireSpotsBySensor: boolean
+  onFireSensorColorsChange: (enabled: boolean) => void
   satelliteFeedState: SatelliteFeedState
   satellites: readonly LiveSatelliteSnapshot[]
   selectedSatelliteId: string | null
   onSelectSatellite: (satellite: LiveSatelliteSnapshot) => void
   connectionState: ConnectionState
-  apiPayload: ApiStatusResponse | null
-  apiErrorMessage: string | null
-  lastChecked: string
-  onCheckApi: () => void
-  tleSourceSummary: string | null
-  orbitsError: string | null
   liveFires: LiveFiresInfo
+  pinnedDetails: ReactNode
+  legend: ReactNode
 }
 
 export function SidePanel({
-  selectedMonth,
-  monthProfile,
   sensorFilter,
   onSensorFilterChange,
-  regions,
-  selectedRegionId,
-  onSelectRegion,
-  onClearRegion,
+  colorFireSpotsBySensor,
+  onFireSensorColorsChange,
   satelliteFeedState,
   satellites,
   selectedSatelliteId,
   onSelectSatellite,
   connectionState,
-  apiPayload,
-  apiErrorMessage,
-  lastChecked,
-  onCheckApi,
-  tleSourceSummary,
-  orbitsError,
   liveFires,
+  pinnedDetails,
+  legend,
 }: SidePanelProps) {
-  const scopeRef = useRef<HTMLDListElement | null>(null)
-  const regionRowRefs = useRef(new Map<string, HTMLButtonElement>())
-  const selectedRegion = regions.find((region) => region.id === selectedRegionId) ?? null
-
-  // The clear button disappears with the selection: hand focus to the region's row instead.
-  const clearRegion = (restoreFocus: boolean) => {
-    const rowButton = selectedRegionId ? regionRowRefs.current.get(selectedRegionId) : undefined
-    onClearRegion()
-    if (restoreFocus) {
-      rowButton?.focus()
-    }
-  }
-  const clearRegionRef = useRef(clearRegion)
-  useEffect(() => {
-    clearRegionRef.current = clearRegion
-  })
-
-  useEffect(() => {
-    if (!selectedRegionId) {
-      return
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || event.defaultPrevented) {
-        return
-      }
-      clearRegionRef.current(scopeRef.current?.contains(document.activeElement) ?? false)
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedRegionId])
-
   return (
     <aside className="side-panel wrapper-surface" aria-label="Fire activity details">
-      <ScopeRow
-        scopeRef={scopeRef}
-        regionName={selectedRegion?.region ?? null}
-        monthName={MONTH_NAMES[selectedMonth]}
-        onClearRegion={() => clearRegion(true)}
-      />
-
       <div className="sensor-row">
         <span className="sensor-row-label" aria-hidden="true">
           Sensors
@@ -120,36 +64,44 @@ export function SidePanel({
         />
       </div>
 
-      <PanelSummary monthProfile={monthProfile} selectedRegion={selectedRegion} />
+      {sensorFilter === 'harmonized' && (
+        <div className="fire-sensor-colors">
+          <label className="fire-sensor-colors-switch">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={colorFireSpotsBySensor}
+              onChange={(event) => onFireSensorColorsChange(event.target.checked)}
+            />
+            Color fire spots by sensor
+          </label>
+          {colorFireSpotsBySensor && (
+            <ul className="fire-sensor-color-key" aria-label="Fire spot colors by sensor">
+              {FIRE_SENSOR_COLOR_LEGEND.map(({ label, color }) => (
+                <li key={label}>
+                  <span className="legend-fire-dot" style={{ backgroundColor: color }} aria-hidden="true" />
+                  {label}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
-      <RegionList
-        regions={regions}
-        selectedRegionId={selectedRegionId}
-        onSelectRegion={onSelectRegion}
-        rowRefs={regionRowRefs}
+      {pinnedDetails}
+
+      <SatelliteDetails
+        feedState={satelliteFeedState}
+        snapshots={satellites}
+        selectedSatelliteId={selectedSatelliteId}
+        onSelectSatellite={onSelectSatellite}
       />
 
-      <LiveFiresSection info={liveFires} />
-
-      <div className="panel-details-group">
-        <SatelliteDetails
-          feedState={satelliteFeedState}
-          snapshots={satellites}
-          selectedSatelliteId={selectedSatelliteId}
-          onSelectSatellite={onSelectSatellite}
-        />
-        <DiagnosticsDetails
-          connectionState={connectionState}
-          payload={apiPayload}
-          errorMessage={apiErrorMessage}
-          lastChecked={lastChecked}
-          onCheckApi={onCheckApi}
-          tleSourceSummary={tleSourceSummary}
-          orbitsError={orbitsError}
-        />
+      <div className="panel-bottom">
+        <LiveFiresSection info={liveFires} />
+        {legend}
+        <AttributionFooter connectionState={connectionState} />
       </div>
-
-      <AttributionFooter connectionState={connectionState} />
     </aside>
   )
 }

@@ -1,15 +1,22 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
+import {
+  buildFireSpotSourceData,
+  diffFireSpotScreenColors,
+  groupProjectedFireSpots,
+} from '../src/utils/fireSpotScreenGroups.ts'
 import { FIRE_SPOT_COLORS } from '../src/data/dataPalette.ts'
 import {
   ACTIVE_AGE_SECONDS,
   buildFireSpotsGeoJson,
+  classifyFireSensorGroup,
   COHORT_PHASE_RADIANS,
   compareMatchedFireSpots,
-  computeConfidenceOpacity,
+  computeConfidenceBrightness,
   computePowerScale,
   computeWildfireActivity,
   computeWildfirePulse,
+  deduplicateSpotMatches,
   expandHoveredFireSpots,
   formatFireSpotsTooltip,
   FULL_DETAIL_FIRE_SPOT_ZOOM,
@@ -58,7 +65,7 @@ describe('wildfire activity and pulse math', () => {
     }
   })
 
-  it('scales power from FRP (1..250 MW -> 0.5..1.5) and confidence opacity (25..100 -> 0.6..1.0)', () => {
+  it('scales power from FRP (1..250 MW -> 0.5..1.5) and confidence brightness (25..100 -> 0.6..1.0)', () => {
     assert.equal(computePowerScale(0), 0.5)
     assert.equal(computePowerScale(1), 0.5)
     assert.equal(computePowerScale(125.5), 1)
@@ -66,12 +73,12 @@ describe('wildfire activity and pulse math', () => {
     assert.equal(computePowerScale(900), 1.5)
     assert.equal(computePowerScale(Number.NaN), 0.5)
 
-    assert.equal(computeConfidenceOpacity(10), 0.6)
-    assert.equal(computeConfidenceOpacity(25), 0.6)
-    assert.ok(Math.abs(computeConfidenceOpacity(62.5) - 0.8) < 1e-12)
-    assert.equal(computeConfidenceOpacity(100), 1)
-    assert.equal(computeConfidenceOpacity(120), 1)
-    assert.equal(computeConfidenceOpacity(Number.NaN), 0.6)
+    assert.equal(computeConfidenceBrightness(10), 0.6)
+    assert.equal(computeConfidenceBrightness(25), 0.6)
+    assert.ok(Math.abs(computeConfidenceBrightness(62.5) - 0.8) < 1e-12)
+    assert.equal(computeConfidenceBrightness(100), 1)
+    assert.equal(computeConfidenceBrightness(120), 1)
+    assert.equal(computeConfidenceBrightness(Number.NaN), 0.6)
   })
 })
 
@@ -358,6 +365,11 @@ describe('hierarchical z1..z7 spatial decluttering', () => {
     assert.equal(neighbor.properties.minZoomAll, 7)
     assert.equal(midDist.properties.minZoomAll, 2)
     assert.equal(distant.properties.minZoomAll, 1)
+    assert.equal(leader.properties.sensorGroupAtZoom1, 'viirs')
+    assert.equal(leader.properties.sensorGroupAtZoom2, 'viirs')
+    assert.equal(midDist.properties.sensorGroupAtZoom2, undefined)
+    assert.equal(distant.properties.sensorGroupAtZoom1, undefined)
+    assert.equal(leader.properties.sensorGroupAtZoom7, undefined)
 
     for (const feature of featureCollection.features) {
       for (const tier of [
@@ -401,6 +413,14 @@ describe('hierarchical z1..z7 spatial decluttering', () => {
     assert.equal(viirsFeature.properties.minZoomViirs, 1)
     assert.equal(modisFeature.properties.minZoomAll, 7)
     assert.equal(modisFeature.properties.minZoomModis, 1)
+    assert.equal(viirsFeature.properties.sensorGroupAtZoom1, 'both')
+
+    const modisPayload: FirmsLiveSpotsResponse = {
+      ...payload,
+      spots: [[101.05, 1.05, referenceNowMs - 500_000, 260, 360, 95, 0, 'Aqua', 'D'], payload.spots[1]],
+    }
+    const modisLeader = buildFireSpotsGeoJson(modisPayload, referenceNowMs).featureCollection.features[0]
+    assert.equal(modisLeader.properties.sensorGroupAtZoom1, 'modis')
   })
 
   it('expands hovered decluttered leaders into their hidden group members at z1..z6 without cross-sensor leaks', () => {
@@ -453,6 +473,40 @@ describe('hierarchical z1..z7 spatial decluttering', () => {
       [280],
     )
 
+    // At z7 each dot renders individually, but the hit area can select several at once.
+    const z7MixedHit = expandHoveredFireSpots(built, [0, 1, 0], 7, 'harmonized')
+    assert.equal(classifyFireSensorGroup(deduplicateSpotMatches(z7MixedHit)), 'both')
+    assert.equal(classifyFireSensorGroup(z7Harmonized), 'single')
+    const z7ViirsHit = expandHoveredFireSpots(built, [0, 2], 7, 'harmonized')
+    assert.equal(classifyFireSensorGroup(z7ViirsHit), 'viirs')
+
+    // Two low-zoom markers can be close on screen. Include the hidden members of both
+    // geographic groups in the color and in the details for either rendered marker.
+    const projected = [
+      { index: 0, x: 100, y: 100, detection: z7Harmonized[0] },
+      { index: 3, x: 108, y: 104, detection: expandHoveredFireSpots(built, [3], 7, 'harmonized')[0] },
+    ]
+    const screenGroups = groupProjectedFireSpots(projected, (members) =>
+      expandHoveredFireSpots(built, members.map((member) => member.index), 1.5, 'harmonized'),
+    )
+    assert.strictEqual(screenGroups.get(0), screenGroups.get(3))
+    assert.equal(screenGroups.get(3)?.color, 'both')
+    assert.equal(screenGroups.get(3)?.detections.length, 4)
+
+    const sourceData = buildFireSpotSourceData(built, screenGroups)
+    assert.deepEqual(sourceData.features.map(({ properties }) => properties.screenSensorGroup), [
+      'both', undefined, undefined, 'both',
+    ])
+    assert.equal(built.featureCollection.features[0].properties.screenSensorGroup, undefined)
+    assert.deepEqual(diffFireSpotScreenColors(screenGroups, new Map(screenGroups)), [])
+    assert.deepEqual(diffFireSpotScreenColors(new Map([[0, screenGroups.get(0)!]]), screenGroups), [
+      { id: 3, addOrUpdateProperties: [{ key: 'screenSensorGroup', value: 'both' }] },
+    ])
+    assert.deepEqual(diffFireSpotScreenColors(screenGroups, undefined), [
+      { id: 0, removeProperties: ['screenSensorGroup'] },
+      { id: 3, removeProperties: ['screenSensorGroup'] },
+    ])
+
     const z1Modis = expandHoveredFireSpots(built, [1], 1.5, 'modis')
     assert.deepEqual(
       z1Modis.map((s) => ({ frp: s.frp, instrument: s.instrument })),
@@ -462,6 +516,22 @@ describe('hierarchical z1..z7 spatial decluttering', () => {
 })
 
 describe('active fire spot palette and MapLibre layers', () => {
+  it('assigns a mixed sensor color to every high-zoom group member before a pointer hit', () => {
+    const detection = { timestamp: 1000, frp: 80, source: 'MODIS' }
+    const groups = groupProjectedFireSpots([
+      { index: 0, x: 14, y: 14, detection: { ...detection, instrument: 'modis' } },
+      { index: 1, x: 21, y: 21, detection: { ...detection, source: 'VIIRS', instrument: 'viirs', frp: 10 } },
+      { index: 2, x: 58, y: 21, detection: { ...detection, instrument: 'modis' } },
+      { index: 3, x: 77, y: 21, detection: { ...detection, instrument: 'modis' } },
+      { index: 4, x: 80, y: 22, detection: { ...detection, instrument: 'modis' } },
+    ], (members) => members.map((spot) => spot.detection))
+    assert.equal(groups.get(0)?.color, 'both')
+    assert.equal(groups.get(0)?.detections.length, 2)
+    assert.strictEqual(groups.get(0), groups.get(1))
+    assert.equal(groups.get(2)?.color, 'single')
+    assert.equal(groups.get(3)?.color, 'modis')
+  })
+
   it('uses uniform saturated non-pink red across core and pulse layers', () => {
     assert.equal(FIRE_SPOT_COLORS.fill, '#ff1a00')
     assert.equal(FIRE_SPOT_COLORS.pulse, '#ff1a00')
@@ -486,6 +556,11 @@ describe('active fire spot palette and MapLibre layers', () => {
 
     const coreLayer = layers.find((layer) => layer.id === FIRMS_SPOTS_CORE_LAYER_ID)
     assert.ok(coreLayer, 'missing core layer')
-    assert.equal(coreLayer.paint?.['circle-color'], FIRE_SPOT_COLORS.fill)
+    assert.deepEqual(coreLayer.paint?.['circle-opacity'], [
+      'interpolate', ['linear'], ['zoom'], 0.95, 0, MIN_FIRE_SPOT_ZOOM, 1,
+    ])
+    assert.deepEqual(coreLayer.paint?.['circle-color'], [
+      'interpolate', ['linear'], ['get', 'certainty'], 0, '#000000', 1, FIRE_SPOT_COLORS.fill,
+    ])
   })
 })

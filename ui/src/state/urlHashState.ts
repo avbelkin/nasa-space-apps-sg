@@ -1,10 +1,4 @@
-import {
-  MONTH_LABELS,
-  REGIONAL_FIRE_REGIMES,
-  SINGAPORE_REGION_ID,
-  type ProjectionMode,
-  type SensorFilter,
-} from '../data/stubSeasonalData.ts'
+import type { ProjectionMode, SensorFilter } from '../data/mapTypes.ts'
 import { snapRainLookbackMinutes } from '../utils/rainCloudShader.ts'
 
 // Versioned: the first key was written on every load (with a hard-coded September) by earlier
@@ -28,7 +22,6 @@ export interface MapViewportState {
 export interface UrlHashState extends MapViewportState {
   sensorFilter: SensorFilter
   projectionMode: ProjectionMode
-  selectedMonth: number
   showOrbits: boolean
   showClouds: boolean
   // NASA GIBS IMERG 30-min rain clouds (z6+); hash carries only the off state (rain=0)
@@ -39,8 +32,6 @@ export interface UrlHashState extends MapViewportState {
   showNightLights: boolean
   // Live NASA FIRMS fire spots; the hash carries only the off state (fires=0)
   showFires: boolean
-  // Absent when no region is selected
-  selectedRegionId?: string
   extraParams?: Record<string, string>
 }
 
@@ -51,15 +42,13 @@ export interface ResolvedInitialState {
   source: InitialStateSource
 }
 
-// Defaults for a first visit; the month follows the visitor's calendar, so it is built from a date.
-export function createDefaultUrlHashState(now: Date = new Date()): UrlHashState {
+export function createDefaultUrlHashState(): UrlHashState {
   return {
     zoom: DEFAULT_ZOOM,
     lat: DEFAULT_CENTER[1],
     lng: DEFAULT_CENTER[0],
     sensorFilter: 'harmonized',
     projectionMode: 'globe',
-    selectedMonth: now.getMonth(),
     showOrbits: true,
     showClouds: true,
     showRain: true,
@@ -71,11 +60,6 @@ export function createDefaultUrlHashState(now: Date = new Date()): UrlHashState 
 
 const VALID_SENSOR_FILTERS: readonly SensorFilter[] = ['harmonized', 'modis', 'viirs']
 const VALID_PROJECTION_MODES: readonly ProjectionMode[] = ['globe', 'mercator']
-const VALID_REGION_IDS: readonly string[] = REGIONAL_FIRE_REGIMES.map((regime) => regime.id)
-const LEGACY_REGION_ID_ALIASES: Readonly<Record<string, string>> = {
-  'sea-equatorial': SINGAPORE_REGION_ID,
-}
-
 function normalizeZero(value: number): number {
   return value === 0 ? 0 : value
 }
@@ -202,21 +186,6 @@ function parseBooleanHashFlag(raw: string): boolean | null {
   return null
 }
 
-function parseMonthValue(raw: string): number | null {
-  const trimmed = raw.trim()
-  if (/^\d+$/.test(trimmed)) {
-    const monthNumber = Number(trimmed)
-    if (monthNumber >= 1 && monthNumber <= 12) {
-      return monthNumber - 1
-    }
-    return null
-  }
-  const monthIdx = MONTH_LABELS.findIndex(
-    (label) => label.toLowerCase() === trimmed.toLowerCase(),
-  )
-  return monthIdx >= 0 ? monthIdx : null
-}
-
 /**
  * Declarative registry for feature parameters serialized into the URL hash.
  * Add new feature flags or controls here so hash + localStorage sync stays extensible.
@@ -241,21 +210,6 @@ const HASH_FEATURE_CODECS: readonly HashFeatureCodec[] = [
         return false
       }
       draft.projectionMode = raw
-      return true
-    },
-  },
-  {
-    key: 'month',
-    serialize: (state) => {
-      const clampedMonth = Math.min(11, Math.max(0, Math.trunc(state.selectedMonth)))
-      return String(clampedMonth + 1)
-    },
-    parse: (raw, draft) => {
-      const parsed = parseMonthValue(raw)
-      if (parsed === null) {
-        return false
-      }
-      draft.selectedMonth = parsed
       return true
     },
   },
@@ -334,18 +288,6 @@ const HASH_FEATURE_CODECS: readonly HashFeatureCodec[] = [
       return true
     },
   },
-  {
-    key: 'region',
-    serialize: (state) => state.selectedRegionId ?? null,
-    parse: (raw, draft) => {
-      const resolved = LEGACY_REGION_ID_ALIASES[raw] ?? raw
-      if (!VALID_REGION_IDS.includes(resolved)) {
-        return false
-      }
-      draft.selectedRegionId = resolved
-      return true
-    },
-  },
 ]
 
 const RESERVED_CORE_KEYS = new Set<string>([
@@ -353,8 +295,10 @@ const RESERVED_CORE_KEYS = new Set<string>([
   'lat',
   'lng',
   'lon',
-  // Ignore retired `mode` key from earlier builds so it is dropped instead of preserved in extraParams.
+  // Drop retired controls from legacy URLs and stored state.
   'mode',
+  'month',
+  'region',
   ...HASH_FEATURE_CODECS.map((codec) => codec.key),
 ])
 
@@ -403,14 +347,12 @@ function cloneFallbackState(fallback: UrlHashState): UrlHashState {
     lng: normalizeLng(fallback.lng),
     sensorFilter: fallback.sensorFilter,
     projectionMode: fallback.projectionMode,
-    selectedMonth: fallback.selectedMonth,
     showOrbits: fallback.showOrbits,
     showClouds: fallback.showClouds,
     showRain: fallback.showRain,
     rainBackMinutes: snapRainLookbackMinutes(fallback.rainBackMinutes),
     showNightLights: fallback.showNightLights,
     showFires: fallback.showFires,
-    ...(fallback.selectedRegionId ? { selectedRegionId: fallback.selectedRegionId } : {}),
     ...(fallback.extraParams ? { extraParams: { ...fallback.extraParams } } : {}),
   }
 }
@@ -535,14 +477,6 @@ export interface BrowserSyncTarget {
   localStorage: Pick<Storage, 'getItem' | 'setItem'>
 }
 
-// The stored copy leaves the month out: a returning visitor starts on the current month, and only
-// an explicit link (hash) opens another one.
-export function serializeStoredState(state: UrlHashState): string {
-  const params = new URLSearchParams(serializeUrlHash(state).slice(1))
-  params.delete('month')
-  return `#${params.toString()}`
-}
-
 export function syncUrlHashAndStorage(
   state: UrlHashState,
   target: BrowserSyncTarget | undefined = typeof window !== 'undefined' ? window : undefined,
@@ -560,7 +494,7 @@ export function syncUrlHashAndStorage(
         // Ignore restricted History API errors.
       }
     }
-    writeUrlHashToStorage(serializeStoredState(state), target.localStorage)
+    writeUrlHashToStorage(nextHash, target.localStorage)
   }
   return nextHash
 }
@@ -570,26 +504,24 @@ export function resolveInitialUrlHashState(
   'undefined'
     ? window
     : undefined,
-  now: Date = new Date(),
 ): ResolvedInitialState {
-  const defaults = createDefaultUrlHashState(now)
+  const defaults = createDefaultUrlHashState()
   if (!target) {
     return { state: defaults, source: 'default' }
   }
 
-  // Keys missing from the hash or the stored state fall back to today's defaults
+  // Keys missing from the hash or the stored state fall back to defaults
   const fromHash = parseUrlHash(target.location.hash, defaults)
   if (fromHash) {
     return { state: fromHash, source: 'hash' }
   }
 
-  // Viewport, sensor, projection, orbits and region come back from storage; the month never does
   const storedHash = readStoredUrlHash(target.localStorage)
   if (storedHash) {
     const fromStorage = parseUrlHash(storedHash, defaults)
     if (fromStorage) {
       return {
-        state: { ...fromStorage, selectedMonth: defaults.selectedMonth },
+        state: fromStorage,
         source: 'storage',
       }
     }

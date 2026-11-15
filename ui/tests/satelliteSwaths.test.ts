@@ -371,15 +371,22 @@ test('formatSatelliteHudSection advances elapsed minutes, flips processing to re
   assert.equal(rolloverSection.summary, 'Next: NOAA-20 in ~3m')
 })
 
-test('map-hud-bottom keeps SatelliteHud bottom-anchored when fire-tooltip-card appears', () => {
+test('satellite passes stay at the bottom of the map and the side panel groups detections and credits', () => {
   const appCss = fs.readFileSync(new URL('../src/App.css', import.meta.url), 'utf8')
-  const match = appCss.match(/\.map-hud-bottom\s*\{([^}]*)\}/)
-  assert.ok(match, 'expected .map-hud-bottom CSS rule')
-  const body = match[1]
-  assert.match(body, /display:\s*flex\s*;/)
-  assert.match(body, /flex-wrap:\s*wrap\s*;/)
-  assert.match(body, /align-items:\s*flex-end\s*;/)
-  assert.doesNotMatch(body, /wrap-reverse/)
+  const mapStage = fs.readFileSync(new URL('../src/components/EarthMapStage.tsx', import.meta.url), 'utf8')
+  const panel = fs.readFileSync(new URL('../src/components/SidePanel.tsx', import.meta.url), 'utf8')
+  const hud = appCss.match(/\.map-hud-bottom\s*\{([^}]*)\}/)?.[1]
+  assert.ok(hud)
+  assert.match(hud, /grid-column:\s*2\s*\/\s*-2;/)
+  assert.match(hud, /grid-row:\s*3;/)
+  assert.match(hud, /align-self:\s*end;/)
+  assert.match(hud, /justify-content:\s*flex-end;/)
+  assert.match(mapStage, /attributionControl:\s*false/)
+  assert.match(mapStage, /className="map-hud-bottom">\s*<SatelliteHud/)
+  assert.doesNotMatch(mapStage, /<PinnedFireDetails/)
+  assert.match(panel, /<SegmentedControl[\s\S]*?className="fire-sensor-colors-switch"[\s\S]*?\{pinnedDetails\}/)
+  assert.match(panel, /className="panel-bottom">\s*<LiveFiresSection[^>]*\/>\s*\{legend\}\s*<AttributionFooter/)
+  assert.match(appCss, /\.panel-bottom\s*\{[^}]*margin-block-start:\s*auto;/)
 })
 
 test('interpolateTrackAtTime and swaths advance smoothly across 30fps frames, heading wraparound, and antimeridian', () => {
