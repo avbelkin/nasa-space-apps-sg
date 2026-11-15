@@ -6,6 +6,7 @@ import {
   type FireSpotTooltipInput,
 } from '../utils/fireSpots'
 import type { SatelliteOverpassIndex } from '../utils/satelliteOverpassTimeline'
+import type { FireObservationGeometry } from '../utils/fireObservationGeometry'
 import { FireDetectionPowerSummary, FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
 import { FireObservationDetails } from './FireObservationDetails'
 import { CloseIcon } from './icons'
@@ -19,12 +20,13 @@ export interface PinnedFireSelection {
 
 interface PinnedFireDetailsProps {
   selection: PinnedFireSelection
+  feedGeometry?: readonly (FireObservationGeometry | null)[]
   landCoverBySpot: FireSpotLandCoverLookup
   overpassIndex: SatelliteOverpassIndex | null
   onUnpin: () => void
 }
 
-export function PinnedFireDetails({ selection, landCoverBySpot, overpassIndex, onUnpin }: PinnedFireDetailsProps) {
+export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, overpassIndex, onUnpin }: PinnedFireDetailsProps) {
   const details = useMemo(
     () => formatFireSpotsTooltip(selection.inputs, selection.nowMs, {
       sensorFilter: selection.sensorFilter,
@@ -66,7 +68,7 @@ export function PinnedFireDetails({ selection, landCoverBySpot, overpassIndex, o
         </button>
       </header>
       <FireDetectionsTimelineCard timeline={timeline} />
-      <FireObservationDetails inputs={selection.inputs} />
+      <FireObservationDetails inputs={selection.inputs} feedGeometry={feedGeometry} />
     </section>
   )
 }

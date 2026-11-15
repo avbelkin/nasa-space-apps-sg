@@ -42,6 +42,7 @@ public sealed class FirmsClient(
         "dayNight",
         "landCover",
     ];
+    private static readonly string[] EnrichedLiveSpotColumns = [.. LiveSpotColumns, "geometry"];
 
     private readonly SemaphoreSlim _statusLock = new(1, 1);
     private readonly SemaphoreSlim _hotspotsLock = new(1, 1);
@@ -212,7 +213,8 @@ public sealed class FirmsClient(
         string? bbox = null,
         CancellationToken cancellationToken = default,
         bool includeGeometry = false,
-        bool enrichLandCover = false)
+        bool enrichLandCover = false,
+        bool enrichGeometry = false)
     {
         var windowHours = Math.Clamp(hours ?? DefaultLiveWindowHours, 1, 48);
         var dayRange = windowHours <= 24 ? 2 : 3;
@@ -234,8 +236,25 @@ public sealed class FirmsClient(
                 cache.Set(responseCacheKey, cachedResponse, LiveResponseCacheDuration);
         }
         var geometry = await geometryWorker.ObserveAsync(
-            snapshot.Spots, cachedResponse.Selected, includeGeometry, cancellationToken).ConfigureAwait(false);
-        return geometry is null ? cachedResponse.Response : cachedResponse.Response with { Geometry = geometry };
+            snapshot.Spots, cachedResponse.Selected, includeGeometry || enrichGeometry, cancellationToken).ConfigureAwait(false);
+        var liveResponse = cachedResponse.Response;
+        var rows = liveResponse.Spots;
+        if (enrichGeometry && geometry?.Spots is { } observations)
+        {
+            var enrichedRows = new object?[rows.Count][];
+            for (var i = 0; i < rows.Count; i++)
+            {
+                enrichedRows[i] = [.. rows[i], observations[i]];
+            }
+
+            liveResponse = liveResponse with { Columns = EnrichedLiveSpotColumns, Spots = enrichedRows };
+        }
+
+        return liveResponse with
+        {
+            Geometry = includeGeometry ? geometry : null,
+            GeometryStatus = geometry?.Status ?? (rows.Count == 0 ? "ready" : "pending"),
+        };
     }
 
     private static FirmsLiveSpotsResponse BuildLiveSpotsResponse(
@@ -322,26 +341,6 @@ public sealed class FirmsClient(
             LandCoverPending: landCoverResult.Pending);
 
         return response;
-    }
-
-    public async Task<FirmsEnrichedSpotsResponse> GetEnrichedLiveSpotsAsync(
-        string? sensor, string? bbox, CancellationToken cancellationToken)
-    {
-        var (_, sources) = ResolveSources(string.IsNullOrWhiteSpace(sensor) ? "harmonized" : sensor);
-        var area = ResolveLiveArea(bbox);
-        // Two FIRMS calendar days cover the rolling 24-hour window across UTC midnight.
-        var snapshot = await GetAreaSnapshotAsync(area, 2, sources, cancellationToken).ConfigureAwait(false);
-        var windowEnd = DateTimeOffset.UtcNow;
-        var selected = FilterSnapshotSpots(snapshot.Spots, windowEnd, DefaultLiveWindowHours);
-        selected.RemoveAll(spot => spot.AcquiredAtUtc > windowEnd);
-        var batch = await geometryWorker.GetGeometryAsync(snapshot.Spots, selected, cancellationToken).ConfigureAwait(false);
-        var rows = batch.Spots is { } geometry
-            ? selected.Select((spot, index) => new FirmsEnrichedSpot(spot, geometry[index])).ToArray()
-            : null;
-
-        return new FirmsEnrichedSpotsResponse(
-            batch.Status, windowEnd.AddHours(-DefaultLiveWindowHours), windowEnd,
-            snapshot.FetchedAtUtc, snapshot.Stale, selected.Count, FirmsDefaults.Attribution, rows);
     }
 
     public async Task<HotspotGeometryBatch> GetSelectedSpotGeometryAsync(

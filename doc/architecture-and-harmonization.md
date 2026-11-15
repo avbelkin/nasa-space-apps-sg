@@ -37,7 +37,6 @@ This repository implements the [Harmonization of MODIS and VIIRS Hot Spots](./RE
   - `GET /api/status` — Service metadata and environment diagnostics.
   - `GET /api/fires/spots` — Compact rolling 24h (configurable `hours=1..48`, `sensor=harmonized|modis|viirs`, `bbox=w,s,e,n` or `world`) active-fire spots feed queried directly from NASA FIRMS Area API (`api/area/csv`) and cached for 20 minutes (`MODIS_NRT`, `VIIRS_NOAA20_NRT`, `VIIRS_NOAA21_NRT`).
   - `GET /api/fires/spots.geojson` — GeoJSON FeatureCollection projection of the cached rolling active-fire Area API snapshot.
-  - `GET /api/fires/spots/enriched` — Bulk observation geometry for the rolling 24 hours. Accepts the same `sensor` and `bbox` filters as the live feed and defaults to all configured sensors worldwide. Retry the same query while `status` is `pending`. When `ready`, each item in `spots` pairs the original FIRMS `spot` with its `geometry`, which may contain null orbit and glint fields. `spots` is null while the batch is pending or unavailable and an empty array when the query matches no detections. Use the response window bounds and freshness metadata when storing a batch.
   - `POST /api/fires/spots/geometry` — Geometry for up to 512 pinned detections. Send a `spots` array of live row identities (`lng`, `lat`, `timestampMs`, and `satellite`). The response returns the batch status and, when ready, geometry in request order. An unmatched detection has a null entry.
   - `GET /api/satellites/orbits` — Time-bound orbital ground tracks, nadir position, heading, speed, swath parameters, TLE lines (`tleLine1`/`tleLine2` for client-side 24h negative-pass evaluation), computed `swaths` (`nadir`/`wide`), and `satelliteHud` overpass freshness entries (optional `lat`/`lng` query parameters) for Terra, Aqua, NOAA-20, and NOAA-21.
   - `GET /api/weather/satellite/{z}/{x}/{y}.png` — Cached `258×258` live `VIS/IR` satellite cloud tile proxy backed by `layers.extremum.org`.
@@ -48,6 +47,8 @@ This repository implements the [Harmonization of MODIS and VIIRS Hot Spots](./RE
 #### Deferred hotspot geometry
 
 Loading a FIRMS snapshot queues one enrichment job per cached snapshot. A bounded worker reuses the existing [CelesTrak](https://celestrak.org/) TLE cache and shares orbit samples across detections. The default responses omit observation geometry.
+
+The app loads `/api/fires/spots` immediately and follows up with `enrichGeometry=true`, sharing the deferred refresh with land cover. On the follow-up, `geometryStatus` reports `pending`, `unavailable`, or `ready`. A ready response appends `geometry` to `columns` and the geometry object or null to each spot tuple. Existing indexes are preserved. Pinned Observation Details reads those fields from the feed and uses the pinned lookup for missing rows.
 
 Add `includeGeometry=true` to any of the three hotspot endpoints. The response can wait up to one second for the worker and includes a top-level `geometry` object:
 

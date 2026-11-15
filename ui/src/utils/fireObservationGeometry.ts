@@ -1,4 +1,4 @@
-import type { FireInstrument, FireSpotTooltipInput } from './fireSpots.ts'
+import type { FireInstrument, FireSpotTooltipInput, FirmsLiveSpotsResponse } from './fireSpots.ts'
 
 interface LightGeometry {
   elevationDeg: number
@@ -19,6 +19,32 @@ interface GeometryBatch {
 
 const MAX_BATCH_SIZE = 512
 
+function detectionKey(lng: number, lat: number, timestampMs: number, satellite: string): string {
+  return `${lng.toFixed(4)}|${lat.toFixed(4)}|${timestampMs}|${satellite}`
+}
+
+export function readPinnedFireGeometry(
+  payload: Pick<FirmsLiveSpotsResponse, 'geometryStatus' | 'spots'> | null,
+  inputs: readonly FireSpotTooltipInput[] | undefined,
+): (FireObservationGeometry | null)[] | undefined {
+  if (payload?.geometryStatus !== 'ready' || !inputs?.length) return undefined
+
+  const keys = inputs.map(({ lng, lat, timestamp, satellite }) =>
+    lng !== undefined && lat !== undefined && satellite
+      ? detectionKey(lng, lat, timestamp, satellite)
+      : null,
+  )
+  const wanted = new Set(keys)
+  const matched = new Map<string, FireObservationGeometry>()
+  for (const [lng, lat, timestamp, , , , , satellite, , , geometry] of payload.spots) {
+    if (!geometry) continue
+    const key = detectionKey(lng, lat, timestamp, satellite)
+    if (wanted.has(key)) matched.set(key, geometry)
+  }
+  if (matched.size === 0) return undefined
+  return keys.map((key) => key === null ? null : matched.get(key) ?? null)
+}
+
 function waitForRetry(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     signal.throwIfAborted()
@@ -38,9 +64,11 @@ export async function fetchPinnedFireGeometry(
   apiBaseUrl: string,
   inputs: readonly FireSpotTooltipInput[],
   signal: AbortSignal,
+  feedGeometry?: readonly (FireObservationGeometry | null)[],
 ): Promise<(FireObservationGeometry | null)[]> {
-  const observations = Array<FireObservationGeometry | null>(inputs.length).fill(null)
+  const observations = inputs.map((_, index) => feedGeometry?.[index] ?? null)
   const requested = inputs.flatMap((spot, index) => {
+    if (observations[index]) return []
     const { lng, lat, timestamp: timestampMs, satellite } = spot
     return Number.isFinite(lng) && Number.isFinite(lat) && Number.isSafeInteger(timestampMs) && satellite
       ? [{ index, key: { lng, lat, timestampMs, satellite } }]

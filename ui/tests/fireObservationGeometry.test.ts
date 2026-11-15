@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   fetchPinnedFireGeometry,
+  readPinnedFireGeometry,
   summarizeFireGeometry,
   type FireObservationGeometry,
 } from '../src/utils/fireObservationGeometry.ts'
@@ -39,6 +40,27 @@ test('rolls up negative elevations and available glint values independently by i
   ])
   assert.deepEqual(summary?.rows[3].bySensor[0], { text: '10°', count: 1, total: 2 })
   assert.deepEqual(summarizeFireGeometry([viirs], [geometry])?.sensors, ['viirs'])
+})
+
+test('uses geometry from the live rows and requests only missing pinned detections', async (t) => {
+  const feedGeometry = readPinnedFireGeometry({
+    geometryStatus: 'ready',
+    spots: [
+      [4, 7, 1000, 20, 350, 80, 1, 'NOAA-20', 'D', null, { ...geometry, orbit: null }],
+      [4, 7, 1000, 20, 350, 80, 0, 'Aqua', 'D', null, geometry],
+    ],
+  }, [viirs, modis])
+  assert.deepEqual(feedGeometry, [null, geometry])
+
+  const mockFetch = t.mock.method(globalThis, 'fetch', async (_url: string, options: RequestInit) => {
+    assert.deepEqual(JSON.parse(String(options.body)).spots, [
+      { lng: 4, lat: 7, timestampMs: 2000, satellite: 'NOAA-20' },
+    ])
+    return { ok: true, json: () => ({ status: 'ready', spots: [{ ...geometry, orbit: null }] }) }
+  })
+  const result = await fetchPinnedFireGeometry('', [viirs, modis], new AbortController().signal, feedGeometry)
+  assert.deepEqual(result, [{ ...geometry, orbit: null }, geometry])
+  assert.equal(mockFetch.mock.callCount(), 1)
 })
 
 test('polls pending geometry and preserves selection order when an input has no lookup key', { timeout: 5000 }, async (t) => {

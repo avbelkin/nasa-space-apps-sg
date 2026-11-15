@@ -1,30 +1,34 @@
 import { useEffect, useState } from 'react'
 import { apiBaseUrl } from '../state/apiStatus'
-import { fetchPinnedFireGeometry, summarizeFireGeometry } from '../utils/fireObservationGeometry'
+import { fetchPinnedFireGeometry, summarizeFireGeometry, type FireObservationGeometry } from '../utils/fireObservationGeometry'
 import type { FireSpotTooltipInput } from '../utils/fireSpots'
 
-export function FireObservationDetails({ inputs }: { inputs: readonly FireSpotTooltipInput[] }) {
+export function FireObservationDetails({ inputs, feedGeometry }: {
+  inputs: readonly FireSpotTooltipInput[]
+  feedGeometry?: readonly (FireObservationGeometry | null)[]
+}) {
   const [result, setResult] = useState<{
     inputs: readonly FireSpotTooltipInput[]
+    feedGeometry: typeof feedGeometry
     summary: ReturnType<typeof summarizeFireGeometry>
   } | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
     const { signal } = controller
-    void fetchPinnedFireGeometry(apiBaseUrl, inputs, signal).then(
+    void fetchPinnedFireGeometry(apiBaseUrl, inputs, signal, feedGeometry).then(
       (observations) => {
-        if (!signal.aborted) setResult({ inputs, summary: summarizeFireGeometry(inputs, observations) })
+        if (!signal.aborted) setResult({ inputs, feedGeometry, summary: summarizeFireGeometry(inputs, observations) })
       },
       () => {
-        if (!signal.aborted) setResult({ inputs, summary: null })
+        if (!signal.aborted) setResult({ inputs, feedGeometry, summary: summarizeFireGeometry(inputs, feedGeometry ?? []) })
       },
     )
     return () => controller.abort()
-  }, [inputs])
+  }, [inputs, feedGeometry])
 
-  const settled = result?.inputs === inputs
-  const summary = settled ? result.summary : null
+  const settled = result?.inputs === inputs && result.feedGeometry === feedGeometry
+  const summary = settled ? result.summary : summarizeFireGeometry(inputs, feedGeometry ?? [])
   if (!summary) {
     return (
       <p className="fire-observation-status" role="status">

@@ -240,10 +240,12 @@ app.MapGet("/api/fires/spots", (
     string? bbox,
     bool? includeGeometry,
     bool? enrichLandCover,
+    bool? enrichGeometry,
     FirmsOptions firms,
     FirmsClient firmsClient,
     CancellationToken cancellationToken) =>
-    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetLiveSpotsAsync(sensor, hours, bbox, cancellationToken, includeGeometry: includeGeometry == true, enrichLandCover: enrichLandCover == true)));
+    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetLiveSpotsAsync(sensor, hours, bbox, cancellationToken,
+        includeGeometry: includeGeometry == true, enrichLandCover: enrichLandCover == true, enrichGeometry: enrichGeometry == true)));
 
 app.MapGet("/api/fires/spots.geojson", (
     string? sensor,
@@ -255,14 +257,6 @@ app.MapGet("/api/fires/spots.geojson", (
     FirmsClient firmsClient,
     CancellationToken cancellationToken) =>
     ExecuteFirmsQueryAsync(firms, () => firmsClient.GetLiveSpotsGeoJsonAsync(sensor, hours, bbox, cancellationToken, includeGeometry: includeGeometry == true, enrichLandCover: enrichLandCover == true)));
-
-app.MapGet("/api/fires/spots/enriched", (
-    string? sensor,
-    string? bbox,
-    FirmsOptions firms,
-    FirmsClient firmsClient,
-    CancellationToken cancellationToken) =>
-    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetEnrichedLiveSpotsAsync(sensor, bbox, cancellationToken)));
 
 app.MapPost("/api/fires/spots/geometry", (
     FirmsSpotGeometryRequest request,

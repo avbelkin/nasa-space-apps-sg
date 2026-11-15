@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -21,8 +22,7 @@ public sealed class EnrichedSpotsEndpointTests
             "latitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,instrument,confidence,version,bright_t31,frp,daynight",
             Row(10, now.AddHours(-1)),
             Row(20, now.AddHours(-23)),
-            Row(30, now.AddHours(-25)),
-            Row(40, now.AddHours(1)));
+            Row(30, now.AddHours(-25)));
 
         await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -36,26 +36,40 @@ public sealed class EnrichedSpotsEndpointTests
         });
         using var client = factory.CreateClient();
 
-        FirmsEnrichedSpotsResponse batch;
+        const string feedUrl = "/api/fires/spots?hours=24&sensor=modis";
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var initial = (await client.GetFromJsonAsync<FirmsLiveSpotsResponse>(feedUrl, timeout.Token))!;
+        Assert.Equal("pending", initial.GeometryStatus);
+        Assert.DoesNotContain("geometry", initial.Columns);
+        Assert.Equal(2, initial.Count);
+
+        FirmsLiveSpotsResponse batch;
         do
         {
-            batch = (await client.GetFromJsonAsync<FirmsEnrichedSpotsResponse>(
-                "/api/fires/spots/enriched?sensor=modis", timeout.Token))!;
-        } while (batch.Status == "pending");
+            batch = (await client.GetFromJsonAsync<FirmsLiveSpotsResponse>(
+                feedUrl + "&enrichGeometry=true", timeout.Token))!;
+        } while (batch.GeometryStatus == "pending");
 
-        Assert.Equal("ready", batch.Status);
+        Assert.Equal("ready", batch.GeometryStatus);
         Assert.Equal(TimeSpan.FromHours(24), batch.WindowEndUtc - batch.WindowStartUtc);
-        Assert.Equal(2, batch.Count);
-        Assert.Equal(new double[] { 10, 20 }, batch.Spots!.Select(row => row.Spot.Latitude).Order());
-        Assert.All(batch.Spots!, row =>
+        Assert.Equal(initial.Columns.Append("geometry"), batch.Columns);
+        Assert.Null(batch.Geometry);
+        Assert.Equal(initial.Count, batch.Count);
+        for (var i = 0; i < batch.Spots.Count; i++)
         {
-            var geometry = Assert.IsType<HotspotGeometry>(row.Geometry);
+            var row = batch.Spots[i];
+            Assert.Equal(initial.Spots[i].Select(JsonText), row.Take(row.Length - 1).Select(JsonText));
+            var geometry = ((JsonElement)row[^1]!).Deserialize<HotspotGeometry>(JsonSerializerOptions.Web)!;
             Assert.Null(geometry.Orbit);
-            Assert.Equal(row.Spot.AcquiredAtUtc, geometry.EstimatedObservationUtc);
+            Assert.Equal(((JsonElement)row[2]!).GetInt64(), geometry.EstimatedObservationUtc.ToUnixTimeMilliseconds());
             Assert.InRange(geometry.Sun.ElevationDeg, -90, 90);
-        });
+        }
+
+        var unaugmented = (await client.GetFromJsonAsync<FirmsLiveSpotsResponse>(feedUrl, timeout.Token))!;
+        Assert.DoesNotContain("geometry", unaugmented.Columns);
     }
+
+    private static string? JsonText(object? value) => ((JsonElement?)value)?.GetRawText();
 
     private static string Row(int latitude, DateTimeOffset time) =>
         string.Create(CultureInfo.InvariantCulture, $"{latitude},5,350,1,1,{time:yyyy-MM-dd},{time:HHmm},X,MODIS,80,6.1NRT,290,35,D");
