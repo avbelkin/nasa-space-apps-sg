@@ -25,11 +25,11 @@ FontLibrary.use('Overpass',['Regular','Bold','Italic'].map(s=>path.join(fontDir,
 
 const T=JSON.parse(await fs.readFile(path.join(root,'design-tokens.json'),'utf8'));
 const C=T.colors,S=T.sizes;
-const sourcePath=path.join(root,'../docs/demo-slides.md');
+const sourcePath=path.join(root,'demo-slides.md');
 const source=await fs.readFile(sourcePath,'utf8');
 const sections=[...source.matchAll(/^## Slide (\d+) — (.+)\n([\s\S]*?)(?=^## Slide |$(?![\s\S]))/gm)].map(m=>({number:+m[1],title:m[2],markdown:m[3].trim(),blocks:m[3].trim().split(/\n\s*\n/)}));
 if(sections.length!==7) throw Error(`Expected seven source slides, got ${sections.length}`);
-const snapshot=JSON.parse(await fs.readFile(path.join(root,'../assets/firms-snapshot-2026-11-15T0836Z.json'),'utf8'));
+const snapshot=JSON.parse(await fs.readFile(path.join(root,'assets/data/firms-snapshot-2026-11-15T0836Z.json'),'utf8'));
 const version=process.env.DECK_VERSION || 'scaffold-r6';
 const buildDir=path.join(root,'.build',version);
 const out=path.join(root,'output');
@@ -74,14 +74,14 @@ function base(index,dark=false){
  const s=pres.slides.add(); s._number=index+1;s._dark=dark;s._scene={number:index+1,dark,elements:[]};scenes.push(s._scene);
  s.background.fill=dark?{type:'gradient',gradientKind:'linear',angleDeg:45,stops:[{offset:0,color:C.electric},{offset:100000,color:C.deep}]}:C.white;
  const sec=sections[index];
- s.speakerNotes.text=`${sec.title}\n\n${sec.markdown}\n\nSources: submission/docs/demo-slides.md; submission/assets/README.md. Independent project. Not affiliated with or endorsed by NASA.`;
+ s.speakerNotes.text=`${sec.title}\n\n${sec.markdown}\n\nSources: submission/presentation/demo-slides.md; submission/presentation/assets/brand/README.md. Independent project. Not affiliated with or endorsed by NASA.`;
  if(index>0)text(s,String(index+1).padStart(2,'0'),1475,index===1?860:850,45,30,S.small,{color:dark?C.white:C.deep,align:'right',name:'slide-number'});
  return s;
 }
 async function pattern(s,name,x,y,w,h){
  // Opacity is applied as an editable image fill; the original PNG is untouched.
- const img=s.images.add({blob:new Uint8Array(await fs.readFile(path.join(root,'../assets/space-apps-brand/patterns',`${name}.png`))),contentType:'image/png',alt:`Decorative ${name} pattern from supplied references`,position:{left:x,top:y,width:w,height:h},fit:'cover'});
- s._scene.elements.push({kind:'image',path:path.join(root,'../assets/space-apps-brand/patterns',`${name}.png`),x,y,w,h,alt:`Decorative ${name} pattern`,fit:'cover',opacity:T.patternOpacity});
+ const img=s.images.add({blob:new Uint8Array(await fs.readFile(path.join(root,'assets/brand/patterns',`${name}.png`))),contentType:'image/png',alt:`Decorative ${name} pattern from supplied references`,position:{left:x,top:y,width:w,height:h},fit:'cover'});
+ s._scene.elements.push({kind:'image',path:path.join(root,'assets/brand/patterns',`${name}.png`),x,y,w,h,alt:`Decorative ${name} pattern`,fit:'cover',opacity:T.patternOpacity});
  // Same full-slide gradient screens the pattern back without a rectangular seam.
  const screen=Math.round((1-T.patternOpacity)*100);
  rect(s,0,0,T.slide.width,T.slide.height,{type:'gradient',gradientKind:'linear',angleDeg:45,stops:[{offset:0,color:`${C.electric}/${screen}`},{offset:100000,color:`${C.deep}/${screen}`}]},'none','pattern-screen',false);
@@ -134,7 +134,7 @@ function flowList(s,items,x,y,w,size=S.body,gap=22){
  text(s,b[3],790,686,730,35,S.small);
  rect(s,0,755,1600,100,C.deep);
  text(s,b[2],80,775,1440,75,S.body,{color:C.white});
- s.speakerNotes.text+='\nChart values: submission/assets/firms-snapshot-2026-11-15T0836Z.json. Native editable chart. Fresh screenshots intentionally not used for this historical count comparison.';
+ s.speakerNotes.text+='\nChart values: submission/presentation/assets/data/firms-snapshot-2026-11-15T0836Z.json. Native editable chart. Fresh screenshots intentionally not used for this historical count comparison.';
 }
 // 3–7: completed visual framework; original copy and team placeholders retained.
 {
@@ -226,5 +226,5 @@ await sharp({create:{width:1660,height:1900,channels:3,background:'#E8EDF4'}}).c
 await fs.writeFile(path.join(buildDir,'content.json'),JSON.stringify(content,null,2));
 await fs.writeFile(path.join(buildDir,'scene.json'),JSON.stringify(scenes,null,2));
 await fs.writeFile(path.join(buildDir,'pdf-export.json'),JSON.stringify(pdfResult,null,2));
-await fs.writeFile(path.join(buildDir,'source.json'),JSON.stringify({path:'../docs/demo-slides.md',sha256:crypto.createHash('sha256').update(source).digest('hex'),checkpoint:version,slideCount:7},null,2));
+await fs.writeFile(path.join(buildDir,'source.json'),JSON.stringify({path:'demo-slides.md',sha256:crypto.createHash('sha256').update(source).digest('hex'),checkpoint:version,slideCount:7},null,2));
 console.log('Rendered seven slides, PDF and overview; source copy coverage complete.');

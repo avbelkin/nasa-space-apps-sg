@@ -4,5 +4,5 @@
   "fonts": {"display": "Fira Sans Black", "heading": "Fira Sans", "body": "Overpass"},
   "sizes": {"cover": 80, "heading": 52, "lead": 30, "body": 25, "small": 20},
   "patternOpacity": 0.25,
-  "reference": "../assets/space-apps-brand/palette.json"
+  "reference": "assets/brand/palette.json"
 }

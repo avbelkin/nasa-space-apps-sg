@@ -16,8 +16,8 @@ const allowedSizes=new Set(Object.values(tokens.sizes).map(n=>String(n*75)));
 const pptx=path.join(root,'output',`earth-fire-calendar-${version}.pptx`);
 const pptxBytes=await fs.readFile(pptx);
 const zip=await JSZip.loadAsync(pptxBytes);
-const source=await fs.readFile(path.join(root,'../docs/demo-slides.md'),'utf8');
-const snapshot=JSON.parse(await fs.readFile(path.join(root,'../assets/firms-snapshot-2026-11-15T0836Z.json'),'utf8'));
+const source=await fs.readFile(path.join(root,'demo-slides.md'),'utf8');
+const snapshot=JSON.parse(await fs.readFile(path.join(root,'assets/data/firms-snapshot-2026-11-15T0836Z.json'),'utf8'));
 const normalize=s=>s.normalize('NFKC').replace(/\u00ad/g,'').replace(/\s+/g,' ').trim();
 const visible=s=>normalize(s.replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/\*/g,'').replace(/^(?:- |\d+\. )/gm,''));
 function texts(xml){

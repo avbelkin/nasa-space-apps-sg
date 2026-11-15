@@ -1,43 +1,35 @@
-# Ревью каркаса презентации
+# Presentation review status
 
-**scaffold-r6 принята как готовый каркас семи слайдов.** Открытых замечаний в проверенной области нет. Тексты остаются исходными; название команды и имена оставлены заглушками по просьбе пользователя. Это не утверждение о готовности финальных текстов или подачи проекта.
+## Current work
 
-Файлы: [PDF](output/earth-fire-calendar-scaffold-r6.pdf), [PPTX](output/earth-fire-calendar-scaffold-r6.pptx), [обзор](output/earth-fire-calendar-scaffold-r6-overview.png), [автоматические проверки](output/verification-scaffold-r6.json).
+The user rejected the visual direction of scaffold-r6 as dated. Technical acceptance of that revision does not imply visual approval. The next checkpoint is a new visual direction, with the original wording and team placeholders retained.
 
-## Исправления после первого блока
+All presentation source files, local captures, outputs, fonts, reference copies and work files are now under `submission/presentation` in the main checkout. Builders read `demo-slides.md`, `assets/data/` and `assets/brand/` inside this folder. Large generated files remain Git-ignored. Shared project references outside this folder are not build dependencies.
 
-| Замечание | Результат |
-| --- | --- |
-| Растровый PDF и отсутствующие ссылки | Текст, фигуры и диаграмма векторные; встроены пять TrueType-шрифтов; все 10 URI-аннотаций соответствуют источнику. Снимки приложения остаются растровыми, сняты в масштабе 2×. |
-| Пробелы вокруг точек в Links | Ссылки и разделители вынесены в отдельные текстовые блоки. |
-| Автоматический максимум диаграммы | В OOXML записаны минимум 0 и максимум 100000; данные 79349/8127 совпадают с исходным снимком и книгой. Проверен реальный PowerPoint. |
-| Дата и оговорка о detection | Дата под диаграммой; оговорка непосредственно под лидом. Формулировки сохранены. |
-| Кегли и прозрачность вне токенов | Используется шкала 80/52/30/25/20; прозрачность паттерна берётся из токена 25%. |
-| Team/Stage на обложке | Единая левая колонка; Stage в две строки; иерархия упрощена. |
-| Потерянные alt-тексты | У всех 12 изображений/диаграмм есть содержательные описания в PPTX. |
-| Глобус и номер на обложке | Новый плотный снимок с раскраской сенсоров; номер удалён. |
-| Служебные метаданные и заметки | Удалены Walnut Exporter, общий заголовок Presentation, CHECKPOINT и старый коммит; сохранены полезные источники. |
-| Каркас слайдов 3–7 | Снимки заполнены; главное сравнение MODIS/VIIRS на слайде 5 увеличено; таймлайн на слайде 4 расширен; интервалы списков зависят от содержания; схема на слайде 6 редактируемая, маркеры восстановлены, колонки выровнены. |
+## Accepted technical baseline: scaffold-r6
 
-Независимое ревью промежуточной r5 выявило перекрытие номера «02» нижней плашкой. В r6 номер перенесён ниже; исправление проверено в самом PDF.
+An independent Codex reviewer inspected all seven delivered PDF pages, the source text and snapshot, native chart XML and workbook, 10 PDF links, 12 image/chart descriptions, typography tokens and metadata. The PDF has vector text and shapes and five embedded TrueType fonts. The count values are 79,349 and 8,127; the chart range is 0–100,000. Source wording and team placeholders were preserved.
 
-## Независимая приёмка
+PowerPoint 16.109.3 exported seven pages; its slide 2 was visually checked. It substitutes Calibri for Overpass locally. The delivered PDF embeds the intended fonts. No Claude job was launched by this session.
 
-Отдельный ревьюер внутри Codex (`/root/deck_acceptance`) проверил фактические PDF/PPTX, все семь страниц PDF через Poppler, [исходные тексты](../docs/demo-slides.md), [снимок FIRMS](../assets/firms-snapshot-2026-11-15T0836Z.json), референсы, токены, происхождение снимков, OOXML, книгу диаграммы и ссылки. Все исходные строки сохранены; в проверенных страницах нет обрезаний или наложений. Подтверждены также области без замечаний, а не только список исправлений.
-
-PowerPoint 16.109.3 открыл итоговый `earth-fire-calendar-scaffold-r6.pptx` с семью слайдами и экспортировал отдельный контрольный PDF. Слайд 2 этого нативного экспорта проверен визуально: подписи 8,127 и 79,349 помещаются, шкала не автоматическая. Контрольный файл находится локально в `.build/scaffold-r6/powerpoint.pdf`.
-
-Ограничение: локальный PowerPoint заменяет Overpass на Calibri; шрифты приложены отдельно, в PPTX не встроены. В поставляемом PDF правильные шрифты встроены. Все семь страниц нативного экспорта PowerPoint визуально не проверялись; там проверена диаграмма на слайде 2. Полное визуальное ревью семи страниц относится к поставляемому PDF.
-
-Claude этой сессией не запускался. Полученное от пользователя ревью первого блока обработано без приписывания ему неподтверждённого авторства. Все запущенные проверки и независимое ревью завершены, результаты собраны.
-
-## Контрольные суммы принятой версии
+Accepted baseline hashes:
 
 ```text
-PDF:          210e14aec790d50437267a0c51baf90fed03e734091de14ae7b0d831e4b71856
-PPTX:         bc9e78ffb34f03738b09a21536297b9ae0233192e83ff313c7e2a7ae02774aa6
-Native proof: ac47cd199a96fd8d2e84e3c17705a861ba581dcdbcea1ebda47f4c2058c69951
-Source copy:  b8b7955f2009af184966a8cb50ac0e973a22eb81619f4786efada955798438b1
+PDF:  210e14aec790d50437267a0c51baf90fed03e734091de14ae7b0d831e4b71856
+PPTX: bc9e78ffb34f03738b09a21536297b9ae0233192e83ff313c7e2a7ae02774aa6
 ```
 
-API: провайдер, модель и маршрут отсутствуют; вызовов 0, стоимость $0. Подписка: основная сессия Codex и один независимый ревьюер Codex; расход лимита неизвестен. API/Batch-заданий нет.
+## New review items to resolve
+
+- Resize map images to twice their displayed size; reduce the 42.7 MB PDF and make its submission location explicit.
+- Add breathing room around the pinned comparison; show the promised timeline on slide 5.
+- Replace the tiny raster legend with readable slide text and crop map controls.
+- Enlarge evidence on slide 4 and remove excessive vertical gaps.
+- Remove the two added geometry headings; preserve the source wording.
+- Use the source-driven build for both exports. Manual PowerPoint edits are not synchronized into the PDF.
+- Improve pipeline proportions and arrows, the slide 2 footer, and slide 7 attribution spacing.
+- Keep frozen capture provenance available; a fresh live capture is not the same evidence.
+
+## Accounting
+
+No LLM API provider, model or processing route was used; LLM API cost is $0. The previous baseline used the primary Codex session and one independent Codex reviewer. Subscription allowance consumption is unavailable.
