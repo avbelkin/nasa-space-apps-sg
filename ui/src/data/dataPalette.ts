@@ -33,7 +33,7 @@ export const FIRE_SPOT_COLORS = {
   fill: '#ff1a00',
   pulse: '#ff1a00',
   stroke: 'rgba(15, 23, 42, 0.65)',
-  focusRing: '#b6ff00',
+  focusRing: '#ffffff',
 } as const
 
 export const FIRE_SENSOR_GROUP_COLORS = {
