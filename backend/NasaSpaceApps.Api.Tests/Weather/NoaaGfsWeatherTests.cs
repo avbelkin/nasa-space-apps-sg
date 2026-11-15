@@ -35,6 +35,9 @@ public sealed class NoaaGfsWeatherTests
         Assert.Equal(Run.AddHours(6), water.ValidThroughUtc);
         Assert.Equal(24, water.AgeMinutesAtAcquisition);
         Assert.InRange(Assert.IsType<double>(forecast.Values["plant_available_water_0_to_100cm"].Value), 0, 100);
+        var deficit = forecast.Values["soil_water_deficit_to_field_capacity_0_to_100cm"];
+        Assert.InRange(Assert.IsType<double>(deficit.Value), 0, 1000);
+        Assert.Equal(water.ValidThroughUtc, deficit.ValidThroughUtc);
         Assert.Contains(forecast.Values, field => field.Key.EndsWith("_height_estimated_msl", StringComparison.Ordinal)
             && field.Value.Value is >= 0 and < 20_000);
         var snow = result[0][1].Values["snow_cover_percent"];
@@ -42,6 +45,15 @@ public sealed class NoaaGfsWeatherTests
         Assert.True(snow.ValidFromUtc < snow.ValidThroughUtc);
         Assert.Equal(Run.AddHours(6), snow.ValidThroughUtc);
         Assert.Null(result[2][0].Values["column_cloud_water"].Value);
+    }
+
+    [Fact]
+    public void ConvertsVolumetricShortfallToWaterDepth()
+    {
+        Assert.Equal(40, NoaaGfsWeather.DeficitToFieldCapacity(0.2, 0.3, 400)!.Value, 8);
+        Assert.Equal(100, NoaaGfsWeather.DeficitToFieldCapacity(0.2, 0.3, 1000)!.Value, 8);
+        Assert.Equal(0, NoaaGfsWeather.DeficitToFieldCapacity(0.4, 0.3, 400));
+        Assert.Null(NoaaGfsWeather.DeficitToFieldCapacity(null, 0.3, 400));
     }
 
     [Fact]

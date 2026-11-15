@@ -130,10 +130,16 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
         var top = Sample(new(2, 0, 192, 106, 0, 10), "m³/m³");
         var middle = Sample(new(2, 0, 192, 106, 10, 40), "m³/m³");
         var bottom = Sample(new(2, 0, 192, 106, 40, 100), "m³/m³");
+        var water40 = (top.Value * 10 + middle.Value * 30) / 40;
+        var water100 = (top.Value * 10 + middle.Value * 30 + bottom.Value * 60) / 100;
         values.Add("plant_available_water_0_to_40cm", Derived(top,
-            AvailableWater((top.Value * 10 + middle.Value * 30) / 40, wilting.Value, capacity.Value), "% of modeled capacity"));
+            AvailableWater(water40, wilting.Value, capacity.Value), "% of modeled capacity"));
         values.Add("plant_available_water_0_to_100cm", Derived(top,
-            AvailableWater((top.Value * 10 + middle.Value * 30 + bottom.Value * 60) / 100, wilting.Value, capacity.Value), "% of modeled capacity"));
+            AvailableWater(water100, wilting.Value, capacity.Value), "% of modeled capacity"));
+        values.Add("soil_water_deficit_to_field_capacity_0_to_40cm", Derived(top,
+            DeficitToFieldCapacity(water40, capacity.Value, 400), "mm"));
+        values.Add("soil_water_deficit_to_field_capacity_0_to_100cm", Derived(top,
+            DeficitToFieldCapacity(water100, capacity.Value, 1000), "mm"));
         return values;
     }
 
@@ -153,6 +159,10 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
     private static double? AvailableWater(double? water, double? wilting, double? capacity) =>
         water is double sample && wilting is double min && capacity is double max && max > min && min >= 0 && max <= 1
             ? Math.Clamp(100 * (sample - min) / (max - min), 0, 100) : null;
+
+    internal static double? DeficitToFieldCapacity(double? water, double? capacity, double depthMm) =>
+        water is >= 0 and <= 1 && capacity is > 0 and <= 1
+            ? Math.Max(0, capacity.Value - water.Value) * depthMm : null;
 
     private static HotspotWeatherValue Derived(HotspotWeatherValue source, double? value, string unit) => source with
     {
