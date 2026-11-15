@@ -6,7 +6,7 @@ Lama, a small boy alpaca, is Alexey's assistant. He starts as the real plush toy
 
 **Current scope: voice and character only.** The user also rejected the Charlie voice in the 11.5-second presenter pilot and clarified the target: an adult female performer voicing a little cartoon boy. The physical desk-to-monitor jump is still required; the preceding camera push does not satisfy it. See the [current voice and character direction](voice-direction.md). The narration and storyboard below are provisional audition/reference material and will be revised later; do not rebuild the complete film yet.
 
-Editing target: **29 seconds, 1920×1080, 30 fps — 870 frames**. The narration, revised on 15 November for the app at `c16b7b7`, contains **46 words**, but its wording is not locked. Revise the script and timing after voice/character review while retaining a final duration of at most 30 seconds.
+Editing target: **29 seconds, 1920×1080, 30 fps — 870 frames**. The narration, revised on 15 November for the app at `c16b7b7`, contains **47 words**, but its wording is not locked. Revise the script and timing after voice/character review while retaining a final duration of at most 30 seconds.
 
 ## Storyboard
 
@@ -14,7 +14,7 @@ Editing target: **29 seconds, 1920×1080, 30 fps — 870 frames**. The narration
 |---|---|---|---|---|
 | 0–1.4 s | 0–42 | Full-width close-up of the real toy in profile beside the monitor, using the existing portrait footage cropped to 16:9. No side panels. This framing prioritizes Lama and the screen; Alexey's full face need not be visible. | — | Earth Fire Calendar; Harmonization of MODIS and VIIRS Hot Spots; Team Plush |
 | 1.4–2 s | 42–60 | Hold the final frame. Push into the lower monitor over 8 frames, use 4 frames for motion blur and the cut, then reveal the interface over 6 frames. The toy leaves the frame as the view enlarges; its background is not reconstructed. | — | Earth Fire Calendar |
-| 2–5.5 s | 60–165 | A large display shows the app's globe. The animated Lama stands in the left foreground, greets the viewer, blinks and takes a small step. Cream fur, copper ears and the orange/navy scarf connect him to the toy. | I’m Lama. I help Alexey. Mostly. | Earth Fire Calendar; AI-generated on the character |
+| 2–5.5 s | 60–165 | A large display shows the app's globe. The animated Lama stands in the left foreground, greets the viewer, blinks and takes a small step. Cream fur, copper ears and the orange/navy scarf connect him to the toy. | I’m Lama. I help protect nature. Mostly. | Earth Fire Calendar; AI-generated on the character |
 | 5.5–11.5 s | 165–345 | Keep the same map view: MODIS first, then VIIRS. Let the points finish rendering after the switch. Lama turns and points toward the display, then looks back at the viewer. Enlarge the actual counter; keep his gestures clear of it. | Same planet. Same day. But MODIS and VIIRS see different hotspots. | NASA FIRMS · last 24 h; MODIS → VIIRS |
 | 11.5–17 s | 345–510 | Select All sensors and enable Color fire spots by sensor. Show the prepared region and color key. Lama introduces the shared view with an open gesture, then lowers his foreleg. | Earth Fire Calendar compares their detections using NASA FIRMS data. | NASA FIRMS · last 24 h |
 | 17–23 s | 510–690 | Select the prepared group. Enlarge real excerpts from the same card in sequence: Sat. off-nadir, Land cover, and populated Weather at acquisition rows. Exclude the FRP forecast, pass predictions, the Expected detection, no match flag and timeline totals. Lama indicates the panel, then pauses so the rows can be read. | We add context: viewing angle, land cover, and weather. | Estimated viewing geometry → Land cover → Weather at acquisition |
@@ -23,7 +23,7 @@ Editing target: **29 seconds, 1920×1080, 30 fps — 870 frames**. The narration
 ## Narration
 
 ```text
-I’m Lama. I help Alexey. Mostly.
+I’m Lama. I help protect nature. Mostly.
 
 Same planet. Same day. But MODIS and VIIRS see different hotspots.
 
@@ -34,7 +34,7 @@ We add context: viewing angle, land cover, and weather.
 First experimental estimates use it. Next: one comparable fire record.
 ```
 
-Use a childlike male cartoon voice: Lama is little, curious and clever, with lively delivery and a short comic pause before Mostly. The user selected ElevenLabs through OpenRouter. The preceding pilot used Charlie with a three-semitone pitch increase; the user rejected it as insufficiently childlike. Current auditions use Jessica, Bella and Laura with an adult-female-performing-a-little-boy direction and no local pitch change. No voice is selected yet. Will was also rejected as too adult. Aim for about 25 seconds including pauses, starting at 2 seconds. These 46 words are temporary copy; the user will revise the text later. Check Lama, Alexey, MODIS, VIIRS and NASA FIRMS before the final edit. If a take is too long, shorten pauses or rerecord it.
+Use a childlike male cartoon voice: Lama is little, curious and clever, with lively delivery and a short comic pause before Mostly. The user selected ElevenLabs through OpenRouter. The preceding pilot used Charlie with a three-semitone pitch increase; the user rejected it as insufficiently childlike. Current auditions use Jessica, Bella and Laura with an adult-female-performing-a-little-boy direction and no local pitch change. No voice is selected yet. Will was also rejected as too adult. Aim for about 25 seconds including pauses, starting at 2 seconds. These 47 words are temporary copy; the user will revise the text later. Check Lama, MODIS, VIIRS and NASA FIRMS before the final edit. If a take is too long, shorten pauses or rerecord it.
 
 English subtitles repeat the narration verbatim. Split them into short meaningful phrases, at most two lines, and set their timing after receiving the audio. Retain Mostly, First experimental estimates and Next in the subtitle segmentation: the first completes the joke, the second marks work that is experimental, the third identifies future work.
 
