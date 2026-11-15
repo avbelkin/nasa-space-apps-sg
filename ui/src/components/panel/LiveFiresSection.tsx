@@ -69,7 +69,7 @@ export function LiveFiresSection({ info }: { info: LiveFiresInfo }) {
           </p>
           <p className="panel-note">
             Pulse strength reflects detection age (&lt;24h), dot scale reflects Fire Radiative Power
-            (MW), and opacity reflects sensor confidence. Hover over a spot to preview its
+            (MW), and dot brightness reflects sensor confidence. Hover over a spot to preview its
             details or select it to pin them under Sensors.
           </p>
           {refreshFailed && (

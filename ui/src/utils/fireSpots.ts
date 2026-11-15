@@ -25,7 +25,6 @@ export const SLOW_FREQUENCY_HZ = 1 / SLOW_PERIOD_SECONDS
 export const MID_FREQUENCY_HZ = (FAST_FREQUENCY_HZ + SLOW_FREQUENCY_HZ) / 2
 export const SPOT_RADIUS = 12
 export const SPOT_EXPANSION = 8
-export const STILL_OPACITY = 0.55
 export const SPOT_OPACITY = 0.85
 export const MIN_FRP = 1
 export const MAX_FRP = 250
@@ -209,7 +208,7 @@ export function computePowerScale(frpMw: number): number {
   return MIN_SCALE + (MAX_SCALE - MIN_SCALE) * t
 }
 
-export function computeConfidenceOpacity(confidence: number): number {
+export function computeConfidenceBrightness(confidence: number): number {
   if (!Number.isFinite(confidence)) {
     return MIN_CONFIDENCE_OPACITY
   }
@@ -390,7 +389,7 @@ export function buildFireSpotsGeoJson(
         dayNight: dayNight ?? '',
         radiusMeters: sourceMeta.radiusMeters,
         powerScale: computePowerScale(frp),
-        certainty: computeConfidenceOpacity(confidence),
+        certainty: computeConfidenceBrightness(confidence),
         activity,
         phaseCohort,
         minZoomAll: FULL_DETAIL_FIRE_SPOT_ZOOM,

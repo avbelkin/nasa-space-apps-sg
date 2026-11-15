@@ -8,7 +8,7 @@ import {
   classifyFireSensorGroup,
   COHORT_PHASE_RADIANS,
   compareMatchedFireSpots,
-  computeConfidenceOpacity,
+  computeConfidenceBrightness,
   computePowerScale,
   computeWildfireActivity,
   computeWildfirePulse,
@@ -61,7 +61,7 @@ describe('wildfire activity and pulse math', () => {
     }
   })
 
-  it('scales power from FRP (1..250 MW -> 0.5..1.5) and confidence opacity (25..100 -> 0.6..1.0)', () => {
+  it('scales power from FRP (1..250 MW -> 0.5..1.5) and confidence brightness (25..100 -> 0.6..1.0)', () => {
     assert.equal(computePowerScale(0), 0.5)
     assert.equal(computePowerScale(1), 0.5)
     assert.equal(computePowerScale(125.5), 1)
@@ -69,12 +69,12 @@ describe('wildfire activity and pulse math', () => {
     assert.equal(computePowerScale(900), 1.5)
     assert.equal(computePowerScale(Number.NaN), 0.5)
 
-    assert.equal(computeConfidenceOpacity(10), 0.6)
-    assert.equal(computeConfidenceOpacity(25), 0.6)
-    assert.ok(Math.abs(computeConfidenceOpacity(62.5) - 0.8) < 1e-12)
-    assert.equal(computeConfidenceOpacity(100), 1)
-    assert.equal(computeConfidenceOpacity(120), 1)
-    assert.equal(computeConfidenceOpacity(Number.NaN), 0.6)
+    assert.equal(computeConfidenceBrightness(10), 0.6)
+    assert.equal(computeConfidenceBrightness(25), 0.6)
+    assert.ok(Math.abs(computeConfidenceBrightness(62.5) - 0.8) < 1e-12)
+    assert.equal(computeConfidenceBrightness(100), 1)
+    assert.equal(computeConfidenceBrightness(120), 1)
+    assert.equal(computeConfidenceBrightness(Number.NaN), 0.6)
   })
 })
 
@@ -538,6 +538,11 @@ describe('active fire spot palette and MapLibre layers', () => {
 
     const coreLayer = layers.find((layer) => layer.id === FIRMS_SPOTS_CORE_LAYER_ID)
     assert.ok(coreLayer, 'missing core layer')
-    assert.equal(coreLayer.paint?.['circle-color'], FIRE_SPOT_COLORS.fill)
+    assert.deepEqual(coreLayer.paint?.['circle-opacity'], [
+      'interpolate', ['linear'], ['zoom'], 0.95, 0, MIN_FIRE_SPOT_ZOOM, 1,
+    ])
+    assert.deepEqual(coreLayer.paint?.['circle-color'], [
+      'interpolate', ['linear'], ['get', 'certainty'], 0, '#000000', 1, FIRE_SPOT_COLORS.fill,
+    ])
   })
 })

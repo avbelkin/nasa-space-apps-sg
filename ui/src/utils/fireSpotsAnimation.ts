@@ -17,7 +17,6 @@ import {
   MIN_FIRE_SPOT_ZOOM,
   SPOT_EXPANSION,
   SPOT_RADIUS,
-  STILL_OPACITY,
   type PhaseCohort,
 } from './fireSpots.ts'
 
@@ -32,15 +31,21 @@ export const FIRMS_SPOTS_PULSE_LAYER_IDS = [
 
 const PULSE_HALO_MAX_OPACITY = 0.52
 
-export function buildFireSensorGroupColor(): ExpressionSpecification {
+function fireSpotCoreColor(color: string): ExpressionSpecification {
+  // Shade against a fixed color so the animated layers below cannot tint the marker.
+  return ['interpolate', ['linear'], ['get', 'certainty'], 0, '#000000', 1, color]
+}
+
+function buildFireSensorGroupColor(forCore: boolean): ExpressionSpecification {
   const screenGroup: ExpressionSpecification = ['feature-state', 'screenSensorGroup']
+  const paintColor = (color: string) => forCore ? fireSpotCoreColor(color) : color
   const groupColor = (group: ExpressionSpecification): ExpressionSpecification => [
     'match',
     group,
-    'both', FIRE_SENSOR_GROUP_COLORS.both,
-    'modis', FIRE_SENSOR_GROUP_COLORS.modis,
-    'viirs', FIRE_SENSOR_GROUP_COLORS.viirs,
-    FIRE_SENSOR_GROUP_COLORS.single,
+    'both', paintColor(FIRE_SENSOR_GROUP_COLORS.both),
+    'modis', paintColor(FIRE_SENSOR_GROUP_COLORS.modis),
+    'viirs', paintColor(FIRE_SENSOR_GROUP_COLORS.viirs),
+    paintColor(FIRE_SENSOR_GROUP_COLORS.single),
   ]
   const colorAtZoom = (zoom: number) =>
     groupColor(['coalesce', screenGroup, ['get', `sensorGroupAtZoom${zoom}`]])
@@ -59,13 +64,14 @@ export function buildFireSensorGroupColor(): ExpressionSpecification {
 }
 
 export function setFireSpotSensorColors(map: MapLibreMap, enabled: boolean): void {
-  const groupColor = enabled ? buildFireSensorGroupColor() : null
-  for (const layerId of [FIRMS_SPOTS_CORE_LAYER_ID, ...FIRMS_SPOTS_PULSE_LAYER_IDS]) {
+  const coreColor = enabled ? buildFireSensorGroupColor(true) : fireSpotCoreColor(FIRE_SPOT_COLORS.fill)
+  const pulseColor = enabled ? buildFireSensorGroupColor(false) : FIRE_SPOT_COLORS.pulse
+  if (map.getLayer(FIRMS_SPOTS_CORE_LAYER_ID)) {
+    map.setPaintProperty(FIRMS_SPOTS_CORE_LAYER_ID, 'circle-color', coreColor)
+  }
+  for (const layerId of FIRMS_SPOTS_PULSE_LAYER_IDS) {
     if (map.getLayer(layerId)) {
-      const defaultColor = layerId === FIRMS_SPOTS_CORE_LAYER_ID
-        ? FIRE_SPOT_COLORS.fill
-        : FIRE_SPOT_COLORS.pulse
-      map.setPaintProperty(layerId, 'circle-color', groupColor ?? defaultColor)
+      map.setPaintProperty(layerId, 'circle-color', pulseColor)
     }
   }
 }
@@ -209,21 +215,9 @@ export function buildFireSpotLayers(
       'circle-sort-key': ['get', 'frp'],
     },
     paint: {
-      'circle-color': FIRE_SPOT_COLORS.fill,
+      'circle-color': fireSpotCoreColor(FIRE_SPOT_COLORS.fill),
       'circle-radius': FIRE_SPOT_CORE_RADIUS,
-      'circle-opacity': [
-        'interpolate',
-        ['linear'],
-        ['zoom'],
-        0.95,
-        0,
-        1,
-        ['*', 0.9, ['get', 'certainty']],
-        4,
-        ['*', 0.82, ['get', 'certainty']],
-        8,
-        ['*', STILL_OPACITY, ['get', 'certainty']],
-      ],
+      'circle-opacity': ['interpolate', ['linear'], ['zoom'], 0.95, 0, MIN_FIRE_SPOT_ZOOM, 1],
       'circle-blur': [
         'interpolate',
         ['linear'],
