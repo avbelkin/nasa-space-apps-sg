@@ -8,7 +8,7 @@ The user authorized full assembly on 15 November with the updated 47-word narrat
 
 Lama is a little boy: smart, curious and lively. Preserve the selected voice rather than reopening casting. Will, Charlie, Jessica, Bella and Puck were rejected; Laura was superseded by the explicit Flicker selection. Historical audition artifacts retain their actual original metadata.
 
-The raw narration lasts 23.36 seconds across five files. Scribe v2 through OpenRouter checked coverage and supplied word timings. Its transcript spells Lama as Llama and joins Earth Fire; captions retain the team's exact spelling and wording. Transcription does not establish perceived age, acting quality or phoneme lip sync. The manifests, billing, transcript and acceptance evidence are in `lama/prepared/assembly-v1/`.
+The original raw narration lasted 23.36 seconds. The user replaced the final line with “We apply cross-satellite corrections — a first step toward comparable records.” Its selected Flicker replacement lasts 4.8 seconds; the five selected files now total 22.64 seconds. Scribe v2 through OpenRouter checked coverage and supplied word timings. Its transcript spells Lama as Llama and joins Earth Fire; captions retain the team's exact spelling and wording. Transcription does not establish perceived age, acting quality or phoneme lip sync. The manifests, billing, transcript and acceptance evidence are in `lama/prepared/assembly-v1/`.
 
 ## Physical jump and transformation
 
@@ -18,6 +18,6 @@ The photographic cutout was edited with the OpenAI ChatGPT image tool, so do not
 
 ## Living presenter
 
-Use the cream toy's long muzzle and neck, black eyes with gold rims, copper ears and orange/navy/ivory scarf. Alpacas have toes, not hooves. The corrected character still has four limbs. The newer Veo take introduced an extra limb in its full-body view, which remains rejected. Use only the independently inspected waist-up 1.0–2.6-second excerpt; it has one visible presenting foreleg. The assembly repeats it forward and backward with a modest slowdown, preserving blinks, head turns and gestures. Do not describe this as accepted full-body walking or exact lip sync.
+Use the cream toy's long muzzle and neck, black eyes with gold rims, copper ears and orange/navy/ivory scarf. Alpacas have toes, not hooves. The corrected neutral presenter-v6 reference has four grounded feet and no additional arm. The preceding v5 motion added an unwanted fifth appendage and remains rejected. The six-second v6 take starts with brief foot movement, then looks toward the data and back at the viewer. The current assembly uses non-looping excerpts and endpoint holds rather than the earlier repeated wave. Local compositing changes Lama's position across scenes. Do not call this exact phoneme lip sync.
 
 Lama stands in the left foreground like a weather presenter; the actual app display is behind and to his right. Keep meaningful data and attribution clear of his gestures, and keep `AI-generated` visibly on the body. The user's current screen recordings replace earlier temporary captures; narration remains unchanged.

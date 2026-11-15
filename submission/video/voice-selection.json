@@ -8,7 +8,7 @@
   "source": "https://elevenlabs.io/app/voice-library?voiceId=piI8Kku0DcvcL6TTSeQt",
   "id_verified_on": "https://elevenlabs.io/voice-library/animation",
   "route_documentation": "https://openrouter.ai/blog/announcements/elevenlabs-on-openrouter/",
-  "route_verification": "Verified with five completed Eleven v4 speech requests through OpenRouter on 2026-11-15; manifests in lama/prepared/assembly-v1.",
-  "narration_status": "The user authorized assembly with the updated 47-word narration. All five lines are synthesized with Flicker and no pitch or tempo shift.",
+  "route_verification": "Verified with six completed Eleven v4 speech requests through OpenRouter on 2026-11-15; five original lines and a revised closing line.",
+  "narration_status": "Current 47-word assembly includes the user-requested cross-satellite-correction ending. Use the first four original takes and assembly-v2/voice-revision-1/voice-1.mp3 for the final line.",
   "local_pitch_shift_semitones": 0
 }

@@ -1,0 +1,29 @@
+Review the latest Lama video against the actual local MP4, original source recordings and current script. Read-only review; do not alter the narration or regenerate media.
+
+Repository: nasa-space-apps-sg
+Current film: submission/video/lama/prepared/assembly-v3/lama-fullscreen.mp4
+Review player: submission/video/lama/prepared/assembly-v3/review.html
+Timing and technical report: assembly-v3/timeline.json, render-report.json
+Narration and voice evidence: submission/video/lama/prepared/assembly-v1/
+Original UI recordings: submission/video/screens/
+Closing design reference: submission/presentation/earth-fire-calendar.pdf, page 7 (style only; the new video copy supersedes the old future-harmonization line).
+Current motion and neutral reference: submission/video/lama/prepared/presenter-v6/
+Renderer: submission/video/render-fullscreen.mjs
+Current docs: submission/video/demo-video.md, README.md, voice-direction.md, disclosures.md, recording-checklist.md
+Official reference: submission/docs/formal-requirements.md and advice.md (do not edit these frozen sources)
+
+The user accepted the Flicker voice and the full-frame layout stills. The first assembly with a boxed display and repeated wave was rejected; do not review assembly-v1 as the current visual candidate. The first four lines are unchanged. The user replaced the last line with: We apply cross-satellite corrections — a first step toward comparable records. The selected replacement is in assembly-v2/voice-revision-1/.
+
+Check:
+1. The photographic PLUSH Lama squashes and flies into the physical monitor BEFORE any cartoon appears. The cartoon appears only inside the screen, then the full-frame UI is revealed. A camera push alone is insufficient.
+2. Lama's face/scarf resemble the toy. Count limbs against the actual source sequence: exactly four, with soft toes, no extra hanging arm. presenter-v5 is rejected and must not appear.
+3. Revised motion: brief steps and head/ear turns, no endless waving, positions related to the data. Look for visible jumps between poses or positions and excessively long frozen holds. Distinguish creative preference from a technical blocker.
+4. The real interface fills the frame. Right-panel enlargements contain real recorded pixels and values. Confirm MODIS 8,724 and VIIRS 56,434 from the same source recording; context rows are from one selected point in 21.52.05. Experimental forecast/warning text and timeline totals are excluded from the observation excerpts. At 22.5–26 s the new 22.28.52 recording and 22.28.33 screenshot intentionally show the CAMS 1.28× detection-odds correction, with its experimental attribution. Do not treat it as a corrected raw count or a validated unified record.
+5. The complete 47-word speech and verbatim captions, including Mostly and a first step toward comparable records. Verify timing, readable margins, no clipped row fragments and no character overlap with key data.
+6. Duration at most 30 seconds; current target 29 seconds / 870 frames / 1920x1080 / 30 fps / H.264 + AAC. Check the file, not merely code or the report.
+7. AI watermark on generated imagery, actual Flicker/ElevenLabs/OpenRouter/Veo/OpenAI image-tool disclosures, NASA FIRMS attribution and final non-endorsement note. Confirm final title, URL, Team Plush and both names.
+8. All ten new API jobs are terminal and collected; rejected v5 still accounted for. assembly-v3/accounting.json separates measured API cost ($0.3981208888888886), one image-tool edit of unknown cost, and unavailable subscription telemetry.
+
+Known limits: the live/composite plush pose cut remains visible; the flight is a controlled photographic cutout, not articulated plush legs; no phoneme lip sync; some source/action endpoints are held. The original scarf print and older EOxCloudless 2025 imagery on the physical monitor remain documented publication review items. Do not silently mark publication rights cleared.
+
+Return actionable findings with file/timecode, impact, specific correction and priority. State whether you watched motion/listened or inspected only stills/transcripts. Report coverage and limitations even with zero findings. Do not reopen the already accepted voice selection without a concrete audio defect.

@@ -12,14 +12,14 @@ Earth Fire Calendar
 
 ## 2. High-Level Project Summary
 
-197 words; the official video recommends 50–200.
+199 words; the official video recommends 50–200.
 
 ```text
-Earth Fire Calendar shows, on a live 3D globe, every active-fire detection that NASA FIRMS published in the last 24 hours from MODIS (Terra, Aqua) and VIIRS (NOAA-20, NOAA-21), and lets you switch between the two sensors. The same day looks very different: on 15 November 2026 at 08:36 UTC, VIIRS reported 79,349 detections and MODIS 8,127. The two sets of detections overlap only in part, which is why the MODIS record since 2000 and the newer VIIRS record cannot simply be joined.
+Earth Fire Calendar shows, on a live 3D globe, every active-fire detection that NASA FIRMS published in the last 24 hours from MODIS (Terra, Aqua) and VIIRS (NOAA-20, NOAA-21), and lets you switch between them. The same day looks very different: on 15 November 2026 at 08:36 UTC, VIIRS reported 79,349 detections and MODIS 8,127. The two sets of detections overlap only in part, which is why the MODIS record since 2000 and the newer VIIRS record cannot simply be joined.
 
 To explain the gap, not only show it, the app attaches to each detection the conditions under which it was observed: viewing geometry, land cover inside the pixel footprint and weather at acquisition time. This is the evidence a harmonization method needs.
 
-The app is a tool for studying this difference and a source of detection-level data for research. As a first use of that evidence, it notes predicted passes of another satellite that reported nothing, and gives experimental one-day estimates of what the next pass would report; GWIS fields improved held-out MODIS-to-MODIS estimates, CAMS fields VIIRS-to-VIIRS detection ranking. A harmonized record is what we explore next; it is not part of this prototype.
+The app is a tool for studying this difference and a source of detection-level data for research. As a first use of that evidence, it notes predicted passes of another satellite that reported nothing, and gives experimental one-day estimates of what the next pass would report; GWIS fields improved held-out MODIS-to-MODIS estimates, CAMS fields VIIRS-to-VIIRS detection ranking. These experimental cross-satellite corrections are an initial harmonization step; a validated unified record is not part of this prototype.
 ```
 
 ## 3. Link to Project Demo
@@ -30,7 +30,7 @@ The completed, publicly accessible demo is the seven-slide presentation:
 https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/presentation/earth-fire-calendar.pdf
 ```
 
-The [video](../video/README.md) is still being edited. Its local 29-second assembly is a superseded review artifact, not a published final demo.
+The [video](../video/README.md) is still being edited. Its current full-frame 29-second assembly is available for local review; it supersedes the first assembly and is not a published final demo.
 
 ## 4. Link to Final Project
 

@@ -1,41 +1,34 @@
 # Captions and AI disclosures for the Lama video
 
-[Script](demo-video.md) · [Production plan](README.md)
+[Script](demo-video.md) · [Production plan](README.md) · [Rights register](../deliverables/third-party-rights.md)
 
-## Persistent on-screen watermark
+## On-screen disclosure
 
-AI-generated
+Keep **AI-generated** visibly on Lama's moving body. The desk-to-monitor composite also carries **AI-generated transition · AI-edited plush image**. The photographic plush remains photographic throughout the flight; the cartoon first appears inside the monitor after entry.
 
-Place this visibly on Lama's lower body whenever the generated animation appears. Keep it attached to the moving figure, not below it as a footer. In the current 11.5-second pilot the character appears at 2 seconds. The live opening and application imagery are real recordings. Do not add an extra end card beyond the final 29-second target.
+## Video description for the current assembly
 
-## Current casting status
+Earth Fire Calendar compares MODIS and VIIRS detections using NASA FIRMS data and adds observation context. Experimental cross-satellite corrections are a first harmonization step. Team Plush — Alexey Belkin and Viktoriia Naiman.
 
-Charlie with a raised pitch was rejected. New voice-only auditions use Jessica, Bella and Laura (ElevenLabs Eleven v4 through OpenRouter), without local pitch shifting. Generated repetitions were trimmed; each WAV contains its actual provider, voice and edit disclosure in metadata. No replacement is selected. Existing presenter-v2 exports retain their truthful historical Charlie metadata. The narration itself is temporary.
+Lama's character images and the photographic toy cutout were generated or edited with the OpenAI ChatGPT image tool from our own plush alpaca photographs. Google Veo 3.1 Lite through OpenRouter generated the character motion and the empty desk background used in the locally composited jump. The live opening and the application screen recordings are real footage. Actual interface excerpts are enlarged without changing their values. The English narration uses ElevenLabs Eleven v4 through OpenRouter, voice Flicker - Cheerful Fairy & Sparkly Sweetness; no pitch or tempo shift was applied. OpenAI Codex assisted with the script and video production. Generated images and motion carry visible labels. Expressive mouth movement is not exact phoneme lip sync.
 
-The separate silent jump test uses Google Veo 3.1 Lite through OpenRouter. Its raw jump trajectory was rejected; the empty generated ending is reused as a reconstructed desk background for a locally controlled character flight. The test visibly labels the generated transition and records this provenance in MP4 metadata. It is not entirely real live-action footage. Disclose the actual selected transition in the final export.
+Fire-detection data: NASA FIRMS. Other displayed sources: NASA GIBS, CelesTrak, EOxCloudless by EOX IT Services GmbH / Copernicus Sentinel-2, and Extremum SAR GIS. The new screen recordings use the current EOxCloudless 2016 basemap (modified Copernicus Sentinel data 2016 & 2017), CC BY 4.0. The earlier desk footage shows the preceding EOxCloudless 2025 imagery on the physical monitor, CC BY-NC-SA 4.0; its presence remains recorded in the rights register. Independent project; not affiliated with or endorsed by NASA.
 
-## Historical presenter-v2 video description
+## Export metadata
 
-The animated Lama character was designed with the OpenAI ChatGPT image tool from an original photograph of our plush alpaca. Character motion was generated with Google Veo 3.1 Lite through OpenRouter. The English narration was synthesized with ElevenLabs Eleven v4 through OpenRouter, using Charlie; its pitch was raised locally by three semitones while preserving duration. Live-action footage and application captures are real recordings. OpenAI Codex assisted with the script and video production. Independent project; not affiliated with or endorsed by NASA. Fire-detection data: NASA FIRMS.
+Write the actual selected voice ID `piI8Kku0DcvcL6TTSeQt`, ElevenLabs Eleven v4 via OpenRouter, the OpenAI image tool, Google Veo 3.1 Lite via OpenRouter, local compositing and the real recorded UI provenance into the MP4 comment. The current renderer includes those fields. Its title identifies a review assembly, not an uploaded final submission. The image tool does not expose an exact model identifier; do not invent one.
 
-This describes the historical presenter-v2 pilot. Its Charlie voice is also rejected. Update this text and export metadata together for the actual final selection. The built-in image tool did not expose an exact model identifier; do not invent one. Expressive mouth animation is not exact lip sync.
+## Current media provenance
 
-## Submission AI-use field
+- `presenter-v6/lama-character-green.png`: neutral four-foot reference, after removing an unwanted extra appendage from the preceding generated design.
+- `presenter-v6/lama-motion-green.mp4`: new restrained motion, used as non-looping excerpts and endpoint holds. The old repeated wave and rejected five-limb takes are excluded.
+- `jump-v2/plush-cutout.png`: photographic plush image edited with the OpenAI image tool; not a pixel-exact extraction.
+- `jump-v2/end.png`: generated empty desk background from the earlier Veo experiment. The original generated trajectory is not used.
+- `assembly-v1/voice-pilot/` and `voice-rest/`: the original five completed Flicker files. The current ending replaces their final take with `assembly-v2/voice-revision-1/voice-1.mp3`, which says cross-satellite corrections are a first step toward comparable records. User accepted the assembled voice; native Codex independently accepted coverage and accounting.
+- `screens/`: Alexey's original recordings. The full-frame revision uses the 21.23.52 globe recording, the 21.26.02 sensor-color recording, the 21.52.05 recording with populated expanded weather, and the 22.28.52 recording plus 22.28.33 screenshot of the CAMS adjustment.
 
-The [project description](../deliverables/project-description.md#6-use-of-super-intelligence-si) and [field map](../working/form-fields.md) include image and video generation and synthetic narration, alongside coding and writing assistance. OpenRouter is the route; Google and ElevenLabs provide motion and speech respectively.
+All new API jobs, including rejected attempts, are retained in `assembly-v3/accounting.json`. Measured OpenRouter cost and unknown image-tool billing are reported separately from unavailable subscription telemetry. Media stays Git-ignored.
 
-## Historical presenter-v2 MP4 metadata
+## Publication checks still requiring the final artifact
 
-The following comment documents presenter-v2 only. Do not copy its rejected voice selection into a new export. Write the actual selected voice, processing and motion sources into each new export, with its draft/final status:
-
-AI character image: OpenAI ChatGPT image tool (model not disclosed). AI animation: Google Veo 3.1 Lite via OpenRouter. Synthetic narration: ElevenLabs Eleven v4, Charlie, via OpenRouter, pitch raised three semitones with duration preserved. Script and assembly: OpenAI Codex. Live footage and application screenshots are real recordings.
-
-The pilot identifies itself as a concept rather than the final submission. Inspect its duration and comment with ffprobe. Manifests retain all generation IDs; measured API charges are recorded separately from estimates. Neither amount measures Codex subscription consumption. Image-tool billing was not exposed.
-
-## Before publication
-
-- **People in the frame.** The participant terms ask for written consent from every adult featured in the video. For Alexey, a one-line message from him ("I agree that my image in the Earth Fire Calendar demo may be used by NASA") kept in the team chat is enough; as a registered participant he also grants NASA this permission under the terms. No one under 18 may appear or be named.
-- **Map scenes.** Record them from the live app, which now uses the EOX 2016 basemap (CC BY 4.0). Older recordings show the 2025 layer (CC BY-NC-SA 4.0); if one stays in the final cut, name that licence in the description and in the [register](../deliverables/third-party-rights.md).
-- **Music.** None; add none without a licence that allows reuse.
-- **Metadata.** Write the actual voice ("Flicker"), motion and image tools into the final MP4 comment and the video description, and keep the `AI-generated` label on the character throughout.
-- **Model outputs.** If the video shows the app's estimates, they are Earth Fire Calendar's, not NASA's.
+Keep English captions inside safe margins, NASA FIRMS attribution visible, and the total file duration at most 30 seconds. The current review export is 29 seconds. No music is used. Preserve the existing team decision about Alexey's participation; no renewed consent request is part of this workflow. The original scarf print and the older imagery visible on the physical monitor remain documented review items; do not describe the review assembly as cleared for publication merely because it renders successfully.
