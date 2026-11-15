@@ -33,14 +33,17 @@ export const FIRMS_SPOTS_PULSE_LAYER_IDS = [
 const PULSE_HALO_MAX_OPACITY = 0.52
 
 export function buildFireSensorGroupColor(): ExpressionSpecification {
-  const colorAtZoom = (zoom: number): ExpressionSpecification => [
+  const screenGroup: ExpressionSpecification = ['feature-state', 'screenSensorGroup']
+  const groupColor = (group: ExpressionSpecification): ExpressionSpecification => [
     'match',
-    ['get', `sensorGroupAtZoom${zoom}`],
+    group,
     'both', FIRE_SENSOR_GROUP_COLORS.both,
     'modis', FIRE_SENSOR_GROUP_COLORS.modis,
     'viirs', FIRE_SENSOR_GROUP_COLORS.viirs,
     FIRE_SENSOR_GROUP_COLORS.single,
   ]
+  const colorAtZoom = (zoom: number) =>
+    groupColor(['coalesce', screenGroup, ['get', `sensorGroupAtZoom${zoom}`]])
   const tierStops = DECLUTTER_CELL_DEGREES.slice(1).flatMap((_, index) => {
     const zoom = MIN_FIRE_SPOT_ZOOM + index + 1
     return [zoom, colorAtZoom(zoom)]
@@ -51,14 +54,7 @@ export function buildFireSensorGroupColor(): ExpressionSpecification {
     colorAtZoom(MIN_FIRE_SPOT_ZOOM),
     ...tierStops,
     FULL_DETAIL_FIRE_SPOT_ZOOM,
-    [
-      'match',
-      ['feature-state', 'screenSensorGroup'],
-      'both', FIRE_SENSOR_GROUP_COLORS.both,
-      'modis', FIRE_SENSOR_GROUP_COLORS.modis,
-      'viirs', FIRE_SENSOR_GROUP_COLORS.viirs,
-      FIRE_SENSOR_GROUP_COLORS.single,
-    ],
+    groupColor(screenGroup),
   ] as ExpressionSpecification
 }
 
@@ -158,7 +154,7 @@ export function buildFireSpotPulseRadiusExpression(pulse: number): ExpressionSpe
   ]
 }
 
-export const FIRE_SPOT_CORE_RADIUS: ExpressionSpecification = [
+const FIRE_SPOT_CORE_RADIUS: ExpressionSpecification = [
   'interpolate',
   ['linear'],
   ['zoom'],

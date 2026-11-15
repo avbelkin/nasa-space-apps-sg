@@ -476,6 +476,19 @@ describe('hierarchical z1..z7 spatial decluttering', () => {
     const z7ViirsHit = expandHoveredFireSpots(built, [0, 2], 7, 'harmonized')
     assert.equal(classifyFireSensorGroup(z7ViirsHit), 'viirs')
 
+    // Two low-zoom markers can be close on screen. Include the hidden members of both
+    // geographic groups in the color and in the details for either rendered marker.
+    const projected = [
+      { index: 0, x: 100, y: 100, detection: z7Harmonized[0] },
+      { index: 3, x: 108, y: 104, detection: expandHoveredFireSpots(built, [3], 7, 'harmonized')[0] },
+    ]
+    const screenGroups = groupProjectedFireSpots(projected, (members) =>
+      expandHoveredFireSpots(built, members.map((member) => member.index), 1.5, 'harmonized'),
+    )
+    assert.strictEqual(screenGroups.get(0), screenGroups.get(3))
+    assert.equal(screenGroups.get(3)?.color, 'both')
+    assert.equal(screenGroups.get(3)?.detections.length, 4)
+
     const z1Modis = expandHoveredFireSpots(built, [1], 1.5, 'modis')
     assert.deepEqual(
       z1Modis.map((s) => ({ frp: s.frp, instrument: s.instrument })),
@@ -493,11 +506,12 @@ describe('active fire spot palette and MapLibre layers', () => {
       { index: 2, x: 58, y: 21, detection: { ...detection, instrument: 'modis' } },
       { index: 3, x: 77, y: 21, detection: { ...detection, instrument: 'modis' } },
       { index: 4, x: 80, y: 22, detection: { ...detection, instrument: 'modis' } },
-    ])
-    assert.deepEqual(groups.get(0), { members: [0, 1], color: 'both' })
+    ], (members) => members.map((spot) => spot.detection))
+    assert.equal(groups.get(0)?.color, 'both')
+    assert.equal(groups.get(0)?.detections.length, 2)
     assert.strictEqual(groups.get(0), groups.get(1))
-    assert.deepEqual(groups.get(2), { members: [2], color: 'single' })
-    assert.deepEqual(groups.get(3), { members: [3, 4], color: 'modis' })
+    assert.equal(groups.get(2)?.color, 'single')
+    assert.equal(groups.get(3)?.color, 'modis')
   })
 
   it('uses uniform saturated non-pink red across core and pulse layers', () => {

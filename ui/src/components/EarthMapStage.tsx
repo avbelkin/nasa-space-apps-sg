@@ -12,7 +12,7 @@ import type {
 } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
-import { FIRE_SENSOR_GROUP_COLORS, FIRE_SPOT_COLORS, MARK_STROKE_COLOR, USER_LOCATION_COLORS } from '../data/dataPalette'
+import { FIRE_SPOT_COLORS, MARK_STROKE_COLOR, USER_LOCATION_COLORS } from '../data/dataPalette'
 import type { ProjectionMode, SensorFilter } from '../data/mapTypes'
 import {
   clampGeolocationTargetZoom,
@@ -81,13 +81,10 @@ import {
 } from '../utils/satelliteAnimation'
 import {
   buildFireSpotsGeoJson,
-  classifyFireSensorGroup,
   compareMatchedFireSpots,
-  computePowerScale,
   deduplicateSpotMatches,
   expandHoveredFireSpots,
   formatFireSpotsTooltip,
-  FULL_DETAIL_FIRE_SPOT_ZOOM,
   MIN_FIRE_SPOT_ZOOM,
   type BuiltFireSpotsData,
   type FireSpotFeatureProperties,
@@ -110,7 +107,6 @@ import {
   FIRMS_SPOTS_CORE_LAYER_ID,
   FIRMS_SPOTS_PULSE_LAYER_IDS,
   FIRMS_SPOTS_SOURCE_ID,
-  FIRE_SPOT_CORE_RADIUS,
   setFireSpotSensorColors,
   type FireSpotsAnimationController,
 } from '../utils/fireSpotsAnimation'
@@ -335,32 +331,15 @@ const EMPTY_FIRE_SPOTS: BuiltFireSpotsData = {
   },
 }
 
-function buildFireSpotFocusGeoJson(
-  pinned: PinnedFireSelection | null,
-  hovered: PinnedFireSelection | undefined,
-  colorBySensor: boolean,
-): FeatureCollection<Point> {
-  const features: FeatureCollection<Point>['features'] = []
-  for (const [selection, isPinned] of [[pinned, true], [hovered, false]] as const) {
-    if (!selection?.anchorLngLat) {
-      continue
-    }
-    const group = selection.sensorGroup
-    const color = colorBySensor && group && group !== 'single' ? FIRE_SENSOR_GROUP_COLORS[group] : null
-    if (!isPinned && !color) {
-      continue
-    }
-    // One pointer hit can combine multiple rendered markers, even at full detail.
-    features.push({
+function buildFireSpotFocusGeoJson(coords: [number, number] | null): FeatureCollection<Point> {
+  return {
+    type: 'FeatureCollection',
+    features: coords ? [{
       type: 'Feature',
-      geometry: { type: 'Point', coordinates: selection.anchorLngLat },
-      properties: {
-        pinned: isPinned,
-        ...(color ? { color, powerScale: selection.peakPowerScale } : {}),
-      },
-    })
+      geometry: { type: 'Point', coordinates: coords },
+      properties: {},
+    }] : [],
   }
-  return { type: 'FeatureCollection', features }
 }
 
 function setFireLayerVisibility(map: MapLibreMap, layerId: string, visible: boolean): void {
@@ -425,13 +404,10 @@ function queryFireSelectionAtPoint(
 
   // Use the same group as the map marker when several rendered dots hit the pointer box.
   const screenGroup = screenGroups?.get(hitIndices[0])
-  const expanded = expandHoveredFireSpots(
-    builtFireSpots,
-    screenGroup?.members ?? hitIndices,
-    map.getZoom(),
-    sensorFilter,
-  )
-  const inputs = deduplicateSpotMatches(screenGroup ? expanded : [...expanded, ...fallbackInputs])
+  const inputs = screenGroup?.detections ?? deduplicateSpotMatches([
+    ...expandHoveredFireSpots(builtFireSpots, hitIndices, map.getZoom(), sensorFilter),
+    ...fallbackInputs,
+  ])
   if (inputs.length === 0) {
     return null
   }
@@ -448,8 +424,6 @@ function queryFireSelectionAtPoint(
     nowMs: Date.now(),
     anchorLngLat,
     sensorFilter,
-    sensorGroup: classifyFireSensorGroup(inputs),
-    peakPowerScale: computePowerScale(topSpot.frp),
   }
 }
 
@@ -576,7 +550,6 @@ function createBaseStyle(
         id: 'fire-spot-focus-ring',
         type: 'circle',
         source: 'fire-spot-focus',
-        filter: ['==', ['get', 'pinned'], true],
         layout: {
           visibility: initialShowLiveFires ? 'visible' : 'none',
         },
@@ -587,21 +560,6 @@ function createBaseStyle(
           'circle-stroke-width': 3,
           'circle-stroke-color': FIRE_SPOT_COLORS.focusRing,
           'circle-stroke-opacity': ['step', ['zoom'], 0, 1, 1],
-        },
-      },
-      {
-        id: 'fire-spot-selection-color',
-        type: 'circle',
-        source: 'fire-spot-focus',
-        filter: ['has', 'color'],
-        layout: {
-          visibility: initialShowLiveFires ? 'visible' : 'none',
-        },
-        paint: {
-          'circle-radius': FIRE_SPOT_CORE_RADIUS,
-          'circle-color': ['to-color', ['get', 'color'], FIRE_SPOT_COLORS.fill],
-          'circle-stroke-width': 1,
-          'circle-stroke-color': FIRE_SPOT_COLORS.stroke,
         },
       },
       {
@@ -791,8 +749,8 @@ export function EarthMapStage({
     [hoveredSelection, overpassIndex],
   )
   const focusSpotGeoJson = useMemo(
-    () => buildFireSpotFocusGeoJson(pinnedFireSelection, hoveredSelection, colorFireSpotsBySensor),
-    [pinnedFireSelection, hoveredSelection, colorFireSpotsBySensor],
+    () => buildFireSpotFocusGeoJson(pinnedFireSelection?.anchorLngLat ?? null),
+    [pinnedFireSelection],
   )
 
   const latestBuiltFireSpotsRef = useRef(builtFireSpots)
@@ -859,7 +817,6 @@ export function EarthMapStage({
       setFireLayerVisibility(map, layerId, showFires)
     }
     setFireLayerVisibility(map, 'fire-spot-focus-ring', showFires)
-    setFireLayerVisibility(map, 'fire-spot-selection-color', showFires)
     if (!showFires) {
       map.getCanvas().style.cursor = ''
     }
@@ -1109,7 +1066,7 @@ export function EarthMapStage({
       mapInstanceRef.current = map
 
       const getScreenGroups = () =>
-        latestFireSensorColorsRef.current && (map?.getZoom() ?? 0) >= FULL_DETAIL_FIRE_SPOT_ZOOM
+        latestFireSensorColorsRef.current
           ? screenGroupsRef.current
           : undefined
 
@@ -1246,7 +1203,6 @@ export function EarthMapStage({
           }
         }
         setFireLayerVisibility(map, 'fire-spot-focus-ring', latestShowFiresRef.current)
-        setFireLayerVisibility(map, 'fire-spot-selection-color', latestShowFiresRef.current)
         setFireSpotSensorColors(map, latestFireSensorColorsRef.current)
 
         fireAnimControllerRef.current?.dispose()
@@ -1322,7 +1278,7 @@ export function EarthMapStage({
           map.isSourceLoaded(FIRMS_SPOTS_SOURCE_ID)) {
           screenGroupsDirtyRef.current = false
           const next = latestFireSensorColorsRef.current && latestShowFiresRef.current &&
-            map.getZoom() >= FULL_DETAIL_FIRE_SPOT_ZOOM
+            map.getZoom() >= MIN_FIRE_SPOT_ZOOM
             ? readFireSpotScreenGroups(map, latestBuiltFireSpotsRef.current)
             : undefined
           updateFireSpotScreenColors(map, screenGroupsRef.current, next)

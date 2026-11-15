@@ -3,6 +3,7 @@ import {
   classifyFireSensorGroup,
   compareMatchedFireSpots,
   deduplicateSpotMatches,
+  expandHoveredFireSpots,
   featureToTooltipInput,
   type BuiltFireSpotsData,
   type FireSensorGroup,
@@ -20,15 +21,17 @@ interface ProjectedFireSpot {
 }
 
 export interface FireSpotScreenGroup {
-  members: readonly number[]
+  detections: readonly FireSpotTooltipInput[]
   color: FireSensorGroup | null
 }
 
-// Screen-space grouping keeps nearby detections together at full-detail zooms, where geographic
-// decluttering ends. Use the original hit padding plus the width of a typical marker's radius.
+// Keep nearby rendered marks together. At low zoom each mark can represent a geographic group.
 const GROUP_DISTANCE = 2 * FIRE_SPOT_HIT_PADDING
 
-export function groupProjectedFireSpots(spots: readonly ProjectedFireSpot[]): Map<number, FireSpotScreenGroup> {
+export function groupProjectedFireSpots(
+  spots: readonly ProjectedFireSpot[],
+  expand: (members: readonly ProjectedFireSpot[]) => readonly FireSpotTooltipInput[],
+): Map<number, FireSpotScreenGroup> {
   const buckets = new Map<string, ProjectedFireSpot[]>()
   const cell = (value: number) => Math.floor(value / GROUP_DISTANCE)
   for (const spot of spots) {
@@ -61,10 +64,8 @@ export function groupProjectedFireSpots(spots: readonly ProjectedFireSpot[]): Ma
         }
       }
     }
-    const group = {
-      members: members.map((spot) => spot.index),
-      color: classifyFireSensorGroup(deduplicateSpotMatches(members.map((spot) => spot.detection))),
-    }
+    const detections = deduplicateSpotMatches(expand(members))
+    const group = { detections, color: classifyFireSensorGroup(detections) }
     for (const member of members) {
       groups.set(member.index, group)
     }
@@ -86,7 +87,10 @@ export function readFireSpotScreenGroups(map: MapLibreMap, data: BuiltFireSpotsD
       spots.set(index, { index, x, y, detection: featureToTooltipInput(feature) })
     }
   }
-  return groupProjectedFireSpots([...spots.values()])
+  const zoom = map.getZoom()
+  return groupProjectedFireSpots([...spots.values()], (members) =>
+    expandHoveredFireSpots(data, members.map((spot) => spot.index), zoom, 'harmonized'),
+  )
 }
 
 export function updateFireSpotScreenColors(
@@ -95,13 +99,12 @@ export function updateFireSpotScreenColors(
   next: ReadonlyMap<number, FireSpotScreenGroup> | undefined,
 ) {
   for (const [id, group] of previous ?? []) {
-    const nextColor = next?.get(id)?.color
-    if (group.color && group.color !== 'single' && (!nextColor || nextColor === 'single')) {
+    if (group.color && !next?.get(id)?.color) {
       map.removeFeatureState({ source: FIRMS_SPOTS_SOURCE_ID, id }, 'screenSensorGroup')
     }
   }
   for (const [id, group] of next ?? []) {
-    if (group.color && group.color !== 'single' && group.color !== previous?.get(id)?.color) {
+    if (group.color && group.color !== previous?.get(id)?.color) {
       map.setFeatureState({ source: FIRMS_SPOTS_SOURCE_ID, id }, { screenSensorGroup: group.color })
     }
   }
