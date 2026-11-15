@@ -296,14 +296,14 @@ void main() {
   if (v_depth > 1.0) discard;
 #endif
   float sinSolarAlt = dot(normalize(v_sphereDir), u_sunDir);
-  float nightMask = smoothstep(${TWILIGHT_DAY_SIN_ALT.toFixed(4)}, ${TWILIGHT_NIGHT_SIN_ALT.toFixed(4)}, sinSolarAlt);
+  float nightMask = 1.0 - smoothstep(${TWILIGHT_NIGHT_SIN_ALT.toFixed(4)}, ${TWILIGHT_DAY_SIN_ALT.toFixed(4)}, sinSolarAlt);
   float veilStrength = nightMask * u_zoomOpacity;
   if (veilStrength <= 0.001) discard;
 
   vec4 raw = texture(u_tileTexture, v_textureCoord);
   float cleanRadiance = smoothstep(0.125, 0.94, raw.r) * raw.a;
   float lightCurve = cleanRadiance > 0.0 ? pow(cleanRadiance, 0.82) : 0.0;
-  float cityNightMask = smoothstep(-0.0087, -0.1564, sinSolarAlt);
+  float cityNightMask = 1.0 - smoothstep(-0.1564, -0.0087, sinSolarAlt);
   float lightStrength = lightCurve * cityNightMask * u_zoomOpacity;
 
   vec3 dimAmber = vec3(0.96, 0.48, 0.14);

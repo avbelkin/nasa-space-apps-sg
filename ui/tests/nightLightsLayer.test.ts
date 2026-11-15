@@ -158,6 +158,8 @@ test('generated GLSL shaders enforce solar terminator masking, pole mapping, oce
   })
   assert.match(fragmentSource, /^#version 300 es/)
   assert.match(fragmentSource, /dot\(normalize\(v_sphereDir\), u_sunDir\)/)
+  assert.match(fragmentSource, /nightMask = 1\.0 - smoothstep\(-0\.1392, 0\.0349, sinSolarAlt\)/)
+  assert.match(fragmentSource, /cityNightMask = 1\.0 - smoothstep\(-0\.1564, -0\.0087, sinSolarAlt\)/)
   assert.match(fragmentSource, /smoothstep\(0\.125, 0\.94, raw\.r\) \* raw\.a/)
   assert.match(fragmentSource, /if \(v_depth > 1\.0\) discard;/)
   assert.match(fragmentSource, /fragColor = vec4\(premulRgb, finalAlpha\);/)
