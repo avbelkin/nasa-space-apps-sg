@@ -80,8 +80,7 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
       <FireDetectionsTimelineCard timeline={timeline} />
       {outlook && (
         <div className="fire-second-pass-note">
-          <strong>Second-pass outlook</strong>
-          <p>No matching detection for {outlook.satellite}’s predicted pass in this selection.</p>
+          <strong>No matching detection for {outlook.satellite}’s predicted pass in this selection.</strong>
           {outlook.fewer.length > 0 && <p>The baseline saw fewer misses with {outlook.fewer.join(' and ')}.</p>}
           {outlook.more.length > 0 && <p>The baseline saw more misses with {outlook.more.join(' and ')}.</p>}
         </div>
