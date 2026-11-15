@@ -45,6 +45,8 @@ public sealed class HotspotWeatherTests
                     .ConfigurePrimaryHttpMessageHandler(() => new OfflineHandler());
                 services.AddHttpClient(NoaaGoesWeather.HttpClientName)
                     .ConfigurePrimaryHttpMessageHandler(() => new OfflineHandler());
+                services.AddHttpClient(CopernicusSoilDrought.HttpClientName)
+                    .ConfigurePrimaryHttpMessageHandler(() => new OfflineHandler());
             });
         });
         using var client = factory.CreateClient();

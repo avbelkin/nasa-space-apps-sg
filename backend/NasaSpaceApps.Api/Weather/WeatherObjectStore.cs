@@ -4,12 +4,11 @@ using System.Net.Http.Headers;
 
 namespace NasaSpaceApps.Api.Weather;
 
-// The ABI rasters are chunked NetCDF4 files. A seekable range reader lets the
-// HDF5 library read metadata and selected chunks without downloading the disk.
-internal sealed class GoesObjectStore(HttpClient client, CancellationToken token)
+// The weather rasters are chunked NetCDF4 files. A seekable range reader lets
+// the HDF5 library read metadata and selected chunks without downloading the file.
+internal sealed class WeatherObjectStore(HttpClient client, CancellationToken token, int pageSize = 128 * 1024)
 {
-    internal const int PageSize = 128 * 1024;
-    private const int MaximumPages = 192;
+    private const int MaximumBytes = 24 * 1024 * 1024;
     private readonly ConcurrentDictionary<(Uri Uri, long Offset), Lazy<byte[]>> pages = new();
     private int pagesRequested;
 
@@ -21,22 +20,24 @@ internal sealed class GoesObjectStore(HttpClient client, CancellationToken token
     private byte[] Fetch(Uri uri, long offset, long length)
     {
         token.ThrowIfCancellationRequested();
-        if (Interlocked.Increment(ref pagesRequested) > MaximumPages)
-            throw new IOException("GOES batch exceeded the raster read budget.");
-        var end = Math.Min(offset + PageSize, length) - 1;
+        if (Interlocked.Increment(ref pagesRequested) > MaximumBytes / pageSize)
+            throw new IOException("Weather batch exceeded the raster read budget.");
+        var end = Math.Min(offset + pageSize, length) - 1;
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
         request.Headers.Range = new RangeHeaderValue(offset, end);
         using var response = client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token).GetAwaiter().GetResult();
         var range = response.Content.Headers.ContentRange;
         if (response.StatusCode != HttpStatusCode.PartialContent || range?.From != offset || range.To != end || range.Length != length)
-            throw new IOException("Unexpected GOES byte range.");
+            throw new IOException("Unexpected remote weather raster byte range.");
         var buffer = new byte[checked((int)(end - offset + 1))];
         using var body = response.Content.ReadAsStreamAsync(token).GetAwaiter().GetResult();
         body.ReadExactlyAsync(buffer, token).AsTask().GetAwaiter().GetResult();
         return buffer;
     }
 
-    private sealed class RangeStream(GoesObjectStore store, Uri uri, long length) : Stream
+    private int PageSize => pageSize;
+
+    private sealed class RangeStream(WeatherObjectStore store, Uri uri, long length) : Stream
     {
         private long position;
         public override bool CanRead => true;
@@ -56,7 +57,7 @@ internal sealed class GoesObjectStore(HttpClient client, CancellationToken token
             var count = 0;
             while (!buffer.IsEmpty && position < length)
             {
-                var offset = position / PageSize * PageSize;
+                var offset = position / store.PageSize * store.PageSize;
                 var page = store.Page(uri, offset, length).AsSpan((int)(position - offset));
                 var take = Math.Min(page.Length, buffer.Length);
                 page[..take].CopyTo(buffer);

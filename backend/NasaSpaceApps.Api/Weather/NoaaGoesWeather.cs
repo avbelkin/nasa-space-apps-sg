@@ -26,7 +26,7 @@ internal sealed class NoaaGoesWeather(IHttpClientFactory clients, IMemoryCache c
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
         deadline.CancelAfter(TimeSpan.FromSeconds(12));
         using var http = clients.CreateClient(HttpClientName);
-        var store = new GoesObjectStore(http, deadline.Token);
+        var store = new WeatherObjectStore(http, deadline.Token);
         var lists = new System.Collections.Concurrent.ConcurrentDictionary<(Satellite, string, DateTimeOffset), Lazy<Task<Scene[]>>>();
         return await Task.WhenAll(spots.Select(EnrichSpot)).ConfigureAwait(false);
 
