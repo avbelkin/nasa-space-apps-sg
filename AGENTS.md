@@ -9,11 +9,11 @@
 
 Follow the folder rules in [submission/README.md](submission/README.md):
 
-- `submission/deliverables/`: only the documents that are submitted or shown to judges (project page text, technical note, literature review) and the data they cite. These are living documents: update them whenever the app, the data or the findings change, in the same piece of work.
+- `submission/deliverables/`: only the documents that are submitted or shown to judges (project page text, technical note, literature review). These are living documents: update them whenever the app, the data or the findings change, in the same piece of work.
 - `submission/presentation/`: everything about the slide deck, including the slide text.
 - `submission/video/`: everything about the demo video, including the script and the Git-ignored `lama/` footage.
 - `submission/docs/`: frozen external reference only, namely the official requirements and general advice from the official guides and the review of the 2025 winners. It must contain no information about our project. Never edit, add or remove files there unless the user explicitly asks; if a deliverable disagrees with it, change the deliverable.
-- `submission/working/`: our own working documents about the project that are not submitted or shown (form-field plan, status against the requirements, project notes, design notes). Living: keep them current as the app and the materials change.
+- `submission/working/`: our own working documents about the project that are not submitted or shown (form-field plan, status against the requirements, project notes, design notes, data snapshots the materials cite). Living: keep them current as the app and the materials change.
 - `submission/assets/`: only official third-party material (logos, colours, fonts, patterns). Nothing we made goes there.
 
 ## Git & Remote Sync Workflow
