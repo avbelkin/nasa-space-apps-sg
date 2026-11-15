@@ -69,8 +69,10 @@ export async function drawRemainingSlides({base,title,text,rect,dot,image,sectio
   text(s,'·',460,410,20,44,S.lead);
   text(s,links[2],505,410,270,44,S.lead);
   rect(s,88,480,1424,1,C.ruleDark);
-  text(s,b[3],88,510,1424,238,S.small,{color:C.onDarkBody});
-  text(s,b[4],88,776,1424,36,S.small,{color:C.onDarkMuted});
-  text(s,b[5],88,834,1424,50,S.small,{color:C.onDarkMuted});
+  const [sources,rights]=b[3].split('\n');
+  text(s,sources,88,510,1424,140,S.small,{color:C.onDarkBody});
+  text(s,rights.replace(' · ','\u00a0\u00a0·\u00a0\u00a0'),88,670,1424,36,S.small,{color:C.onDarkBody});
+  text(s,b[4],88,732,1424,36,S.small,{color:C.onDarkMuted});
+  text(s,b[5],88,790,1424,50,S.small,{color:C.onDarkMuted});
  }
 }

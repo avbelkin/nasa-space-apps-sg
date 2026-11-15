@@ -2,7 +2,7 @@
 
 ## Current work
 
-The user rejected the visual direction of scaffold-r6 as dated. Technical acceptance of that revision does not imply visual approval. The next checkpoint is a new visual direction, with the original wording and team placeholders retained.
+The full seven-slide deck now uses the approved direction and the final source text. Current export: complete-r14. Team names are filled; no slide placeholders remain. Automated verification and root visual inspection passed. Independent final acceptance is being completed below; earlier checkpoint records are historical.
 
 All presentation source files, local captures, outputs, fonts, reference copies and work files are now under `submission/presentation` in the main checkout. Builders read `demo-slides.md`, `assets/data/` and `assets/brand/` inside this folder. Large generated files remain Git-ignored. Shared project references outside this folder are not build dependencies.
 
@@ -77,3 +77,17 @@ PPTX: bb20e0532a55d4527e9666effade2763be9c6546785372fa95b98e151b6ed730
 ```
 
 No LLM API provider/model/route was used; measured API cost is $0. One independent Codex review is running; subscription allowance usage is unavailable.
+
+## Final-copy correction: complete-r14
+
+The user confirmed that raw CSV export already exists. Slide 4 now says **harmonized data export** in its unfinished-work list; all other source wording is unchanged. Slide 7 separates the rights line from the sources, gives the separator explicit space, and brings the AI attribution and non-affiliation note upwards.
+
+All seven automated copy/font/link/chart/package checks passed again. Root inspected both changed pages in the actual PDF and in the native PowerPoint 16.109.3 proof. PowerPoint opened and exported seven slides; it substitutes Calibri for Overpass and renders thinner native bars. The submitted PDF embeds Overpass and remains the appearance reference. The independent r13 visual review found no blocking defects; its final machine checks and r14 delta acceptance are still in progress.
+
+```text
+Source: fceaf511c485b6e471f89abf8ccb37163cb857ea720bdc598112e723be772ef2
+PDF:    94963dc5dc559b9c272a93c467b9ff918c89f72f7b9c3d770197d5e25821b509
+PPTX:   04ff06ae15722fad780b04c2714be0042c268eefc4c49c8d1d25bfbbb23ea022
+```
+
+The official Project Submission Guide (13 November 2026) was retrieved again from the official site. It requires a public link to up to seven English slides and does not specify a PPTX requirement. PDF suitability follows from those requirements; the guide does not enumerate allowed file extensions. The retrieved page is retained locally under `.build/`.
