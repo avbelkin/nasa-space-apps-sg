@@ -122,10 +122,10 @@
   grid-template-columns: 0.5rem minmax(0, 1fr) auto 0.5rem;
   grid-template-rows: 0.5rem auto minmax(0, 1fr) 0.5rem;
   grid-template-areas:
-    ". .               .           ."
-    ". hud-bottom-end  hud-top-end ."
-    ". hud-bottom-end  .           ."
-    ". .               .           .";
+    ". . .           ."
+    ". . hud-top-end ."
+    ". . .           ."
+    ". . .           .";
   border-radius: 0.75rem;
   border: 1px solid var(--border-subtle);
   background: radial-gradient(
@@ -512,11 +512,11 @@
 }
 
 .fire-hover-tooltip {
-  grid-area: hud-bottom-end;
-  align-self: end;
-  justify-self: start;
-  inline-size: min(28.75rem, 100%);
+  position: fixed;
+  z-index: 10;
+  inline-size: 28.75rem;
   min-inline-size: 0;
+  overflow: clip;
   display: grid;
   gap: 0.375rem;
   padding: 0.5rem 0.625rem;
@@ -548,14 +548,6 @@
 
 .fire-hover-tooltip .fire-timeline-bars {
   grid-template-columns: repeat(24, minmax(0, 1fr));
-}
-
-/* Keep the tooltip above the pass card when the two cannot fit side by side. */
-@container mapstage (inline-size < 55rem) {
-  .map-stage:has(.map-hud-bottom) .fire-hover-tooltip {
-    grid-row-end: -2;
-    align-self: start;
-  }
 }
 
 .pinned-fire-details {

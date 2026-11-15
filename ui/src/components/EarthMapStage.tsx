@@ -104,6 +104,7 @@ import {
 } from '../utils/fireSpotsAnimation'
 import { ChevronLeftIcon, ChevronRightIcon } from './icons'
 import { FireDetectionPowerSummary, FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
+import { FireHoverTooltip } from './FireHoverTooltip'
 import { MapControls } from './MapControls'
 import type { PinnedFireSelection } from './PinnedFireDetails'
 import { SatelliteHud } from './SatelliteHud'
@@ -728,17 +729,19 @@ export function EarthMapStage({
   const [hover, setHover] = useState<{
     selection: PinnedFireSelection
     data: BuiltFireSpotsData
+    pointer: { x: number; y: number }
   } | null>(null)
   const visibleHover =
     showFires && hover?.data === builtFireSpots && hover.selection.sensorFilter === sensorFilter
-      ? hover.selection
+      ? hover
       : null
+  const hoveredSelection = visibleHover?.selection
   const hoverDetails = useMemo(
-    () => visibleHover && formatFireSpotsTooltip(visibleHover.inputs, visibleHover.nowMs, {
-      sensorFilter: visibleHover.sensorFilter,
+    () => hoveredSelection && formatFireSpotsTooltip(hoveredSelection.inputs, hoveredSelection.nowMs, {
+      sensorFilter: hoveredSelection.sensorFilter,
       overpassIndex,
     }),
-    [visibleHover, overpassIndex],
+    [hoveredSelection, overpassIndex],
   )
   const focusSpotGeoJson = useMemo(
     () => buildFireSpotFocusGeoJson(pinnedFireSelection?.anchorLngLat ?? null),
@@ -1062,7 +1065,12 @@ export function EarthMapStage({
           latestBuiltFireSpotsRef.current,
         )
         map.getCanvas().style.cursor = hit ? 'pointer' : ''
-        setHover(hit ? { selection: hit, data: latestBuiltFireSpotsRef.current } : null)
+        const { clientX, clientY } = event.originalEvent
+        setHover(hit ? {
+          selection: hit,
+          data: latestBuiltFireSpotsRef.current,
+          pointer: { x: clientX, y: clientY },
+        } : null)
       })
 
       map.on('click', (event) => {
@@ -1657,20 +1665,20 @@ export function EarthMapStage({
       )}
 
       {visibleHover && hoverDetails?.timeline && (
-        <div className="map-hud fire-hover-tooltip" role="tooltip">
+        <FireHoverTooltip pointer={visibleHover.pointer}>
           <div className="fire-hover-summary">
             <strong>{hoverDetails.header}</strong>
-            {visibleHover.anchorLngLat && (
+            {visibleHover.selection.anchorLngLat && (
               <span>
-                Lat {visibleHover.anchorLngLat[1].toFixed(3)}&deg;, lon{' '}
-                {visibleHover.anchorLngLat[0].toFixed(3)}&deg;
+                Lat {visibleHover.selection.anchorLngLat[1].toFixed(3)}&deg;, lon{' '}
+                {visibleHover.selection.anchorLngLat[0].toFixed(3)}&deg;
               </span>
             )}
             <FireDetectionPowerSummary timeline={hoverDetails.timeline} />
           </div>
           <FireDetectionsTimelineCard timeline={hoverDetails.timeline} interactive={false} />
           <p>Click spot to pin details</p>
-        </div>
+        </FireHoverTooltip>
       )}
 
       <canvas ref={spaceCanvasRef} className="space-backdrop-canvas" aria-hidden="true" />
