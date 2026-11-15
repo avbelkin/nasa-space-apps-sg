@@ -6,15 +6,15 @@ The new visual direction covers **slides 1–2 only**, with the original wording
 
 Local files, also synchronized to this directory in the main checkout:
 
-- [New direction: PDF](output/earth-fire-calendar-direction-r9.pdf)
-- [Two-slide overview](output/earth-fire-calendar-direction-r9-overview.png)
-- [Editable two-slide PPTX](output/earth-fire-calendar-direction-r9.pptx)
+- [New direction: PDF](output/earth-fire-calendar-direction-r10.pdf)
+- [Two-slide overview](output/earth-fire-calendar-direction-r10-overview.png)
+- [Editable two-slide PPTX](output/earth-fire-calendar-direction-r10.pptx)
 - [Previous seven-slide baseline](output/earth-fire-calendar-scaffold-r6.pdf)
 - [Review status](REVIEW.md)
 
 The new cover uses a solid Deep Blue background, a larger globe and Overpass typography. Slide 2 gives the two counts the strongest visual emphasis. The wording of slides 1–2 has not been rewritten.
 
-The canonical slide text was also updated independently to match the app at `c73d0b5`: slide 4 gained a bullet on experimental one-day baselines, and slide 7 received corrections to the Extremum link and AI assistance line. These changes are preserved. The r6 outputs predate them; the two-slide proof does not cover slides 4 or 7. The next full build must include them and receive renewed visual review.
+The canonical slide text was updated independently across slides 1–7 to reflect the app and its experimental one-day baselines. These edits are preserved. Direction-r10 uses the current wording of slides 1–2. The earlier seven-slide r6 output predates these text changes; the next full build must incorporate the current copy and receive renewed visual review.
 
 ## Everything lives here
 
@@ -45,12 +45,12 @@ export RUNTIME_NODE_MODULES=/absolute/path/to/managed/runtime/dependencies/node/
 export RUNTIME_PYTHON=/absolute/path/to/managed/runtime/dependencies/python/bin/python
 export PRESENTATIONS_SKILL=/absolute/path/to/presentations/skills/presentations
 export DECK_SCOPE=first-block
-export DECK_VERSION=direction-r10
+export DECK_VERSION=direction-r11
 /absolute/path/to/node submission/presentation/build.mjs
 /absolute/path/to/node submission/presentation/verify.mjs
 ```
 
-Use a fresh version for every export. Omit `DECK_SCOPE` to build all seven source slides; the unredesigned slides still use their baseline layout. Edit the source copy and layout code, then rebuild both exports. Manual PowerPoint edits do not update the PDF.
+Use a fresh version for every export. The full-deck layout still needs adaptation to the new source blocks on slides 3–7. Use `first-block` for the current verified checkpoint. Edit the source copy and layout code, then rebuild both exports. Manual PowerPoint edits do not update the PDF.
 
 The PDF uses the same layout records and embedded TrueType fonts. PPTX uses Artifact Tool, editable text, native chart objects and embedded workbooks. PowerPoint may substitute Overpass on a machine without the font; PDF is the appearance reference.
 
