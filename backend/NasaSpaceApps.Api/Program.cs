@@ -14,6 +14,7 @@ if (localWeather is not null)
 {
     builder.Services.AddSingleton(localWeather);
     builder.Services.AddSingleton<LocalWeatherWorker>();
+    builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
 }
 
 var port = Environment.GetEnvironmentVariable("PORT");

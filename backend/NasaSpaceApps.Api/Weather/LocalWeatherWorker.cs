@@ -25,6 +25,7 @@ internal sealed class LocalWeatherWorker(FirmsClient firms, DeferredHotspotWeath
 {
     private static readonly TimeSpan ScanInterval = TimeSpan.FromMinutes(2);
     private readonly Dictionary<WeatherSpotKey, DateTimeOffset?> known = [];
+    private bool firstWriteReported;
 
     internal async Task RunAsync()
     {
@@ -106,6 +107,11 @@ internal sealed class LocalWeatherWorker(FirmsClient firms, DeferredHotspotWeath
                 foreach (var (key, entry) in stored) known[key] = entry.RetryAt;
                 written += stored.Count;
                 available += stored.Values.Count(entry => entry.Sources.HasData);
+                if (stored.Count > 0 && !firstWriteReported)
+                {
+                    firstWriteReported = true;
+                    logger.LogInformation("Local weather worker saved its first batch of {Count} spots to Firestore.", stored.Count);
+                }
             }
             if (clock.GetUtcNow() >= refreshAt) break;
         }
