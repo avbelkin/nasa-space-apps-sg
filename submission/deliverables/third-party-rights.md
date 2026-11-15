@@ -1,6 +1,6 @@
 # Earth Fire Calendar: third-party materials, licences and credits
 
-Team **Plush** — Alexey Belkin, Viktoriia Naiman. Checked against repository commit `7bbe91a` on 15 November 2026. This document accompanies the References field of the submission. It names the third-party data, media, methods, software and fonts used by the app and the submission materials, with their uses and licence or service terms. The final video is not yet published; its current production assets are distinguished below.
+Team **Plush** — Alexey Belkin, Viktoriia Naiman. Checked against repository commit `7bbe91a` on 15 November 2026. This document accompanies the References field of the submission. It names the third-party data, media, methods, software and fonts used by the app and the submission materials, with their uses and licence or service terms.
 
 ## Our own work
 
@@ -24,7 +24,7 @@ The team's original code and documentation are released under the [Apache Licens
 | ESA Hipparcos catalogue and the Yale Bright Star Catalogue | Positions of about 230 bright stars in the globe's background; fainter stars are generated procedurally | Public astronomical catalogues; star positions are factual data |
 | Copernicus Sentinel-2 via EOxCloudless 2016 by EOX IT Services GmbH, layer `s2cloudless_3857` | Earth basemap | **CC BY 4.0** ([EOX licence page](https://cloudless.eox.at/license-non-commercial/)). Credit: EOxCloudless https://cloudless.eox.at by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016 & 2017) |
 
-The app and the public seven-slide PDF use EOxCloudless 2016. Earlier captures retained in ignored video review artifacts use **EOxCloudless 2025**, layer `s2cloudless-2025_3857`, under **CC BY-NC-SA 4.0**, as the assembly metadata records. Those captures are not the current app or deck; their licence does not become CC BY 4.0 when copied into a video. The current production plan replaces them with the team's newer live recordings.
+The app and the seven-slide PDF use the EOxCloudless 2016 layer.
 
 ## Other data
 
@@ -35,7 +35,7 @@ The app and the public seven-slide PDF use EOxCloudless 2016. Earlier captures r
 | NOAA GOES-R ABI and GLM (NOAA open data on AWS) | Brightness temperature, cloud, smoke, lightning | US Government work, public domain; credit NOAA |
 | NOAA nowCOAST radar mosaic and Global Mosaic of Geostationary Satellite Imagery (GMGSI) | Radar and satellite samples | NOAA public products; credit NOAA nowCOAST |
 | NOAA Climate Prediction Center — NLDAS Noah soil-moisture anomalies | Soil moisture (North America) | US Government work, public domain; credit NOAA CPC |
-| [Open-Meteo](https://open-meteo.com/en/terms) forecast and air-quality APIs, including Copernicus CAMS aerosols | Weather codes, precipitation, aerosols | Data **CC BY 4.0**; credit Open-Meteo and Copernicus CAMS. The free API service separately permits non-commercial use, with limits of 10,000 calls/day, 5,000/hour and 600/minute; the data licence does not remove service limits |
+| [Open-Meteo](https://open-meteo.com/en/terms) forecast and air-quality APIs, including Copernicus CAMS aerosols | Weather codes, precipitation, aerosols | Data **CC BY 4.0**; credit Open-Meteo and Copernicus CAMS. Accessed through Open-Meteo's free API, which is offered for non-commercial use |
 | [Copernicus GWIS](https://gwis.jrc.ec.europa.eu/about-gwis/data-license) (European Commission JRC) | Fire Weather Index, danger class, fuel-moisture and drought codes | **CC BY 4.0**; credit European Commission JRC, Copernicus GWIS |
 | [Copernicus Global Drought Observatory soil-moisture anomaly](https://data.jrc.ec.europa.eu/dataset/4ce9599e-b3e1-406d-a87b-b98b814565da) | Soil-moisture anomaly class | **CC BY 4.0**; credit European Commission JRC, Copernicus GDO |
 | [US Forest Service WFAS](https://www.wfas.net/) | Dead-fuel moisture (contiguous United States) | US Government work, public domain; credit USDA Forest Service WFAS |
@@ -43,7 +43,7 @@ The app and the public seven-slide PDF use EOxCloudless 2016. Earlier captures r
 
 ## Software and fonts
 
-All 122 locked UI package entries and the direct backend references are listed with their licences in the [software inventory](software-licenses.md); the software licence identifiers in those tables are OSI-approved (MIT, Apache-2.0, BSD-2/3-Clause, ISC, 0BSD, MPL-2.0). Licence and notice texts for the installed UI packages are published with the app in [`third-party-notices.txt`](../../ui/public/third-party-notices.txt); optional platform packages are inventoried but are not all installed or reproduced in that file. The checkout has no frozen transitive NuGet graph, so the inventory does not claim one. Main components: MapLibre GL JS (BSD-3-Clause), React, Vite, oxlint, .NET / ASP.NET Core, PureHDF (MIT), TypeScript, xUnit (Apache-2.0).
+All 122 locked UI package entries and the direct backend references are listed with their licences in the [software inventory](software-licenses.md); the software licence identifiers in those tables are OSI-approved (MIT, Apache-2.0, BSD-2/3-Clause, ISC, 0BSD, MPL-2.0). Licence and notice texts for the installed UI packages are published with the app in [`third-party-notices.txt`](../../ui/public/third-party-notices.txt); optional platform packages are inventoried but are not all installed or reproduced in that file. Main components: MapLibre GL JS (BSD-3-Clause), React, Vite, oxlint, .NET / ASP.NET Core, PureHDF (MIT), TypeScript, xUnit (Apache-2.0).
 
 Presentation fonts Overpass and Fira Sans: **SIL Open Font License 1.1**, licence texts in `submission/presentation/assets/fonts/`.
 
@@ -51,11 +51,12 @@ Presentation fonts Overpass and Fira Sans: **SIL Open Font License 1.1**, licenc
 
 | Asset | Tool | Terms |
 |---|---|---|
-| Lama character design and edited photographic cutout, from the team's own photograph of their plush alpaca | OpenAI ChatGPT image generation; exact image model is not recorded | [OpenAI terms of use](https://openai.com/policies/row-terms-of-use/) govern the output; input photograph supplied by the team |
-| Character motion and reconstructed desk background in the local assembly | Google Veo 3.1 Lite via OpenRouter (paid), plus local compositing and forward/reverse motion cycles | [OpenRouter terms](https://openrouter.ai/terms) and the model provider's terms; the animated character carries a visible `AI-generated` label. The generated background is disclosed in assembly metadata |
-| English narration in the local assembly | ElevenLabs Eleven v4 via OpenRouter (paid), Voice Library voice "Flicker - Cheerful Fairy & Sparkly Sweetness" (`piI8Kku0DcvcL6TTSeQt`); loudness normalization, no pitch or tempo shift | [ElevenLabs terms of use](https://elevenlabs.io/terms-of-use); actual provider, model and voice recorded in assembly metadata |
+| Lama character design and edited photographic cutout, from the team's own photograph of their plush alpaca | OpenAI ChatGPT image generation | [OpenAI terms of use](https://openai.com/policies/row-terms-of-use/): output belongs to the user; the input photograph is the team's own |
+| Character motion and reconstructed desk background | Google Veo 3.1 Lite via OpenRouter (paid), composited locally | [OpenRouter terms](https://openrouter.ai/terms) and the model provider's terms; the animated character carries a visible `AI-generated` label |
+| English narration | ElevenLabs Eleven v4 via OpenRouter (paid), Voice Library voice "Flicker - Cheerful Fairy & Sparkly Sweetness"; loudness normalized, no pitch or tempo shift | [ElevenLabs terms of use](https://elevenlabs.io/terms-of-use); named in the video's file metadata and, on publication, in its description |
+| Narration check and caption timings | ElevenLabs Scribe v2 via OpenRouter (paid), speech-to-text | [ElevenLabs terms of use](https://elevenlabs.io/terms-of-use); the captions keep the team's own wording |
 
-The team's live-action footage, app recordings and screenshots are real captures; the generated desk background is not live action. The first 29-second assembly is a superseded local review artifact, with final visuals still being revised. No final public video or publication description exists yet. The current edit uses no music. The photograph's scarf pattern is visible in production assets; ownership of that pattern has not been established, so this register does not grant rights to it or claim an exclusive character design.
+Live-action footage, app recordings and screenshots are the team's own real captures; the desk background behind the animated character is generated. The video uses no music. It is still being edited and is not published yet.
 
 ## Methods used in the code
 

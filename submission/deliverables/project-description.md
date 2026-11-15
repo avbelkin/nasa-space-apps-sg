@@ -1,7 +1,5 @@
 # Earth Fire Calendar: project page text
 
-[Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](../working/form-fields.md) · [Formal requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
-
 Text for the **Project** tab, field by field, in the order of the [form](../working/form-fields.md). Checked against repository commit `7bbe91a` on 15 November 2026. The application code matches the UI deployed from `5b66aec` at 13:37 UTC and the backend deployed from `4686c3c` at 12:08 UTC. Team Plush: Alexey Belkin and Viktoriia Naiman. The seven-slide PDF is public; the video remains in production and has no final public URL.
 
 The numerical comparison comes from one snapshot of the app's feed, fetched on 15 November 2026 at 08:36 UTC; its summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](../working/firms-snapshot-2026-11-15T0836Z.json). The slides use the same counts. Later interface captures illustrate functionality and do not establish the earlier totals.
@@ -55,7 +53,7 @@ Earth Fire Calendar is a public web app. It works on live NASA FIRMS data, with 
 
 1. A live globe of detections. The app shows every detection from the last 24 hours in three FIRMS near-real-time datasets: MODIS, VIIRS NOAA-20 and VIIRS NOAA-21. Dot size follows fire radiative power (FRP), brightness follows detection confidence, and the pulse fades with the age of the detection.
 
-2. A sensor switch. "All sensors", "MODIS" and "VIIRS" filter the map, the counters and the satellite tracks. On 15 November 2026 at 08:36 UTC the same 24 hours held 8,127 MODIS detections (Terra 2,614; Aqua 5,513) and 79,349 VIIRS detections (NOAA-20 41,306; NOAA-21 38,043): almost ten times more.
+2. A sensor switch. "All sensors", "MODIS" and "VIIRS" filter the map, the peak-FRP readout and the satellite tracks. The MODIS and VIIRS counters stay global, so both totals remain visible, and a line under the switch says how many detections the filter shows. On 15 November 2026 at 08:36 UTC the same 24 hours held 8,127 MODIS detections (Terra 2,614; Aqua 5,513) and 79,349 VIIRS detections (NOAA-20 41,306; NOAA-21 38,043): almost ten times more.
 
 3. Agreement at a glance. With "Color fire spots by sensor" on, each group of neighbouring detections is coloured by the sensors represented: both sensors, MODIS only, VIIRS only, or a single detection. Groups depend on screen-space proximity and zoom; they do not establish the identity of an individual fire.
 
@@ -119,7 +117,7 @@ USE OF AI
 
 AI coding assistants (Anthropic Claude Code and OpenAI Codex) were used to write and review code and to draft documentation, the presentation text and the demo script. AI research and writing assistants (Anthropic Claude, OpenAI Codex, Google Antigravity, Muse Code, Kimi Code, models accessed through the OpenRouter API, and the Orca agent workspace) helped compile the literature review. The app itself makes no calls to AI services. It applies the team's own fitted statistical models for next-pass FRP, detection scores and GWIS- or CAMS-assisted detection odds; their estimates are not NASA products, and NASA is not responsible for their accuracy. Training inputs come from the sources listed below. The idea of the project is the team's own.
 
-The video in production uses Lama, designed with the OpenAI ChatGPT image tool from an original photograph of the team's plush alpaca. The photographic cutout was also edited with that tool. Google Veo 3.1 Lite through OpenRouter supplied character motion and a reconstructed desk background. The reviewed assembly uses local compositing and forward/reverse motion cycles; its animated character is labelled "AI-generated". Live-action footage and application captures come from real recordings or screenshots; the reconstructed desk and animated character are generated. The English narration is synthesized with ElevenLabs Eleven v4 through OpenRouter, using "Flicker - Cheerful Fairy & Sparkly Sweetness", with loudness normalization and no pitch or tempo shift. These tools are recorded in the local assembly metadata. The final video and its publication description are not yet published.
+The project video is presented by Lama, an animated character designed with the OpenAI ChatGPT image tool from an original photograph of the team's plush alpaca; the photographic cutout of the toy was edited with the same tool. Google Veo 3.1 Lite through OpenRouter generated the character's motion and a reconstructed desk background. The animated character is labelled "AI-generated" whenever it appears. Live-action footage and application captures are real recordings. The English narration is synthesized with ElevenLabs Eleven v4 through OpenRouter, using the Voice Library voice "Flicker"; ElevenLabs Scribe v2 through OpenRouter checked the narration and supplied the caption timings.
 
 Independent project. Not affiliated with or endorsed by NASA.
 
@@ -132,6 +130,8 @@ MATERIALS
 - Software licence inventory: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/software-licenses.md
 - Code: https://github.com/avbelkin/nasa-space-apps-sg
 ```
+
+The paragraph about the video in USE OF AI goes into the form together with the video link; while the slides are the demo, leave it out.
 
 Available interface illustrations, captured after the basemap change to EOxCloudless 2016; [capture provenance](../presentation/assets/screenshots/capture-scenes.json) records the times and source layer. These later captures do not reproduce the 08:36 UTC count snapshot.
 
@@ -150,7 +150,7 @@ AI uses to declare in the form:
 - **Code generation tools** — yes: Anthropic Claude Code and OpenAI Codex, used for implementation, review, tests and documentation.
 - **Large language models for text** — yes: drafts of the documentation, the literature review, the slide text, the video script and this page.
 - **Image or video generation** — yes: OpenAI ChatGPT image tool for Lama's design and photographic cutout; Google Veo 3.1 Lite through OpenRouter for character motion and a reconstructed desk background. The local assembly labels the animated character `AI-generated`.
-- **Generated audio** — yes: ElevenLabs Eleven v4 through OpenRouter, voice "Flicker"; recorded in the local assembly metadata. The video has not been published.
+- **Generated audio** — yes: ElevenLabs Eleven v4 through OpenRouter, voice "Flicker". ElevenLabs Scribe v2 through OpenRouter transcribed the narration to check it and to time the captions.
 - **Machine learning in the project itself** — yes. The browser applies coefficients fitted on one day of FIRMS detections to estimate FRP, score a later VIIRS detection, and compare detection odds with and without GWIS or CAMS inputs. The app makes no calls to AI services.
 
 ## 7. NASA Data
@@ -189,7 +189,7 @@ Partner space agency data
 Other data
 - CelesTrak GP/TLE orbital elements — satellite tracks, swaths, viewing geometry. Public data, CelesTrak usage policy.
 - NOAA GFS, GOES-R ABI/GLM, nowCOAST, CPC soil moisture — weather at acquisition. US Government work, public domain.
-- Open-Meteo forecast and air quality (incl. Copernicus CAMS) — weather, aerosols. Data: CC BY 4.0; the free API service permits non-commercial use within its rate limits.
+- Open-Meteo forecast and air quality (incl. Copernicus CAMS) — weather, aerosols. CC BY 4.0.
 - Copernicus GWIS and Global Drought Observatory (European Commission JRC) — fire danger, drought. CC BY 4.0.
 - US Forest Service WFAS — dead-fuel moisture. US Government work, public domain.
 - Extremum SAR GIS cloud tiles (EUMETSAT, NOAA, JMA, NASA/NOAA VIIRS imagery) — optional cloud layer. Used with Extremum's permission, credited in the app.
@@ -199,7 +199,7 @@ Software
 - Our own code and documents: Apache-2.0.
 
 AI tools
-- Anthropic Claude Code, OpenAI Codex — code, review, documentation drafts. Literature review: Anthropic Claude, OpenAI Codex, Google Antigravity, Muse Code, Kimi Code, models accessed through the OpenRouter API, and the Orca agent workspace. OpenAI ChatGPT image — Lama character design and photographic cutout. Google Veo 3.1 Lite via OpenRouter — character animation and reconstructed desk background. ElevenLabs Eleven v4 via OpenRouter — narration. The video remains in production.
+- Anthropic Claude Code, OpenAI Codex — code, review, documentation drafts. Literature review: Anthropic Claude, OpenAI Codex, Google Antigravity, Muse Code, Kimi Code, models accessed through the OpenRouter API, and the Orca agent workspace. OpenAI ChatGPT image — Lama character design and photographic cutout. Google Veo 3.1 Lite via OpenRouter — character animation and reconstructed desk background. ElevenLabs Eleven v4 via OpenRouter — narration. ElevenLabs Scribe v2 via OpenRouter — narration check and caption timings.
 
 Methods and literature
 - Literature review with 82 references: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/modis-viirs-harmonization-literature-review.md
@@ -215,4 +215,4 @@ Tick both after the [checklist](../docs/formal-requirements.md#checklist) is clo
 
 ## Publication and verification status
 
-The app, source repository and seven-slide PDF are public. This page describes `7bbe91a`; it does not claim that the team has submitted that version on the Space Apps form. The final video is not public and is not the demo link above. Model-fitting scripts and the frozen training observations are absent from the repository; the reported evaluation cannot be rerun from this checkout. Current UI verification and the unrerun backend tests are recorded in the [technical note](technical-note.md#9-verification). The team's remaining publication actions belong in the [requirements status](../working/requirements-status.md).
+The app, the source repository and the seven-slide PDF are public. The video is not published; when it is, its link replaces the PDF in field 3. The model-fitting scripts and the training observations are not in the repository, so the reported evaluation cannot be rerun from it. The interface and backend test runs are in the [technical note](technical-note.md#9-verification); the remaining publication steps are in the [requirements status](../working/requirements-status.md).

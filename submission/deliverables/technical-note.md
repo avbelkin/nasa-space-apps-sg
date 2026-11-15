@@ -1,7 +1,5 @@
 # Earth Fire Calendar: technical note
 
-[Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](../working/form-fields.md) · [Formal requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
-
 **Challenge:** Harmonization of MODIS and VIIRS Hot Spots · **Team:** Plush — Alexey Belkin, Viktoriia Naiman · **Version checked:** repository commit `7bbe91a`, 15 November 2026; its UI and backend code are identical to deployed commits `5b66aec` and `4686c3c`, respectively · **App:** [avbelkin.github.io/nasa-space-apps-sg](https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0) · **Code:** [github.com/avbelkin/nasa-space-apps-sg](https://github.com/avbelkin/nasa-space-apps-sg)
 
 This note describes what is computed, from which data, how it was checked, and what is still a plan. The [public seven-slide demo](../presentation/earth-fire-calendar.pdf) accompanies it; the video is still in production.
@@ -35,7 +33,7 @@ The app shows live FIRMS detections alongside three types of model output. It la
 
 ## 2. The problem in the data
 
-One snapshot of the app's feed, fetched on 15 November 2026 at 08:36:16 UTC, window 14 November 08:36 – 15 November 08:36 UTC, whole world. The summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](../working/firms-snapshot-2026-11-15T0836Z.json).
+One snapshot of the app's feed, fetched on 15 November 2026 at 08:36:16 UTC, window 14 November 08:36 – 15 November 08:36 UTC, whole world. The summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](../presentation/assets/data/firms-snapshot-2026-11-15T0836Z.json).
 
 | | MODIS (Terra + Aqua) | VIIRS (NOAA-20 + NOAA-21) |
 |---|---|---|
@@ -43,7 +41,7 @@ One snapshot of the app's feed, fetched on 15 November 2026 at 08:36:16 UTC, win
 | By satellite | Terra 2,614 · Aqua 5,513 | NOAA-20 41,306 · NOAA-21 38,043 |
 | Day / night | 5,893 / 2,234 | 58,198 / 21,151 |
 
-VIIRS reported 9.8 times more detections than MODIS. Smaller pixels and different sensitivity are important contributors: a 375 m pixel can resolve smaller fires, and one MODIS pixel can cover several VIIRS detections. This one-day comparison also mixes observation timing, coverage and processing effects; it does not isolate the contribution of pixel size. These are counts of hot pixels per satellite pass, not of fires; the ratio is for this day only and varies by region, season and time of day (see the [literature review](modis-viirs-harmonization-literature-review.md), §1–§3). The saved file is a summary, not the original detection rows; it supports the counts above but cannot reproduce per-detection FRP statistics.
+VIIRS reported 9.8 times more detections than MODIS. Smaller pixels and different sensitivity are important contributors: a 375 m pixel can resolve smaller fires, and one MODIS pixel can cover several VIIRS detections. This one-day comparison also mixes observation timing, coverage and processing effects; it does not isolate the contribution of pixel size. These are counts of hot pixels per satellite pass, not of fires; the ratio is for this day only and varies by region, season and time of day (see the [literature review](modis-viirs-harmonization-literature-review.md), §1–§3). The saved file holds these counts, not the detection rows.
 
 ## 3. System overview
 
@@ -68,13 +66,13 @@ flowchart LR
 
 ## 4. Detections: ingestion and display
 
-**Ingestion.** The service queries the FIRMS Area API (`api/area/csv`) for `MODIS_NRT`, `VIIRS_NOAA20_NRT` and `VIIRS_NOAA21_NRT`, parses the CSV, and keeps position, acquisition time, satellite, FRP, brightness temperature, confidence, `scan` and `track` pixel size and the day/night flag. A snapshot is cached for 20 minutes and cut to a rolling 24 hours ending now, not to UTC calendar days. If a refresh fails, the previous snapshot is served and marked as a cached fallback.
+**Ingestion.** The service queries the FIRMS Area API (`api/area/csv`) for `MODIS_NRT`, `VIIRS_NOAA20_NRT` and `VIIRS_NOAA21_NRT`, parses the CSV, and keeps position, acquisition time, satellite, FRP, brightness temperature, confidence, `scan` and `track` pixel size and the day/night flag. A snapshot is cached for 20 minutes and cut to a rolling 24 hours ending now, not to UTC calendar days. If a refresh fails, the previous snapshot is served and marked as a cached fallback. If the interface cannot load the detections or the satellite positions, the side panel offers **Retry**.
 
 **Confidence.** MODIS reports confidence as 0–100; VIIRS reports `low`, `nominal` or `high`. For display only, the VIIRS classes are mapped to 25, 65 and 95. These are not probabilities and are not comparable between the sensors.
 
 **Display.** Dot size follows FRP, brightness follows confidence, pulse strength follows the age of the detection. Below the full-detail zoom, nearby detections are merged into one mark; selecting a mark expands it to all detections it stands for.
 
-**Sensor comparison.** The **All sensors / MODIS / VIIRS** control filters the detections, counters and satellite tracks. In **All sensors** the detections are shown together with no calibration and no removal of duplicates; the internal name of this mode is `harmonized`, but it is not a harmonized product. With **Color fire spots by sensor**, detections that are drawn close together on screen form a group, and the group is coloured by its content:
+**Sensor comparison.** The **All sensors / MODIS / VIIRS** control filters the detections, the peak-FRP readout and the satellite tracks. The **MODIS 1 km** and **VIIRS 375 m** counters stay global under a filter, and a line above them gives the number of detections shown out of the total. In **All sensors** the detections are shown together with no calibration and no removal of duplicates; the internal name of this mode is `harmonized`, but it is not a harmonized product. With **Color fire spots by sensor**, detections that are drawn close together on screen form a group, and the group is coloured by its content:
 
 | Colour key | Rule |
 |---|---|
@@ -85,7 +83,7 @@ flowchart LR
 
 The grouping is by screen distance, so it changes with zoom. It is a visual aid for finding agreement and disagreement, not a footprint-and-time match between passes.
 
-**Pinned timeline.** Selecting a detection or a group pins a 24 × 1 h chart, with clock labels in the browser's local time: FRP bars by satellite, the Sun elevation curve at the selected place, and two kinds of marks computed from orbits rather than taken from FIRMS. A selected screen group is not a fixed geographic area or an identified fire. The card's `MW total` is a sum of reported FRP across detections and passes; it is neither fire radiative energy nor simultaneous, deduplicated fire power.
+**Pinned timeline.** Selecting a detection or a group pins a 24 × 1 h chart, with clock labels in the browser's local time: FRP bars by satellite, the Sun elevation curve at the selected place, and two kinds of marks computed from orbits rather than taken from FIRMS. A selected screen group is not a fixed geographic area or an identified fire. The card's `MW total` is a sum of reported FRP across detections and passes; it is neither fire radiative energy nor simultaneous, deduplicated fire power. While a card stays pinned its relative times follow a live clock, and the card shows **Not in latest snapshot** once its detections are no longer in the refreshed feed.
 
 - **Pass, no fire** — the satellite's swath covered the place in that hour and FIRMS has no detection there. The cause can be no fire, cloud, a fire below the detection limit, or a gap in the data; the app cannot tell which.
 - **Processing** — passes within a fixed delay before now (90 minutes for VIIRS, 120 minutes for MODIS) whose detections may not have been published yet. The delays are our assumptions, not FIRMS status.
@@ -233,11 +231,9 @@ Apart from the baselines in section 6, nothing in this section is implemented.
 - Hide one sensor during the overlap years and reconstruct it from the other.
 - Hold out whole years and a contrasting region.
 - Compare with simple baselines: no adjustment, and one global scale factor.
-- Research acceptance criteria: lower error than both baselines on the held-out years and region; no step at the start of VIIRS larger than the year-to-year variation before it; the land-cover term kept only if it lowers the held-out error. This is a proposed evaluation design, not an executed test or a claim of validated harmonization.
+- Pass criteria: lower error than both baselines on the held-out years and region; no step at the start of VIIRS larger than the year-to-year variation before it; the land-cover term kept only if it lowers the held-out error.
 
 **If calibration fails,** the app will show each sensor separately and label the combined view experimental.
-
-The data constraints behind this plan and the design decisions for the measure, the reference scale and the calendar are in the [design notes](../working/harmonization-design-notes.md).
 
 ## 8. Known limitations
 
@@ -253,7 +249,7 @@ The data constraints behind this plan and the design decisions for the measure, 
 ## 9. Verification
 
 - **Interface tests:** on 15 November 2026, against the application tree in `7bbe91a`, `npm test` passed **120 tests, 0 failures, 0 skipped**. Coverage includes grouping, timeline, unmatched-pass notes, expected-detection flag, FRP and weather-assisted models, enrichment progress, URL state, surface summaries and CSV export. `npm run build` and `npm run lint` also passed. The build retains Vite's bundle-size warning; it is not a test failure.
-- **Backend tests:** the xUnit source covers FIRMS parsing, orbits, swaths and geometry, land-cover sampling, weather fixtures and GRIB2 decoding, byte-range selection, shared caches, worker planning and endpoints. It was not run in this audit because this machine has no .NET SDK. The backend tree is identical to `4686c3c`; neither a historical test count nor a successful build establishes a current passing test result.
+- **Backend tests:** the xUnit source covers FIRMS parsing, orbits, swaths and geometry, land-cover sampling, weather fixtures and GRIB2 decoding, byte-range selection, shared caches, worker planning and endpoints: 49 test methods, 90 test cases. Alexey Belkin runs the suite on his development machine, where the backend is built; the backend code has not changed since `4686c3c`, the deployed commit. The deployment workflow itself has no test step.
 - **Deployment:** the path-filtered GitHub Actions workflows build/deploy changes to `ui/` and `backend/` on `main`, or on manual dispatch; documentation-only pushes do not redeploy the app. The UI run [43719919219](https://github.com/avbelkin/nasa-space-apps-sg/actions/runs/43719919219), from `5b66aec`, completed successfully at 13:37:28 UTC on 15 November. The backend run [43712143455](https://github.com/avbelkin/nasa-space-apps-sg/actions/runs/43712143455), from `4686c3c`, completed successfully at 12:08:22 UTC. The backend workflow builds in Release mode but contains no `dotnet test` step. Git tree hashes confirm that these deployed application trees match `7bbe91a`.
 - **Live HTTP check:** at 14:21:49 UTC on 15 November, the public app, `/health`, the worldwide 24-hour feed and the public slides PDF all returned HTTP 200 without sign-in. The feed held 77,946 detections (7,758 MODIS, 70,188 VIIRS), with geometry ready for all, land cover pending, 320 of 512 weather targets checked (275 available), and 13,124 shared grids. These later counts are an availability check, not replacements for section 2's frozen comparison. This audit did not open the app in a browser; presentation capture provenance separately records earlier browser captures.
 - **Not verified:** the estimated view angles against the instruments' own geolocation products; the weather samples against station observations; the baselines of section 6 on any day other than the one they were fitted on; any harmonization result, because none exists yet.

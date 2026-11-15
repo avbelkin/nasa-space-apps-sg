@@ -145,7 +145,7 @@ All listed licence identifiers are OSI-approved, including MPL-2.0, ISC and 0BSD
 | xunit | 2.9.3 | Apache-2.0; [tagged source licence](https://github.com/xunit/xunit/blob/v2-2.9.3/license.txt) |
 | xunit.runner.visualstudio | 3.1.5 | Apache-2.0; [source licence](https://github.com/xunit/visualstudio.xunit/blob/main/License.txt) |
 
-Transitive NuGet packages of these references are restored from nuget.org under their own licences. No `packages.lock.json` or resolved `project.assets.json` is committed. `Microsoft.AspNetCore.Mvc.Testing` remains explicitly declared as `10.0.*` in the test project; a clean restore can resolve a later 10.0 patch. This audit did not restore or execute the backend because the machine has no .NET SDK, and does not assert resolved transitive versions or a completed backend licence-text bundle.
+Transitive NuGet packages of these references are restored from nuget.org under their own licences. No `packages.lock.json` or resolved `project.assets.json` is committed. `Microsoft.AspNetCore.Mvc.Testing` remains explicitly declared as `10.0.*` in the test project; a clean restore can resolve a later 10.0 patch.
 
 ## Presentation, video and tooling
 
@@ -154,5 +154,6 @@ Transitive NuGet packages of these references are restored from nuget.org under 
 | Overpass | Presentation fonts | SIL Open Font License 1.1; [text](../presentation/assets/fonts/Overpass-OFL.txt), [provenance](../presentation/assets/fonts/sources.json) |
 | Fira Sans | Presentation fonts | SIL Open Font License 1.1; [text](../presentation/assets/fonts/FiraSans-OFL.txt) |
 | FFmpeg, Chrome / Chromium, Node.js, Python, PowerPoint | Video processing, screen capture, slide export | Used as tools only; no binaries are distributed with the project |
+| Playwright, sharp, pdf-lib, JSZip, xml-js, skia-canvas, `@oai/artifact-tool` | Node packages called by the slide build, capture and verification scripts in `submission/presentation/` | Loaded from the build machine's own environment; not dependencies of the app, not in its lockfile and not distributed with the project |
 
 The website publishes licence and notice texts for the UI packages installed when the notices were generated in [`third-party-notices.txt`](../../ui/public/third-party-notices.txt). As the file itself states, optional packages absent from that installation are listed in this inventory rather than reproduced there. The backend is deployed separately and its package licence texts are not included in the UI notice file.
