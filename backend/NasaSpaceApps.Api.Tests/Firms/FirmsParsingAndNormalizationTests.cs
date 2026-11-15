@@ -6,6 +6,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NasaSpaceApps.Api.Firms;
+using NasaSpaceApps.Api.Satellites;
 using Xunit;
 
 namespace NasaSpaceApps.Api.Tests.Firms;
@@ -20,17 +21,17 @@ public sealed class FirmsParsingAndNormalizationTests
         public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 
-    private sealed class StubHttpClientFactory(Func<HttpRequestMessage, HttpResponseMessage> responder)
+    private sealed class StubHttpClientFactory(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> responder)
         : IHttpClientFactory
     {
-        private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> handlerResponder)
+        private sealed class StubHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handlerResponder)
             : HttpMessageHandler
         {
             protected override Task<HttpResponseMessage> SendAsync(
                 HttpRequestMessage request,
                 CancellationToken cancellationToken)
             {
-                return Task.FromResult(handlerResponder(request));
+                return handlerResponder(request, cancellationToken);
             }
         }
 
@@ -119,7 +120,7 @@ public sealed class FirmsParsingAndNormalizationTests
     }
 
     [Fact]
-    public async Task GetLiveSpotsAsync_PopulatesWindowBoundsAndNormalizedSatelliteLabels()
+    public async Task GetLiveSpotsAsync_LoadsBeforeGeometryAndRematchesCachedRowsAfterEnrichment()
     {
         var now = DateTimeOffset.UtcNow;
         var recent = now.AddHours(-2);
@@ -131,9 +132,20 @@ public sealed class FirmsParsingAndNormalizationTests
             .AppendLine($"38.7000,-120.5000,348.5,0.4,0.4,{acqDate},{acqTime},1,VIIRS,h,2.0NRT,292.1,42.3,D")
             .ToString();
 
-        var factory = new StubHttpClientFactory(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        var releaseTles = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var tleRequests = 0;
+        var factory = new StubHttpClientFactory(async (request, token) =>
         {
-            Content = new StringContent(csv, Encoding.UTF8, "text/csv"),
+            if (request.RequestUri!.AbsolutePath.StartsWith("/NORAD/"))
+            {
+                Interlocked.Increment(ref tleRequests);
+                await releaseTles.Task.WaitAsync(token);
+                return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+            }
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(csv, Encoding.UTF8, "text/csv"),
+            };
         });
 
         using var memoryCache = new MemoryCache(new MemoryCacheOptions());
@@ -144,18 +156,50 @@ public sealed class FirmsParsingAndNormalizationTests
             })
             .Build();
         var options = FirmsOptions.FromConfiguration(config, new StubHostEnvironment());
-        var client = new FirmsClient(factory, memoryCache, options, NullLogger<FirmsClient>.Instance);
-
-        var response = await client.GetLiveSpotsAsync(sensor: "viirs", hours: 24, bbox: "world");
-
-        Assert.Equal(24, response.WindowHours);
-        Assert.Equal(TimeSpan.FromHours(24), response.WindowEndUtc - response.WindowStartUtc);
-        Assert.True(response.WindowEndUtc >= response.GeneratedAtUtc.AddSeconds(-1));
-        Assert.Equal(2, response.Count); // both VIIRS_NOAA20_NRT and VIIRS_NOAA21_NRT return the stub row
-        Assert.All(response.Spots, row =>
+        var downloader = new CelesTrakTleDownloader(factory, memoryCache, NullLogger<CelesTrakTleDownloader>.Instance);
+        using var worker = new HotspotGeometryWorker(downloader, memoryCache, NullLogger<HotspotGeometryWorker>.Instance);
+        var client = new FirmsClient(factory, memoryCache, options, NullLogger<FirmsClient>.Instance, worker);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await worker.StartAsync(timeout.Token);
+        try
         {
-            Assert.Equal("NOAA-20", row[7]);
-            Assert.Equal(95, row[5]);
-        });
+            var response = await clientResponse(false).WaitAsync(timeout.Token);
+            Assert.Null(response.Geometry);
+            Assert.Equal(24, response.WindowHours);
+            Assert.Equal(TimeSpan.FromHours(24), response.WindowEndUtc - response.WindowStartUtc);
+            Assert.Equal(2, response.Count); // Both NOAA feeds return the stub row.
+            Assert.All(response.Spots, row =>
+            {
+                Assert.Equal("NOAA-20", row[7]);
+                Assert.Equal(95, row[5]);
+                Assert.Equal(9, row.Length);
+            });
+
+            var pending = await clientResponse(true);
+            Assert.Equal("pending", pending.Geometry?.Status);
+            Assert.Null(pending.Geometry?.Spots);
+            releaseTles.SetResult();
+
+            FirmsLiveSpotsResponse ready;
+            do
+            {
+                ready = await clientResponse(true);
+            }
+            while (ready.Geometry?.Status == "pending");
+            Assert.Equal("ready", ready.Geometry?.Status);
+            Assert.Same(response.Spots, ready.Spots);
+            Assert.Equal(ready.Count, ready.Geometry!.Spots!.Count);
+            Assert.All(ready.Geometry.Spots, spot => Assert.InRange(Assert.IsType<HotspotGeometry>(spot).MoonIlluminatedFraction, 0, 1));
+            Assert.Equal(2, tleRequests); // One attempt per CelesTrak group, shared across requests.
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+        }
+
+        Task<FirmsLiveSpotsResponse> clientResponse(bool includeGeometry)
+        {
+            return client.GetLiveSpotsAsync("viirs", 24, "world", timeout.Token, includeGeometry);
+        }
     }
 }

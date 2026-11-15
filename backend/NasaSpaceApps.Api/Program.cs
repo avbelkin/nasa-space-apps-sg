@@ -89,6 +89,8 @@ builder.Services.AddHttpClient(ExtremumCloudOptions.HttpClientName, client =>
 builder.Services.AddSingleton<CelesTrakTleDownloader>();
 builder.Services.AddSingleton<SatelliteOrbitService>();
 builder.Services.AddSingleton<FirmsClient>();
+builder.Services.AddSingleton<HotspotGeometryWorker>();
+builder.Services.AddHostedService(services => services.GetRequiredService<HotspotGeometryWorker>());
 builder.Services.AddSingleton<NasaOpenApiClient>();
 builder.Services.AddSingleton<ExtremumCloudTileClient>();
 builder.Services.AddCors(options =>
@@ -219,28 +221,31 @@ app.MapGet("/api/hotspots", (
     string? bbox,
     int? days,
     string? sensor,
+    bool? includeGeometry,
     FirmsOptions firms,
     FirmsClient firmsClient,
     CancellationToken cancellationToken) =>
-    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetAreaHotspotsAsync(bbox, days, sensor, cancellationToken)));
+    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetAreaHotspotsAsync(bbox, days, sensor, cancellationToken, includeGeometry == true)));
 
 app.MapGet("/api/fires/spots", (
     string? sensor,
     int? hours,
     string? bbox,
+    bool? includeGeometry,
     FirmsOptions firms,
     FirmsClient firmsClient,
     CancellationToken cancellationToken) =>
-    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetLiveSpotsAsync(sensor, hours, bbox, cancellationToken)));
+    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetLiveSpotsAsync(sensor, hours, bbox, cancellationToken, includeGeometry == true)));
 
 app.MapGet("/api/fires/spots.geojson", (
     string? sensor,
     int? hours,
     string? bbox,
+    bool? includeGeometry,
     FirmsOptions firms,
     FirmsClient firmsClient,
     CancellationToken cancellationToken) =>
-    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetLiveSpotsGeoJsonAsync(sensor, hours, bbox, cancellationToken)));
+    ExecuteFirmsQueryAsync(firms, () => firmsClient.GetLiveSpotsGeoJsonAsync(sensor, hours, bbox, cancellationToken, includeGeometry == true)));
 
 app.MapGet("/api/satellites/orbits", async (
     int? pastMinutes,

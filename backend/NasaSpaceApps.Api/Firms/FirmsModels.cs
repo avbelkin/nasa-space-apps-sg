@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace NasaSpaceApps.Api.Firms;
 
 public static class FirmsDefaults
@@ -49,7 +51,11 @@ public sealed record FirmsHotspotsResponse(
     int Count,
     DateTimeOffset FetchedAtUtc,
     string Attribution,
-    IReadOnlyList<FirmsHotspot> Hotspots);
+    IReadOnlyList<FirmsHotspot> Hotspots)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public HotspotGeometryBatch? Geometry { get; init; }
+}
 
 public sealed record FirmsSensorMetadata(
     int SourceCode,
@@ -161,7 +167,11 @@ public sealed record FirmsLiveSpotsResponse(
     double MaxFrpMw,
     string Attribution,
     IReadOnlyList<string> Columns,
-    IReadOnlyList<object[]> Spots);
+    IReadOnlyList<object[]> Spots)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public HotspotGeometryBatch? Geometry { get; init; }
+}
 
 public sealed record FirmsGeoJsonPointGeometry(
     string Type,
@@ -192,4 +202,8 @@ public sealed record FirmsGeoJsonFeatureCollection(
     string SensorFilter,
     int Count,
     string Attribution,
-    IReadOnlyList<FirmsGeoJsonFeature> Features);
+    IReadOnlyList<FirmsGeoJsonFeature> Features)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public HotspotGeometryBatch? Geometry { get; init; }
+}

@@ -13,7 +13,8 @@ public sealed class FirmsClient(
     IHttpClientFactory httpClientFactory,
     IMemoryCache cache,
     FirmsOptions options,
-    ILogger<FirmsClient> logger)
+    ILogger<FirmsClient> logger,
+    HotspotGeometryWorker geometryWorker)
 {
     public const string DefaultBbox = "95,-11,141,20";
     public const int DefaultLiveWindowHours = 24;
@@ -54,6 +55,8 @@ public sealed class FirmsClient(
         DateTimeOffset FetchedAtUtc,
         bool Stale,
         IReadOnlyList<FirmsHotspot> Spots);
+
+    private sealed record CachedLiveResponse(FirmsLiveSpotsResponse Response, IReadOnlyList<FirmsHotspot> Selected);
 
     private readonly record struct BoundingBox(double West, double South, double East, double North)
     {
@@ -107,7 +110,17 @@ public sealed class FirmsClient(
         string? bbox,
         int? days,
         string? sensor,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool includeGeometry = false)
+    {
+        var response = await GetAreaHotspotsCoreAsync(bbox, days, sensor, cancellationToken).ConfigureAwait(false);
+        var geometry = await geometryWorker.ObserveAsync(
+            response.Hotspots, response.Hotspots, includeGeometry, cancellationToken).ConfigureAwait(false);
+        return geometry is null ? response : response with { Geometry = geometry };
+    }
+
+    private async Task<FirmsHotspotsResponse> GetAreaHotspotsCoreAsync(
+        string? bbox, int? days, string? sensor, CancellationToken cancellationToken)
     {
         if (!options.IsConfigured)
         {
@@ -186,7 +199,8 @@ public sealed class FirmsClient(
         string? sensor = null,
         int? hours = null,
         string? bbox = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool includeGeometry = false)
     {
         var windowHours = Math.Clamp(hours ?? DefaultLiveWindowHours, 1, 48);
         var dayRange = windowHours <= 24 ? 2 : 3;
@@ -194,13 +208,20 @@ public sealed class FirmsClient(
         var area = ResolveLiveArea(bbox);
 
         var snapshot = await GetAreaSnapshotAsync(area, dayRange, sources, cancellationToken).ConfigureAwait(false);
-        var responseCacheKey = $"firms:live:{snapshot.FetchedAtUtc.UtcTicks}:{sensorFilter}:{area}:{windowHours}";
-        if (cache.TryGetValue(responseCacheKey, out FirmsLiveSpotsResponse? cachedResponse) &&
-            cachedResponse is not null)
+        var responseCacheKey = $"firms:live:{snapshot.FetchedAtUtc.UtcTicks}:{snapshot.Stale}:{sensorFilter}:{area}:{windowHours}";
+        if (!cache.TryGetValue(responseCacheKey, out CachedLiveResponse? cachedResponse) || cachedResponse is null)
         {
-            return cachedResponse;
+            cachedResponse = BuildLiveSpotsResponse(snapshot, windowHours, sensorFilter, sources);
+            cache.Set(responseCacheKey, cachedResponse, LiveResponseCacheDuration);
         }
+        var geometry = await geometryWorker.ObserveAsync(
+            snapshot.Spots, cachedResponse.Selected, includeGeometry, cancellationToken).ConfigureAwait(false);
+        return geometry is null ? cachedResponse.Response : cachedResponse.Response with { Geometry = geometry };
+    }
 
+    private static CachedLiveResponse BuildLiveSpotsResponse(
+        CachedAreaSnapshot snapshot, int windowHours, string sensorFilter, string[] sources)
+    {
         var nowUtc = DateTimeOffset.UtcNow;
         var filtered = FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours);
 
@@ -278,15 +299,15 @@ public sealed class FirmsClient(
             Columns: LiveSpotColumns,
             Spots: rows);
 
-        cache.Set(responseCacheKey, response, LiveResponseCacheDuration);
-        return response;
+        return new CachedLiveResponse(response, filtered);
     }
 
     public async Task<FirmsGeoJsonFeatureCollection> GetLiveSpotsGeoJsonAsync(
         string? sensor = null,
         int? hours = null,
         string? bbox = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool includeGeometry = false)
     {
         var windowHours = Math.Clamp(hours ?? DefaultLiveWindowHours, 1, 48);
         var dayRange = windowHours <= 24 ? 2 : 3;
@@ -297,7 +318,10 @@ public sealed class FirmsClient(
         var nowUtc = DateTimeOffset.UtcNow;
         var filtered = FilterSnapshotSpots(snapshot.Spots, nowUtc, windowHours);
 
-        return BuildGeoJsonFeatureCollection(filtered, nowUtc, snapshot, windowHours, sensorFilter);
+        var response = BuildGeoJsonFeatureCollection(filtered, nowUtc, snapshot, windowHours, sensorFilter);
+        var geometry = await geometryWorker.ObserveAsync(
+            snapshot.Spots, filtered, includeGeometry, cancellationToken).ConfigureAwait(false);
+        return geometry is null ? response : response with { Geometry = geometry };
     }
 
     private async Task<CachedAreaSnapshot> GetAreaSnapshotAsync(

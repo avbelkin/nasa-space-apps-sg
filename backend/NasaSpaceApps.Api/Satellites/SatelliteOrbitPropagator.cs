@@ -80,9 +80,7 @@ public static class SatelliteOrbitPropagator
         return list;
     }
 
-    private static (double Latitude, double Longitude, double AltitudeKm) ComputeEciAndGeodetic(
-        SatelliteTle tle,
-        DateTime utc)
+    internal static (double X, double Y, double Z) ComputeEarthFixedPosition(SatelliteTle tle, DateTime utc)
     {
         var dtSeconds = (utc - tle.EpochUtc).TotalSeconds;
         var n0RadPerSec = tle.MeanMotionRevPerDay * TwoPi / SecondsPerDay;
@@ -127,10 +125,13 @@ public static class SatelliteOrbitPropagator
         var cosGmst = Math.Cos(gmst);
         var sinGmst = Math.Sin(gmst);
 
-        var xEcef = xEci * cosGmst + yEci * sinGmst;
-        var yEcef = -xEci * sinGmst + yEci * cosGmst;
-        var zEcef = zEci;
+        return (xEci * cosGmst + yEci * sinGmst, -xEci * sinGmst + yEci * cosGmst, zEci);
+    }
 
+    private static (double Latitude, double Longitude, double AltitudeKm) ComputeEciAndGeodetic(
+        SatelliteTle tle, DateTime utc)
+    {
+        var (xEcef, yEcef, zEcef) = ComputeEarthFixedPosition(tle, utc);
         var lonRad = Math.Atan2(yEcef, xEcef);
         var lonDeg = NormalizeLongitudeDegrees(lonRad * RadToDeg);
 
@@ -170,7 +171,7 @@ public static class SatelliteOrbitPropagator
         return eccentricAnomaly;
     }
 
-    private static double ComputeGreenwichMeanSiderealTimeRadians(DateTime utc)
+    internal static double ComputeGreenwichMeanSiderealTimeRadians(DateTime utc)
     {
         var julianDate = utc.ToOADate() + 2415018.5;
         var ut1Centuries = (julianDate - 2451545.0) / 36525.0;
