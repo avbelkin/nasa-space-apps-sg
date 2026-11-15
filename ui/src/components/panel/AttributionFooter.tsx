@@ -15,7 +15,7 @@ export function AttributionFooter({ connectionState }: AttributionFooterProps) {
         <a href="https://earthdata.nasa.gov/gibs" {...EXTERNAL}>NASA GIBS</a> &middot;{' '}
         <a href="https://celestrak.org/" {...EXTERNAL}>CelesTrak</a> &middot;{' '}
         <a href="https://s2maps.eu" {...EXTERNAL}>EOX / Copernicus Sentinel-2</a> &middot;{' '}
-        <a href="https://layers.extremum.org" {...EXTERNAL}>Extremum</a>. Not affiliated with NASA.
+        <a href="https://gis.extremum.org" {...EXTERNAL}>Extremum SAR GIS</a>. Not affiliated with NASA.
       </p>
       <div className="footer-meta">
         <details className="panel-details panel-details-quiet">
@@ -96,8 +96,8 @@ export function AttributionFooter({ connectionState }: AttributionFooterProps) {
                 <dd>
                   Live geostationary visible and infrared cloud images (EUMETSAT, NOAA, JMA) and
                   the high-latitude VIIRS blend are delivered by{' '}
-                  <a href="https://layers.extremum.org" {...EXTERNAL}>
-                    Extremum
+                  <a href="https://gis.extremum.org" {...EXTERNAL}>
+                    Extremum SAR GIS
                   </a>
                   .
                 </dd>
