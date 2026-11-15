@@ -2,11 +2,12 @@
 
 [Script](demo-video.md) · [Voice and character](voice-direction.md) · [Disclosures](disclosures.md) · [Official requirements](../docs/formal-requirements.md)
 
-The user authorized full assembly with the updated **47-word** script and selected **Flicker - Cheerful Fairy & Sparkly Sweetness**. The current full-frame 29-second review is in `lama/prepared/assembly-v3/lama-fullscreen.mp4`; its player is `assembly-v3/review.html`. The first full assembly remains in `assembly-v1/lama-assembly.mp4`. The user accepted its voice and requested two visual corrections: the recorded interface must fill the frame, and Lama must move between relevant details without a repeating wave. That first assembly remains a superseded review artifact, not the final film.
+The user authorized full assembly with the updated **47-word** script and selected **Flicker - Cheerful Fairy & Sparkly Sweetness**. The current full-frame 29-second review is in `lama/prepared/assembly-v4/lama-fullscreen.mp4`; its player is `assembly-v4/review.html`. The first full assembly remains in `assembly-v1/lama-assembly.mp4`. The user accepted its voice and requested two visual corrections: the recorded interface must fill the frame, and Lama must move between relevant details without a repeating wave. That first assembly remains a superseded review artifact, not the final film.
 
 ## Current edit
 
 - 1920×1080, 30 fps, 29 seconds (870 frames), English narration and subtitles.
+- Original locally synthesized keyboard foley plays during 0–1 s only. The closing card retains the PDF styling and adds the real presentation globe capture with a dark gradient behind the text. This revision makes no new API calls.
 - The photographic plush jumps first. The animated character appears only inside the physical monitor after entry; a camera push alone is insufficient.
 - The original five voice files totaled 23.36 seconds. The user then replaced the closing line to describe implemented cross-satellite corrections; the 4.8-second replacement brings the selected raw speech total to 22.64 seconds. Their starts are 2.3, 6.3, 12, 17 and 22.5 seconds. No pitch or tempo shift; normalize the final mix's loudness.
 - Alexey's real recordings are in the Git-ignored `screens/` directory. Use these in place of old screenshots, including the recordings with expanded Weather at acquisition and the 22.28.52 cross-satellite correction.

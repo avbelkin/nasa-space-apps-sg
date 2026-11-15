@@ -13,7 +13,7 @@ Alexey supplied six recordings and one screenshot under the Git-ignored `screens
 | 22.28.52 (plus screenshot 22.28.33) | CAMS context adjustment, 1.28× study baseline detection odds for NOAA-20 |
 | 21.52.05 | Single detection near 46.574°, −80.792°; viewing geometry, Bare areas land cover, expanded populated weather |
 
-The 21.32.29 and 21.33.57 recordings are retained as alternatives. Files are approximately 1506–1510 by 926–932 pixels at 60 fps, without sound. The export fits the whole recorded frame to 1920×1080 at 30 fps without cutting its edges. Source recording times and exact trims remain in `assembly-v3/timeline.json`.
+The 21.32.29 and 21.33.57 recordings are retained as alternatives. Files are approximately 1506–1510 by 926–932 pixels at 60 fps, without sound. The export fits the whole recorded frame to 1920×1080 at 30 fps without cutting its edges. Source recording times and exact trims remain in `assembly-v4/timeline.json`.
 
 ## Story coverage
 
@@ -25,7 +25,7 @@ The 21.32.29 and 21.33.57 recordings are retained as alternatives. Files are app
 | 12–17 s | Shared sensor-colored view and NASA FIRMS |
 | 17–22.5 s | Estimated viewing geometry, land cover and weather from one recorded selection |
 | 22.5–26 s | Actual cross-satellite context correction, labelled experimental |
-| 26–29 s | First harmonization step, project URL and team; presentation-PDF styling |
+| 26–29 s | First harmonization step, project URL and team; presentation-PDF styling with the real presentation globe behind the text |
 
 The supplied comparison uses All sensors with sensor coloring, not a recorded MODIS-only → VIIRS-only switch. The narration does not claim a fixed ratio or exact counts. Preserve actual data and source context; do not manufacture an unavailable action.
 
@@ -37,7 +37,8 @@ The supplied comparison uses All sensors with sensor coloring, not a recorded MO
 - [x] The full-frame review decodes completely: H.264/AAC, 1920×1080, 30 fps, 870 frames, 29 seconds.
 - [x] Enlarged right-panel excerpts preserve real values and cover enrichment statuses, missing-pass warnings, experimental model text and timeline totals.
 - [x] NASA FIRMS attribution, English subtitles and visible AI labels are included.
-- [x] Independent frame-based acceptance of the final motion and composed artifact; exact hash, coverage and limitations are recorded in [REVIEW.md](REVIEW.md) and local `assembly-v3/ACCEPTANCE.md`.
+- [ ] First-second keyboard foley and globe-background closing checked in the new assembly-v4 export.
+- [x] Independent frame-based acceptance of the final motion and composed artifact; exact hash, coverage and limitations are recorded in [REVIEW.md](REVIEW.md) and local `assembly-v4/ACCEPTANCE.md`.
 - [ ] User playback review of the revised motion, scene changes and jump continuity.
 - [ ] Phone playback and the eventual public link, when supplied.
 

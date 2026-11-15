@@ -1,9 +1,9 @@
 Review the latest Lama video against the actual local MP4, original source recordings and current script. Read-only review; do not alter the narration or regenerate media.
 
 Repository: nasa-space-apps-sg
-Current film: submission/video/lama/prepared/assembly-v3/lama-fullscreen.mp4
-Review player: submission/video/lama/prepared/assembly-v3/review.html
-Timing and technical report: assembly-v3/timeline.json, render-report.json
+Current film: submission/video/lama/prepared/assembly-v4/lama-fullscreen.mp4
+Review player: submission/video/lama/prepared/assembly-v4/review.html
+Timing and technical report: assembly-v4/timeline.json, render-report.json
 Narration and voice evidence: submission/video/lama/prepared/assembly-v1/
 Original UI recordings: submission/video/screens/
 Closing design reference: submission/presentation/earth-fire-calendar.pdf, page 7 (style only; the new video copy supersedes the old future-harmonization line).
@@ -22,8 +22,10 @@ Check:
 5. The complete 47-word speech and verbatim captions, including Mostly and a first step toward comparable records. Verify timing, readable margins, no clipped row fragments and no character overlap with key data.
 6. Duration at most 30 seconds; current target 29 seconds / 870 frames / 1920x1080 / 30 fps / H.264 + AAC. Check the file, not merely code or the report.
 7. AI watermark on generated imagery, actual Flicker/ElevenLabs/OpenRouter/Veo/OpenAI image-tool disclosures, NASA FIRMS attribution and final non-endorsement note. Confirm final title, URL, Team Plush and both names.
-8. All ten new API jobs are terminal and collected; rejected v5 still accounted for. assembly-v3/accounting.json separates measured API cost ($0.3981208888888886), one image-tool edit of unknown cost, and unavailable subscription telemetry.
+8. All ten new API jobs are terminal and collected; rejected v5 still accounted for. assembly-v4/accounting.json separates measured API cost ($0.3981208888888886), one image-tool edit of unknown cost, and unavailable subscription telemetry.
 
 Known limits: the live/composite plush pose cut remains visible; the flight is a controlled photographic cutout, not articulated plush legs; no phoneme lip sync; some source/action endpoints are held. The original scarf print and older EOxCloudless 2025 imagery on the physical monitor remain documented publication review items. Do not silently mark publication rights cleared.
 
 Return actionable findings with file/timecode, impact, specific correction and priority. State whether you watched motion/listened or inspected only stills/transcripts. Report coverage and limitations even with zero findings. Do not reopen the already accepted voice selection without a concrete audio defect.
+
+Latest narrow revision: assembly-v4 adds original deterministic keyboard foley for 0–1 s and the real presentation globe capture behind the PDF-styled closing card. Voice and pre-closing scenes are unchanged. No new API jobs. The previous full checkpoint and exact v3 hash are in REVIEW.md; focus new review on these two changes and final-export integrity.
