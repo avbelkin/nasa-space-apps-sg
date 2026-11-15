@@ -1,0 +1,17 @@
+/* NASA Space Apps brand palette — https://www.spaceappschallenge.org/brand/ */
+:root {
+  --sa-blue-yonder: #2e96f5;
+  --sa-neon-blue: #0960e1;
+  --sa-electric-blue: #0042a6; /* PMS 2146 C */
+  --sa-deep-blue: #07173f; /* PMS 295 C */
+  --sa-rocket-red: #e43700; /* PMS Bright Red C; not a background colour */
+  --sa-martian-red: #8e1100;
+  --sa-neon-yellow: #eafe07; /* PMS Neon 387; accent only, never a background */
+  --sa-white: #ffffff;
+
+  /* Top-left Electric Blue to bottom-right Deep Blue, smooth across the whole field */
+  --sa-gradient: linear-gradient(135deg, var(--sa-electric-blue), var(--sa-deep-blue));
+
+  --sa-font-heading: "Fira Sans", "Overpass", sans-serif;
+  --sa-font-body: "Overpass", sans-serif;
+}

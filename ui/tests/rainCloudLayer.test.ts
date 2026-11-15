@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { deflateSync } from 'node:zlib'
+import { createRainCloudLayer } from '../src/utils/rainCloudLayer.ts'
 import {
   blurRainTileTexture,
   buildGibsDomainsUrl,
@@ -20,6 +21,7 @@ import {
   RAIN_FADE_IN_END_ZOOM,
   RAIN_FADE_IN_START_ZOOM,
   RAIN_FADE_START_ZOOM,
+  RAIN_REFRESH_INTERVAL_MS,
   RAIN_DOT_BASE_GRID_CELLS,
   RAIN_DOT_BASE_SPACING_CSS_PX,
   RAIN_DOT_COLOR_MODE,
@@ -34,6 +36,58 @@ import {
   snapRainLookbackMinutes,
   stitchRainTileGutter,
 } from '../src/utils/rainCloudShader.ts'
+
+test('visible rain invalidates its tiles on schedule even when metadata times out', async (context) => {
+  const { mock } = context
+  mock.timers.enable({ apis: ['Date', 'setTimeout'] })
+  const page = Object.assign(new EventTarget(), { hidden: false })
+  const globals = { window: globalThis, document: page }
+  for (const [key, value] of Object.entries(globals)) {
+    const original = Object.getOwnPropertyDescriptor(globalThis, key)
+    Object.defineProperty(globalThis, key, { configurable: true, value })
+    context.after(() => original ? Object.defineProperty(globalThis, key, original) : Reflect.deleteProperty(globalThis, key))
+  }
+  const fetchMetadata = mock.method(globalThis, 'fetch', (_url: RequestInfo | URL, options?: RequestInit) => {
+    const signal = options?.signal
+    assert.ok(signal)
+    return new Promise<Response>((_, reject) => {
+      signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+    })
+  },
+  )
+  const canvas = new EventTarget()
+  const triggerRepaint = mock.fn()
+  const layer = createRainCloudLayer()
+  assert.ok(layer.onAdd && layer.onRemove)
+  type LayerMap = Parameters<typeof layer.onAdd>[0]
+  const map = { getCanvas: () => canvas, getZoom: () => 8, triggerRepaint } as unknown as LayerMap
+  const gl = {} as WebGL2RenderingContext
+  layer.onAdd(map, gl)
+  try {
+    assert.equal(fetchMetadata.mock.callCount(), 1)
+    assert.equal(fetchMetadata.mock.calls[0].arguments[1]?.cache, 'no-cache')
+    mock.timers.tick(8_000)
+    await new Promise<void>((resolve) => setImmediate(resolve))
+
+    mock.timers.tick(RAIN_REFRESH_INTERVAL_MS - 8_001)
+    assert.equal(triggerRepaint.mock.callCount(), 0)
+    mock.timers.tick(1)
+    assert.equal(triggerRepaint.mock.callCount(), 1)
+    assert.equal(fetchMetadata.mock.callCount(), 2)
+
+    page.hidden = true
+    mock.timers.tick(8_000)
+    await new Promise<void>((resolve) => setImmediate(resolve))
+    mock.timers.tick(RAIN_REFRESH_INTERVAL_MS - 8_000)
+    assert.equal(triggerRepaint.mock.callCount(), 1)
+    page.hidden = false
+    page.dispatchEvent(new Event('visibilitychange'))
+    assert.equal(triggerRepaint.mock.callCount(), 2)
+    assert.equal(fetchMetadata.mock.callCount(), 3)
+  } finally {
+    layer.onRemove(map, gl)
+  }
+})
 
 function createSyntheticIndexedPng(
   paletteRgb: readonly [number, number, number][],

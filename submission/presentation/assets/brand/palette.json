@@ -1,0 +1,24 @@
+{
+  "source": "https://www.spaceappschallenge.org/brand/",
+  "retrieved": "2026-11-14",
+  "colors": {
+    "blue-yonder": { "name": "Blue Yonder", "hex": "#2E96F5" },
+    "neon-blue": { "name": "Neon Blue", "hex": "#0960E1" },
+    "electric-blue": { "name": "Electric Blue", "hex": "#0042A6", "pms": "2146 C" },
+    "deep-blue": { "name": "Deep Blue", "hex": "#07173F", "pms": "295 C" },
+    "rocket-red": { "name": "Rocket Red", "hex": "#E43700", "pms": "Bright Red C" },
+    "martian-red": { "name": "Martian Red", "hex": "#8E1100" },
+    "neon-yellow": { "name": "Neon Yellow", "hex": "#EAFE07", "pms": "Neon 387" },
+    "white": { "name": "White", "hex": "#FFFFFF" }
+  },
+  "gradient": {
+    "type": "linear",
+    "angle": "45deg, top-left to bottom-right",
+    "from": "electric-blue",
+    "to": "deep-blue"
+  },
+  "fonts": {
+    "headings": ["Fira Sans Black", "Fira Sans Bold", "Overpass Bold", "Overpass Regular"],
+    "body": ["Overpass Regular", "Overpass Bold", "Overpass Italic"]
+  }
+}

@@ -6,7 +6,8 @@ using NasaSpaceApps.Api.Firms;
 namespace NasaSpaceApps.Api.Weather;
 
 internal sealed partial class NoaaSoilMoistureAnomaly(
-    IHttpClientFactory clients, IMemoryCache cache, ILogger<NoaaSoilMoistureAnomaly> logger, EncodedWeatherGridCache? grids = null)
+    IHttpClientFactory clients, IMemoryCache cache, ILogger<NoaaSoilMoistureAnomaly> logger, EncodedWeatherGridCache? grids = null,
+    LocalWeatherCredentials? local = null)
 {
     public const string HttpClientName = "NoaaSoilMoistureAnomaly";
     private const string Product = "https://www.cpc.ncep.noaa.gov/products/Drought/";
@@ -21,7 +22,7 @@ internal sealed partial class NoaaSoilMoistureAnomaly(
     {
         if (!spots.Any(spot => spot is not null && InRegion(spot))) return spots.Select(spot => AtSpot(spot, null)).ToArray();
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
-        deadline.CancelAfter(TimeSpan.FromSeconds(8));
+        deadline.CancelAfter(TimeSpan.FromSeconds(local is null ? 8 : 45));
         Snapshot? snapshot = null;
         try
         {
@@ -32,8 +33,7 @@ internal sealed partial class NoaaSoilMoistureAnomaly(
         catch (Exception error) when (!token.IsCancellationRequested && error is
             HttpRequestException or OperationCanceledException or IOException or InvalidDataException or ArgumentException or OverflowException)
         {
-            if (error is not OperationCanceledException)
-                logger.LogWarning("NOAA CPC soil-moisture anomalies were unavailable: {Message}", error.Message);
+            logger.LogWarning("NOAA CPC soil-moisture anomalies were unavailable: {Message}", error.Message);
         }
         return spots.Select(spot => AtSpot(spot, snapshot)).ToArray();
     }

@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Text.Json;
 using NasaSpaceApps.Api.Firms;
 
 namespace NasaSpaceApps.Api.Weather;
@@ -20,11 +22,26 @@ internal sealed class LocalWeatherCredentials(string project, string database)
     internal void Update(string accessToken) => Volatile.Write(ref token, accessToken.Trim());
 }
 
-internal sealed class LocalWeatherWorker(FirmsClient firms, DeferredHotspotWeather sampler,
-    LocalWeatherCredentials credentials, TimeProvider clock, ILogger<LocalWeatherWorker> logger)
+internal sealed class LocalWeatherWorker(
+    FirmsClient firms,
+    NoaaGfsWeather gfs,
+    GfsCloudArchive gfsArchive,
+    CopernicusFireWeather fireWeather,
+    NoaaSoilMoistureAnomaly soilAnomaly,
+    UsfsFuelMoisture fuelMoisture,
+    FirestoreWeatherGridStore gridStore,
+    LocalWeatherCredentials credentials,
+    TimeProvider clock,
+    ILogger<LocalWeatherWorker> logger)
 {
     private static readonly TimeSpan ScanInterval = TimeSpan.FromMinutes(2);
-    private readonly Dictionary<GridWorkKey, DateTimeOffset> nextChecks = [];
+    private static readonly TimeSpan RetryInterval = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan SuccessCooldown = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan SpotCacheLifetime = TimeSpan.FromSeconds(60);
+
+    private readonly SemaphoreSlim spotsGate = new(1, 1);
+    private IReadOnlyList<FirmsHotspot>? cachedSpots;
+    private DateTimeOffset spotsFetchedAt = DateTimeOffset.MinValue;
 
     internal async Task RunAsync()
     {
@@ -41,16 +58,30 @@ internal sealed class LocalWeatherWorker(FirmsClient firms, DeferredHotspotWeath
             logger.LogInformation("Local weather worker started for {Project}/{Database}.", credentials.Project, credentials.Database);
             try
             {
-                while (!token.IsCancellationRequested)
-                {
-                    try { await ScanAsync(token).ConfigureAwait(false); }
-                    catch (Exception error) when (!token.IsCancellationRequested && error is HttpRequestException or IOException or
-                        System.Text.Json.JsonException or OperationCanceledException or InvalidOperationException)
-                    {
-                        logger.LogWarning("Local weather scan will resume after a failure: {Message}", error.Message);
-                        await Task.Delay(TimeSpan.FromSeconds(15), token).ConfigureAwait(false);
-                    }
-                }
+                await Task.WhenAll(
+                    RunGfsCloudLoopAsync(token),
+                    RunProviderLoopAsync(
+                        "Copernicus GWIS",
+                        CopernicusFireWeather.SamplingGroup,
+                        _ => true,
+                        (batch, ct) => fireWeather.EnrichAsync(batch, ct),
+                        batchSize: 8,
+                        token),
+                    RunProviderLoopAsync(
+                        "NOAA CPC soil anomaly",
+                        spot => DateOnly.FromDateTime(spot.AcquiredAtUtc.UtcDateTime),
+                        NoaaSoilMoistureAnomaly.InRegion,
+                        (batch, ct) => soilAnomaly.EnrichAsync(batch, ct),
+                        batchSize: DeferredHotspotWeather.BatchSize,
+                        token),
+                    RunProviderLoopAsync(
+                        "USFS WFAS fuel moisture",
+                        spot => DateOnly.FromDateTime(spot.AcquiredAtUtc.UtcDateTime),
+                        UsfsFuelMoisture.InRegion,
+                        (batch, ct) => fuelMoisture.EnrichAsync(batch, ct),
+                        batchSize: DeferredHotspotWeather.BatchSize,
+                        token)
+                ).ConfigureAwait(false);
             }
             finally
             {
@@ -77,39 +108,221 @@ internal sealed class LocalWeatherWorker(FirmsClient firms, DeferredHotspotWeath
         }
     }
 
-    internal async Task ScanAsync(CancellationToken token)
+    private async Task RunGfsCloudLoopAsync(CancellationToken token)
     {
-        var spots = await firms.GetWorldwideWeatherSpotsAsync(token).ConfigureAwait(false);
-        var now = clock.GetUtcNow();
-        var refreshAt = now + ScanInterval;
-        foreach (var key in nextChecks.Keys.Where(key => key.Acquired.AddHours(24) <= now).ToArray())
-            nextChecks.Remove(key);
-        var eligible = spots.Where(spot => spot.AcquiredAtUtc <= now && WeatherSpotKey.From(spot).ExpiresAt > now)
-            .ToArray();
-        var groups = 0;
-        var selections = 0;
-
-        foreach (var batch in PlanBatches(eligible, nextChecks, now))
+        var activeGrids = new ConcurrentDictionary<string, DateTimeOffset>(StringComparer.Ordinal);
+        var preloaded = false;
+        while (!token.IsCancellationRequested)
         {
-            var live = batch.Where(spot => spot.AcquiredAtUtc.AddHours(24) > clock.GetUtcNow()).ToArray();
-            if (live.Length == 0) continue;
-            var sampled = await sampler.SampleAsync(live, token).ConfigureAwait(false);
-            var checkedAt = clock.GetUtcNow();
-            foreach (var spot in live)
+            var scanStart = clock.GetUtcNow();
+            try
             {
-                var entry = sampled[WeatherSpotKey.From(spot)];
-                nextChecks[GridWorkKey.From(spot)] = entry.RetryAt ?? checkedAt.AddMinutes(15);
+                if (!preloaded)
+                {
+                    var active = await gridStore.ListActiveExpirationsAsync(scanStart, token).ConfigureAwait(false);
+                    foreach (var pair in active) activeGrids[pair.Key] = pair.Value;
+                    preloaded = true;
+                    logger.LogInformation("Loaded {Count} unexpired weather grids from Firestore.", activeGrids.Count);
+                }
+
+                await ScanGfsCloudAsync(activeGrids, token).ConfigureAwait(false);
             }
-            groups++;
-            selections += live.Length;
-            if (clock.GetUtcNow() >= refreshAt) break;
+            catch (Exception error) when (!token.IsCancellationRequested && IsTransient(error))
+            {
+                logger.LogWarning("GFS cloud scan will resume after a failure: {Message}", error.Message);
+                await Task.Delay(TimeSpan.FromSeconds(15), token).ConfigureAwait(false);
+                continue;
+            }
+
+            var delay = scanStart + ScanInterval - clock.GetUtcNow();
+            if (delay > TimeSpan.Zero) await Task.Delay(delay, token).ConfigureAwait(false);
+        }
+    }
+
+    internal async Task ScanGfsCloudAsync(ConcurrentDictionary<string, DateTimeOffset> activeGrids, CancellationToken token)
+    {
+        var spots = await GetLiveSpotsAsync(token).ConfigureAwait(false);
+        var now = clock.GetUtcNow();
+        foreach (var pair in activeGrids)
+        {
+            if (pair.Value <= now) activeGrids.TryRemove(pair.Key, out _);
         }
 
-        logger.LogInformation("Local weather scan: {Eligible} live detections, {Groups} grid batches, {Selections} acquisition and coverage selections checked.",
-            eligible.Length, groups, selections);
-        var delay = refreshAt - clock.GetUtcNow();
-        if (delay > TimeSpan.Zero) await Task.Delay(delay, token).ConfigureAwait(false);
+        var eligible = spots.Where(spot => spot.AcquiredAtUtc <= now && WeatherSpotKey.From(spot).ExpiresAt > now).ToArray();
+        var hourAcquisitions = eligible
+            .Select(spot => (Hour: NoaaGfsWeather.SamplingGroup(spot).Hour, spot.AcquiredAtUtc))
+            .Distinct()
+            .ToArray();
+
+        var resolvedWeather = new ConcurrentDictionary<(DateTimeOffset Hour, DateTimeOffset Acquired), NoaaGfsWeather.PublishedFrame?>();
+        var resolvedSnow = new ConcurrentDictionary<(DateTimeOffset Hour, DateTimeOffset Acquired), NoaaGfsWeather.PublishedFrame?>();
+        await Parallel.ForEachAsync(hourAcquisitions, new ParallelOptions
+        {
+            MaxDegreeOfParallelism = 8,
+            CancellationToken = token,
+        }, async (item, ct) =>
+        {
+            var weatherTask = gfs.ResolvePublishedFrameAsync(item.Hour, item.AcquiredAtUtc, false, ct);
+            var snowTask = gfs.ResolvePublishedFrameAsync(item.Hour, item.AcquiredAtUtc, true, ct);
+            await Task.WhenAll(weatherTask, snowTask).ConfigureAwait(false);
+            resolvedWeather[item] = await weatherTask;
+            resolvedSnow[item] = await snowTask;
+        }).ConfigureAwait(false);
+
+        var distinctGroups = eligible
+            .Select(spot => (Group: NoaaGfsWeather.SamplingGroup(spot), spot.AcquiredAtUtc))
+            .Distinct();
+        var missingById = new Dictionary<string, PlannedGfsTile>(StringComparer.Ordinal);
+
+        foreach (var (group, acquired) in distinctGroups)
+        {
+            var expires = group.Hour.AddHours(25);
+            if (expires <= now) continue;
+
+            if (resolvedWeather.TryGetValue((group.Hour, acquired), out var weatherFrame) && weatherFrame is not null)
+                AddIfMissing(group.West, group.South, weatherFrame, group.Hour, expires, false);
+            if (resolvedSnow.TryGetValue((group.Hour, acquired), out var snowFrame) && snowFrame is not null)
+                AddIfMissing(group.West, group.South, snowFrame, group.Hour, expires, true);
+        }
+
+        void AddIfMissing(int west, int south, NoaaGfsWeather.PublishedFrame frame, DateTimeOffset valid, DateTimeOffset expires, bool isSnow)
+        {
+            var url = NoaaGfsWeather.BuildUrl(west, south, frame.Run, valid, isSnow);
+            var gridId = FirestoreWeatherGridStore.GridId(url);
+            if (activeGrids.TryGetValue(gridId, out var knownExpires) && knownExpires > now) return;
+            missingById.TryAdd(gridId, new PlannedGfsTile(gridId, url, west, south, frame.Run, valid, frame.Published, expires, isSnow));
+        }
+
+        var fileGroups = missingById.Values
+            .GroupBy(tile => new ForecastFileKey(tile.Run, tile.Valid, tile.IsSnow))
+            .OrderByDescending(group => group.Key.Valid)
+            .ThenBy(group => group.Key.IsSnow)
+            .ToArray();
+
+        var totalWritten = 0;
+        await Parallel.ForEachAsync(fileGroups, new ParallelOptions
+        {
+            MaxDegreeOfParallelism = 2,
+            CancellationToken = token,
+        }, async (group, ct) =>
+        {
+            var key = group.Key;
+            var tiles = group.ToArray();
+            var filename = NoaaGfsWeather.ObjectFilename(key.Run, key.Valid, key.IsSnow);
+            try
+            {
+                var downloaded = await gfsArchive.DownloadHourAsync(key.Run, key.Valid, key.IsSnow, ct).ConfigureAwait(false);
+                if (downloaded is null) return;
+
+                var items = new List<FirestoreWeatherGridStore.BatchWriteItem>(tiles.Length);
+                var writeIds = new List<(string GridId, DateTimeOffset Expires)>(tiles.Length);
+                var slicedAt = clock.GetUtcNow();
+                foreach (var tile in tiles)
+                {
+                    if (tile.Expires <= slicedAt) continue;
+                    var bytes = GfsGribSubset.SliceToSimpleGrib2(downloaded.Fields, tile.West, tile.South);
+                    var parsed = GfsGribSubset.Parse(bytes);
+                    if (!parsed.Values.Any(frame => frame.Run == tile.Run && frame.End == tile.Valid))
+                        throw new InvalidDataException($"Sliced GFS tile {tile.West},{tile.South} failed round-trip validation for {tile.Valid:O}.");
+                    var grid = new EncodedWeatherGrid(bytes, downloaded.FetchedAt, downloaded.ModifiedAt ?? tile.Published);
+                    items.Add(new FirestoreWeatherGridStore.BatchWriteItem(tile.Url, grid, tile.Expires));
+                    writeIds.Add((tile.GridId, tile.Expires));
+                }
+                if (items.Count == 0) return;
+
+                var written = await gridStore.WriteBatchAsync(items, ct).ConfigureAwait(false);
+                foreach (var (id, expires) in writeIds) activeGrids[id] = expires;
+                Interlocked.Add(ref totalWritten, written);
+                logger.LogInformation("GFS cloud file {File}: backfilled {Written}/{Planned} tiles.",
+                    filename, written, items.Count);
+            }
+            catch (Exception error) when (!token.IsCancellationRequested && IsTransient(error))
+            {
+                logger.LogWarning("Skipping GFS cloud file {File} after error: {Message}", filename, error.Message);
+            }
+        }).ConfigureAwait(false);
+
+        logger.LogInformation(
+            "GFS cloud scan complete: {Eligible} live detections, {Missing} missing tiles across {Files} forecast files, {Written} written.",
+            eligible.Length, missingById.Count, fileGroups.Length, totalWritten);
     }
+
+    private async Task RunProviderLoopAsync<TGroup>(
+        string providerName,
+        Func<FirmsHotspot, TGroup> groupBy,
+        Func<FirmsHotspot, bool> filter,
+        Func<IReadOnlyList<FirmsHotspot?>, CancellationToken, Task<HotspotWeatherSource?[]>> enrichAsync,
+        int batchSize,
+        CancellationToken token) where TGroup : notnull
+    {
+        var nextChecks = new Dictionary<TGroup, DateTimeOffset>();
+        while (!token.IsCancellationRequested)
+        {
+            var scanStart = clock.GetUtcNow();
+            try
+            {
+                var spots = await GetLiveSpotsAsync(token).ConfigureAwait(false);
+                var now = clock.GetUtcNow();
+                var eligible = spots.Where(spot => spot.AcquiredAtUtc <= now && WeatherSpotKey.From(spot).ExpiresAt > now).ToArray();
+                var liveGroups = eligible.Where(filter).Select(groupBy).ToHashSet();
+                foreach (var stale in nextChecks.Keys.Where(key => !liveGroups.Contains(key)).ToArray())
+                    nextChecks.Remove(stale);
+
+                var refreshAt = now + ScanInterval;
+                var checkedGroups = 0;
+                foreach (var batch in PlanDailyBatches(eligible, groupBy, filter, nextChecks, now, batchSize))
+                {
+                    var results = await enrichAsync(batch, token).ConfigureAwait(false);
+                    var checkedAt = clock.GetUtcNow();
+                    for (var i = 0; i < batch.Length; i++)
+                    {
+                        var source = i < results.Length ? results[i] : null;
+                        var cooldown = source is not null && !WeatherCacheEntry.NeedsRetry(source)
+                            ? SuccessCooldown
+                            : RetryInterval;
+                        nextChecks[groupBy(batch[i])] = checkedAt + cooldown;
+                    }
+                    checkedGroups += batch.Length;
+                    if (clock.GetUtcNow() >= refreshAt) break;
+                }
+
+                logger.LogInformation("{Provider} scan: {Eligible} live detections, {Groups} tiles checked.",
+                    providerName, eligible.Length, checkedGroups);
+            }
+            catch (Exception error) when (!token.IsCancellationRequested && IsTransient(error))
+            {
+                logger.LogWarning("{Provider} scan will resume after a failure: {Message}", providerName, error.Message);
+                await Task.Delay(TimeSpan.FromSeconds(15), token).ConfigureAwait(false);
+                continue;
+            }
+
+            var delay = scanStart + ScanInterval - clock.GetUtcNow();
+            if (delay > TimeSpan.Zero) await Task.Delay(delay, token).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<IReadOnlyList<FirmsHotspot>> GetLiveSpotsAsync(CancellationToken token)
+    {
+        var now = clock.GetUtcNow();
+        if (cachedSpots is { } cached && now - spotsFetchedAt < SpotCacheLifetime) return cached;
+        await spotsGate.WaitAsync(token).ConfigureAwait(false);
+        try
+        {
+            now = clock.GetUtcNow();
+            if (cachedSpots is { } latest && now - spotsFetchedAt < SpotCacheLifetime) return latest;
+            var fetched = await firms.GetWorldwideWeatherSpotsAsync(token).ConfigureAwait(false);
+            cachedSpots = fetched;
+            spotsFetchedAt = clock.GetUtcNow();
+            return fetched;
+        }
+        finally
+        {
+            spotsGate.Release();
+        }
+    }
+
+    private static bool IsTransient(Exception error) => error is HttpRequestException or IOException or
+        JsonException or OperationCanceledException or InvalidOperationException or InvalidDataException;
 
     internal static IEnumerable<FirmsHotspot[]> PlanBatches(IEnumerable<FirmsHotspot> spots,
         IReadOnlyDictionary<GridWorkKey, DateTimeOffset> known, DateTimeOffset now)
@@ -123,6 +336,25 @@ internal sealed class LocalWeatherWorker(FirmsClient firms, DeferredHotspotWeath
             .SelectMany(group => group.Select(item => item.Spot).Chunk(DeferredHotspotWeather.BatchSize));
     }
 
+    internal static IEnumerable<FirmsHotspot[]> PlanDailyBatches<TGroup>(
+        IEnumerable<FirmsHotspot> spots,
+        Func<FirmsHotspot, TGroup> groupBy,
+        Func<FirmsHotspot, bool> filter,
+        IReadOnlyDictionary<TGroup, DateTimeOffset> known,
+        DateTimeOffset now,
+        int batchSize = DeferredHotspotWeather.BatchSize) where TGroup : notnull
+    {
+        return spots.Where(filter)
+            .OrderByDescending(spot => spot.AcquiredAtUtc)
+            .DistinctBy(groupBy)
+            .Select(spot => (Spot: spot, Seen: known.TryGetValue(groupBy(spot), out var retryAt), RetryAt: retryAt))
+            .Where(item => !item.Seen || item.RetryAt <= now)
+            .OrderBy(item => item.Seen)
+            .ThenByDescending(item => item.Spot.AcquiredAtUtc)
+            .Select(item => item.Spot)
+            .Chunk(batchSize);
+    }
+
     internal readonly record struct GridWorkKey(int West, int South, DateTimeOffset Acquired, bool Wfas, bool Cpc, bool AtEastDateline)
     {
         internal static GridWorkKey From(FirmsHotspot spot)
@@ -132,4 +364,17 @@ internal sealed class LocalWeatherWorker(FirmsClient firms, DeferredHotspotWeath
                 spot.Longitude == 180);
         }
     }
+
+    private sealed record ForecastFileKey(DateTimeOffset Run, DateTimeOffset Valid, bool IsSnow);
+
+    private sealed record PlannedGfsTile(
+        string GridId,
+        string Url,
+        int West,
+        int South,
+        DateTimeOffset Run,
+        DateTimeOffset Valid,
+        DateTimeOffset Published,
+        DateTimeOffset Expires,
+        bool IsSnow);
 }

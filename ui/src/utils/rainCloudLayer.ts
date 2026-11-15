@@ -27,9 +27,7 @@ import {
   RAIN_TEXTURE_SIZE,
   RAIN_TILE_INNER_SIZE,
   resolveRainObservationTime,
-  snapRainLookbackMinutes,
   stitchRainTileGutter,
-  type GibsTimeInterval,
   type RainLayerMetadata,
 } from './rainCloudShader.ts'
 
@@ -84,14 +82,12 @@ interface RainTileCacheEntry {
 
 export interface RainCloudLayerController extends CustomLayerInterface {
   setVisible: (visible: boolean) => void
-  setLookbackMinutes: (minutes: number) => void
   setCloudBackdropEnabled: (enabled: boolean) => void
   refreshNow: () => void
 }
 
 export interface CreateRainCloudLayerOptions {
   initialVisible?: boolean
-  initialLookbackMinutes?: number
   baseOpacity?: number
   enableCloudBackdrop?: boolean
   onMetadataChange?: (metadata: RainLayerMetadata) => void
@@ -216,7 +212,6 @@ async function decodePngViaImageBitmap(arrayBuffer: ArrayBuffer): Promise<Uint8A
 
 export function createRainCloudLayer({
   initialVisible = true,
-  initialLookbackMinutes = 0,
   baseOpacity = DEFAULT_RAIN_BASE_OPACITY,
   enableCloudBackdrop = ENABLE_RAIN_CLOUD_BACKDROP,
   onMetadataChange,
@@ -224,17 +219,12 @@ export function createRainCloudLayer({
   let mapRef: MapLibreMap | null = null
   let glRef: WebGL2RenderingContext | null = null
   let visible = initialVisible
-  let lookbackMinutes = snapRainLookbackMinutes(initialLookbackMinutes)
   let cloudBackdropEnabled = enableCloudBackdrop
   let contextLost = false
   let disposed = false
 
   let refreshEpoch = 1
-  let domainsFetchedAtMs = 0
-  let domainsSettledOnce = false
-  let lastLatestAvailableMs: number | null = null
-  let cachedIntervals: GibsTimeInterval[] = []
-  let activeTimeParam = lookbackMinutes === 0 ? 'default' : ''
+  let lastRefreshAtMs: number | null = null
   let domainsInFlight: Promise<void> | null = null
   let domainsAbortController: AbortController | null = null
   let useSeq = 0
@@ -315,114 +305,53 @@ export function createRainCloudLayer({
     mapRef?.triggerRepaint()
   }
 
-  const emitMetadata = (
-    latestAvailableMs: number | null,
-    effectiveTimeMs: number | null,
-    effectiveLookback: number,
-  ) => {
-    onMetadataChange?.({
-      latestAvailableIso:
-        latestAvailableMs !== null ? formatGibsIsoTimestamp(latestAvailableMs) : null,
-      effectiveTimeIso:
-        effectiveTimeMs !== null ? formatGibsIsoTimestamp(effectiveTimeMs) : null,
-      lookbackMinutes: effectiveLookback,
-    })
-  }
-
-  const applyResolvedTime = (forceEpochBump = false) => {
-    const resolved = resolveRainObservationTime(lookbackMinutes, cachedIntervals)
-    const isInitialLatestDiscovery =
-      lastLatestAvailableMs === null &&
-      resolved.lookbackMinutes === 0 &&
-      activeTimeParam === 'default' &&
-      !forceEpochBump
-
-    const nextLatestMs = resolved.latestAvailableMs
-    const latestAdvanced =
-      lastLatestAvailableMs !== null &&
-      nextLatestMs !== null &&
-      nextLatestMs !== lastLatestAvailableMs
-
-    if (nextLatestMs !== null) {
-      lastLatestAvailableMs = nextLatestMs
+  const refreshIfDue = (force = false) => {
+    if (disposed || domainsInFlight) {
+      return
     }
-
-    const timeChanged = resolved.timeParam !== activeTimeParam
-    activeTimeParam = resolved.timeParam
-
-    emitMetadata(
-      resolved.latestAvailableMs,
-      resolved.effectiveTimeMs,
-      resolved.lookbackMinutes,
-    )
-
-    if (
-      !isInitialLatestDiscovery &&
-      (forceEpochBump || timeChanged || (resolved.lookbackMinutes === 0 && latestAdvanced))
-    ) {
+    const now = Date.now()
+    if (!force && lastRefreshAtMs !== null && now - lastRefreshAtMs < RAIN_REFRESH_INTERVAL_MS) {
+      return
+    }
+    const isRefresh = lastRefreshAtMs !== null
+    lastRefreshAtMs = now
+    if (refreshTimerId !== null) {
+      window.clearTimeout(refreshTimerId)
+    }
+    refreshTimerId = window.setTimeout(refreshVisibleRain, RAIN_REFRESH_INTERVAL_MS)
+    if (isRefresh) {
+      // Refresh tiles even when GIBS observation metadata is unavailable.
       bumpEpoch()
-    } else {
-      mapRef?.triggerRepaint()
-    }
-  }
-
-  const ensureDomainsMetadata = (force = false): Promise<void> => {
-    if (disposed) {
-      return Promise.resolve()
-    }
-    if (domainsInFlight && !force) {
-      return domainsInFlight
-    }
-    if (!force && domainsFetchedAtMs > 0 && Date.now() - domainsFetchedAtMs < RAIN_REFRESH_INTERVAL_MS) {
-      return Promise.resolve()
     }
 
-    domainsAbortController?.abort()
     const controller = new AbortController()
     domainsAbortController = controller
-    const timeoutId =
-      typeof window !== 'undefined'
-        ? window.setTimeout(() => controller.abort(), DOMAINS_FETCH_TIMEOUT_MS)
-        : null
+    const timeoutId = window.setTimeout(() => controller.abort(), DOMAINS_FETCH_TIMEOUT_MS)
 
-    const task = fetch(buildGibsDomainsUrl(), { signal: controller.signal })
+    domainsInFlight = fetch(buildGibsDomainsUrl(now), { signal: controller.signal, cache: 'no-cache' })
       .then(async (response) => {
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status} fetching NASA GIBS Domains XML`)
+          throw new Error('Failed to fetch NASA GIBS observation times')
         }
-        const xmlText = await response.text()
-        if (disposed || controller.signal.aborted) {
-          return
+        const intervals = parseGibsDomainsXml(await response.text())
+        if (!disposed && !controller.signal.aborted) {
+          const { effectiveTimeMs } = resolveRainObservationTime(0, intervals)
+          const timeIso = effectiveTimeMs === null ? null : formatGibsIsoTimestamp(effectiveTimeMs)
+          onMetadataChange?.({ latestAvailableIso: timeIso, effectiveTimeIso: timeIso, lookbackMinutes: 0 })
         }
-        const parsed = parseGibsDomainsXml(xmlText)
-        if (parsed.length > 0) {
-          cachedIntervals = parsed
-          domainsFetchedAtMs = Date.now()
-        }
-        domainsSettledOnce = true
-        applyResolvedTime(force)
       })
       .catch(() => {
-        if (disposed || controller.signal.aborted) {
-          return
+        if (!disposed && domainsAbortController === controller) {
+          onMetadataChange?.({ latestAvailableIso: null, effectiveTimeIso: null, lookbackMinutes: 0 })
         }
-        domainsSettledOnce = true
-        applyResolvedTime(force)
       })
       .finally(() => {
-        if (timeoutId !== null && typeof window !== 'undefined') {
-          window.clearTimeout(timeoutId)
-        }
+        window.clearTimeout(timeoutId)
         if (domainsAbortController === controller) {
           domainsAbortController = null
-        }
-        if (domainsInFlight === task) {
           domainsInFlight = null
         }
       })
-
-    domainsInFlight = task
-    return task
   }
 
   const getOrCreateMesh = (
@@ -584,14 +513,6 @@ export function createRainCloudLayer({
       return
     }
 
-    if (lookbackMinutes > 0 && cachedIntervals.length === 0 && !domainsSettledOnce) {
-      void ensureDomainsMetadata()
-      return
-    }
-
-    const effectiveTimeParam =
-      activeTimeParam || resolveRainObservationTime(lookbackMinutes, cachedIntervals).timeParam
-
     const key = `${z}/${x}/${y}`
     let entry = tiles.get(key)
     if (!entry) {
@@ -626,12 +547,12 @@ export function createRainCloudLayer({
     entry.abortController?.abort()
     const abortController = new AbortController()
     const targetEpoch = refreshEpoch
-    const url = buildRainTileUrl(z, x, y, effectiveTimeParam)
+    const url = buildRainTileUrl(z, x, y)
 
     entry.abortController = abortController
     entry.loadingEpoch = targetEpoch
 
-    void fetch(url, { signal: abortController.signal })
+    void fetch(url, { signal: abortController.signal, cache: 'no-cache' })
       .then(async (response) => {
         if (response.status === 204 || response.status === 404) {
           if (disposed || targetEpoch !== refreshEpoch) {
@@ -732,20 +653,9 @@ export function createRainCloudLayer({
     return null
   }
 
-  const isZoomOrLookbackActive = () =>
-    (mapRef?.getZoom() ?? 0) > RAIN_FADE_IN_START_ZOOM || lookbackMinutes > 0
-
-  const onVisibilityChange = () => {
-    if (disposed || typeof document === 'undefined') {
-      return
-    }
-    if (
-      !document.hidden &&
-      visible &&
-      isZoomOrLookbackActive() &&
-      Date.now() - domainsFetchedAtMs >= RAIN_REFRESH_INTERVAL_MS
-    ) {
-      void ensureDomainsMetadata()
+  const refreshVisibleRain = () => {
+    if (visible && !document.hidden && (mapRef?.getZoom() ?? 0) > RAIN_FADE_IN_START_ZOOM) {
+      refreshIfDue()
     }
   }
 
@@ -775,42 +685,25 @@ export function createRainCloudLayer({
       canvas.addEventListener('webglcontextlost', onContextLost)
       canvas.addEventListener('webglcontextrestored', onContextRestored)
 
-      if (typeof document !== 'undefined') {
-        document.addEventListener('visibilitychange', onVisibilityChange)
-      }
-
-      if (typeof window !== 'undefined') {
-        refreshTimerId = window.setInterval(() => {
-          if (disposed || !visible || !isZoomOrLookbackActive()) {
-            return
-          }
-          if (typeof document !== 'undefined' && document.hidden) {
-            return
-          }
-          void ensureDomainsMetadata(true)
-        }, RAIN_REFRESH_INTERVAL_MS)
-      }
-
-      if (visible && isZoomOrLookbackActive()) {
-        void ensureDomainsMetadata()
-      }
+      document.addEventListener('visibilitychange', refreshVisibleRain)
+      refreshVisibleRain()
     },
 
     onRemove(map) {
       disposed = true
-      if (refreshTimerId !== null && typeof window !== 'undefined') {
-        window.clearInterval(refreshTimerId)
+      if (refreshTimerId !== null) {
+        window.clearTimeout(refreshTimerId)
         refreshTimerId = null
       }
-      if (typeof document !== 'undefined') {
-        document.removeEventListener('visibilitychange', onVisibilityChange)
-      }
+      document.removeEventListener('visibilitychange', refreshVisibleRain)
       const canvas = map.getCanvas()
       canvas.removeEventListener('webglcontextlost', onContextLost)
       canvas.removeEventListener('webglcontextrestored', onContextRestored)
 
       domainsAbortController?.abort()
       domainsAbortController = null
+      domainsInFlight = null
+      lastRefreshAtMs = null
       abortAllTileRequests()
       clearGpuHandles(true)
       tiles.clear()
@@ -828,9 +721,7 @@ export function createRainCloudLayer({
       if (opacity <= 0) {
         return
       }
-      if (domainsFetchedAtMs === 0 && !domainsInFlight) {
-        void ensureDomainsMetadata()
-      }
+      refreshVisibleRain()
 
       const coveringTiles = normalizeRainCoveringTiles(
         mapRef.coveringTiles({
@@ -964,32 +855,10 @@ export function createRainCloudLayer({
       visible = nextVisible
       if (!visible) {
         abortAllTileRequests()
-      } else if (
-        isZoomOrLookbackActive() &&
-        (domainsFetchedAtMs === 0 || Date.now() - domainsFetchedAtMs >= RAIN_REFRESH_INTERVAL_MS)
-      ) {
-        void ensureDomainsMetadata()
+      } else {
+        refreshVisibleRain()
       }
       mapRef?.triggerRepaint()
-    },
-
-    setLookbackMinutes(minutes) {
-      const nextLookback = snapRainLookbackMinutes(minutes)
-      if (nextLookback === lookbackMinutes) {
-        return
-      }
-      lookbackMinutes = nextLookback
-      if (cachedIntervals.length > 0 || domainsSettledOnce) {
-        applyResolvedTime(false)
-      } else {
-        activeTimeParam = lookbackMinutes === 0 ? 'default' : ''
-        emitMetadata(
-          lastLatestAvailableMs,
-          null,
-          lookbackMinutes,
-        )
-        void ensureDomainsMetadata()
-      }
     },
 
     setCloudBackdropEnabled(enabled) {
@@ -1001,7 +870,7 @@ export function createRainCloudLayer({
     },
 
     refreshNow() {
-      void ensureDomainsMetadata(true)
+      refreshIfDue(true)
     },
   }
 }

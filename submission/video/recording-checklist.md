@@ -19,8 +19,8 @@ The [video script](demo-video.md) adapts the [official 30-second outline](../doc
 - [ ] Record after the last interface change: the footage must match the version the judges will open.
 - [ ] Open the [link with the prepared view](../working/form-fields.md#4-link-to-final-project) in a private window. In a regular window the app restores the last saved view.
 - [ ] Wait for the live counters, the **Latest detection** line and the points on the map. If the block reports that FIRMS data is unavailable, do not record: the map will have no detections.
-- [ ] Record in a 1920×1080 window, or crop so that the counters are fully readable: in a 1440×900 window they are cut off at the bottom. Remove loading waits and accidental camera movements.
-- [ ] Check the rendering: in a browser without graphics acceleration the VIIRS points appeared with a delay after the counters, and there were black patches at the poles of the globe. If they are there, crop without the poles.
+- [ ] Record in a 1920×1080 window. At the version deployed on 15 November at 19:49 SGT the counters are fully readable in a 1440×900 window as well. In MODIS or VIIRS mode the side panel leaves an empty gap above the counter block where the colouring checkbox sits in **All sensors** mode; crop or frame around it. Remove loading waits and accidental camera movements.
+- [ ] Check the rendering: in a browser without graphics acceleration there is a black patch at the south pole of the globe (seen again on 15 November in headless Chrome), and earlier the VIIRS points appeared with a delay after the counters. If the patch is there, crop without the pole.
 - [ ] The name NASA FIRMS is visible in every shot with live points.
 - [ ] Choose the region and the group for the 17–23-second detail scene in advance: a group containing both sensors, with the geometry, land-cover and weather rows already filled. The enrichment arrives after the detections; wait until the pinned card stops changing.
 - [ ] Leave the orbits, the satellite HUD and the enrichment status rows out of the video; the pinned card appears only in the detail scene.
