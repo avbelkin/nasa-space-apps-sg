@@ -4,7 +4,7 @@
 
 How the general [advice](../docs/advice.md) is applied to Earth Fire Calendar: what to show for each judging criterion, the status of every interface element, what not to claim, and the state of the project page and repository. This is a living document: update it whenever the app or the materials change. Video specifics are in the [recording checklist](../video/recording-checklist.md); slide specifics are in the [slide images](../presentation/slide-images.md).
 
-**Recommended demo format: video.** The main result of Earth Fire Calendar is visible through interaction. Seven slides are the fallback with the same story.
+**Recommended final demo format: video.** The main result is visible through interaction. The completed public seven-slide PDF is the currently usable demo link in the project description; the video remains in production.
 
 ## What to show for each criterion
 

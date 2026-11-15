@@ -29,7 +29,7 @@ Build an **Earth-first** interactive web application (powered by **MapLibre GL J
 
 - **Side-by-side sensor comparison on Earth**: The interactive Earth map (`globe` / `mercator` via MapLibre) shows live MODIS and VIIRS detections together or separately, colors fire spots by which instrument saw them, and shows each satellite's passes, including passes that recorded no fire.
 - **The instruments record different hotspots**: Their detections overlap only in part. Whole regions and observation conditions show one instrument and not the other.
-- **Per-detection context**: Each detection carries its viewing geometry, the land cover inside its footprint, and weather conditions at acquisition time, each value with its source and validity time. Published studies link these factors to detection probability and retrieved FRP; see the [literature review](../submission/docs/modis-viirs-harmonization-literature-review.md).
+- **Per-detection context**: Each detection carries its viewing geometry, the land cover inside its footprint, and weather conditions at acquisition time, each value with its source and validity time. Published studies link these factors to detection probability and retrieved FRP; see the [literature review](../submission/deliverables/modis-viirs-harmonization-literature-review.md).
 
 **Exploratory, not yet built**
 
