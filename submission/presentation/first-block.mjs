@@ -4,7 +4,7 @@ export async function drawFirstBlock({base,text,rect,image,sections,snapshot,T})
  {
   const s=base(0,true),b=sections[0].blocks;
   s.background.fill=C.deep;s._scene.background=C.deep;
-  await image(s,'assets/screenshots/cover-sensors.png',862,52,690,690,'Earth Fire Calendar globe with live detections coloured by sensor. Later illustration, not the count snapshot on slide 2.',{circle:true,fit:'cover'});
+  await image(s,'assets/screenshots/cover-sensors.png',872,52,670,670,'Earth Fire Calendar globe with live detections coloured by sensor. Later illustration, not the count snapshot on slide 2.',{circle:true,fit:'cover'});
   text(s,b[2],88,52,1100,48,S.small,{color:C.onDarkMuted});
   text(s,sections[0].title.replace(' Calendar','\nCalendar'),88,145,850,268,S.cover,{font:'Overpass',bold:true,name:'headline'});
   text(s,b[0],88,462,710,128,S.lead,{color:C.yellow});
@@ -13,6 +13,7 @@ export async function drawFirstBlock({base,text,rect,image,sections,snapshot,T})
   rect(s,88,762,1424,1,C.ruleDark);
   text(s,b[3],88,796,480,65,S.small,{color:C.onDarkMuted});
   text(s,b[4],650,796,862,78,S.small,{color:C.onDarkMuted});
+  text(s,b[5],862,730,690,28,S.small,{color:C.onDarkMuted,align:'center'});
   s.speakerNotes.text+='\nCover provenance: assets/screenshots/capture-scenes.json. Data: NASA FIRMS. Basemap: EOX / Copernicus Sentinel-2. Later illustration than the count snapshot.';
  }
  {

@@ -5,9 +5,9 @@ The complete deck uses the final English copy in [demo-slides.md](demo-slides.md
 ## Files
 
 - [Submission PDF](earth-fire-calendar.pdf): the compact published appearance reference.
-- [Editable PPTX](output/earth-fire-calendar-complete-r14.pptx) and [overview](output/earth-fire-calendar-complete-r14-overview.png): local files, synchronized to the main checkout.
+- [Editable PPTX](output/earth-fire-calendar-complete-r16.pptx) and [overview](output/earth-fire-calendar-complete-r16-overview.png): local files, synchronized to the main checkout.
 - [Review record](REVIEW.md): verification, independent acceptance and known export limitations.
-- [Independent review prompt](review-prompt.txt): frozen r14 artifacts and checks for other models; requests a Russian report.
+- [Independent review prompt](review-prompt.txt): frozen r16 artifacts and checks for other models; requests a Russian report.
 - [Slide copy](demo-slides.md): the only source of authored slide wording.
 - `output/`: versioned local PDF, editable PPTX, overview and verification reports. Generated historical binaries are ignored.
 - `assets/evidence/`: committed, resized captures and hashes; a fresh clone needs no live recapture.
@@ -22,9 +22,11 @@ All presentation inputs, scripts, outputs and review files live in this director
 
 Slide 2 retains the frozen **15 November 2026, 08:36 UTC** FIRMS count: **8,127 MODIS / 79,349 VIIRS**. The remaining screenshots are later interface illustrations, refreshed on 15 November after the EOxCloudless 2016 basemap was deployed. They are not evidence for the earlier global totals. The capture manifest records the raster source and the exact time of each capture. No observations are synthesized or altered.
 
-The regional map is 1800×1020; the sensor comparison maps are 860×390. Interface excerpts retain PNG text and are displayed with margins. The timeline and two sensor columns are shown on slide 5; the slide 3 key is native text with the app's exact sensor colours.
+The regional map is 1800×1020; the sensor comparison maps are 860×390. Interface excerpts retain PNG text and are displayed with margins. The timeline and two sensor columns are shown on slide 5; the slide 3 key is native text with the app's exact sensor colours. Slide 4 uses the team-approved CAMS screenshot: **1.28× study baseline detection odds**, with the complete experimental-model notice. Its 14:28 UTC capture time comes from the original filename in the team's UTC+8 timezone; the exact deployment was not recorded. See `assets/screenshots/live-adjustment.json`.
 
-`prepare-assets.mjs` resizes raw local captures. `prepare-focus.mjs` crops the committed full geometry and weather panels to readable excerpts and records their hashes. `capture-scenes.mjs` is an explicit live refresh and changes the evidence. Ordinary builds use only the frozen assets.
+The deck describes the working next-pass FRP and GWIS/CAMS adjustments as **partial live harmonization**. Eligible selected detections receive model-based estimates learned across satellite passes; original FIRMS readings remain visible. The one-day models are experimental. Broader validation and extension to a unified historical record remain future work.
+
+`prepare-assets.mjs` resizes raw local captures. `prepare-focus.mjs` crops the committed full geometry and weather panels to readable excerpts and records their hashes. `prepare-live-adjustment.mjs` crops the team-provided CAMS screenshot and records its provenance. `capture-scenes.mjs` is an explicit live refresh and changes the evidence. Ordinary builds use only the frozen assets, including the committed CAMS crop.
 
 ## Build
 
@@ -34,7 +36,7 @@ Use the already managed runtime; no dependency or font installation is required.
 export RUNTIME_NODE_MODULES=/absolute/path/to/managed/runtime/dependencies/node/node_modules
 export RUNTIME_PYTHON=/absolute/path/to/managed/runtime/dependencies/python/bin/python
 export PRESENTATIONS_SKILL=/absolute/path/to/presentations/skills/presentations
-export DECK_VERSION=complete-r15
+export DECK_VERSION=complete-r17
 /absolute/path/to/node submission/presentation/build.mjs
 /absolute/path/to/node submission/presentation/verify.mjs
 ```

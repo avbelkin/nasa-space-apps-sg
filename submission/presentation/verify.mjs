@@ -11,7 +11,7 @@ const {xml2js}=require('xml-js');
 const {PDFDocument,PDFName,PDFString,PDFHexString}=require('pdf-lib');
 const firstBlock=process.env.DECK_SCOPE==='first-block';
 const expectedSlideCount=firstBlock?2:7;
-const version=process.env.DECK_VERSION || (firstBlock?'direction-r11':'complete-r14');
+const version=process.env.DECK_VERSION || (firstBlock?'direction-r11':'complete-r16');
 const buildDir=path.join(root,'.build',version);
 const tokens=JSON.parse(await fs.readFile(path.join(root,'design-tokens.json'),'utf8'));
 const allowedSizes=new Set(Object.values(tokens.sizes).map(n=>String(n*75)));

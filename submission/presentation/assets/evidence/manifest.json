@@ -149,6 +149,23 @@
       "sourceLocation": "assets/evidence",
       "sourceSha256": "c7bc31ba2b60ebd11056020da0631e8600ea1d0536d50dbf7edb02f4ba6ccc39",
       "sha256": "30db31bd0690e15ee09e0559fe1f3ca24afe2d950c8f1202cbb84ff6d5759acf"
+    },
+    {
+      "name": "live-adjustment",
+      "original": "live-adjustment.png",
+      "file": "live-adjustment.png",
+      "width": 494,
+      "height": 63,
+      "bytes": 8516,
+      "crop": {
+        "left": 986,
+        "top": 365,
+        "width": 494,
+        "height": 63
+      },
+      "sourceSha256": "b6b46631b45c5e5a77ea2e656c3629dc0880c7e18f8821998a6011495f4a303c",
+      "sha256": "4623e0133f4933995de9ec377821782a3afd613f4c1a299c312ec816ced8e924",
+      "provenance": "../screenshots/live-adjustment.json"
     }
   ]
 }

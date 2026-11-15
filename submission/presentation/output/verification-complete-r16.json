@@ -1,0 +1,128 @@
+{
+  "revision": "complete-r16",
+  "slides": [
+    {
+      "slide": 1,
+      "sourceLines": 7,
+      "wording": "preserved"
+    },
+    {
+      "slide": 2,
+      "sourceLines": 7,
+      "wording": "preserved"
+    },
+    {
+      "slide": 3,
+      "sourceLines": 8,
+      "wording": "preserved"
+    },
+    {
+      "slide": 4,
+      "sourceLines": 9,
+      "wording": "preserved"
+    },
+    {
+      "slide": 5,
+      "sourceLines": 6,
+      "wording": "preserved"
+    },
+    {
+      "slide": 6,
+      "sourceLines": 10,
+      "wording": "preserved"
+    },
+    {
+      "slide": 7,
+      "sourceLines": 8,
+      "wording": "preserved"
+    }
+  ],
+  "slideCount": 7,
+  "pdfPages": 7,
+  "pdf": "vector text and shapes, embedded fonts, resized frozen screenshot assets",
+  "pdfCopy": "all source lines preserved and extractable",
+  "pdfLinks": [
+    {
+      "slide": 5,
+      "url": "https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0"
+    },
+    {
+      "slide": 7,
+      "url": "https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0"
+    },
+    {
+      "slide": 7,
+      "url": "https://github.com/avbelkin/nasa-space-apps-sg"
+    },
+    {
+      "slide": 7,
+      "url": "https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/technical-note.md"
+    },
+    {
+      "slide": 7,
+      "url": "https://firms.modaps.eosdis.nasa.gov/"
+    },
+    {
+      "slide": 7,
+      "url": "https://earthdata.nasa.gov/gibs"
+    },
+    {
+      "slide": 7,
+      "url": "https://open-meteo.com/"
+    },
+    {
+      "slide": 7,
+      "url": "https://gis.extremum.org/"
+    },
+    {
+      "slide": 7,
+      "url": "https://celestrak.org/"
+    },
+    {
+      "slide": 7,
+      "url": "https://cloudless.eox.at/"
+    },
+    {
+      "slide": 7,
+      "url": "https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/third-party-rights.md"
+    },
+    {
+      "slide": 7,
+      "url": "https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/software-licenses.md"
+    }
+  ],
+  "chart": "native with embedded workbook and fixed 0–100,000 scale",
+  "counts": {
+    "modis": 8127,
+    "viirs": 79349
+  },
+  "altTextObjects": 9,
+  "fontSizesPx": [
+    20,
+    25,
+    32,
+    64,
+    112,
+    128
+  ],
+  "sourceSha256": "a3dcf4d5c06bcd2e8e99f2b1df3175d856b50e9d87f0e84febb215d5dec339de",
+  "pptxSha256": "011a3f5efe03449476771330a294801ab8c42a2754cc3645584adf840088d60f",
+  "pdfSha256": "96ff5fddfe12e26f1bb532fe825accd04267b89003667a06c2a4a425dd038636",
+  "limitations": [
+    "Fonts supplied separately; not embedded in PPTX. Native PowerPoint may substitute fonts; use the supplied PDF for stable appearance."
+  ],
+  "accounting": {
+    "apiProvider": null,
+    "apiModel": null,
+    "apiRoute": null,
+    "apiCalls": 0,
+    "apiCostUsd": 0,
+    "subscription": "Primary Codex session plus one independent Codex reviewer; allowance usage unavailable"
+  },
+  "finalization": {
+    "packageIntegrity": "pass",
+    "layoutFindings": 0,
+    "artifactToolReimport": "pass",
+    "pdfEmbeddedFontFaces": 3
+  }
+}

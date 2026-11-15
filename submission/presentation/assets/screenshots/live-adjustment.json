@@ -1,0 +1,15 @@
+{
+  "source": "Team-provided Screenshot 2026-11-15 at 22.28.33.png",
+  "capturedAt": "2026-11-15T14:28:33Z",
+  "timestampBasis": "Original screenshot filename in the team browser timezone, Asia/Singapore (UTC+8).",
+  "userAuthorization": "User explicitly selected this existing CAMS screenshot for the presentation.",
+  "sourceSha256": "b6b46631b45c5e5a77ea2e656c3629dc0880c7e18f8821998a6011495f4a303c",
+  "crop": {
+    "left": 986,
+    "top": 365,
+    "width": 494,
+    "height": 63
+  },
+  "content": "CAMS context for NOAA-20 at 14:16: 1.28x study baseline detection odds; full experimental-model notice retained. No values altered.",
+  "deployment": "The exact deployment is not recorded by the team screenshot; no commit identity is claimed."
+}

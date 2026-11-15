@@ -9,7 +9,8 @@ export async function drawRemainingSlides({base,title,text,rect,dot,image,sectio
   await image(s,'assets/evidence/regional-sensors.jpg',680,320,832,440,'Frozen northern India view with detections coloured by sensor. Map controls have been cropped away.',{fit:'cover'});
   const key=[['Both sensors',T.sensorColors.both,680,792],['Single detection',T.sensorColors.single,1082,792],['MODIS only (2+)',T.sensorColors.modis,680,830],['VIIRS only (2+)',T.sensorColors.viirs,1082,830]];
   for(const [label,color,x,yy] of key){dot(s,x,yy+5,13,color);text(s,label,x+26,yy,360,32,S.small);}
-  text(s,b[2],88,805,510,58,S.small,{color:C.muted});
+  text(s,b[2],88,750,510,58,S.small,{color:C.muted});
+  text(s,b[3],88,826,510,32,S.small,{color:C.muted});
  }
  {
   const s=base(3),b=sections[3].blocks;title(s,sections[3].title);
@@ -21,10 +22,11 @@ export async function drawRemainingSlides({base,title,text,rect,dot,image,sectio
    for(let col=0;col<3;col++){const value=items[row*3+col],h=textHeight(value,width,S.body);text(s,value,columns[col],y,width,h,S.body);tallest=Math.max(tallest,h);}
    y+=tallest+34;
   }
-  // A single large crop shows actual weather values; the full capture is retained.
-  rect(s,88,618,1424,194,C.white,C.rule,'weather-proof');
-  await image(s,'assets/evidence/weather-focus.png',112,642,1376,146,'Frozen weather comparison: MODIS and VIIRS air temperature, dew point and relative humidity. Cropped from the complete recorded weather panel.');
+  // Team-provided capture shows the actual live CAMS adjustment and model caveat.
+  rect(s,88,618,1424,174,C.white,C.rule,'live-adjustment-proof');
+  await image(s,'assets/evidence/live-adjustment.png',112,632,1376,146,'Team capture: CAMS context for NOAA-20 at 14:16, 1.28 times study baseline detection odds. The complete experimental model and NASA non-validation notice is retained. Capture 15 November 2026, 14:28 UTC; displayed clock labels are UTC+8.');
   text(s,b[1],88,842,1424,40,S.small,{color:C.muted});
+  text(s,b[2],88,804,1424,28,S.small,{color:C.muted});
  }
  {
   const s=base(4),b=sections[4].blocks;title(s,sections[4].title);
@@ -34,10 +36,11 @@ export async function drawRemainingSlides({base,title,text,rect,dot,image,sectio
   text(s,b[1],460,342,320,84,S.small);
   text(s,b[2],850,194,662,178,S.body);
   text(s,b[3],850,386,662,34,S.small,{color:C.electric});
-  rect(s,88,438,1424,274,C.white,C.rule,'timeline-proof');
-  await image(s,'assets/evidence/pinned-timeline.png',112,458,1376,234,'The pinned group 24-hour timeline, with observed detections and estimated passes. Full time axis and legend retained.');
-  rect(s,88,730,1424,144,C.white,C.rule,'geometry-proof');
-  await image(s,'assets/evidence/geometry-focus.png',112,746,1376,112,'Pinned MODIS and VIIRS columns: satellite off-nadir angle and satellite distance. This is estimated geometry. Cropped from the complete recorded panel.');
+  rect(s,88,438,1424,266,C.white,C.rule,'timeline-proof');
+  await image(s,'assets/evidence/pinned-timeline.png',112,450,1376,234,'The pinned group 24-hour timeline, with observed detections and estimated passes. Full time axis and legend retained.');
+  text(s,b[4],88,712,1424,28,S.small,{color:C.muted});
+  rect(s,88,752,1424,122,C.white,C.rule,'geometry-proof');
+  await image(s,'assets/evidence/geometry-focus.png',112,767,1376,92,'Pinned MODIS and VIIRS columns: satellite off-nadir angle and satellite distance. This is estimated geometry. Cropped from the complete recorded panel.');
  }
  {
   const s=base(5),b=sections[5].blocks;title(s,sections[5].title);

@@ -32,7 +32,7 @@ if(sections.length!==7) throw Error(`Expected seven source slides, got ${section
 const snapshot=JSON.parse(await fs.readFile(path.join(root,'assets/data/firms-snapshot-2026-11-15T0836Z.json'),'utf8'));
 const firstBlock=process.env.DECK_SCOPE==='first-block';
 const slideCount=firstBlock?2:7;
-const version=process.env.DECK_VERSION || (firstBlock?'direction-r11':'complete-r14');
+const version=process.env.DECK_VERSION || (firstBlock?'direction-r11':'complete-r16');
 const evidence=JSON.parse(await fs.readFile(path.join(root,'assets/evidence/manifest.json'),'utf8'));
 const buildDir=path.join(root,'.build',version);
 const out=path.join(root,'output');
@@ -77,7 +77,8 @@ function base(index,dark=false){
  const s=pres.slides.add(); s._number=index+1;s._dark=dark;s._scene={number:index+1,dark,elements:[]};scenes.push(s._scene);
  s.background.fill=dark?C.deep:C.white;s._scene.background=dark?C.deep:C.white;
  const sec=sections[index];
- s.speakerNotes.text=`${sec.title}\n\n${sec.markdown}\n\nSources: submission/presentation/demo-slides.md; submission/presentation/assets/brand/README.md. Independent project. Not affiliated with or endorsed by NASA.`;
+ const notes=sec.markdown.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'$1 ($2)').replace(/\*/g,'');
+ s.speakerNotes.text=`${sec.title}\n\n${notes}\n\nSources: submission/presentation/demo-slides.md; submission/presentation/assets/brand/README.md. Independent project. Not affiliated with or endorsed by NASA.`;
  return s;
 }
 function dot(s,x,y,d,color){s.shapes.add({name:'sensor-key',geometry:'ellipse',position:{left:x,top:y,width:d,height:d},fill:color,line:{fill:C.deep,width:0.6,style:'solid'}});s._scene.elements.push({kind:'dot',x,y,w:d,h:d,color});}
