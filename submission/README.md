@@ -4,11 +4,11 @@ Everything for the NASA Space Apps submission. Each folder has one purpose; put 
 
 | Folder | What belongs there |
 |---|---|
-| `deliverables/` | Documents we submit or show to judges, and the data they cite. Nothing else. **Living**: keep them in step with the project at all times. |
+| `deliverables/` | Documents we submit or show to judges. Nothing else. **Living**: keep them in step with the project at all times. |
 | `presentation/` | Everything about the slide deck: slide text, slide images and numbers, sources, builds, screenshots. **Living.** |
 | `video/` | Everything about the demo video: script, production plan, recording checklist, disclosures, footage. **Living.** |
 | `docs/` | External reference only: the official requirements, and general advice from the official guides and our review of the 2025 winners. No information about our project. Not submitted or shown. **Frozen**: do not edit. |
-| `working/` | Our own working documents about the project that are not submitted or shown: form-field plan, status against the requirements, project notes, design notes. **Living.** |
+| `working/` | Our own working documents about the project that are not submitted or shown: form-field plan, status against the requirements, project notes, design notes, and the data snapshots the materials cite. **Living.** |
 | `assets/` | Official third-party material only: logos, colours, fonts, patterns. Nothing we made. |
 
 ## Contents
@@ -17,7 +17,6 @@ Everything for the NASA Space Apps submission. Each folder has one purpose; put 
   - [project page text](deliverables/project-description.md)
   - [technical note](deliverables/technical-note.md)
   - [literature review](deliverables/modis-viirs-harmonization-literature-review.md)
-  - [`firms-snapshot-2026-11-15T0836Z.json`](deliverables/firms-snapshot-2026-11-15T0836Z.json): summary of the feed snapshot behind the live numbers
 - `presentation/`
   - [slide text](presentation/demo-slides.md)
   - [slide images and numbers](presentation/slide-images.md)
@@ -35,6 +34,7 @@ Everything for the NASA Space Apps submission. Each folder has one purpose; put 
   - [status against the formal requirements](working/requirements-status.md)
   - [project notes](working/project-notes.md): how the advice is applied to Earth Fire Calendar
   - [design notes for the harmonized calendar](working/harmonization-design-notes.md): what the challenge asks for, FIRMS data constraints, design decisions and validation plan
+  - [`firms-snapshot-2026-11-15T0836Z.json`](working/firms-snapshot-2026-11-15T0836Z.json): summary of the feed snapshot behind the live numbers in the deliverables and slides
 - `assets/`
   - [official NASA Space Apps brand elements](assets/README.md)
 

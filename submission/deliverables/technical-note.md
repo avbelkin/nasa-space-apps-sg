@@ -31,7 +31,7 @@ The app shows no sample or synthetic detections. The one modelled value, the FRP
 
 ## 2. The problem in the data
 
-One snapshot of the app's feed, fetched on 15 November 2026 at 08:36:16 UTC, window 14 November 08:36 – 15 November 08:36 UTC, whole world. The summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](firms-snapshot-2026-11-15T0836Z.json).
+One snapshot of the app's feed, fetched on 15 November 2026 at 08:36:16 UTC, window 14 November 08:36 – 15 November 08:36 UTC, whole world. The summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](../working/firms-snapshot-2026-11-15T0836Z.json).
 
 | | MODIS (Terra + Aqua) | VIIRS (NOAA-20 + NOAA-21) |
 |---|---|---|
