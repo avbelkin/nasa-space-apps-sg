@@ -19,6 +19,9 @@ internal sealed class NoaaGoesWeather(IHttpClientFactory clients, IMemoryCache c
         new("ABI-L2-ACMF", GoesMeasurements.Product.Cloud,
             [("satellite_cloud_mask", "class 0–3"), ("satellite_cloud_fraction", "1"), ("satellite_cloud_footprint_coverage", "1")]),
         new("ABI-L2-ADPF", GoesMeasurements.Product.Smoke, [("satellite_smoke_flag", "flag")]),
+        new("ABI-L2-CODF", GoesMeasurements.Product.OpticalDepth, [("satellite_cloud_optical_depth_640nm", "1")]),
+        new("ABI-L2-ACHAF", GoesMeasurements.Product.CloudTopHeight, [("satellite_cloud_top_geopotential_height", "m")]),
+        new("ABI-L2-ACTPF", GoesMeasurements.Product.CloudTopPhase, [("satellite_cloud_top_phase", "class 0–5")]),
     ];
 
     public async Task<HotspotWeatherSource[][]> EnrichAsync(IReadOnlyList<FirmsHotspot?> spots, CancellationToken token)

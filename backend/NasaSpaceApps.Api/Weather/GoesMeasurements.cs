@@ -13,7 +13,7 @@ internal static class GoesMeasurements
     private const int Bearings = 16;
     private const int Rings = 3;
 
-    internal enum Product { Infrared, Cloud, Smoke }
+    internal enum Product { Infrared, Cloud, Smoke, OpticalDepth, CloudTopHeight, CloudTopPhase }
 
     public static IReadOnlyDictionary<string, double?> ReadRaster(Stream stream, Product product, FirmsHotspot spot)
     {
@@ -23,33 +23,46 @@ internal static class GoesMeasurements
         if (product == Product.Cloud)
             return ReadCloud(file, grid, spot, center);
 
-        var values = new Dictionary<string, double?>();
-        if (product == Product.Infrared)
+        var (field, value) = product switch
         {
-            var result = center is { } pixel && ReadPixel<byte>(file.Dataset("DQF"), pixel) == 0
-                ? BrightnessTemperature(file.Dataset("CMI"), pixel) : null;
-            values.Add("satellite_infrared_brightness_temperature", result);
-        }
-        else
+            Product.Infrared => ("satellite_infrared_brightness_temperature", SamplePacked("CMI", false)),
+            Product.OpticalDepth => ("satellite_cloud_optical_depth_640nm", SamplePacked("COD", true, opticalDepth: true)),
+            Product.CloudTopHeight => ("satellite_cloud_top_geopotential_height", SamplePacked("HT", true)),
+            Product.CloudTopPhase => ("satellite_cloud_top_phase", SampleCategory("Phase", 5, smoke: false)),
+            Product.Smoke => ("satellite_smoke_flag", SampleCategory("Smoke", 1, smoke: true)),
+            _ => throw new ArgumentOutOfRangeException(nameof(product)),
+        };
+        return new Dictionary<string, double?> { [field] = value };
+
+        double? SamplePacked(string dataset, bool unsigned, bool opticalDepth = false)
         {
-            double? smoke = null;
-            if (center is { } pixel)
-            {
-                var flag = ReadPixel<short>(file.Dataset("DQF"), pixel);
-                var value = ReadPixel<byte>(file.Dataset("Smoke"), pixel);
-                if (flag is >= 0 and <= 255 && (flag & 12) is 0 or 4 && value <= 1)
-                    smoke = value;
-            }
-            values.Add("satellite_smoke_flag", smoke);
+            if (center is not { } pixel) return null;
+            var quality = file.Dataset("DQF");
+            // The optical depth flags use the first two bits for the retrieval algorithm.
+            // Require every other bit to be clear for quantitative use.
+            var good = opticalDepth ? ReadPixel<ushort>(quality, pixel) is 1 or 2 : ReadPixel<byte>(quality, pixel) == 0;
+            return good ? Unpack(file.Dataset(dataset), pixel, unsigned) : null;
         }
-        return values;
+
+        double? SampleCategory(string dataset, byte maximum, bool smoke)
+        {
+            if (center is not { } pixel) return null;
+            var quality = file.Dataset("DQF");
+            var flag = smoke ? ReadPixel<short>(quality, pixel) : ReadPixel<byte>(quality, pixel);
+            var good = smoke ? flag is >= 0 and <= 255 && (flag & 12) is 0 or 4 : flag == 0;
+            var category = ReadPixel<byte>(file.Dataset(dataset), pixel);
+            return good && category <= maximum ? category : null;
+        }
     }
 
-    private static double? BrightnessTemperature(IH5Dataset image, (int Row, int Column) pixel)
+    private static double? Unpack(IH5Dataset image, (int Row, int Column) pixel, bool unsigned)
     {
         var packed = ReadPixel<short>(image, pixel);
         var valid = image.Attribute("valid_range").Read<short[]>();
-        return packed >= valid[0] && packed <= valid[1] ? packed * Attribute(image, "scale_factor") + Attribute(image, "add_offset") : null;
+        int Decode(short bits) => unsigned ? unchecked((ushort)bits) : bits;
+        var count = Decode(packed);
+        return count >= Decode(valid[0]) && count <= Decode(valid[1])
+            ? count * Attribute(image, "scale_factor") + Attribute(image, "add_offset") : null;
     }
 
     private static IReadOnlyDictionary<string, double?> ReadCloud(IH5Group file, Grid grid, FirmsHotspot spot,

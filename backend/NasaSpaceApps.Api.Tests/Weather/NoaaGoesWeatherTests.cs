@@ -31,11 +31,16 @@ public sealed class NoaaGoesWeatherTests
         Assert.Equal(1d, sources[1].Values["satellite_cloud_fraction"].Value);
         Assert.Equal(1d, sources[1].Values["satellite_cloud_footprint_coverage"].Value);
         Assert.Equal(1d, sources[2].Values["satellite_smoke_flag"].Value);
-        var lightning = sources[3].Values["observed_lightning_flash_count_50km"];
+        var opticalDepth = sources[3].Values["satellite_cloud_optical_depth_640nm"];
+        Assert.Equal(4d, opticalDepth.Value);
+        Assert.Equal(Six.AddMinutes(9), opticalDepth.ValidThroughUtc);
+        Assert.Null(sources[4].Values["satellite_cloud_top_geopotential_height"].Value);
+        Assert.Equal(4d, sources[5].Values["satellite_cloud_top_phase"].Value);
+        var lightning = sources[6].Values["observed_lightning_flash_count_50km"];
         Assert.Equal(3d, lightning.Value);
         Assert.Equal(Six.AddMinutes(8).AddSeconds(40), lightning.ValidFromUtc);
         Assert.Equal(Six.AddMinutes(9).AddSeconds(40), lightning.ValidThroughUtc);
-        Assert.Equal(0d, sources[3].Values["observed_lightning_nearest_50km"].Value);
+        Assert.Equal(0d, sources[6].Values["observed_lightning_nearest_50km"].Value);
         Assert.Equal("no_matching_frame", results[1][0].Status);
         Assert.All(results[2], source => Assert.Equal("outside_coverage", source.Status));
     }
@@ -96,11 +101,23 @@ public sealed class NoaaGoesWeatherTests
             var smoke = Grid();
             smoke["Smoke"] = Fill((byte)1);
             smoke["DQF"] = Fill((short)4);
+            var opticalDepth = Grid();
+            opticalDepth["COD"] = Packed(40_000, 0.0001);
+            opticalDepth["DQF"] = Fill((short)1);
+            var cloudHeight = Grid();
+            cloudHeight["HT"] = Packed(40_000, 0.2);
+            cloudHeight["DQF"] = Fill((byte)1);
+            var phase = Grid();
+            phase["Phase"] = Fill((byte)4);
+            phase["DQF"] = Fill((byte)0);
             var objects = new Dictionary<string, byte[]>
             {
                 ["ABI-L2-CMIPF/2026/319/06/OR_ABI-L2-CMIPF-M6C13_G19_s20263190600000_e20263190609000_c20263190610000.nc"] = Bytes(infrared),
                 ["ABI-L2-ACMF/2026/319/06/OR_ABI-L2-ACMF-M6_G19_s20263190600000_e20263190609000_c20263190610000.nc"] = Bytes(clouds),
                 ["ABI-L2-ADPF/2026/319/06/OR_ABI-L2-ADPF-M6_G19_s20263190600000_e20263190609000_c20263190610000.nc"] = Bytes(smoke),
+                ["ABI-L2-CODF/2026/319/06/OR_ABI-L2-CODF-M6_G19_s20263190600000_e20263190609000_c20263190610000.nc"] = Bytes(opticalDepth),
+                ["ABI-L2-ACHAF/2026/319/06/OR_ABI-L2-ACHAF-M6_G19_s20263190600000_e20263190609000_c20263190610000.nc"] = Bytes(cloudHeight),
+                ["ABI-L2-ACTPF/2026/319/06/OR_ABI-L2-ACTPF-M6_G19_s20263190600000_e20263190609000_c20263190610000.nc"] = Bytes(phase),
             };
 
             foreach (var (start, end) in new[] { (520, 540), (540, 560), (560, 580), (580, 600) })
@@ -120,6 +137,11 @@ public sealed class NoaaGoesWeatherTests
             }
             return objects;
         }
+
+        private static H5Dataset Packed(ushort count, double scale) => new(Fill(unchecked((short)count)))
+        {
+            Attributes = new() { ["scale_factor"] = scale, ["add_offset"] = 0d, ["valid_range"] = new short[] { 0, -6 } },
+        };
 
         private static H5File Grid() => new()
         {
