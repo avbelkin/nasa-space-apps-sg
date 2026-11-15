@@ -1,63 +1,63 @@
-# Производственный план ролика с Ламой
+# Production plan for the Lama video
 
-[Сценарий и озвучка](../docs/demo-video.md) · [Раскрытие ИИ](disclosures.md) · [Требования](../docs/formal-requirements.md) · [Рекомендации](../docs/advice.md)
+[Script and narration](../docs/demo-video.md) · [AI disclosures](disclosures.md) · [Requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
 
-Ролик рассчитан на 29 секунд, 1920×1080, 30 кадров/с. Исходники получены; подготовлены изображение рассказчика, короткое вступление и четыре временных снимка прода. Английский голос, переход и полный монтаж пока не созданы. Медиа и материалы ревью хранятся локально в игнорируемой папке submission/assets/lama.
+The video targets 29 seconds, 1920×1080 and 30 fps. Source material has been received; the presenter image, a short opening and four temporary production-site captures are prepared. The English voice, transition and full edit have not yet been produced. Media and review materials remain local in the Git-ignored submission/assets/lama directory.
 
-## Принятые решения после ревью
+## Decisions following review
 
-| Элемент | Решение |
+| Element | Decision |
 |---|---|
-| Вступление | 1,4 с живого видео, затем 0,6 с перехода; весь ролик остаётся 29-секундным |
-| Озвучка | Согласованный текст из 46 слов сохранён; речь начинается после перехода на 2-й секунде |
-| Переход в монитор | Стоп последнего кадра → наезд за 8 кадров → смаз и склейка за 4 кадра → интерфейс за 6 кадров; игрушка уходит за край кадра |
-| Фон | Дорисовка не применяется; without_Lama.MOV не нужен для выбранного перехода |
-| Вертикальное видео | Выбран пользователем вариант с Алексеем: 608×1080 по центру размытой увеличенной копии |
-| Персонаж | Существующая ИИ-версия по фотографии; не зеркалить, кайму шерсти сейчас не исправлять |
-| Место Ламы | Отдельная полоса справа, x≈1640, y=700, высота 340 px; взгляд направлен на глобус |
-| Маркировка | AI-edited image постоянно видна рядом с персонажем с 2-й секунды до конца |
-| Интерфейс | Снимки прода — заменяемая временная подложка. Полноценная запись нужных действий — ближе к финальному функционалу |
+| Opening | 1.4 seconds of live footage followed by a 0.6-second transition; the complete video remains 29 seconds |
+| Narration | Retain the agreed 46-word text; speech begins after the transition at 2 seconds |
+| Transition into the monitor | Hold the final frame → push in over 8 frames → motion blur and cut over 4 frames → reveal the interface over 6 frames; the toy leaves the frame |
+| Background | No reconstruction; without_Lama.MOV is not needed for the selected transition |
+| Portrait footage | The user selected the version showing Alexey: 608×1080 centered over an enlarged, blurred copy |
+| Character | Keep the existing AI-generated image based on the photograph; do not mirror it or change the fur-edge halo now |
+| Lama's position | Separate strip on the right, x≈1640, y=700, height 340 px; looking toward the globe |
+| Label | AI-edited image remains visible beside the character from 2 seconds until the end |
+| Interface | Production-site screenshots are replaceable placeholders. Record the required actions closer to the final feature set |
 
-Вступление не добавляется перед прежним 29-секундным сценарием: это уже часть нового общего тайминга. Название Earth Fire Calendar появляется поверх живого кадра. Дополнительная реплика Meet Earth Fire Calendar не добавляется.
+The opening is included in the new total timing, not prepended to the previous 29-second script. Earth Fire Calendar appears over the live footage. Do not add the extra narration Meet Earth Fire Calendar.
 
-## Локальные материалы
+## Local assets
 
-В submission/assets/lama/prepared находятся:
+The following files are in submission/assets/lama/prepared:
 
-- lama-presenter.png — 1086×1448 RGBA, перегенерация по IMG_1081, а не точная фотографическая вырезка;
-- intro-candidate.mp4 — исходный вертикальный отрезок 8,2–9,6 с из with_Lama.MOV, 1,4 с, SDR, без звука;
-- intro-centered.mp4 — горизонтальная версия с вертикальным кадром по центру размытого фона;
-- intro-no-face.mp4 — резерв с кадрированием 1080×608, x=0, y=780 и увеличением до 1920×1080; меньше деталей, нижняя часть игрушки обрезана;
-- ui/01-modis.png, ui/02-viirs.png, ui/03-all-sensors.png, ui/04-map.png — временные снимки настоящего приложения; URL, время и текст страниц сохранены рядом в JSON;
-- review.html и REVIEW.md — текущий пакет для внешнего ревью.
+- lama-presenter.png — 1086×1448 RGBA, regenerated from IMG_1081 rather than an exact photographic cutout;
+- intro-candidate.mp4 — the original portrait excerpt from 8.2–9.6 seconds of with_Lama.MOV; 1.4 seconds, SDR, muted;
+- intro-centered.mp4 — landscape version with the portrait frame centered over a blurred background;
+- intro-no-face.mp4 — fallback cropped to 1080×608 at x=0, y=780 and enlarged to 1920×1080; detail is softer and the lower part of the toy is cropped;
+- ui/01-modis.png, ui/02-viirs.png, ui/03-all-sensors.png, ui/04-map.png — temporary captures of the real application; adjacent JSON files retain the URL, capture time and page text;
+- review.html and REVIEW.md — the current external-review package.
 
-Платок в живом видео закрывает тело сильнее, чем у персонажа. Смена позы происходит в момент перехода внутрь монитора. На первом монтаже проверить, что связь между игрушкой со спины и рассказчиком считывается сразу.
+The scarf covers more of the toy's body in the live footage than in the presenter image. Change the pose at the transition into the monitor. In the first edit, check that viewers immediately connect the toy seen from behind with the presenter.
 
-## Инструменты и следующий этап
+## Tools and next stage
 
-Для подготовки использованы установленные FFmpeg, sips и Chrome. Изображение создано встроенным редактором изображений ChatGPT. Для анимации выбран отдельный проект Remotion в submission/video/remotion; для голоса — ElevenLabs Multilingual v2 либо собственная запись. Генерация голоса ещё не выполнялась.
+Preparation used the installed FFmpeg, sips and Chrome. The image was created with ChatGPT's built-in image editor. Animation will use a separate Remotion project in submission/video/remotion; narration will use ElevenLabs Multilingual v2 or a human recording. Voice generation has not run.
 
-Remotion пока не установлен. Перед локальной установкой через npm нужно назвать конкретные пакеты, каталог и команду удаления и получить согласие согласно правилам машины. Видеозависимости не добавляются в ui.
+Remotion is not installed yet. Before installing locally through npm, identify the exact packages, destination and removal command, and obtain approval as required by this machine's rules. Do not add video dependencies to ui.
 
-Работу выполняем блоками с остановкой на ревью:
+Work in blocks, stopping for review after each:
 
-1. Исправления после ревью материалов: сценарий, компоновка, маркировка, варианты вступления и публикационные подписи.
-2. После замечаний к этому блоку — короткий переход в монитор и появление Ламы.
-3. После ревью перехода — полный 29-секундный черновик с заменяемой подложкой.
-4. После ревью черновика — финальные действия интерфейса, голос, субтитры и экспорт.
+1. Asset-review corrections: script, composition, labeling, opening variants and publication disclosures.
+2. After feedback on this block: the short transition into the monitor and Lama's entrance.
+3. After transition review: a complete 29-second draft with the replaceable interface background.
+4. After draft review: final interface actions, voice, subtitles and export.
 
-## Финальная запись интерфейса
+## Final interface recording
 
-Записывать настоящую страницу размером 1920×1080 или больше. Для MODIS и VIIRS сохранять один ракурс и одну загрузку данных. Убрать строки статуса обогащения из итоговой композиции; NASA FIRMS и сравниваемые счётчики должны оставаться читаемыми.
+Record the actual page at 1920×1080 or higher. Keep one viewport and one data load for MODIS and VIIRS. Exclude enrichment-status rows from the final composition; NASA FIRMS and the compared counters must remain readable.
 
-До записи найти группу с обоими сенсорами и заполненными геометрией, земным покровом и погодой. Для сцены 17–23 с нужны реальные строки Sat. off-nadir, Land cover и Weather at acquisition, снятые для одной группы. Четыре временных снимка эту сцену не заменяют. Условия съёмки и смысловые ограничения сверять с [рекомендациями](../docs/advice.md#recording-the-video).
+Before recording, find a group containing both sensors with populated geometry, land cover and weather. The 17–23-second scene needs actual Sat. off-nadir, Land cover and Weather at acquisition rows for the same group. The four temporary screenshots do not replace this scene. Check recording conditions and claim boundaries against the [recording advice](../docs/advice.md#recording-the-video).
 
-## Голос, подписи и экспорт
+## Voice, captions and export
 
-Голос записать по [сценарию](../docs/demo-video.md), затем подогнать паузы и английские субтитры по фактическому звуку. Не удлинять текст. Музыка в первый монтаж не заложена; короткий звук перехода можно синтезировать локально.
+Record the voice from the [script](../docs/demo-video.md), then align pauses and English subtitles with the actual audio. Do not lengthen the text. The first edit has no music; a short transition sound can be synthesized locally.
 
-Кадр 1920×1080: интерфейс 1600×900 с x=16, y=24; Лама справа с y=700; подпись AI-edited image под фигурой; субтитры снизу слева. Масштабирование не должно скрывать плитки MODIS/VIIRS, источники и необходимые значения. В деталях использовать увеличение фрагментов записи.
+At 1920×1080, place the 1600×900 interface at x=16, y=24; Lama on the right starting at y=700; AI-edited image below him; and subtitles at the lower left. Scaling must not obscure the MODIS/VIIRS tiles, sources or required values. Enlarge excerpts for the detail scene.
 
-Экспортировать MP4 H.264, 30 кадров/с, звук AAC. Сохранить [раскрытие ИИ](disclosures.md) в описании и метаданных; синтетический голос указывать только если он действительно использован. Проверить ffprobe: около 29 секунд, не больше 30, нужные теги сохранены, звук не обрезан. Просмотреть ролик целиком в движении и на телефоне.
+Export MP4 with H.264, 30 fps and AAC audio. Include [AI disclosures](disclosures.md) in the description and metadata; mention synthesized speech only if it was actually used. Verify with ffprobe: about 29 seconds and no more than 30, required tags retained, and no truncated audio. Watch the entire video in motion and on a phone.
 
-Кадр с Алексеем выбран пользователем; отдельное согласие в текущем процессе не запрашивается. После первого монтажа остаётся проверка принадлежности значков на платке. Готовые документы и макеты не означают готовность финального ролика.
+The user selected the shot showing Alexey; separate consent is not being requested in the current workflow. Scarf-symbol ownership still needs checking after the first edit. Completed documents and mockups do not mean the final video is ready.
