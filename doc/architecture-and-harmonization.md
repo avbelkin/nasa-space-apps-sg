@@ -103,6 +103,21 @@ Models were trained separately and evaluated on held-out 5° geographic blocks. 
 
 The pinned warning checks for a matching detection across the live feed, including detections hidden by the map's sensor filter. It identifies the unmatched pass by spacecraft and instrument family and uses observed distance and intensity bands to give context. The warning describes a specific predicted pass.
 
+## FRP difference on matched passes
+
+The FRP baseline used 15,869 matched pairs from the same 24-hour production snapshot. It predicts the second detection's FRP minus the first detection's FRP in MW. Each direction has a separate L2-regularized Huber regression on the difference of log-transformed FRP values, back-transformed to MW at inference. Evaluation used five folds of held-out 5° geographic blocks.
+
+| Direction | Matched pairs | Median observed difference | No-change MAE | Model MAE |
+| --- | ---: | ---: | ---: | ---: |
+| MODIS → MODIS | 354 | −8.5 MW | 39.1 MW | 14.5 MW |
+| VIIRS → VIIRS | 11,654 | −0.4 MW | 8.0 MW | 5.7 MW |
+| MODIS → VIIRS | 1,546 | −8.7 MW | 19.1 MW | 3.0 MW |
+| VIIRS → MODIS | 2,315 | +5.9 MW | 24.4 MW | 23.2 MW |
+
+First-detection FRP and brightness were the strongest feature group in all four directions. For MODIS → VIIRS, a median shift alone reached 5.2 MW MAE. The full VIIRS → MODIS model improved MAE by about 5% over no change. The measured differences combine changes at the fire with differences in sensor footprint and viewing geometry. The experiment used one day and the existing snapshot features. Weather enrichment remains an open comparison.
+
+For a pinned solo detection, the UI can display the estimated FRP and signed difference for the next predicted pass by a different spacecraft, conditional on a matching detection. It uses the direction-specific fitted coefficients and the same follow-up window as training. The original FIRMS FRP remains visible under the estimate and in the detection timeline.
+
 ## Live hotspot weather enrichment
 
 The [24-hour weather enrichment proposal](./live-hotspot-weather-enrichment.md) ranks weather, surface, and sensor fields for comparing recent MODIS and VIIRS detections. It describes how to attach available weather at each spot's acquisition time.
