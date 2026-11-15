@@ -324,7 +324,7 @@ app.MapPost("/api/fires/spots/weather", (
         return new HotspotWeatherResponse(forecast.Spots.Select((spot, index) =>
             spot is not null && fireWeatherSources[index] is { } source && droughtSources[index] is { } drought &&
                 anomalySources[index] is { } anomaly && fuelMoistureSources[index] is { } fuel
-                ? spot with { Sources = [.. spot.Sources, source, .. observationSources[index], .. gfsSources[index], .. goesSources[index], drought, anomaly, fuel] }
+                ? spot with { Sources = [.. gfsSources[index], .. spot.Sources, source, .. observationSources[index], .. goesSources[index], drought, anomaly, fuel] }
                 : spot).ToArray());
     }));
 

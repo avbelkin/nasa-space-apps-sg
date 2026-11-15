@@ -21,15 +21,21 @@ public sealed class NoaaGfsWeatherTests
         var acquisition = Run.AddHours(6).AddMinutes(24);
 
         var result = await weather.EnrichAsync([Spot(acquisition, 1.5, 101), Spot(acquisition, 1.5, 100.75),
-            Spot(acquisition.AddHours(-1), 1.5, 101)], CancellationToken.None);
+            Spot(acquisition.AddHours(-1), 1.5, 101), Spot(acquisition.AddMinutes(-20), 1.5, 101)], CancellationToken.None);
 
-        Assert.Equal(4, handler.Urls.Count);
+        Assert.Equal(6, handler.Urls.Count);
         Assert.Contains(handler.Urls, url => url.Contains("f006&var_HGT", StringComparison.Ordinal));
         Assert.Contains(handler.Urls, url => url.Contains("sfluxgrbf006.grib2", StringComparison.Ordinal));
         var forecast = result[0][0];
         Assert.Equal(Run, forecast.RunUtc);
+        Assert.Equal(Run.AddHours(6).AddMinutes(10), forecast.PublishedAtUtc);
+        Assert.Equal(1, handler.PublicationUrls.Count(url => url.EndsWith("pgrb2.0p25.f006", StringComparison.Ordinal)));
+        Assert.Equal(Run.AddHours(-6), result[3][0].RunUtc);
+        Assert.True(result[3][0].PublishedAtUtc <= acquisition.AddMinutes(-20));
         Assert.Equal(1.5, forecast.GridLatitude);
         Assert.Equal(101, forecast.GridLongitude);
+        Assert.Equal(301.867, Assert.IsType<double>(forecast.Values["temperature_2m"].Value), 3);
+        Assert.InRange(Assert.IsType<double>(forecast.Values["cloud_cover"].Value), 0, 100);
         var water = forecast.Values["column_cloud_water"];
         Assert.InRange(Assert.IsType<double>(water.Value), 0, 10);
         Assert.Equal(Run.AddHours(6), water.ValidThroughUtc);
@@ -49,6 +55,16 @@ public sealed class NoaaGfsWeatherTests
         Assert.True(snow.ValidFromUtc < snow.ValidThroughUtc);
         Assert.Equal(Run.AddHours(6), snow.ValidThroughUtc);
         Assert.Null(result[2][0].Values["column_cloud_water"].Value);
+    }
+
+    [Fact]
+    public void InterpolatesContinuousFieldsAcrossTheGridAndKeepsCategoricalPixels()
+    {
+        var grid = new GfsGribSubset.Grid(179, 1, [0, 1], 2);
+        var frame = new GfsGribSubset.Frame(Run, Run, Run, grid, [2, 8, null, 6]);
+        Assert.Equal(16d / 3, frame.Interpolate(0.5, 179.5));
+        Assert.Null(frame.Interpolate(1, 179));
+        Assert.Equal(6, frame.Sample(0.9, -180));
     }
 
     [Fact]
@@ -80,10 +96,20 @@ public sealed class NoaaGfsWeatherTests
     private sealed class FixtureHandler : HttpMessageHandler
     {
         public ConcurrentBag<string> Urls { get; } = [];
+        public ConcurrentBag<string> PublicationUrls { get; } = [];
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var url = request.RequestUri!;
+            if (request.Method == HttpMethod.Head)
+            {
+                PublicationUrls.Add(url.AbsoluteUri);
+                var afterHour = url.AbsolutePath.Contains("/00/", StringComparison.Ordinal) &&
+                    (url.AbsolutePath.EndsWith("f006", StringComparison.Ordinal) || url.AbsolutePath.EndsWith("f006.grib2", StringComparison.Ordinal));
+                var publication = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([]) };
+                publication.Content.Headers.LastModified = afterHour ? Run.AddHours(6).AddMinutes(10) : Run.AddHours(2);
+                return Task.FromResult(publication);
+            }
             Urls.Add(url.AbsoluteUri);
             // Real NOMADS subsets from the run at 00 UTC, valid 06 UTC, 15 Nov 2026.
             var file = url.AbsolutePath.Contains("sflux", StringComparison.Ordinal) ? "gfs-snow.grb2" : "gfs-weather.grb2";

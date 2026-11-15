@@ -13,6 +13,35 @@ internal static class GfsGribSubset
     internal sealed record Frame(DateTimeOffset Run, DateTimeOffset Start, DateTimeOffset End, Grid Grid, double?[] Data)
     {
         public double? Sample(double lat, double lon) => Data[Grid.Nearest(lat, lon)];
+
+        public double? Interpolate(double lat, double lon)
+        {
+            var x = Math.Clamp(Math.IEEERemainder(lon - Grid.FirstLongitude, 360) / Grid.LongitudeStep, 0, Grid.Columns - 1);
+            var left = (int)x;
+            var right = Math.Min(left + 1, Grid.Columns - 1);
+            var first = 0;
+            var northward = Grid.Latitudes[^1] > Grid.Latitudes[0];
+            while (first + 1 < Grid.Latitudes.Length && (northward ? Grid.Latitudes[first + 1] < lat : Grid.Latitudes[first + 1] > lat))
+                first++;
+            var second = Math.Min(first + 1, Grid.Latitudes.Length - 1);
+            var rise = Grid.Latitudes[second] - Grid.Latitudes[first];
+            var y = rise == 0 ? 0 : Math.Clamp((lat - Grid.Latitudes[first]) / rise, 0, 1);
+            var u = x - left;
+            var sum = 0d;
+            var weight = 0d;
+            Accumulate(first, left, (1 - y) * (1 - u));
+            Accumulate(first, right, (1 - y) * u);
+            Accumulate(second, left, y * (1 - u));
+            Accumulate(second, right, y * u);
+            return weight > 0 ? sum / weight : null;
+
+            void Accumulate(int row, int column, double factor)
+            {
+                if (factor <= 0 || Data[row * Grid.Columns + column] is not { } sample) return;
+                sum += factor * sample;
+                weight += factor;
+            }
+        }
     }
 
     internal sealed record Grid(double FirstLongitude, double LongitudeStep, double[] Latitudes, int Columns)
@@ -83,7 +112,7 @@ internal static class GfsGribSubset
         // have no level coordinate in the fields we consume.
         var bottom = surface switch
         {
-            100 => Level(product, 23, 1),
+            100 or 103 => Level(product, 23, 1),
             106 => Level(product, 23, 100),
             _ => 0,
         };

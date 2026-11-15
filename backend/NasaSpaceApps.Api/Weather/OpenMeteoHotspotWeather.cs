@@ -31,54 +31,50 @@ internal sealed class OpenMeteoHotspotWeather(
     public async Task<HotspotWeatherResponse> EnrichAsync(
         IReadOnlyList<FirmsHotspot?> spots, CancellationToken cancellationToken)
     {
-        var locations = new Dictionary<(double Lat, double Lng), Task<ForecastPair>>();
-        var result = await Task.WhenAll(spots.Select(EnrichSpotAsync));
-        return new HotspotWeatherResponse(result);
+        var locations = spots.OfType<FirmsHotspot>().Select(Location).Distinct()
+            .OrderBy(point => point.Latitude).ThenBy(point => point.Longitude).ToArray();
+        if (locations.Length == 0)
+            return new HotspotWeatherResponse(new HotspotWeather?[spots.Count]);
 
-        async Task<HotspotWeather?> EnrichSpotAsync(FirmsHotspot? spot)
+        var forecast = FetchAsync(ForecastUrl, locations, ForecastFields,
+            "&models=gfs_seamless&wind_speed_unit=ms&elevation=" + string.Join(',', Enumerable.Repeat("nan", locations.Length)),
+            cancellationToken);
+        var airQuality = FetchAsync(AirQualityUrl, locations, AirQualityFields, "&domains=cams_global", cancellationToken);
+        await Task.WhenAll(forecast, airQuality).ConfigureAwait(false);
+        var forecasts = await forecast;
+        var airQualityFields = await airQuality;
+        var indexes = locations.Select((point, i) => (point, i)).ToDictionary(entry => entry.point, entry => entry.i);
+        return new HotspotWeatherResponse(spots.Select(EnrichSpot).ToArray());
+
+        HotspotWeather? EnrichSpot(FirmsHotspot? spot)
         {
-            if (spot is null)
-            {
-                return null;
-            }
-
-            var location = (Math.Round(spot.Latitude, 2), Math.Round(spot.Longitude, 2));
-            if (!locations.TryGetValue(location, out var task))
-            {
-                task = FetchSourcesAsync(location.Item1, location.Item2, cancellationToken);
-                locations.Add(location, task);
-            }
-
-            var pair = await task.ConfigureAwait(false);
+            if (spot is null) return null;
+            var index = indexes[Location(spot)];
             var acquiredAt = spot.AcquiredAtUtc.ToUniversalTime();
             return new HotspotWeather(acquiredAt,
             [
-                Sample(pair.Forecast, ForecastFields, acquiredAt, "NOAA GFS Seamless", isForecast: true),
-                Sample(pair.AirQuality, AirQualityFields, acquiredAt, "CAMS Global", isForecast: false),
+                Sample(forecasts?[index], ForecastFields, acquiredAt, "NOAA GFS Seamless", isForecast: true),
+                Sample(airQualityFields?[index], AirQualityFields, acquiredAt, "CAMS Global", isForecast: false),
             ]);
         }
     }
 
-    private async Task<ForecastPair> FetchSourcesAsync(double latitude, double longitude, CancellationToken token)
-    {
-        var coordinate = FormattableString.Invariant($"latitude={latitude:F2}&longitude={longitude:F2}");
-        var common = $"{coordinate}&past_hours=48&forecast_hours=1&timeformat=unixtime&timezone=GMT&cell_selection=nearest";
-        var forecast = FetchAsync($"{ForecastUrl}?{common}&models=gfs_seamless&elevation=nan&wind_speed_unit=ms&hourly={string.Join(',', ForecastFields)}", token);
-        var airQuality = FetchAsync($"{AirQualityUrl}?{common}&domains=cams_global&hourly={string.Join(',', AirQualityFields)}", token);
-        await Task.WhenAll(forecast, airQuality).ConfigureAwait(false);
-        return new ForecastPair(await forecast, await airQuality);
-    }
+    private static (double Latitude, double Longitude) Location(FirmsHotspot spot) =>
+        (Math.Round(spot.Latitude, 2), Math.Round(spot.Longitude, 2));
 
-    private async Task<HourlyWeather?> FetchAsync(string url, CancellationToken token)
+    private async Task<HourlyWeather[]?> FetchAsync(string service, (double Latitude, double Longitude)[] locations,
+        string[] fields, string options, CancellationToken token)
     {
+        var latitudes = string.Join(',', locations.Select(location => FormattableString.Invariant($"{location.Latitude:F2}")));
+        var longitudes = string.Join(',', locations.Select(location => FormattableString.Invariant($"{location.Longitude:F2}")));
+        var url = $"{service}?latitude={latitudes}&longitude={longitudes}&past_hours=48&forecast_hours=1" +
+            $"&timeformat=unixtime&timezone=GMT&cell_selection=nearest{options}&hourly={string.Join(',', fields)}";
         var cacheKey = (nameof(OpenMeteoHotspotWeather), url);
-        if (cache.TryGetValue(cacheKey, out HourlyWeather? cached))
+        if (cache.TryGetValue(cacheKey, out HourlyWeather[]? cached))
         {
             return cached;
         }
 
-        // A large planetary feed cannot generate one upstream call per spot. The
-        // selected-spots route bounds the work and the gate limits concurrent calls.
         await fetchGate.WaitAsync(token).ConfigureAwait(false);
         try
         {
@@ -92,7 +88,13 @@ internal sealed class OpenMeteoHotspotWeather(
             response.EnsureSuccessStatusCode();
             await using var stream = await response.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
             using var json = await JsonDocument.ParseAsync(stream, cancellationToken: token).ConfigureAwait(false);
-            var data = Parse(json.RootElement);
+            var root = json.RootElement;
+            HourlyWeather[] data = root.ValueKind switch
+            {
+                JsonValueKind.Object when locations.Length == 1 => [Parse(root)],
+                JsonValueKind.Array when locations.Length == root.GetArrayLength() => root.EnumerateArray().Select(Parse).ToArray(),
+                _ => throw new JsonException("Weather batch size did not match the requested locations."),
+            };
             cache.Set(cacheKey, data, TimeSpan.FromMinutes(10));
             return data;
         }
@@ -100,7 +102,7 @@ internal sealed class OpenMeteoHotspotWeather(
             error is HttpRequestException or OperationCanceledException or JsonException or FormatException or ArgumentOutOfRangeException)
         {
             logger.LogWarning("Weather source {Host} was unavailable: {Message}", new Uri(url).Host, error.Message);
-            cache.Set<HourlyWeather?>(cacheKey, null, TimeSpan.FromMinutes(1));
+            cache.Set<HourlyWeather[]?>(cacheKey, null, TimeSpan.FromMinutes(1));
             return null;
         }
         finally
@@ -276,5 +278,4 @@ internal sealed class OpenMeteoHotspotWeather(
 
     internal sealed record HourlyField(string Unit, WeatherTimeSeries Series);
     internal sealed record HourlyWeather(double Latitude, double Longitude, IReadOnlyDictionary<string, HourlyField> Fields);
-    private sealed record ForecastPair(HourlyWeather? Forecast, HourlyWeather? AirQuality);
 }

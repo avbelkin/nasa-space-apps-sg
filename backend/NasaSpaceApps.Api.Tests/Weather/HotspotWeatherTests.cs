@@ -59,10 +59,34 @@ public sealed class HotspotWeatherTests
         Assert.Null(body.Spots[1]);
         Assert.Equal(first, body.Spots[2]?.AcquiredAtUtc);
         Assert.Null(body.Spots[3]);
-        Assert.Equal(277.15, body.Spots[0]?.Sources[0].Values["temperature_2m"].Value);
-        Assert.Equal(276.15, body.Spots[2]?.Sources[0].Values["temperature_2m"].Value);
+        Assert.Equal("NOAA NOMADS", body.Spots[0]?.Sources[0].Provider);
+        Assert.Equal(277.15, body.Spots[0]?.Sources.Single(source => source.Model == "NOAA GFS Seamless").Values["temperature_2m"].Value);
+        Assert.Equal(276.15, body.Spots[2]?.Sources.Single(source => source.Model == "NOAA GFS Seamless").Values["temperature_2m"].Value);
         Assert.Equal(2, weatherHandler.RequestCount);
-        Assert.Equal("source_unavailable", body.Spots[0]?.Sources[2].Status);
+        Assert.Equal("source_unavailable", body.Spots[0]?.Sources.Single(source => source.Provider == "Copernicus GWIS").Status);
+    }
+
+    [Fact]
+    public async Task MultipleLocationsShareOneRequestPerSupplementalSource()
+    {
+        const string batch = """
+            [
+              { "latitude": 44, "longitude": 6, "hourly_units": {"temperature_2m": "°C"},
+                "hourly": {"time": [0,3600], "temperature_2m": [1,2]} },
+              { "latitude": 45, "longitude": 7, "hourly_units": {"temperature_2m": "°C"},
+                "hourly": {"time": [0,3600], "temperature_2m": [3,4]} }
+            ]
+            """;
+        using var handler = new WeatherHandler(batch);
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var weather = new OpenMeteoHotspotWeather(new TestClientFactory(handler), cache, NullLogger<OpenMeteoHotspotWeather>.Instance);
+        var origin = DateTimeOffset.UnixEpoch;
+        var spots = await weather.EnrichAsync([Spot(origin), Spot(origin.AddHours(1)) with { Latitude = 44, Longitude = 6 },
+            Spot(origin.AddHours(1))], CancellationToken.None);
+
+        Assert.Equal(2, handler.RequestCount);
+        Assert.Equal(new[] { 276.15, 275.15, 277.15 }, spots.Spots.Select(spot =>
+            Assert.IsType<double>(spot!.Sources[0].Values["temperature_2m"].Value)));
     }
 
     [Fact]
