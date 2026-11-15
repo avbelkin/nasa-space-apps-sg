@@ -5,6 +5,7 @@ using NasaSpaceApps.Api.Satellites;
 namespace NasaSpaceApps.Api.Firms;
 
 public sealed record HotspotGeometryBatch(string Status, IReadOnlyList<HotspotGeometry?>? Spots);
+public sealed record HotspotGeometryProgress(string Status, int TotalCount, int ReadyCount, int PendingCount);
 
 public sealed class HotspotGeometryWorker(
     CelesTrakTleDownloader tleDownloader,
@@ -22,8 +23,37 @@ public sealed class HotspotGeometryWorker(
 
     private sealed record Work(IReadOnlyList<FirmsHotspot> Snapshot)
     {
+        public int ProcessedCount;
         public TaskCompletionSource<Dictionary<FirmsHotspot, HotspotGeometry>?> Completion { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    internal HotspotGeometryProgress GetProgress(IReadOnlyList<FirmsHotspot> snapshot, IReadOnlyList<FirmsHotspot> selected)
+    {
+        if (selected.Count == 0) return new("ready", 0, 0, 0);
+        if (!cache.TryGetValue(CacheKey(snapshot), out Work? work) || work is null)
+            return new("pending", selected.Count, 0, selected.Count);
+        if (work.Completion.Task.IsCompletedSuccessfully)
+        {
+            var results = work.Completion.Task.Result;
+            return results is null
+                ? new("unavailable", selected.Count, 0, 0)
+                : new("ready", selected.Count, selected.Count(results.ContainsKey), 0);
+        }
+        var scanned = Volatile.Read(ref work.ProcessedCount);
+        if (scanned == 0) return new("pending", selected.Count, 0, selected.Count);
+
+        var visible = selected.ToHashSet(ReferenceEqualityComparer.Instance);
+        var processed = 0;
+        var ready = 0;
+        for (var i = 0; i < scanned; i++)
+        {
+            var spot = snapshot[i];
+            if (!visible.Contains(spot)) continue;
+            processed++;
+            if (CanCalculate(spot)) ready++;
+        }
+        return new("pending", selected.Count, ready, selected.Count - processed);
     }
 
     internal async Task<HotspotGeometryBatch?> ObserveAsync(
@@ -102,13 +132,15 @@ public sealed class HotspotGeometryWorker(
                 var fleet = await tleDownloader.GetFleetTlesAsync(stoppingToken).ConfigureAwait(false);
                 var calculator = new HotspotGeometryCalculator(fleet);
                 var result = new Dictionary<FirmsHotspot, HotspotGeometry>(work.Snapshot.Count, ReferenceEqualityComparer.Instance);
-                foreach (var spot in work.Snapshot)
+                for (var i = 0; i < work.Snapshot.Count; i++)
                 {
                     stoppingToken.ThrowIfCancellationRequested();
-                    if (spot.Latitude is >= -90 and <= 90 && spot.Longitude is >= -180 and <= 180)
+                    var spot = work.Snapshot[i];
+                    if (CanCalculate(spot))
                     {
                         result[spot] = calculator.Calculate(spot);
                     }
+                    Volatile.Write(ref work.ProcessedCount, i + 1);
                 }
                 work.Completion.TrySetResult(result);
             }
@@ -133,4 +165,7 @@ public sealed class HotspotGeometryWorker(
     }
 
     private static object CacheKey(IReadOnlyList<FirmsHotspot> snapshot) => (typeof(HotspotGeometryWorker), snapshot);
+
+    private static bool CanCalculate(FirmsHotspot spot) =>
+        spot.Latitude is >= -90 and <= 90 && spot.Longitude is >= -180 and <= 180;
 }

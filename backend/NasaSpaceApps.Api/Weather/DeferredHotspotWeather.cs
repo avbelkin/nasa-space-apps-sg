@@ -4,7 +4,11 @@ using NasaSpaceApps.Api.Firms;
 
 namespace NasaSpaceApps.Api.Weather;
 
-public sealed record HotspotWeatherProgress(string Status, int SampledCount, int TargetCount, int EligibleCount);
+public sealed record HotspotWeatherProgress(string Status, int SampledCount, int TargetCount, int EligibleCount)
+{
+    public int PendingCount => TargetCount - SampledCount;
+    public int AvailableCount { get; init; }
+}
 
 internal sealed class DeferredHotspotWeather(
     NoaaGfsWeather forecasts,
@@ -20,28 +24,32 @@ internal sealed class DeferredHotspotWeather(
     private readonly Dictionary<SpotKey, Work> inProgress = [];
     private readonly Channel<Work> queue = Channel.CreateBounded<Work>(new BoundedChannelOptions(4) { SingleReader = true });
 
-    internal async Task<HotspotWeatherProgress> ObserveAsync(IReadOnlyList<FirmsHotspot> spots, DateTimeOffset now, CancellationToken token)
+    internal async Task<HotspotWeatherProgress> ObserveAsync(IReadOnlyList<FirmsHotspot> spots, DateTimeOffset now,
+        bool enrich, CancellationToken token)
     {
         var eligible = spots.Where(spot => spot.AcquiredAtUtc >= now.AddHours(-24) && spot.AcquiredAtUtc <= now)
             .OrderByDescending(spot => spot.AcquiredAtUtc).DistinctBy(Key).ToArray();
         var targets = eligible.Take(MaximumTargets).ToArray();
         Work? work = null;
-        lock (gate)
+        if (enrich)
         {
-            var next = targets.Where(spot => !inProgress.ContainsKey(Key(spot)) && Read(spot) is null)
-                // Keep adjacent points at the same forecast hour together within a pass.
-                .GroupBy(spot => NoaaGfsWeather.SamplingGroup(spot))
-                .SelectMany(group => group).Take(BatchSize).ToArray();
-            if (next.Length > 0)
+            lock (gate)
             {
-                var candidate = new Work(next);
-                if (queue.Writer.TryWrite(candidate))
+                var next = targets.Where(spot => !inProgress.ContainsKey(Key(spot)) && Read(spot) is null)
+                    // Keep adjacent points at the same forecast hour together within a pass.
+                    .GroupBy(spot => NoaaGfsWeather.SamplingGroup(spot))
+                    .SelectMany(group => group).Take(BatchSize).ToArray();
+                if (next.Length > 0)
                 {
-                    foreach (var spot in next) inProgress.Add(Key(spot), candidate);
-                    work = candidate;
+                    var candidate = new Work(next);
+                    if (queue.Writer.TryWrite(candidate))
+                    {
+                        foreach (var spot in next) inProgress.Add(Key(spot), candidate);
+                        work = candidate;
+                    }
                 }
+                work ??= targets.Select(spot => inProgress.GetValueOrDefault(Key(spot))).FirstOrDefault(active => active is not null);
             }
-            work ??= targets.Select(spot => inProgress.GetValueOrDefault(Key(spot))).FirstOrDefault(active => active is not null);
         }
         if (work is not null)
         {
@@ -49,9 +57,13 @@ internal sealed class DeferredHotspotWeather(
             catch (TimeoutException) { }
         }
 
-        var sampled = targets.Count(spot => Read(spot) is not null);
+        var results = targets.Select(Read).OfType<GridSources>().ToArray();
+        var sampled = results.Length;
         return new HotspotWeatherProgress(sampled < targets.Length ? "pending" :
-            targets.Length < eligible.Length ? "partial" : "ready", sampled, targets.Length, eligible.Length);
+            targets.Length < eligible.Length ? "partial" : "ready", sampled, targets.Length, eligible.Length)
+        {
+            AvailableCount = results.Count(source => source.HasData),
+        };
     }
 
     internal async Task<GridSources?[]> GetAsync(IReadOnlyList<FirmsHotspot?> spots, CancellationToken token)
@@ -135,5 +147,6 @@ internal sealed class DeferredHotspotWeather(
         HotspotWeatherSource SoilAnomaly, HotspotWeatherSource Fuel)
     {
         internal IEnumerable<HotspotWeatherSource> All => [.. Forecast, Danger, SoilAnomaly, Fuel];
+        internal bool HasData => All.Any(source => source.Values.Values.Any(value => value.Value.HasValue));
     }
 }

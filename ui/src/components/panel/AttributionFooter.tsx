@@ -1,13 +1,8 @@
-import { CONNECTION_SHORT_LABELS, type ConnectionState } from '../../state/apiStatus'
 import { ChevronDownIcon } from '../icons'
-
-interface AttributionFooterProps {
-  connectionState: ConnectionState
-}
 
 const EXTERNAL = { target: '_blank', rel: 'noopener noreferrer' } as const
 
-export function AttributionFooter({ connectionState }: AttributionFooterProps) {
+export function AttributionFooter() {
   return (
     <footer className="panel-footer">
       <p className="attribution-line">
@@ -133,10 +128,6 @@ export function AttributionFooter({ connectionState }: AttributionFooterProps) {
             </p>
           </div>
         </details>
-        <span className="api-indicator" data-state={connectionState} aria-live="polite">
-          <span className="api-dot" aria-hidden="true" />
-          {CONNECTION_SHORT_LABELS[connectionState]}
-        </span>
       </div>
     </footer>
   )

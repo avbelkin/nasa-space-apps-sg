@@ -270,7 +270,7 @@ app.MapGet("/api/fires/spots", (
     CancellationToken cancellationToken) =>
     ExecuteFirmsQueryAsync(firms, () => firmsClient.GetLiveSpotsAsync(sensor, hours, bbox, cancellationToken,
         includeGeometry: includeGeometry == true, enrichLandCover: enrichLandCover == true, enrichGeometry: enrichGeometry == true,
-        weatherEnrichment: enrichWeather == true ? deferredWeather : null)));
+        weatherEnrichment: deferredWeather, enrichWeather: enrichWeather == true)));
 
 app.MapGet("/api/fires/spots.geojson", (
     string? sensor,

@@ -57,11 +57,14 @@ public sealed class HotspotWeatherTests
         });
         using var client = factory.CreateClient();
         var initial = Assert.IsType<FirmsLiveSpotsResponse>(await client.GetFromJsonAsync<FirmsLiveSpotsResponse>("/api/fires/spots"));
-        Assert.Null(initial.Weather);
+        Assert.Equal(new HotspotWeatherProgress("pending", 0, 2, 2), initial.Weather);
+        Assert.Equal(2, initial.Weather?.PendingCount);
+        Assert.Equal(2, initial.GeometryProgress?.TotalCount);
         Assert.Equal(0, gridHandler.RequestCount);
         var deferred = Assert.IsType<FirmsLiveSpotsResponse>(await client.GetFromJsonAsync<FirmsLiveSpotsResponse>(
             "/api/fires/spots?enrichWeather=true"));
         Assert.Equal(new HotspotWeatherProgress("ready", 2, 2, 2), deferred.Weather);
+        Assert.Equal(0, deferred.Weather?.PendingCount);
         var bulkRequests = gridHandler.RequestCount;
         Assert.True(bulkRequests > 0);
 

@@ -1,4 +1,5 @@
 import type { FireSpotsSensorSummary, FirmsLiveSpotsResponse } from '../../utils/fireSpots'
+import { CONNECTION_SHORT_LABELS, type ConnectionState } from '../../state/apiStatus'
 
 export type LiveFiresState = 'unconfigured' | 'unavailable' | 'loading' | 'ready'
 
@@ -8,14 +9,10 @@ export interface LiveFiresInfo {
   summary: FireSpotsSensorSummary
   // A later refresh failed while an earlier snapshot is still shown
   refreshFailed: boolean
-  enrichmentStopped: boolean
+  enrichmentCheck: { checkedAt: number; delayed: boolean } | null
 }
 
-const ENRICHMENT_LABELS = {
-  pending: 'Spot enrichment in progress',
-  complete: 'Spot enrichment complete',
-  incomplete: 'Spot enrichment incomplete',
-} as const
+const count = (value: number) => value.toLocaleString('en-US')
 
 function formatUtcTimestamp(iso: string | null): string {
   if (!iso) {
@@ -29,13 +26,60 @@ function formatUtcTimestamp(iso: string | null): string {
 }
 
 // Live NASA FIRMS detections of the last 24 hours.
-export function LiveFiresSection({ info }: { info: LiveFiresInfo }) {
-  const { state, payload, summary, refreshFailed, enrichmentStopped } = info
-  const enrichmentStatus = enrichmentStopped ? 'incomplete' : payload?.enrichmentStatus
+export function LiveFiresSection({ info, connectionState }: { info: LiveFiresInfo; connectionState: ConnectionState }) {
+  const { state, payload, summary, refreshFailed, enrichmentCheck } = info
+  const geometry = payload?.geometryProgress
+  const weather = payload?.weather
+  const weatherPending = weather ? weather.pendingCount ?? weather.targetCount - weather.sampledCount : 0
 
   return (
     <section className="panel-section" aria-labelledby="live-fires-heading">
       <h2 id="live-fires-heading">Live active fire spots (NASA FIRMS &middot; 24h)</h2>
+      <div className="live-fire-status" role="status" aria-label="Data service and fire enrichment">
+        <span className="api-indicator" data-state={connectionState}>
+          <span className="api-dot" aria-hidden="true" />
+          {CONNECTION_SHORT_LABELS[connectionState]}
+        </span>
+        {payload && (
+          <dl className="live-fire-stages">
+            <div>
+              <dt>Detections</dt>
+              <dd>{count(payload.count)} loaded</dd>
+            </div>
+            <div>
+              <dt>Observation geometry</dt>
+              <dd>{geometry ? (
+                <>
+                  {count(geometry.readyCount)} ready &middot; {count(geometry.pendingCount)} pending
+                  {geometry.totalCount > geometry.readyCount + geometry.pendingCount &&
+                    <small>{count(geometry.totalCount - geometry.readyCount - geometry.pendingCount)} unavailable</small>}
+                </>
+              ) : payload.geometryStatus === 'unavailable' ? 'Unavailable' : payload.geometryStatus === 'ready' ? 'Ready' : 'Pending'}</dd>
+            </div>
+            <div>
+              <dt>Land cover</dt>
+              <dd>{payload.landCoverPending ? 'Processing' : 'Checked'}</dd>
+            </div>
+            <div>
+              <dt title="Detections with the same coordinates and acquisition time share one weather sample">Weather</dt>
+              <dd>{weather ? (
+                <>
+                  {count(weather.sampledCount)} of {count(weather.targetCount)} checked &middot; {count(weatherPending)} pending
+                  {weather.availableCount !== undefined && <small>{count(weather.availableCount)} with data</small>}
+                  {weather.eligibleCount > weather.targetCount &&
+                    <small>{count(weather.eligibleCount - weather.targetCount)} outside the bulk target</small>}
+                </>
+              ) : 'Waiting for first check'}</dd>
+            </div>
+          </dl>
+        )}
+        {enrichmentCheck && payload && (
+          <small className="live-fire-status-update">
+            Last checked {new Date(enrichmentCheck.checkedAt).toLocaleTimeString()}
+            {enrichmentCheck.delayed && ' · Waiting for updates, checking again'}
+          </small>
+        )}
+      </div>
       {state === 'unconfigured' ? (
         <p className="panel-note">
           Live NASA FIRMS fire spots need the data service, which this build is not connected to.
@@ -50,11 +94,7 @@ export function LiveFiresSection({ info }: { info: LiveFiresInfo }) {
         </p>
       ) : (
         <>
-          <div className="baseline-compare">
-            <div className="metric-tile">
-              <span className="metric-label">Active spots (24h)</span>
-              <span className="metric-value">{summary.totalCount.toLocaleString('en-US')}</span>
-            </div>
+          <div className="baseline-compare live-fire-metrics">
             <div className="metric-tile">
               <span className="metric-label">Peak FRP</span>
               <span className="metric-value">
@@ -75,12 +115,6 @@ export function LiveFiresSection({ info }: { info: LiveFiresInfo }) {
             &middot; Snapshot fetched {formatUtcTimestamp(payload.fetchedAtUtc)}
             {payload.stale ? ' (cached fallback)' : ''}.
           </p>
-          {enrichmentStatus && (
-            <p className="panel-note" role="status"
-              title="Observation geometry and land cover processing for this snapshot. Fields can be missing where source data is unavailable.">
-              {ENRICHMENT_LABELS[enrichmentStatus]}
-            </p>
-          )}
           <p className="panel-note">
             Pulse strength reflects detection age (&lt;24h), dot scale reflects Fire Radiative Power
             (MW), and dot brightness reflects sensor confidence. Hover over a spot to preview its
