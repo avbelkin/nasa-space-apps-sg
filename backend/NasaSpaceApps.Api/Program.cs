@@ -8,7 +8,13 @@ using NasaSpaceApps.Api.NasaOpenApi;
 using NasaSpaceApps.Api.Satellites;
 using NasaSpaceApps.Api.Weather;
 
-var builder = WebApplication.CreateBuilder(args);
+var localWeather = LocalWeatherCredentials.Parse(args);
+var builder = WebApplication.CreateBuilder(localWeather is null ? args : []);
+if (localWeather is not null)
+{
+    builder.Services.AddSingleton(localWeather);
+    builder.Services.AddSingleton<LocalWeatherWorker>();
+}
 
 var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrWhiteSpace(port))
@@ -151,6 +157,15 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+if (localWeather is not null)
+{
+    await using (app)
+    {
+        if (!firmsOptions.IsConfigured) throw new InvalidOperationException("The local weather worker needs the existing FIRMS_MAP_KEY configuration.");
+        await app.Services.GetRequiredService<LocalWeatherWorker>().RunAsync();
+    }
+    return;
+}
 
 app.UseCors();
 app.UseResponseCompression();

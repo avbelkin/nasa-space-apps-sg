@@ -1,10 +1,12 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
 using NasaSpaceApps.Api.Firms;
 using static NasaSpaceApps.Api.Weather.GfsGribSubset;
 
 namespace NasaSpaceApps.Api.Weather;
 
-internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache cache, ILogger<NoaaGfsWeather> logger)
+internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache cache, ILogger<NoaaGfsWeather> logger,
+    LocalWeatherCredentials? local = null)
 {
     public const string HttpClientName = "NoaaGfsWeather";
     private const string BaseUrl = "https://nomads.ncep.noaa.gov/cgi-bin/filter_";
@@ -38,12 +40,13 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
         ("shortwave_radiation", new(0, 4, 192, 1, 0, 0), "W/m²"),
     ];
 
-    private readonly SemaphoreSlim requests = new(4);
+    private readonly SemaphoreSlim requests = new(local is null ? 4 : 1);
+    private long lastLocalFetch;
 
     public async Task<HotspotWeatherSource[][]> EnrichAsync(IReadOnlyList<FirmsHotspot?> spots, CancellationToken token)
     {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
-        deadline.CancelAfter(TimeSpan.FromSeconds(8));
+        deadline.CancelAfter(TimeSpan.FromSeconds(local is null ? 8 : 45));
         var batches = new Dictionary<Tile, Task<Dictionary<Parameter, Frame>?>>();
         var publications = new Dictionary<string, Task<DateTimeOffset?>>();
         return await Task.WhenAll(spots.Select(EnrichSpotAsync)).ConfigureAwait(false);
@@ -341,9 +344,16 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
         try
         {
             await requests.WaitAsync(deadline).ConfigureAwait(false);
+            var fetched = false;
             try
             {
                 if (cache.TryGetValue(key, out cached)) return cached;
+                if (local is not null && lastLocalFetch != 0)
+                {
+                    var remaining = TimeSpan.FromSeconds(10) - Stopwatch.GetElapsedTime(lastLocalFetch);
+                    if (remaining > TimeSpan.Zero) await Task.Delay(remaining, deadline).ConfigureAwait(false);
+                }
+                fetched = true;
                 using var http = clients.CreateClient(HttpClientName);
                 using var response = await http.GetAsync(BuildUrl(tile.West, tile.South, tile.Run, tile.Valid, tile.Snow),
                     HttpCompletionOption.ResponseHeadersRead, deadline).ConfigureAwait(false);
@@ -355,7 +365,11 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
                 cache.Set(key, frames, TimeSpan.FromMinutes(20));
                 return frames;
             }
-            finally { requests.Release(); }
+            finally
+            {
+                if (local is not null && fetched) lastLocalFetch = Stopwatch.GetTimestamp();
+                requests.Release();
+            }
         }
         catch (Exception error) when (!token.IsCancellationRequested && error is HttpRequestException or OperationCanceledException or
             IOException or InvalidDataException or ArgumentException or IndexOutOfRangeException or OverflowException)

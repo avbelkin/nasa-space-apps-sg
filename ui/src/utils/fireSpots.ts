@@ -109,6 +109,7 @@ export interface FirmsLiveSpotsResponse {
     eligibleCount: number
     availableCount?: number
     retryCount?: number
+    coverage?: { cachedCount: number; checkedAtUtc: string } | null
     pendingCount?: number
   }
 }

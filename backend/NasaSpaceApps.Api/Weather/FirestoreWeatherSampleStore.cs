@@ -6,7 +6,8 @@ using System.Text.Json;
 
 namespace NasaSpaceApps.Api.Weather;
 
-internal sealed class FirestoreWeatherSampleStore(IHttpClientFactory clients, IConfiguration config, TimeProvider clock)
+internal sealed class FirestoreWeatherSampleStore(IHttpClientFactory clients, IConfiguration config, TimeProvider clock,
+    LocalWeatherCredentials? local = null)
     : ISharedWeatherSampleStore
 {
     internal const string HttpClientName = "WeatherFirestore";
@@ -14,7 +15,7 @@ internal sealed class FirestoreWeatherSampleStore(IHttpClientFactory clients, IC
     internal const string Collection = "hotspotWeatherV1";
     private const int RequestSize = 128;
     private const string Metadata = "http://metadata.google.internal/computeMetadata/v1/";
-    private readonly string? database = config["WeatherCache:Database"]?.Trim();
+    private readonly string? database = local?.Database ?? config["WeatherCache:Database"]?.Trim();
     private readonly SemaphoreSlim identityGate = new(1);
     private Identity? identity;
 
@@ -77,6 +78,42 @@ internal sealed class FirestoreWeatherSampleStore(IHttpClientFactory clients, IC
         return result;
     }
 
+    public async Task<HotspotWeatherCoverage?> CountAsync(DateTimeOffset now, CancellationToken token)
+    {
+        if (string.IsNullOrEmpty(database)) return null;
+        var auth = await GetIdentityAsync(token).ConfigureAwait(false);
+        var filter = new
+        {
+            compositeFilter = new
+            {
+                op = "AND",
+                filters = new[] { ExpiryFilter("GREATER_THAN", now), ExpiryFilter("LESS_THAN_OR_EQUAL", now.AddHours(24)) },
+            },
+        };
+        var query = new
+        {
+            structuredAggregationQuery = new
+            {
+                structuredQuery = new { from = new[] { new { collectionId = Collection } }, where = filter },
+                aggregations = new[] { new { count = new { }, alias = "cached" } },
+            },
+        };
+        using var json = await SendAsync(auth, "runAggregationQuery", query, token).ConfigureAwait(false);
+        foreach (var row in json.RootElement.EnumerateArray())
+        {
+            if (!row.TryGetProperty("result", out var result)) continue;
+            var count = result.GetProperty("aggregateFields").GetProperty("cached").GetProperty("integerValue").GetString();
+            if (int.TryParse(count, NumberStyles.None, CultureInfo.InvariantCulture, out var cached))
+                return new HotspotWeatherCoverage(cached, now);
+        }
+        throw new JsonException("Missing Firestore weather coverage count.");
+
+        static object ExpiryFilter(string op, DateTimeOffset time) => new
+        {
+            fieldFilter = new { field = new { fieldPath = "expireAt" }, op, value = new { timestampValue = time.UtcDateTime.ToString("O") } },
+        };
+    }
+
     private async Task<Dictionary<WeatherSpotKey, Document>> ReadDocumentsAsync(Identity auth, WeatherSpotKey[] keys, CancellationToken token)
     {
         var documents = keys.ToDictionary(auth.Name);
@@ -111,6 +148,9 @@ internal sealed class FirestoreWeatherSampleStore(IHttpClientFactory clients, IC
 
     private async Task<Identity> GetIdentityAsync(CancellationToken token)
     {
+        if (local is not null)
+            return new Identity($"projects/{Uri.EscapeDataString(local.Project)}/databases/{Uri.EscapeDataString(local.Database)}",
+                local.Token, DateTimeOffset.MaxValue);
         var cached = Volatile.Read(ref identity);
         if (cached is not null && cached.Expires > clock.GetUtcNow()) return cached;
         await identityGate.WaitAsync(token).ConfigureAwait(false);
