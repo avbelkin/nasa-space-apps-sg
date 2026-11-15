@@ -67,13 +67,7 @@ export async function fetchPinnedFireGeometry(
   feedGeometry?: readonly (FireObservationGeometry | null)[],
 ): Promise<(FireObservationGeometry | null)[]> {
   const observations = inputs.map((_, index) => feedGeometry?.[index] ?? null)
-  const requested = inputs.flatMap((spot, index) => {
-    if (observations[index]) return []
-    const { lng, lat, timestamp: timestampMs, satellite } = spot
-    return Number.isFinite(lng) && Number.isFinite(lat) && Number.isSafeInteger(timestampMs) && satellite
-      ? [{ index, key: { lng, lat, timestampMs, satellite } }]
-      : []
-  })
+  const requested = fireObservationKeys(inputs).filter(({ index }) => !observations[index])
   for (let offset = 0; offset < requested.length; offset += MAX_BATCH_SIZE) {
     const entries = requested.slice(offset, offset + MAX_BATCH_SIZE)
     const body = JSON.stringify({ spots: entries.map(({ key }) => key) })
@@ -107,6 +101,15 @@ export async function fetchPinnedFireGeometry(
   return observations
 }
 
+export function fireObservationKeys(inputs: readonly FireSpotTooltipInput[]) {
+  return inputs.flatMap((spot, index) => {
+    const { lng, lat, timestamp: timestampMs, satellite } = spot
+    return Number.isFinite(lng) && Number.isFinite(lat) && Number.isSafeInteger(timestampMs) && satellite
+      ? [{ index, key: { lng, lat, timestampMs, satellite } }]
+      : []
+  })
+}
+
 const metrics: readonly {
   label: string
   unit: string
@@ -127,7 +130,15 @@ export function summarizeFireGeometry(
   inputs: readonly FireSpotTooltipInput[],
   observations: readonly (FireObservationGeometry | null)[],
 ) {
-  const detections: Record<FireInstrument, (FireObservationGeometry | null)[]> = { modis: [], viirs: [] }
+  return summarizeObservations(inputs, observations, metrics)
+}
+
+export function summarizeObservations<T>(
+  inputs: readonly FireSpotTooltipInput[],
+  observations: readonly (T | null)[],
+  fields: readonly { label: string; unit: string; read: (observation: T) => number | null | undefined }[],
+) {
+  const detections: Record<FireInstrument, (T | null)[]> = { modis: [], viirs: [] }
   inputs.forEach(({ instrument }, index) => {
     if (instrument) {
       detections[instrument].push(observations[index] ?? null)
@@ -138,7 +149,7 @@ export function summarizeFireGeometry(
     return null
   }
 
-  const rows = metrics.map(({ label, unit, read }) => ({
+  const rows = fields.map(({ label, unit, read }) => ({
     label,
     bySensor: sensors.map((sensor) => {
       let min = Infinity

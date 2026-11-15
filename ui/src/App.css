@@ -600,6 +600,11 @@
   color: var(--text-muted);
 }
 
+.fire-weather-details > summary {
+  cursor: pointer;
+  padding-block: 0.25rem;
+}
+
 .fire-observation-table {
   inline-size: 100%;
   border-collapse: collapse;
