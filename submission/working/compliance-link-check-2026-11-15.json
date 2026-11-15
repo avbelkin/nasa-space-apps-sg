@@ -529,5 +529,26 @@
       "error": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1000)>"
     }
   ],
-  "local_rechecked_at_utc": "2026-11-15T13:00:05.861270+00:00"
+  "local_rechecked_at_utc": "2026-11-15T13:00:05.861270+00:00",
+  "deployed_correction_verification": {
+    "checked_at_utc": "2026-11-15T13:03:44.975557+00:00",
+    "commit": "c16b7b7009ee5d19a7cae9aa454638d5b5677a63",
+    "github_actions_run_id": 43716738502,
+    "github_actions_conclusion": "success",
+    "public_browser": "Clean headless Chrome, 1440x900, production prepared view, no sign-in",
+    "observations": [
+      "Data service online; captured status panel subsequently showed 65,158 loaded detections, 8,724 filtered MODIS detections; enrichment pending",
+      "EOX 2016 layer requests observed; imagery was still filling in the headless screenshot",
+      "New basemap licence, source credits and model non-responsibility wording present",
+      "Public OG image, AI provenance and dependency-notice files returned 200 and matched local SHA-256 values"
+    ],
+    "basemap_resource_examples": [
+      "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/4/7/12.jpg",
+      "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/4/7/13.jpg",
+      "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/4/7/11.jpg"
+    ],
+    "preview": "https://avbelkin.github.io/nasa-space-apps-sg/og-preview.png",
+    "cors": "API status returned 200 for localhost and production Origin; Access-Control-Allow-Origin is present only for https://avbelkin.github.io, explaining local-preview offline status. No CORS setting was changed.",
+    "limitations": "No cold-start, final media, pinned-output end-to-end or full tile-completion acceptance. Counts are this live check, not the frozen slide snapshot."
+  }
 }

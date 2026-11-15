@@ -30,3 +30,5 @@ Team **Plush**: **Alexey Belkin** and **Viktoriia Naiman**. Lama is a fictional 
 The [anonymous link-check record](compliance-link-check-2026-11-15.json) distinguishes successful project entry points from publisher blocks, TLS errors and incomplete browser verification. No failed automated reference request is silently called a nonexistent paper. FortiGuard classification remains optional.
 
 The application and materials changed in parallel during the audit. Earlier AUROC/FRP baselines, the new GWIS/CAMS comparisons, source edits and voice rejections are retained; no old test count is substituted for the final integrated check. See the detailed audit's verification/accounting section for actual collected results and limitations. No Space Apps form was submitted or edited by this work.
+
+Published correction checkpoint: Pages run 43716738502 for `c16b7b7` completed successfully. A clean production-browser check showed the data service online and 65,158 loaded detections; the EOX 2016 endpoint and updated credits were present. New public preview/provenance/notices matched repository hashes. Final video/deck, cold start and full pinned-output checks remain open.
