@@ -4,12 +4,14 @@ import { FIRE_SPOT_COLORS } from '../src/data/dataPalette.ts'
 import {
   ACTIVE_AGE_SECONDS,
   buildFireSpotsGeoJson,
+  classifyFireSensorGroup,
   COHORT_PHASE_RADIANS,
   compareMatchedFireSpots,
   computeConfidenceOpacity,
   computePowerScale,
   computeWildfireActivity,
   computeWildfirePulse,
+  deduplicateSpotMatches,
   expandHoveredFireSpots,
   formatFireSpotsTooltip,
   FULL_DETAIL_FIRE_SPOT_ZOOM,
@@ -465,6 +467,13 @@ describe('hierarchical z1..z7 spatial decluttering', () => {
       z7Harmonized.map((s) => s.frp),
       [280],
     )
+
+    // At z7 each dot renders individually, but the hit area can select several at once.
+    const z7MixedHit = expandHoveredFireSpots(built, [0, 1, 0], 7, 'harmonized')
+    assert.equal(classifyFireSensorGroup(deduplicateSpotMatches(z7MixedHit)), 'both')
+    assert.equal(classifyFireSensorGroup(z7Harmonized), 'single')
+    const z7ViirsHit = expandHoveredFireSpots(built, [0, 2], 7, 'harmonized')
+    assert.equal(classifyFireSensorGroup(z7ViirsHit), 'viirs')
 
     const z1Modis = expandHoveredFireSpots(built, [1], 1.5, 'modis')
     assert.deepEqual(

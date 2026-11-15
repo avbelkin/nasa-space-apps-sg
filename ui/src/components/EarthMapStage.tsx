@@ -12,7 +12,7 @@ import type {
 } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
-import { FIRE_SPOT_COLORS, MARK_STROKE_COLOR, USER_LOCATION_COLORS } from '../data/dataPalette'
+import { FIRE_SENSOR_GROUP_COLORS, FIRE_SPOT_COLORS, MARK_STROKE_COLOR, USER_LOCATION_COLORS } from '../data/dataPalette'
 import type { ProjectionMode, SensorFilter } from '../data/mapTypes'
 import {
   clampGeolocationTargetZoom,
@@ -81,7 +81,10 @@ import {
 } from '../utils/satelliteAnimation'
 import {
   buildFireSpotsGeoJson,
+  classifyFireSensorGroup,
   compareMatchedFireSpots,
+  computePowerScale,
+  deduplicateSpotMatches,
   expandHoveredFireSpots,
   formatFireSpotsTooltip,
   MIN_FIRE_SPOT_ZOOM,
@@ -100,6 +103,7 @@ import {
   FIRMS_SPOTS_CORE_LAYER_ID,
   FIRMS_SPOTS_PULSE_LAYER_IDS,
   FIRMS_SPOTS_SOURCE_ID,
+  FIRE_SPOT_CORE_RADIUS,
   setFireSpotSensorColors,
   type FireSpotsAnimationController,
 } from '../utils/fireSpotsAnimation'
@@ -324,26 +328,32 @@ const EMPTY_FIRE_SPOTS: BuiltFireSpotsData = {
   },
 }
 
-function buildFireSpotFocusGeoJson(coords: [number, number] | null): FeatureCollection<Point> {
-  if (!coords) {
-    return {
-      type: 'FeatureCollection',
-      features: [],
+function buildFireSpotFocusGeoJson(
+  pinned: PinnedFireSelection | null,
+  hovered: PinnedFireSelection | undefined,
+  colorBySensor: boolean,
+): FeatureCollection<Point> {
+  const features: FeatureCollection<Point>['features'] = []
+  for (const [selection, isPinned] of [[pinned, true], [hovered, false]] as const) {
+    if (!selection?.anchorLngLat) {
+      continue
     }
-  }
-  return {
-    type: 'FeatureCollection',
-    features: [
-      {
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: coords,
-        },
-        properties: {},
+    const group = selection.sensorGroup
+    const color = colorBySensor && group && group !== 'single' ? FIRE_SENSOR_GROUP_COLORS[group] : null
+    if (!isPinned && !color) {
+      continue
+    }
+    // One pointer hit can combine multiple rendered markers, even at full detail.
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: selection.anchorLngLat },
+      properties: {
+        pinned: isPinned,
+        ...(color ? { color, powerScale: selection.peakPowerScale } : {}),
       },
-    ],
+    })
   }
+  return { type: 'FeatureCollection', features }
 }
 
 function setFireLayerVisibility(map: MapLibreMap, layerId: string, visible: boolean): void {
@@ -411,7 +421,7 @@ function queryFireSelectionAtPoint(
     map.getZoom(),
     sensorFilter,
   )
-  const inputs = expanded.length > 0 ? [...expanded, ...fallbackInputs] : fallbackInputs
+  const inputs = deduplicateSpotMatches([...expanded, ...fallbackInputs])
   if (inputs.length === 0) {
     return null
   }
@@ -423,7 +433,14 @@ function queryFireSelectionAtPoint(
       ? [topSpot.lng!, topSpot.lat!]
       : null
 
-  return { inputs, nowMs: Date.now(), anchorLngLat, sensorFilter }
+  return {
+    inputs,
+    nowMs: Date.now(),
+    anchorLngLat,
+    sensorFilter,
+    sensorGroup: classifyFireSensorGroup(inputs),
+    peakPowerScale: computePowerScale(topSpot.frp),
+  }
 }
 
 function createBaseStyle(
@@ -548,6 +565,7 @@ function createBaseStyle(
         id: 'fire-spot-focus-ring',
         type: 'circle',
         source: 'fire-spot-focus',
+        filter: ['==', ['get', 'pinned'], true],
         layout: {
           visibility: initialShowLiveFires ? 'visible' : 'none',
         },
@@ -558,6 +576,21 @@ function createBaseStyle(
           'circle-stroke-width': 3,
           'circle-stroke-color': FIRE_SPOT_COLORS.focusRing,
           'circle-stroke-opacity': ['step', ['zoom'], 0, 1, 1],
+        },
+      },
+      {
+        id: 'fire-spot-selection-color',
+        type: 'circle',
+        source: 'fire-spot-focus',
+        filter: ['has', 'color'],
+        layout: {
+          visibility: initialShowLiveFires ? 'visible' : 'none',
+        },
+        paint: {
+          'circle-radius': FIRE_SPOT_CORE_RADIUS,
+          'circle-color': ['to-color', ['get', 'color'], FIRE_SPOT_COLORS.fill],
+          'circle-stroke-width': 1,
+          'circle-stroke-color': FIRE_SPOT_COLORS.stroke,
         },
       },
       {
@@ -747,8 +780,8 @@ export function EarthMapStage({
     [hoveredSelection, overpassIndex],
   )
   const focusSpotGeoJson = useMemo(
-    () => buildFireSpotFocusGeoJson(pinnedFireSelection?.anchorLngLat ?? null),
-    [pinnedFireSelection],
+    () => buildFireSpotFocusGeoJson(pinnedFireSelection, hoveredSelection, colorFireSpotsBySensor),
+    [pinnedFireSelection, hoveredSelection, colorFireSpotsBySensor],
   )
 
   const latestBuiltFireSpotsRef = useRef(builtFireSpots)
@@ -810,6 +843,7 @@ export function EarthMapStage({
       setFireLayerVisibility(map, layerId, showFires)
     }
     setFireLayerVisibility(map, 'fire-spot-focus-ring', showFires)
+    setFireLayerVisibility(map, 'fire-spot-selection-color', showFires)
     if (!showFires) {
       map.getCanvas().style.cursor = ''
     }
@@ -1178,6 +1212,7 @@ export function EarthMapStage({
           }
         }
         setFireLayerVisibility(map, 'fire-spot-focus-ring', latestShowFiresRef.current)
+        setFireLayerVisibility(map, 'fire-spot-selection-color', latestShowFiresRef.current)
         setFireSpotSensorColors(map, latestFireSensorColorsRef.current)
 
         fireAnimControllerRef.current?.dispose()

@@ -41,6 +41,7 @@ export const FULL_DETAIL_FIRE_SPOT_ZOOM = 7
 export const DECLUTTER_CELL_DEGREES = [2.5, 1.25, 0.6, 0.3, 0.14, 0.06] as const
 
 export type FireInstrument = 'modis' | 'viirs'
+export type FireSensorGroup = FireInstrument | 'both' | 'single'
 export type PhaseCohort = 0 | 1 | 2 | 3
 
 export interface FirmsSourceSummary {
@@ -584,7 +585,7 @@ export function summarizeFireSpotsForSensor(
   }
 }
 
-function deduplicateSpotMatches(spots: readonly FireSpotTooltipInput[]): FireSpotTooltipInput[] {
+export function deduplicateSpotMatches(spots: readonly FireSpotTooltipInput[]): FireSpotTooltipInput[] {
   const seen = new Set<string>()
   const unique: FireSpotTooltipInput[] = []
 
@@ -600,6 +601,21 @@ function deduplicateSpotMatches(spots: readonly FireSpotTooltipInput[]): FireSpo
   }
 
   return unique
+}
+
+export function classifyFireSensorGroup(
+  spots: readonly Pick<FireSpotTooltipInput, 'instrument'>[],
+): FireSensorGroup | null {
+  if (spots.length === 1) {
+    return 'single'
+  }
+  const hasModis = spots.some((spot) => spot.instrument === 'modis')
+  const hasViirs = spots.some((spot) => spot.instrument === 'viirs')
+  if (hasModis && hasViirs) {
+    return 'both'
+  }
+  const instrument = spots[0]?.instrument
+  return instrument && spots.every((spot) => spot.instrument === instrument) ? instrument : null
 }
 
 export function formatFireSpotsTooltip(

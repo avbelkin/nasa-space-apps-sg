@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { SensorFilter } from '../data/mapTypes'
-import { formatFireSpotsTooltip, type FireSpotTooltipInput } from '../utils/fireSpots'
+import { formatFireSpotsTooltip, type FireSensorGroup, type FireSpotTooltipInput } from '../utils/fireSpots'
 import type { SatelliteOverpassIndex } from '../utils/satelliteOverpassTimeline'
 import { FireDetectionPowerSummary, FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
 import { CloseIcon } from './icons'
@@ -10,6 +10,8 @@ export interface PinnedFireSelection {
   nowMs: number
   anchorLngLat: [number, number] | null
   sensorFilter: SensorFilter
+  sensorGroup: FireSensorGroup | null
+  peakPowerScale: number
 }
 
 interface PinnedFireDetailsProps {

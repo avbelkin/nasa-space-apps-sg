@@ -152,6 +152,24 @@ export function buildFireSpotPulseRadiusExpression(pulse: number): ExpressionSpe
   ]
 }
 
+export const FIRE_SPOT_CORE_RADIUS: ExpressionSpecification = [
+  'interpolate',
+  ['linear'],
+  ['zoom'],
+  1,
+  ['*', 3.4, ['get', 'powerScale']],
+  3,
+  ['*', 4.5, ['get', 'powerScale']],
+  5,
+  ['*', 6.0, ['get', 'powerScale']],
+  8,
+  ['*', 8.5, ['get', 'powerScale']],
+  11,
+  ['*', SPOT_RADIUS, ['get', 'powerScale']],
+  15,
+  ['*', 15, ['get', 'powerScale']],
+]
+
 export function buildFireSpotLayers(
   initialSensorFilter: SensorFilter,
   initialVisible: boolean,
@@ -190,23 +208,7 @@ export function buildFireSpotLayers(
     },
     paint: {
       'circle-color': FIRE_SPOT_COLORS.fill,
-      'circle-radius': [
-        'interpolate',
-        ['linear'],
-        ['zoom'],
-        1,
-        ['*', 3.4, ['get', 'powerScale']],
-        3,
-        ['*', 4.5, ['get', 'powerScale']],
-        5,
-        ['*', 6.0, ['get', 'powerScale']],
-        8,
-        ['*', 8.5, ['get', 'powerScale']],
-        11,
-        ['*', SPOT_RADIUS, ['get', 'powerScale']],
-        15,
-        ['*', 15, ['get', 'powerScale']],
-      ],
+      'circle-radius': FIRE_SPOT_CORE_RADIUS,
       'circle-opacity': [
         'interpolate',
         ['linear'],
