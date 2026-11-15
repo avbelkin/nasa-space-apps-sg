@@ -41,3 +41,10 @@ The independent Codex review accepted direction-r8 as a visual checkpoint: clear
 A minor orphan-word observation on the cover was corrected by widening its descriptive paragraph for direction-r9. Final verification of that revision is recorded in its JSON report. PowerPoint was not rerun for this visual checkpoint; the PDF remains the appearance reference. Slides 3–7 are outside this visual acceptance.
 
 The frozen resized evidence set is now tracked (about 1.45 MB), so rebuilding does not require fresh live data. Large raw captures and generated decks remain local. The full seven-slide submission PDF location is still an open item; the two-slide preview must not be substituted for it.
+
+Final delta acceptance: direction-r9 was independently reviewed on both actual PDF pages. The orphan word is fixed; no new overlaps were found. Wording matches the source and r8, chart XML is unchanged, and the main copies are identical. All reviewer jobs finished. Native PowerPoint was not rerun.
+
+```text
+PDF:  da66e084d30fa298bbc7f976e7ae95d9278246cb0c0c2675044052714560164a
+PPTX: 6cfc2ba6a4b0e02b67b5426ceec5b119fbb0414140333c55e799ceed6360d5c5
+```
