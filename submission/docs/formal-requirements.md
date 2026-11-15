@@ -1,8 +1,8 @@
 # Space Apps 2026: formal requirements and checklist
 
-[Slides](demo-slides.md) · [Video script](demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
+[Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](../deliverables/project-description.md) · [Technical note](../deliverables/technical-note.md) · [Form fields](../working/form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
 
-Based on the official guides as retrieved on 14 November 2026 and re-checked against those copies on 15 November. This document covers the rules common to the whole submission (team, deadlines, language, access, rights, people, brand, AI) and the status of Earth Fire Calendar against them. What goes in each form field, and the demo limits, are in the [form fields](form-fields.md).
+Based on the official guides as retrieved on 14 November 2026 and re-checked against those copies on 15 November. This document contains the official rules only and says nothing about our own project; the status of Earth Fire Calendar against them is in the [requirements status](../working/requirements-status.md). It covers the rules common to the whole submission (team, deadlines, language, access, rights, people, brand, AI). What goes in each form field, and the demo limits, are in the [form fields](../working/form-fields.md).
 
 **⛔ — without this the project will not be judged, will not be accepted or will not be eligible for global judging:** the guides or the participant terms say so explicitly. For items without the mark, the sources name no separate consequence, but they remain requirements. For materials without source references, NASA may remove them and withdraw a nomination, award or winner status.
 
@@ -29,8 +29,8 @@ The 2026 guides call AI **Super Intelligence (SI)**; this document says "AI".
 
 Submissions opened on 14 November 2026 at 9:00 in the Local Event's time zone; the **Project** tab appeared on the team page at the same time.
 
-- [ ] ⛔ All [required fields](form-fields.md#summary) are filled in and [both checkboxes](form-fields.md#9-two-checkboxes) are ticked.
-- [ ] ⛔ The project is [submitted](form-fields.md#form-buttons) **by 23:59 on 15 November 2026** in the Local Event's time zone. For the Universal Event — in the local time of the Team Owner's place of residence.
+- [ ] ⛔ All [required fields](../working/form-fields.md#summary) are filled in and [both checkboxes](../working/form-fields.md#9-two-checkboxes) are ticked.
+- [ ] ⛔ The project is [submitted](../working/form-fields.md#form-buttons) **by 23:59 on 15 November 2026** in the Local Event's time zone. For the Universal Event — in the local time of the Team Owner's place of residence.
 - [ ] ⛔ After the deadline the submission is neither saved nor resubmitted: a project saved or submitted later is not eligible for judging. According to the official video, requests for edits and exceptions are not accepted.
 
 ### Language
@@ -48,12 +48,12 @@ Submissions opened on 14 November 2026 at 9:00 in the Local Event's time zone; t
 
 ### Demo and NASA data
 
-- [ ] ⛔ There is a demo and it fits within the [limit](form-fields.md#3-link-to-project-demo).
-- [ ] The [NASA Data](form-fields.md#7-nasa-data) field is filled in.
+- [ ] ⛔ There is a demo and it fits within the [limit](../working/form-fields.md#3-link-to-project-demo).
+- [ ] The [NASA Data](../working/form-fields.md#7-nasa-data) field is filled in.
 
 ### Rights, sources and licenses
 
-- [ ] All external materials are [listed in field 8](form-fields.md#8-space-agency-partner-data-and-other-references).
+- [ ] All external materials are [listed in field 8](../working/form-fields.md#8-space-agency-partner-data-and-other-references).
 - [ ] ⛔ The licenses of all third-party materials are named in the documentation submitted with the project. The participant terms say explicitly: without this information NASA will not accept or publish the solution.
 - [ ] Third-party materials that do not originate from NASA or partner space agencies are freely available without restriction, or are distributed under an open-source license as defined by the [OSI definition](https://opensource.org/osd).
 - [ ] ⛔ The team holds the rights to everything it submits: solutions to which it has no copyright or other rights are not accepted. Copyrighted music, images and text are not used without permission — neither in the project nor in the demo.
@@ -86,7 +86,7 @@ Under the participant terms, solutions with such content are not accepted or pub
 
 ### AI use
 
-What counts as AI and what to answer in the form is in [field 6](form-fields.md#6-use-of-super-intelligence-si). The guide names no separate automatic penalty for breaking the AI rules.
+What counts as AI and what to answer in the form is in [field 6](../working/form-fields.md#6-use-of-super-intelligence-si). The guide names no separate automatic penalty for breaking the AI rules.
 
 - [ ] The project itself states where and how AI was used.
 - [ ] Generated images and video carry a **visible watermark**.
@@ -109,29 +109,5 @@ Judges see the AI disclosures in the project and use them to assess originality,
 ## Where to ask
 
 The official channel is Space Apps Connect: it has a **Project Submission Help** section for submission questions, and NASA Space Apps Navigators and NASA experts answer questions about the challenge and the data. The platform closes when the hackathon ends; taking part in it is optional.
-
-## Earth Fire Calendar: status against the formal requirements
-
-The app was checked on 15 November at 05:15–05:30 SGT against commit `38f0407` and against the public version, opened without sign-in in 1920×1080 and 1440×900 windows; the GitHub Pages deployment was started at 05:16 SGT and completed successfully. Later the same day the code was checked against the repository: the current `main` is `ff90992` (05:29 SGT), one commit newer. For the event in Singapore the deadline is 15 November, 23:59 SGT (UTC+8).
-
-| Requirement | State | What to do |
-|---|---|---|
-| Work started after the kick-off | The repository's first commit was made on 14 November at 14:31 SGT, after the start. The commit history does not establish when work actually began | The team should confirm for itself that no work was done before the start |
-| Link access | The app and the repository opened without sign-in; the backend responded and live FIRMS data loaded | Open both links in a private window before submitting |
-| Basemap license | The app loads the EOX `s2cloudless-2025` layer. The EOX license page, reopened on 15 November, permits free use for non-commercial purposes only, under CC BY-NC-SA 4.0 | The "non-commercial only" restriction does not meet the requirement for third-party materials; this is the conclusion of our check, not a clarification from the organizers. Replace the basemap with a NASA layer or a layer under an open license. Recording the license in References does not lift the restriction; the layer can stay only on a confirmed basis, such as a reply from the organizers |
-| Extremum link | In the app's source credits, the link `https://layers.extremum.org` returned 404 when checked on 15 November; `https://extremum.org/` opens | Replace the link in the app |
-| Licenses of the other third-party layers | Extremum's terms were not checked and are not recorded in the repository; its imagery goes through the app's backend. For CelesTrak only a rate-limiting policy was found. The repository itself does not name the licenses of the data sources — only the credits | Check the terms of each layer and record them in the project documentation |
-| Completeness of credits in the app | The bright-star catalogue appears neither in the **Sources and credits** block nor in the short sources line | Our advice: add the catalogue to the sources block |
-| Site icon | `favicon.svg` is the unmodified logo of the Vite template | Replace it with your own or remove it |
-| Link preview image | `og-preview.png` is not a screenshot but an illustration with the text "MODIS 1 KM · VIIRS 375 M HARMONIZATION"; its provenance is not recorded | If it was AI-generated, it needs a watermark and disclosure; in any case it promises harmonization as finished |
-| Project license | There is no `LICENSE` file in the repository | If something other than Apache 2.0 is wanted, state the license explicitly |
-| AI disclosure | The README and `doc/` have no section on AI use. `Co-Authored-By: Claude` trailers appear in 19 of 106 commits, all by one author. The others have no trailers, although four branches are named `codex/*`, there is an `AGENTS.md` in the root, and the documentation mentions a Google AI Ultra subscription | The number of trailers does not show the full extent. Describe in the README and on the project page all AI tools used: where and for what |
-| AI in the demo | An ordinary screen recording is not AI video generation | If the voiceover is generated, state this in the video description and the file metadata; put a watermark on generated images; name AI assistance with the slide and script text |
-| Music in the demo | Not checked: there was no finished demo | Only with a license that permits such use, and with a line in References; otherwise no music |
-| Brand | No files with NASA logos were found in the repository; by the team's decision the app does not use the Space Apps logo | Do not add the NASA Insignia or Logotype to the demo |
-| Personal data | The email addresses of two authors are visible in the public commit history | The team should decide whether this is acceptable |
-| Availability during judging | The app is hosted on `github.io`, the backend on Cloud Run (`run.app`). The live points, orbits and clouds depend on the backend and the FIRMS key; without them the map shows no detections | Do not shut down the backend or the key before 26 January 2027; after Cloud Run goes into hibernate mode, check the cold start. Do not delete or replace the demo file at the link |
-
-**Not checked:** the project page on the Space Apps site, the Members tab, the Team Contact Information field, the team name and roster, the local judging schedule and the demo itself. These require signing in to the team account or a reply from the organizer; there was no finished video or presentation among the materials checked.
 
 Sources: [Project Submission Guide](https://www.spaceappschallenge.org/resources/project-submission-guide/), [Judging & Awards Guide](https://www.spaceappschallenge.org/resources/judging-awards-guide/), [Participant Terms and Conditions](https://www.spaceappschallenge.org/legal/), [Participant FAQs](https://www.spaceappschallenge.org/resources/participant-faqs/), [Team Formation Guide](https://www.spaceappschallenge.org/resources/team-formation-guide/), [NASA Brand Guidelines](https://www.nasa.gov/nasa-brand-center/brand-guidelines/), [NASA Images and Media](https://www.nasa.gov/nasa-brand-center/images-and-media/), [Space Apps Connect Guide](https://www.spaceappschallenge.org/resources/space-app-connect-guide/).

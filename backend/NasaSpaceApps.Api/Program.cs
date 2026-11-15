@@ -8,7 +8,14 @@ using NasaSpaceApps.Api.NasaOpenApi;
 using NasaSpaceApps.Api.Satellites;
 using NasaSpaceApps.Api.Weather;
 
-var builder = WebApplication.CreateBuilder(args);
+var localWeather = LocalWeatherCredentials.Parse(args);
+var builder = WebApplication.CreateBuilder(localWeather is null ? args : []);
+if (localWeather is not null)
+{
+    builder.Services.AddSingleton(localWeather);
+    builder.Services.AddSingleton<LocalWeatherWorker>();
+    builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
+}
 
 var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrWhiteSpace(port))
@@ -115,14 +122,15 @@ builder.Services.AddSingleton<NoaaSoilMoistureAnomaly>();
 builder.Services.AddHttpClient(UsfsFuelMoisture.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
 builder.Services.AddSingleton<UsfsFuelMoisture>();
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddHttpClient(FirestoreWeatherSampleStore.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(4))
+builder.Services.AddHttpClient(FirestoreWeatherGridStore.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(4))
     .RemoveAllLoggers();
-builder.Services.AddHttpClient(FirestoreWeatherSampleStore.MetadataHttpClientName, client =>
+builder.Services.AddHttpClient(FirestoreWeatherGridStore.MetadataHttpClientName, client =>
 {
     client.Timeout = TimeSpan.FromSeconds(2);
     client.DefaultRequestHeaders.Add("Metadata-Flavor", "Google");
 }).RemoveAllLoggers();
-builder.Services.AddSingleton<ISharedWeatherSampleStore, FirestoreWeatherSampleStore>();
+builder.Services.AddSingleton<FirestoreWeatherGridStore>();
+builder.Services.AddSingleton<EncodedWeatherGridCache>();
 builder.Services.AddSingleton<WeatherSampleCache>();
 builder.Services.AddSingleton<DeferredHotspotWeather>();
 builder.Services.AddHostedService(services => services.GetRequiredService<DeferredHotspotWeather>());
@@ -151,6 +159,15 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+if (localWeather is not null)
+{
+    await using (app)
+    {
+        if (!firmsOptions.IsConfigured) throw new InvalidOperationException("The local weather worker needs the existing FIRMS_MAP_KEY configuration.");
+        await app.Services.GetRequiredService<LocalWeatherWorker>().RunAsync();
+    }
+    return;
+}
 
 app.UseCors();
 app.UseResponseCompression();

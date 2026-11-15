@@ -44,9 +44,10 @@ import {
   summarizeFireSpotsForSensor,
   type FirmsLiveSpotsResponse,
 } from './utils/fireSpots'
-import { formatRainLookbackLabel, type RainLayerMetadata } from './utils/rainCloudShader'
+import type { RainLayerMetadata } from './utils/rainCloudShader'
 import { readPinnedFireGeometry } from './utils/fireObservationGeometry'
 import { buildSatelliteOverpassIndex } from './utils/satelliteOverpassTimeline'
+import { FRP_FORECAST_LOOKAHEAD_MINUTES } from './utils/frpForecast'
 import { fireEnrichmentDelay, fireEnrichmentProgressKey } from './state/fireEnrichment'
 
 const FIRES_REFRESH_INTERVAL_MS = 15 * 60 * 1000
@@ -64,13 +65,10 @@ function App() {
   const [showOrbits, setShowOrbits] = useState<boolean>(initialResolution.state.showOrbits)
   const [showClouds, setShowClouds] = useState<boolean>(initialResolution.state.showClouds)
   const [showRain, setShowRain] = useState<boolean>(initialResolution.state.showRain)
-  const [rainBackMinutes, setRainBackMinutes] = useState<number>(
-    initialResolution.state.rainBackMinutes,
-  )
   const [rainMetadata, setRainMetadata] = useState<RainLayerMetadata>({
     latestAvailableIso: null,
     effectiveTimeIso: null,
-    lookbackMinutes: initialResolution.state.rainBackMinutes,
+    lookbackMinutes: 0,
   })
   const [showNightLights, setShowNightLights] = useState<boolean>(
     initialResolution.state.showNightLights,
@@ -137,7 +135,6 @@ function App() {
       showOrbits,
       showClouds,
       showRain,
-      rainBackMinutes,
       showNightLights,
       showFires,
       extraParams,
@@ -149,7 +146,6 @@ function App() {
     showOrbits,
     showClouds,
     showRain,
-    rainBackMinutes,
     showNightLights,
     showFires,
     extraParams,
@@ -169,7 +165,6 @@ function App() {
       setShowOrbits(parsed.showOrbits)
       setShowClouds(parsed.showClouds)
       setShowRain(parsed.showRain)
-      setRainBackMinutes(parsed.rainBackMinutes)
       setShowNightLights(parsed.showNightLights)
       setShowFires(parsed.showFires)
       setPinnedFireSelection((selection) =>
@@ -422,7 +417,7 @@ function App() {
 
   const overpassBucketMs = Math.floor(nowUnixMs / 300_000) * 300_000
   const overpassIndex = useMemo(
-    () => buildSatelliteOverpassIndex(orbitsPayload?.satellites, overpassBucketMs),
+    () => buildSatelliteOverpassIndex(orbitsPayload?.satellites, overpassBucketMs, FRP_FORECAST_LOOKAHEAD_MINUTES),
     [orbitsPayload, overpassBucketMs],
   )
 
@@ -494,8 +489,8 @@ function App() {
         utcHhMm = `${hh}:${mm} UTC`
       }
     }
-    return `IMERG 30m · ${formatRainLookbackLabel(rainBackMinutes)}${utcHhMm ? ` · ${utcHhMm}` : ''}`
-  }, [rainBackMinutes, rainMetadata.effectiveTimeIso])
+    return `IMERG 30m${utcHhMm ? ` · ${utcHhMm}` : ''}`
+  }, [rainMetadata.effectiveTimeIso])
 
   const unpinFireSelection = useCallback(() => {
     const appFrame = appFrameRef.current
@@ -542,9 +537,6 @@ function App() {
         onShowCloudsChange={setShowClouds}
         showRain={showRain}
         onShowRainChange={setShowRain}
-        rainBackMinutes={rainBackMinutes}
-        onRainBackMinutesChange={setRainBackMinutes}
-        rainMetadata={rainMetadata}
         onRainMetadataChange={setRainMetadata}
         showNightLights={showNightLights}
         onShowNightLightsChange={setShowNightLights}
@@ -583,6 +575,8 @@ function App() {
           <PinnedFireDetails
             selection={pinnedFireSelection}
             feedGeometry={pinnedFeedGeometry}
+            fireFeed={fireSpotsPayload}
+            forecastNowMs={orbitsPayload ? nowUnixMs : undefined}
             landCoverBySpot={landCoverBySpot}
             overpassIndex={overpassIndex}
             onUnpin={unpinFireSelection}

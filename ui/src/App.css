@@ -16,7 +16,8 @@
 @media (min-width: 60rem) {
   .app-frame {
     block-size: 100dvh;
-    grid-template-columns: minmax(0, 1fr) minmax(19rem, 23rem);
+    /* Leave room for the 26rem pinned timeline, panel padding, and scrollbar. */
+    grid-template-columns: minmax(0, 1fr) clamp(32rem, 35vw, 40rem);
     grid-template-rows: auto minmax(0, 1fr);
     grid-template-areas:
       "topbar   topbar"
@@ -66,7 +67,6 @@
 }
 
 .hud-btn:focus-visible,
-.hud-rain-select:focus-visible,
 .segmented-option:focus-visible,
 .satellite-row:focus-visible,
 .sat-marker-badge:focus-visible,
@@ -293,11 +293,6 @@
 
 .map-controls-locate .hud-btn[aria-disabled='true'] {
   cursor: progress;
-}
-
-.hud-rain-step-btn[aria-disabled='true'] {
-  opacity: 0.42;
-  cursor: not-allowed;
 }
 
 /* Neutral light fill instead of blue: on the map, blue means "below typical" only */
@@ -598,6 +593,56 @@
 .fire-observation-status {
   margin: 0;
   color: var(--text-muted);
+}
+
+.fire-frp-forecast {
+  display: grid;
+  gap: 0.2rem;
+  border-block-start: 1px solid var(--border-subtle);
+  padding-block-start: 0.45rem;
+}
+
+.fire-frp-forecast-value {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.fire-frp-forecast-value strong {
+  font-size: var(--fs-20);
+}
+
+.fire-frp-forecast-original {
+  color: var(--text-muted);
+}
+
+.fire-second-pass-note {
+  --fire-second-pass-warning: #92400e;
+  display: grid;
+  gap: 0.2rem;
+  padding-inline-start: 0.5rem;
+  border-inline-start: 2px solid var(--fire-second-pass-warning);
+}
+
+.fire-second-pass-note strong {
+  color: var(--fire-second-pass-warning);
+}
+
+.fire-second-pass-note p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+@media (prefers-color-scheme: dark) {
+  .fire-second-pass-note {
+    --fire-second-pass-warning: #fde68a;
+  }
+
+  .fire-second-pass-note p {
+    color: var(--text-primary);
+  }
 }
 
 .fire-weather-details > summary {
@@ -1098,45 +1143,6 @@
   border: 1px solid rgb(15 23 42 / 0.7);
   box-shadow: 0 0 0 1px rgb(248 250 252 / 0.32);
   forced-color-adjust: none;
-}
-
-/* Top-end rain cloud lookback bar beside MapControls; wraps cleanly down to 320px viewports */
-.map-hud-rain-time {
-  grid-column: 2;
-  grid-row: 2;
-  align-self: start;
-  justify-self: end;
-  margin-inline-end: 0.375rem;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.2rem;
-  max-inline-size: 100%;
-  box-shadow: 0 2px 10px rgb(0 0 0 / 0.35);
-}
-
-.hud-rain-select {
-  appearance: none;
-  flex: 1 1 auto;
-  min-inline-size: 0;
-  max-inline-size: 100%;
-  block-size: var(--hud-btn-size);
-  padding-inline: 0.55rem;
-  border: 1px solid var(--hud-border);
-  border-radius: 0.45rem;
-  background-color: var(--hud-surface);
-  color: #f8fafc;
-  font: inherit;
-  font-size: var(--fs-12, 0.75rem);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-}
-
-.hud-rain-select option {
-  background-color: #0f172a;
-  color: #f8fafc;
 }
 
 /* Outer Side Panel */
@@ -1653,8 +1659,7 @@
     border-color: Highlight;
   }
 
-  .segmented,
-  .hud-rain-select {
+  .segmented {
     border-color: ButtonBorder;
   }
 

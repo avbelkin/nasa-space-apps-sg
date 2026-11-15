@@ -238,7 +238,8 @@ internal sealed class FirmsClient(
             if (!landCoverResult.Pending)
                 cache.Set(responseCacheKey, cachedResponse, LiveResponseCacheDuration);
         }
-        var weatherProgress = weatherEnrichment?.ObserveAsync(cachedResponse.Selected, DateTimeOffset.UtcNow, enrichWeather, cancellationToken);
+        var weatherProgress = weatherEnrichment?.ObserveAsync(cachedResponse.Selected, DateTimeOffset.UtcNow,
+            enrichWeather, cancellationToken, includeCoverage: area == "world" && windowHours == DefaultLiveWindowHours);
         var geometry = await geometryWorker.ObserveAsync(
             snapshot.Spots, cachedResponse.Selected, includeGeometry || enrichGeometry, cancellationToken).ConfigureAwait(false);
         var liveResponse = cachedResponse.Response;
@@ -262,6 +263,13 @@ internal sealed class FirmsClient(
             Weather = weatherProgress is null ? null : await weatherProgress.ConfigureAwait(false),
             IncludeWeatherInEnrichmentStatus = enrichWeather,
         };
+    }
+
+    internal async Task<IReadOnlyList<FirmsHotspot>> GetWorldwideWeatherSpotsAsync(CancellationToken token)
+    {
+        var (_, sources) = ResolveSources("harmonized");
+        var snapshot = await GetAreaSnapshotAsync("world", 2, sources, token).ConfigureAwait(false);
+        return FilterSnapshotSpots(snapshot.Spots, DateTimeOffset.UtcNow, DefaultLiveWindowHours);
     }
 
     private static FirmsLiveSpotsResponse BuildLiveSpotsResponse(

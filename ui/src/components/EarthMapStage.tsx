@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { FeatureCollection, MultiLineString, Point, Polygon } from 'geojson'
 import { LngLat, LngLatBounds, Map as MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl'
 import type {
@@ -40,15 +40,7 @@ import {
   RAIN_CLOUDS_LAYER_ID,
   type RainCloudLayerController,
 } from '../utils/rainCloudLayer'
-import {
-  formatRainLookbackLabel,
-  MAX_RAIN_LOOKBACK_MINUTES,
-  RAIN_FADE_IN_START_ZOOM,
-  RAIN_LOOKBACK_PRESETS,
-  RAIN_TIME_STEP_MINUTES,
-  snapRainLookbackMinutes,
-  type RainLayerMetadata,
-} from '../utils/rainCloudShader'
+import type { RainLayerMetadata } from '../utils/rainCloudShader'
 import {
   createGlobeHaloLayer,
   GLOBE_HALO_LAYER_ID,
@@ -112,7 +104,6 @@ import {
   setFireSpotSensorColors,
   type FireSpotsAnimationController,
 } from '../utils/fireSpotsAnimation'
-import { ChevronLeftIcon, ChevronRightIcon } from './icons'
 import { FireDetectionPowerSummary, FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
 import { FireHoverTooltip } from './FireHoverTooltip'
 import { MapControls } from './MapControls'
@@ -151,9 +142,6 @@ interface EarthMapStageProps {
   onShowCloudsChange: (next: boolean) => void
   showRain: boolean
   onShowRainChange: (next: boolean) => void
-  rainBackMinutes: number
-  onRainBackMinutesChange: (next: number) => void
-  rainMetadata: RainLayerMetadata | null
   onRainMetadataChange?: (metadata: RainLayerMetadata) => void
   showNightLights: boolean
   onShowNightLightsChange: (next: boolean) => void
@@ -653,9 +641,6 @@ export function EarthMapStage({
   onShowCloudsChange,
   showRain,
   onShowRainChange,
-  rainBackMinutes,
-  onRainBackMinutesChange,
-  rainMetadata,
   onRainMetadataChange,
   showNightLights,
   onShowNightLightsChange,
@@ -687,7 +672,6 @@ export function EarthMapStage({
   const cloudLayerRef = useRef<SatelliteCloudLayerController | null>(null)
   const rainLayerRef = useRef<RainCloudLayerController | null>(null)
   const globeHaloLayerRef = useRef<GlobeHaloLayerController | null>(null)
-  const rainSelectId = useId()
   const satMarkersRef = useRef<Map<string, SatelliteMarkerEntry>>(new Map())
   const initialViewportRef = useRef<MapViewportState>(initialViewport)
   const userInteractedRef = useRef(false)
@@ -717,7 +701,6 @@ export function EarthMapStage({
   const latestCloudsDisabledRef = useRef(cloudsDisabled)
   const latestShowCloudsRef = useRef(showClouds)
   const latestShowRainRef = useRef(showRain)
-  const latestRainBackMinutesRef = useRef(rainBackMinutes)
   const latestOnRainMetadataChangeRef = useRef(onRainMetadataChange)
   const latestShowNightLightsRef = useRef(showNightLights)
   const latestSatellitesRef = useRef(satellites)
@@ -1239,7 +1222,6 @@ export function EarthMapStage({
           try {
             const rainLayer = createRainCloudLayer({
               initialVisible: latestShowRainRef.current,
-              initialLookbackMinutes: latestRainBackMinutesRef.current,
               onMetadataChange: (metadata) => latestOnRainMetadataChangeRef.current?.(metadata),
             })
             map.addLayer(rainLayer, 'satellite-swaths-wide-fill')
@@ -1392,11 +1374,6 @@ export function EarthMapStage({
     latestShowRainRef.current = showRain
     rainLayerRef.current?.setVisible(showRain)
   }, [showRain])
-
-  useEffect(() => {
-    latestRainBackMinutesRef.current = rainBackMinutes
-    rainLayerRef.current?.setLookbackMinutes(rainBackMinutes)
-  }, [rainBackMinutes])
 
   useEffect(() => {
     latestShowNightLightsRef.current = showNightLights
@@ -1598,30 +1575,6 @@ export function EarthMapStage({
     moveCamera(map, { center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM }, 600)
   }
 
-  const snappedRainBack = snapRainLookbackMinutes(rainBackMinutes)
-  const canStepRainOlder = snappedRainBack < MAX_RAIN_LOOKBACK_MINUTES
-  const canStepRainNewer = snappedRainBack > 0
-  const effectiveUtcHhMm = rainMetadata?.effectiveTimeIso
-    ? `${rainMetadata.effectiveTimeIso.slice(11, 16)}Z`
-    : null
-  const showRainTimeBar =
-    showRain && (viewport.zoom > RAIN_FADE_IN_START_ZOOM || snappedRainBack > 0)
-  const rainOffsetOptions = useMemo(() => {
-    const hasExactPreset = RAIN_LOOKBACK_PRESETS.some(
-      (preset) => preset.minutes === snappedRainBack,
-    )
-    if (hasExactPreset) {
-      return RAIN_LOOKBACK_PRESETS
-    }
-    return [
-      ...RAIN_LOOKBACK_PRESETS,
-      {
-        minutes: snappedRainBack,
-        label: formatRainLookbackLabel(snappedRainBack),
-      },
-    ].sort((a, b) => a.minutes - b.minutes)
-  }, [snappedRainBack])
-
   // HUD before the canvas in DOM order, so Tab reaches the map controls before MapLibre's own.
   return (
     <main ref={stageRef} className="map-stage" aria-label="Fire activity map">
@@ -1653,58 +1606,6 @@ export function EarthMapStage({
         pulsePaused={pulsePaused}
         onPulsePausedChange={onPulsePausedChange}
       />
-
-      {showRainTimeBar && (
-        <div className="map-hud map-hud-rain-time" role="group" aria-label="Rain cloud time">
-          <button
-            type="button"
-            className="hud-btn hud-icon-btn hud-rain-step-btn"
-            aria-label="Step rain back 30 minutes"
-            title="Older (-30m)"
-            aria-disabled={!canStepRainOlder}
-            onClick={() => {
-              if (canStepRainOlder) {
-                onRainBackMinutesChange(snappedRainBack + RAIN_TIME_STEP_MINUTES)
-              }
-            }}
-          >
-            <ChevronLeftIcon />
-          </button>
-          <label htmlFor={rainSelectId} className="visually-hidden">
-            Rain observation time
-          </label>
-          <select
-            id={rainSelectId}
-            className="hud-rain-select"
-            value={snappedRainBack}
-            onChange={(event) => {
-              onRainBackMinutesChange(snapRainLookbackMinutes(Number(event.target.value)))
-            }}
-          >
-            {rainOffsetOptions.map((option) => (
-              <option key={option.minutes} value={option.minutes}>
-                {option.minutes === snappedRainBack && effectiveUtcHhMm
-                  ? `${option.label} · ${effectiveUtcHhMm}`
-                  : option.label}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="hud-btn hud-icon-btn hud-rain-step-btn"
-            aria-label="Step rain forward 30 minutes"
-            title="Newer (+30m)"
-            aria-disabled={!canStepRainNewer}
-            onClick={() => {
-              if (canStepRainNewer) {
-                onRainBackMinutesChange(Math.max(0, snappedRainBack - RAIN_TIME_STEP_MINUTES))
-              }
-            }}
-          >
-            <ChevronRightIcon />
-          </button>
-        </div>
-      )}
 
       {satelliteHudSection && (
         <div className="map-hud-bottom">

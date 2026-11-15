@@ -1,8 +1,8 @@
 # Earth Fire Calendar: design notes for the harmonized calendar
 
-Companion to the [literature review](modis-viirs-harmonization-literature-review.md). The review covers what is published; these notes record what the challenge asks for, what the FIRMS data can and cannot support, and the design decisions that follow for the harmonized record and the calendar.
+Companion to the [literature review](../deliverables/modis-viirs-harmonization-literature-review.md). The review covers what is published; these notes record what the challenge asks for, what the FIRMS data can and cannot support, and the design decisions that follow for the harmonized record and the calendar.
 
-**Status.** Nothing in sections 3, 5 and 6 is implemented. Metrics, reference scale and calibration method are candidates until they pass the validation in [section 5](#5-validation). Statements about the prototype refer to commit `82f1a17` (15 November 2026).
+**Status.** Nothing in sections 3, 5 and 6 is implemented. Metrics, reference scale and calibration method are candidates until they pass the validation in [section 5](#5-validation). Statements about the prototype in [section 4](#4-prototype-against-these-notes) were made at commit `82f1a17` (15 November 2026); the rows re-checked at `2d3f5df` are marked there. Since `82f1a17` the app has gained first baselines fitted on one 24-hour snapshot (unmatched predicted passes and FRP difference between passes), described in [doc/architecture-and-harmonization.md](../../doc/architecture-and-harmonization.md). They are not the calibration discussed here.
 
 ## 1. What the challenge asks for
 
@@ -131,7 +131,7 @@ The same guide warns of large sampling bias in MODIS analyses over periods short
 
 ## 4. Prototype against these notes
 
-Checked in the code at `82f1a17`:
+Checked in the code at `82f1a17`. Re-checked at `2d3f5df`: confidence, nominal crossing times and storage. The other rows were not re-checked.
 
 | Topic | In the prototype | Note |
 |---|---|---|
@@ -141,7 +141,7 @@ Checked in the code at `82f1a17`:
 | Overpass search | When no sampled position falls inside the swath, the nearest approach is still returned as the latest pass | To be removed or marked before the calculation is used as coverage evidence |
 | Data availability | "Processing" is derived from elapsed time and a fixed delay | Described in the app as an estimate; a timer cannot confirm delivery |
 | Nominal crossing times | The orbit API still returns the historical 10:30 and 13:30 local-time notes for Terra and Aqua | Both satellites have drifted; label as historical nominal times if shown |
-| Storage | In-memory cache only | Raw inputs and daily aggregates for the history need durable files or object storage |
+| Storage | Fire detections are held in memory only. A shared Firestore cache now keeps weather grids, not detections | Raw inputs and daily aggregates for the history need durable files or object storage |
 
 ## 5. Validation
 
@@ -222,7 +222,7 @@ Documentation and studies that the literature review does not cite and that are 
 ## 9. Not checked
 
 - The `type` and `version` fields of the standard products, including `VIIRS_NOAA21_SP`, were not read from FIRMS responses. Confirm them before keying logic to them.
-- No calibration was run. No CMG file was downloaded.
+- No harmonization calibration was run: the baselines in the app are fitted on a single 24-hour snapshot and do not put the two sensors on one scale. No CMG file was downloaded.
 - The static-source layers were not opened: geometry, coverage and classification are unverified.
 - Current overpass times of the satellites were not measured.
 
