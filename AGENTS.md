@@ -9,10 +9,10 @@
 
 Follow the folder rules in [submission/README.md](submission/README.md):
 
-- `submission/deliverables/`: only the documents that are submitted or shown to judges (project page text, technical note, literature review) and the data they cite.
+- `submission/deliverables/`: only the documents that are submitted or shown to judges (project page text, technical note, literature review) and the data they cite. These are living documents: update them whenever the app, the data or the findings change, in the same piece of work.
 - `submission/presentation/`: everything about the slide deck, including the slide text.
 - `submission/video/`: everything about the demo video, including the script and the Git-ignored `lama/` footage.
-- `submission/docs/`: only our own working documents that are not submitted or shown anywhere.
+- `submission/docs/`: frozen reference material that predates the hackathon work, namely external requirements and guidance the submission must or should meet. Never edit, add or remove files there unless the user explicitly asks; if a deliverable disagrees with it, change the deliverable.
 - `submission/assets/`: only official third-party material (logos, colours, fonts, patterns). Nothing we made goes there.
 
 ## Git & Remote Sync Workflow
