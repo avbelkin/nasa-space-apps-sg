@@ -9,6 +9,7 @@ import {
 import type { SatelliteOverpassIndex } from '../utils/satelliteOverpassTimeline'
 import type { FireObservationGeometry } from '../utils/fireObservationGeometry'
 import { getCrossFamilyPassOutlook, getSecondPassOutlook } from '../utils/secondPassOutlook'
+import { forecastNextPassFrp } from '../utils/frpForecast'
 import { FireDetectionPowerSummary, FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
 import { FireObservationDetails } from './FireObservationDetails'
 import { CloseIcon } from './icons'
@@ -26,10 +27,15 @@ interface PinnedFireDetailsProps {
   landCoverBySpot: FireSpotLandCoverLookup
   overpassIndex: SatelliteOverpassIndex | null
   fireFeed: FirmsLiveSpotsResponse | null
+  forecastNowMs?: number
   onUnpin: () => void
 }
 
-export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, overpassIndex, fireFeed, onUnpin }: PinnedFireDetailsProps) {
+const frpFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 })
+const differenceFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1, signDisplay: 'exceptZero' })
+const passTimeFormat = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
+
+export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, overpassIndex, fireFeed, forecastNowMs, onUnpin }: PinnedFireDetailsProps) {
   const details = useMemo(
     () => formatFireSpotsTooltip(selection.inputs, selection.nowMs, {
       sensorFilter: selection.sensorFilter,
@@ -44,6 +50,17 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
     if (spot.lat === undefined || spot.lng === undefined) return null
     return getCrossFamilyPassOutlook(spot, overpassIndex.evaluateAtLatLng(spot.lat, spot.lng), fireFeed)
   }, [details?.count, fireFeed, overpassIndex, selection.inputs])
+  const forecast = useMemo(() => {
+    if (details?.count !== 1 || forecastNowMs === undefined || !overpassIndex) return null
+    const spot = selection.inputs[0]
+    if (spot.lng === undefined || spot.lat === undefined) return null
+    const row = fireFeed?.spots.find(([lng, lat, timestamp, , , , , satellite]) =>
+      lng === spot.lng && lat === spot.lat && timestamp === spot.timestamp && satellite === spot.satellite)
+    return forecastNextPassFrp(
+      spot, overpassIndex.evaluateAtLatLng(spot.lat, spot.lng), forecastNowMs,
+      feedGeometry?.[0], row?.[9]?.dominantCode,
+    )
+  }, [details?.count, feedGeometry, fireFeed, forecastNowMs, overpassIndex, selection.inputs])
   if (!details?.timeline) {
     return null
   }
@@ -73,7 +90,7 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
                 {selection.anchorLngLat[0].toFixed(3)}&deg;
               </span>
             )}
-            <FireDetectionPowerSummary timeline={timeline} />
+            {!forecast && <FireDetectionPowerSummary timeline={timeline} />}
             {details.landCoverLabel && (
               <span className="fire-land-cover">Land cover · {details.landCoverLabel}</span>
             )}
@@ -84,6 +101,16 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
           Unpin
         </button>
       </header>
+      {forecast && (
+        <div className="fire-frp-forecast">
+          <span>Predicted FRP if detected · {forecast.pass.satellite} · {passTimeFormat.format(forecast.pass.timestampMs)}</span>
+          <div className="fire-frp-forecast-value">
+            <strong>{frpFormat.format(forecast.predictedMw)} MW</strong>
+            <span>{differenceFormat.format(forecast.differenceMw)} MW change</span>
+          </div>
+          <span className="fire-frp-forecast-original">Original detection {frpFormat.format(forecast.originalMw)} MW</span>
+        </div>
+      )}
       <FireDetectionsTimelineCard timeline={timeline} />
       {outlook && (
         <div className="fire-second-pass-note">

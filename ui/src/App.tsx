@@ -47,6 +47,7 @@ import {
 import { formatRainLookbackLabel, type RainLayerMetadata } from './utils/rainCloudShader'
 import { readPinnedFireGeometry } from './utils/fireObservationGeometry'
 import { buildSatelliteOverpassIndex } from './utils/satelliteOverpassTimeline'
+import { FRP_FORECAST_LOOKAHEAD_MINUTES } from './utils/frpForecast'
 import { fireEnrichmentDelay, fireEnrichmentProgressKey } from './state/fireEnrichment'
 
 const FIRES_REFRESH_INTERVAL_MS = 15 * 60 * 1000
@@ -422,7 +423,7 @@ function App() {
 
   const overpassBucketMs = Math.floor(nowUnixMs / 300_000) * 300_000
   const overpassIndex = useMemo(
-    () => buildSatelliteOverpassIndex(orbitsPayload?.satellites, overpassBucketMs),
+    () => buildSatelliteOverpassIndex(orbitsPayload?.satellites, overpassBucketMs, FRP_FORECAST_LOOKAHEAD_MINUTES),
     [orbitsPayload, overpassBucketMs],
   )
 
@@ -584,6 +585,7 @@ function App() {
             selection={pinnedFireSelection}
             feedGeometry={pinnedFeedGeometry}
             fireFeed={fireSpotsPayload}
+            forecastNowMs={orbitsPayload ? nowUnixMs : undefined}
             landCoverBySpot={landCoverBySpot}
             overpassIndex={overpassIndex}
             onUnpin={unpinFireSelection}

@@ -600,6 +600,29 @@
   color: var(--text-muted);
 }
 
+.fire-frp-forecast {
+  display: grid;
+  gap: 0.2rem;
+  border-block-start: 1px solid var(--border-subtle);
+  padding-block-start: 0.45rem;
+}
+
+.fire-frp-forecast-value {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.fire-frp-forecast-value strong {
+  font-size: var(--fs-20);
+}
+
+.fire-frp-forecast-original {
+  color: var(--text-muted);
+}
+
 .fire-second-pass-note {
   --fire-second-pass-warning: light-dark(#92400e, #fde68a);
   display: grid;
