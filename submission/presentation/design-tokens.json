@@ -1,8 +1,30 @@
 {
-  "slide": {"width": 1600, "height": 900, "margin": 80},
-  "colors": {"deep": "#07173F", "electric": "#0042A6", "neonBlue": "#0960E1", "blue": "#2E96F5", "yellow": "#EAFE07", "white": "#FFFFFF"},
-  "fonts": {"display": "Fira Sans Black", "heading": "Fira Sans", "body": "Overpass"},
-  "sizes": {"cover": 80, "heading": 52, "lead": 30, "body": 25, "small": 20},
+  "slide": {
+    "width": 1600,
+    "height": 900,
+    "margin": 80
+  },
+  "colors": {
+    "deep": "#07173F",
+    "electric": "#0042A6",
+    "neonBlue": "#0960E1",
+    "blue": "#2E96F5",
+    "yellow": "#EAFE07",
+    "white": "#FFFFFF"
+  },
+  "fonts": {
+    "display": "Fira Sans Black",
+    "heading": "Fira Sans",
+    "body": "Overpass"
+  },
+  "sizes": {
+    "cover": 112,
+    "metric": 128,
+    "heading": 64,
+    "lead": 32,
+    "body": 25,
+    "small": 20
+  },
   "patternOpacity": 0.25,
   "reference": "assets/brand/palette.json"
 }

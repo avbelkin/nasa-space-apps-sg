@@ -5,6 +5,7 @@ import {pathToFileURL} from 'node:url';
 import crypto from 'node:crypto';
 import {renderVectorPdf} from './render-pdf.mjs';
 import {patchPptx} from './patch-pptx.mjs';
+import {drawFirstBlock} from './first-block.mjs';
 
 // Uses existing managed dependencies only. No package or font installation.
 const root=import.meta.dirname;
@@ -30,7 +31,10 @@ const source=await fs.readFile(sourcePath,'utf8');
 const sections=[...source.matchAll(/^## Slide (\d+) — (.+)\n([\s\S]*?)(?=^## Slide |$(?![\s\S]))/gm)].map(m=>({number:+m[1],title:m[2],markdown:m[3].trim(),blocks:m[3].trim().split(/\n\s*\n/)}));
 if(sections.length!==7) throw Error(`Expected seven source slides, got ${sections.length}`);
 const snapshot=JSON.parse(await fs.readFile(path.join(root,'assets/data/firms-snapshot-2026-11-15T0836Z.json'),'utf8'));
-const version=process.env.DECK_VERSION || 'scaffold-r6';
+const firstBlock=process.env.DECK_SCOPE==='first-block';
+const slideCount=firstBlock?2:7;
+const version=process.env.DECK_VERSION || (firstBlock?'direction-r7':'scaffold-r7');
+const evidence=JSON.parse(await fs.readFile(path.join(root,'assets/evidence/manifest.json'),'utf8'));
 const buildDir=path.join(root,'.build',version);
 const out=path.join(root,'output');
 await fs.mkdir(buildDir,{recursive:true});
@@ -75,7 +79,7 @@ function base(index,dark=false){
  s.background.fill=dark?{type:'gradient',gradientKind:'linear',angleDeg:45,stops:[{offset:0,color:C.electric},{offset:100000,color:C.deep}]}:C.white;
  const sec=sections[index];
  s.speakerNotes.text=`${sec.title}\n\n${sec.markdown}\n\nSources: submission/presentation/demo-slides.md; submission/presentation/assets/brand/README.md. Independent project. Not affiliated with or endorsed by NASA.`;
- if(index>0)text(s,String(index+1).padStart(2,'0'),1475,index===1?860:850,45,30,S.small,{color:dark?C.white:C.deep,align:'right',name:'slide-number'});
+ if(index>1)text(s,String(index+1).padStart(2,'0'),1475,index===1?860:850,45,30,S.small,{color:dark?C.white:C.deep,align:'right',name:'slide-number'});
  return s;
 }
 async function pattern(s,name,x,y,w,h){
@@ -88,7 +92,8 @@ async function pattern(s,name,x,y,w,h){
  return img;
 }
 async function image(s,file,x,y,w,h,alt,opt={}){
- const filePath=path.join(root,file);s.images.add({blob:new Uint8Array(await fs.readFile(filePath)),contentType:'image/png',alt,fit:opt.fit||'contain',geometry:opt.circle?'ellipse':'rect',position:{left:x,top:y,width:w,height:h}});
+ const optimized=evidence.images.find(e=>e.original===path.basename(file));
+ const filePath=optimized?path.join(root,'assets/evidence',optimized.file):path.join(root,file);s.images.add({blob:new Uint8Array(await fs.readFile(filePath)),contentType:filePath.endsWith('.jpg')?'image/jpeg':'image/png',alt,fit:opt.fit||'contain',geometry:opt.circle?'ellipse':'rect',position:{left:x,top:y,width:w,height:h}});
  s._scene.elements.push({kind:'image',path:filePath,x,y,w,h,alt,fit:opt.fit||'contain',circle:opt.circle});
 }
 function textHeight(md,width,size){
@@ -107,35 +112,8 @@ function flowList(s,items,x,y,w,size=S.body,gap=22){
  for(const item of items){const h=textHeight(item,w-28,size);text(s,'•',x,y,20,30,size);text(s,item,x+28,y,w-28,h,size);y+=h+gap;}return y;
 }
 
-// 1 — cover, all current text retained.
-{
- const s=base(0,true),b=sections[0].blocks;
- await pattern(s,'orbits',0,0,1600,900);
- await image(s,'assets/screenshots/cover-sensors.png',910,125,610,610,'Earth Fire Calendar globe with live detections coloured by sensor. This is a later snapshot than the count comparison on slide 2.',{circle:true,fit:'cover'});
- text(s,sections[0].title.replace(' Calendar','\nCalendar'),80,70,800,208,S.cover,{font:T.fonts.display,name:'headline'});
- text(s,b[0],80,300,760,110,S.lead,{color:C.yellow});
- text(s,b[1],80,436,760,116,S.body);
- text(s,b[2],80,592,760,60,S.small);
- text(s,b[3],80,672,760,40,S.small);
- text(s,b[4],80,741,760,95,S.small);
- s.speakerNotes.text+='\nCover screenshot metadata: assets/screenshots/capture-scenes.json. Data: NASA FIRMS. Basemap: EOX / Copernicus Sentinel-2. This later illustration does not represent the count snapshot on slide 2.';
-}
-// 2 — data comparison, grounded in the saved 08:36 UTC snapshot.
-{
- const s=base(1),b=sections[1].blocks; title(s,sections[1].title);
- text(s,b[0],80,169,1440,90,S.lead);
- const list=b[1].split('\n').map(t=>t.replace(/^- /,''));
- text(s,list[2],80,268,1440,70,S.body);
- text(s,list[0],80,382,610,112,S.body);
- text(s,list[1],80,538,610,148,S.body);
- const alt='Worldwide NASA FIRMS detections in the same 24 hours: MODIS 8,127; VIIRS 79,349. Snapshot 15 November 2026, 08:36 UTC. Fixed value axis from 0 to 100,000.';
- s.charts.add('bar',{position:{left:760,top:350,width:760,height:310},categories:['VIIRS','MODIS'],series:[{name:'Worldwide detections in 24 hours',values:[snapshot.viirsCount,snapshot.modisCount],fill:C.electric}],barOptions:{direction:'bar',grouping:'clustered',gapWidth:110},hasLegend:false,chartFill:'none',plotAreaFill:'none',chartLine:{fill:'none',width:0,style:'solid'},xAxis:{visible:true,textStyle:{typeface:T.fonts.body,fontSize:S.body,fill:C.deep},line:{fill:'none',width:0,style:'solid'}},yAxis:{visible:false,min:0,max:100000,majorGridlines:null},dataLabels:{showValue:true,position:'outEnd',numberFormatCode:'#,##0',textStyle:{typeface:T.fonts.body,fontSize:S.lead,bold:true,fill:C.deep}}});
- s._scene.elements.push({kind:'chart',x:760,y:350,w:760,h:310,modis:snapshot.modisCount,viirs:snapshot.viirsCount,max:100000,alt});
- text(s,b[3],790,686,730,35,S.small);
- rect(s,0,755,1600,100,C.deep);
- text(s,b[2],80,775,1440,75,S.body,{color:C.white});
- s.speakerNotes.text+='\nChart values: submission/presentation/assets/data/firms-snapshot-2026-11-15T0836Z.json. Native editable chart. Fresh screenshots intentionally not used for this historical count comparison.';
-}
+await drawFirstBlock({base,text,rect,image,sections,snapshot,T});
+if(!firstBlock){
 // 3–7: completed visual framework; original copy and team placeholders retained.
 {
  const s=base(2,true),b=sections[2].blocks;title(s,sections[2].title);
@@ -195,8 +173,10 @@ function flowList(s,items,x,y,w,size=S.body,gap=22){
  text(s,b[5],80,829,1340,30,S.small);
 }
 
+}
+
 // Verify that every source paragraph and title is represented on its slide.
-const coverage=sections.map(sec=>{
+const coverage=sections.slice(0,slideCount).map(sec=>{
  const rendered=content.filter(x=>x.slide===sec.number).map(x=>x.text).join(' ');
  const expected=[sec.title,...sec.blocks.flatMap(b=>b.split('\n').map(line=>line.replace(/^(?:- |\d+\. )/,'')))];
  const missing=expected.filter(v=>!rendered.includes(plain(v)));
@@ -209,7 +189,7 @@ await (await PresentationFile.exportPptx(pres)).save(candidate);
 await patchPptx({candidate,scenes,modules});
 const {finalizePresentation}=await import(pathToFileURL(path.join(skill,'container_tools/artifact_tool_utils.mjs')));
 const final=path.join(out,`earth-fire-calendar-${version}.pptx`);
-const receipt=await finalizePresentation({workspaceDir:root,candidatePath:candidate,finalPath:final,pythonExecutable:python,integrityValidatorPath:path.join(skill,'container_tools/inspect_presentation_package_integrity.py'),layoutValidatorPath:path.join(skill,'container_tools/inspect_presentation_layout_geometry.py'),layoutArgs:['--expected-slide-size-emu','15240000,8572500','--validate-heading-fit'],explicitTotalSlideCount:7,requiredNativeChartOwnerSlides:[2],requiredNativeTableOwnerSlides:[],materializeLiteralChartWorkbooks:true,fontPolicy:{basis:'design',families:['Fira Sans Black','Fira Sans','Overpass']},verifyArtifactToolImport:true,receiptPath:path.join(buildDir,'validation.json')});
+const receipt=await finalizePresentation({workspaceDir:root,candidatePath:candidate,finalPath:final,pythonExecutable:python,integrityValidatorPath:path.join(skill,'container_tools/inspect_presentation_package_integrity.py'),layoutValidatorPath:path.join(skill,'container_tools/inspect_presentation_layout_geometry.py'),layoutArgs:['--expected-slide-size-emu','15240000,8572500','--validate-heading-fit'],explicitTotalSlideCount:slideCount,requiredNativeChartOwnerSlides:[2],requiredNativeTableOwnerSlides:[],materializeLiteralChartWorkbooks:true,fontPolicy:{basis:'design',families:['Fira Sans Black','Fira Sans','Overpass']},verifyArtifactToolImport:true,receiptPath:path.join(buildDir,'validation.json')});
 console.log('PPTX finalized',final);
 for(let i=0;i<pres.slides.items.length;i++) {
  const image=await pres.export({slide:pres.slides.items[i],format:'png',scale:2});
@@ -222,9 +202,9 @@ for(let i=0;i<pres.slides.items.length;i++) {
 const pdfResult=await renderVectorPdf({root,version,slides:scenes,tokens:T,buildDir,out});
 const sharp=require('sharp');
 const thumbnails=await Promise.all(scenes.map(async(s,i)=>({input:await sharp(path.join(buildDir,`pdf-slide-${i+1}.png`)).resize(800,450).png().toBuffer(),left:20+(i%2)*820,top:20+Math.floor(i/2)*470})));
-await sharp({create:{width:1660,height:1900,channels:3,background:'#E8EDF4'}}).composite(thumbnails).png().toFile(path.join(out,`earth-fire-calendar-${version}-overview.png`));
+await sharp({create:{width:1660,height:20+Math.ceil(slideCount/2)*470,channels:3,background:'#E8EDF4'}}).composite(thumbnails).png().toFile(path.join(out,`earth-fire-calendar-${version}-overview.png`));
 await fs.writeFile(path.join(buildDir,'content.json'),JSON.stringify(content,null,2));
 await fs.writeFile(path.join(buildDir,'scene.json'),JSON.stringify(scenes,null,2));
 await fs.writeFile(path.join(buildDir,'pdf-export.json'),JSON.stringify(pdfResult,null,2));
-await fs.writeFile(path.join(buildDir,'source.json'),JSON.stringify({path:'demo-slides.md',sha256:crypto.createHash('sha256').update(source).digest('hex'),checkpoint:version,slideCount:7},null,2));
-console.log('Rendered seven slides, PDF and overview; source copy coverage complete.');
+await fs.writeFile(path.join(buildDir,'source.json'),JSON.stringify({path:'demo-slides.md',sha256:crypto.createHash('sha256').update(source).digest('hex'),checkpoint:version,slideCount},null,2));
+console.log(`Rendered ${slideCount} slides, PDF and overview; source copy coverage complete.`);

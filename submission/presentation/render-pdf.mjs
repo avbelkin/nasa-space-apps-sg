@@ -26,13 +26,14 @@ export async function renderVectorPdf({root,version,slides,tokens,buildDir,out})
    const pos=cssPos(e);
    if(e.kind==='text')children.push(`<div class="text" data-name="${escape(e.name)}" style="${pos}font-family:'${e.font}';font-size:${e.size}px;font-weight:${e.bold?700:e.font==='Fira Sans Black'?900:400};color:${e.color};text-align:${e.align||'left'};line-height:1.18;">${rich(e.runs)}</div>`);
    if(e.kind==='rect')children.push(`<div class="rect" style="${pos}background:${e.fill};${e.line&&e.line!=='none'?`border:1px solid ${e.line};`:''}"></div>`);
-   if(e.kind==='image')children.push(`<img alt="${escape(e.alt)}" src="data:image/png;base64,${(await fs.readFile(e.path)).toString('base64')}" style="${pos}object-fit:${e.fit||'contain'};${e.circle?'border-radius:50%;':''}opacity:${e.opacity??1};"/>`);
+   if(e.kind==='image')children.push(`<img alt="${escape(e.alt)}" src="data:image/${e.path.endsWith('.jpg')?'jpeg':'png'};base64,${(await fs.readFile(e.path)).toString('base64')}" style="${pos}object-fit:${e.fit||'contain'};${e.circle?'border-radius:50%;':''}opacity:${e.opacity??1};"/>`);
+   if(e.kind==='mini-bar')children.push(`<svg role="img" aria-label="${escape(e.alt)}" style="${pos}" viewBox="0 0 ${e.w} ${e.h}"><rect width="${e.w*e.value/e.max}" height="${e.h}" fill="${e.color}"/></svg>`);
    if(e.kind==='chart'){
     const barX=118,barWidth=e.w-270,rows=[{name:'MODIS',value:e.modis},{name:'VIIRS',value:e.viirs}];
     children.push(`<svg role="img" aria-label="${escape(e.alt)}" style="${pos}" viewBox="0 0 ${e.w} ${e.h}">${rows.map((r,i)=>{const y=55+i*150,w=barWidth*r.value/e.max;return `<text x="0" y="${y+35}" font-family="Overpass" font-size="${tokens.sizes.body}" fill="${tokens.colors.deep}">${r.name}</text><rect x="${barX}" y="${y}" width="${w}" height="60" fill="${tokens.colors.electric}"/><text x="${barX+w+14}" y="${y+38}" font-family="Overpass" font-weight="700" font-size="${tokens.sizes.lead}" fill="${tokens.colors.deep}">${r.value.toLocaleString('en-US')}</text>`;}).join('')}</svg>`);
    }
   }
-  parts.push(`<section class="slide" data-slide="${slide.number}" style="background:${slide.dark?`linear-gradient(135deg,${tokens.colors.electric},${tokens.colors.deep})`:tokens.colors.white}">${children.join('\n')}</section>`);
+  parts.push(`<section class="slide" data-slide="${slide.number}" style="background:${slide.background|| (slide.dark?`linear-gradient(135deg,${tokens.colors.electric},${tokens.colors.deep})`:tokens.colors.white)}">${children.join('\n')}</section>`);
  }
  const html=`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Earth Fire Calendar</title><style>${faces.join('\n')}@page{size:1600px 900px;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0}.slide{width:1600px;height:900px;position:relative;overflow:hidden;break-after:page}.slide:last-child{break-after:auto}.slide>*{position:absolute}.text{white-space:pre-wrap;overflow:visible;font-kerning:normal}.text a{color:inherit;text-decoration:underline;text-underline-offset:3px}.text strong{font-weight:700}img{display:block}svg{overflow:visible}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>${parts.join('\n')}</body></html>`;
  await fs.writeFile(path.join(buildDir,'presentation.html'),html);
@@ -49,7 +50,7 @@ export async function renderVectorPdf({root,version,slides,tokens,buildDir,out})
   const raw=await page.pdf({preferCSSPageSize:true,printBackground:true,tagged:true,outline:false});
   const pdf=await PDFDocument.load(raw);pdf.setTitle('Earth Fire Calendar');pdf.setAuthor('Earth Fire Calendar');pdf.setSubject('Harmonization of MODIS and VIIRS Hot Spots');pdf.setCreator('Earth Fire Calendar presentation builder');pdf.setProducer('Chromium PDF');
   await fs.writeFile(path.join(out,`earth-fire-calendar-${version}.pdf`),await pdf.save());
-  for(let i=0;i<7;i++)await page.locator('.slide').nth(i).screenshot({path:path.join(buildDir,`pdf-slide-${i+1}.png`),animations:'disabled'});
+  for(let i=0;i<slides.length;i++)await page.locator('.slide').nth(i).screenshot({path:path.join(buildDir,`pdf-slide-${i+1}.png`),animations:'disabled'});
   return {pageCount:pdf.getPageCount(),links:links.length,renderScale:2,mode:'vector text, vector shapes, embedded fonts and native URI annotations'};
  }finally{await browser.close();}
 }
