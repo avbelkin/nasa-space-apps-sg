@@ -15,3 +15,5 @@ What to show on each of the [seven slides](demo-slides.md):
 | 7 | Closing frame, readable links, compact attribution | Impact, Presentation |
 
 The numbers on slide 2 come from the snapshot the app fetched on 15 November at 08:36 UTC, that is, at 16:36 SGT: 79,349 VIIRS and 8,127 MODIS detections, 87,476 together. Its summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](assets/data/firms-snapshot-2026-11-15T0836Z.json); the [project page text](../deliverables/project-description.md) and the [technical note](../deliverables/technical-note.md) use the same snapshot. The numbers on the slide must match the numbers in the screenshots: if you take new screenshots, replace the numbers and the snapshot time along with them.
+
+Screenshots must show the version that is submitted. The version published at the last check is `c73d0b5`, deployed on 15 November at 20:07 SGT. Slide 4 now lists the experimental one-day baselines; if its screenshot shows a pinned single detection with the **Expected detection, no match** flag or **Predicted FRP if detected**, caption them as experimental estimates.

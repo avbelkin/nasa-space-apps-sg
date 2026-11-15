@@ -22,7 +22,7 @@ export async function patchPptx({candidate,scenes,modules}) {
    const a=child(child(picture,'p:nvPicPr'),'p:cNvPr').attributes;
    a.name=`Illustration ${i+1}: ${assets[i].alt}`;a.descr=assets[i].alt;
   });
-  const charts=scene.elements.filter(e=>e.kind==='chart');
+  const charts=scene.elements.filter(e=>['chart','mini-bar'].includes(e.kind));
   const frames=tree.elements.filter(e=>e.name==='p:graphicFrame');
   if(charts.length!==frames.length)throw Error(`Slide ${scene.number}: chart/alt order mismatch`);
   frames.forEach((frame,i)=>{
