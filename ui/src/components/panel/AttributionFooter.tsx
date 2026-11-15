@@ -104,7 +104,7 @@ export function AttributionFooter() {
               <div className="meta-row">
                 <dt>Weather at acquisition</dt>
                 <dd>
-                  Modeled weather via <a href="https://open-meteo.com/" {...EXTERNAL}>Open-Meteo</a>, radar and satellite
+                  Modeled weather and Copernicus CAMS aerosols via <a href="https://open-meteo.com/" {...EXTERNAL}>Open-Meteo</a>, radar and satellite
                   observations from <a href="https://www.noaa.gov/" {...EXTERNAL}>NOAA</a>, fire danger from{' '}
                   <a href="https://gwis.jrc.ec.europa.eu/" {...EXTERNAL}>Copernicus GWIS</a>, and dead fuel moisture from
                   the <a href="https://www.wfas.net/" {...EXTERNAL}>US Forest Service</a>.

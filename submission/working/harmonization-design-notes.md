@@ -143,6 +143,8 @@ Checked in the code at `82f1a17`; every row re-checked at `2d3f5df` and still ac
 | Nominal crossing times | The orbit API still returns the historical 10:30 and 13:30 local-time notes for Terra and Aqua | Both satellites have drifted; label as historical nominal times if shown |
 | Storage | Fire detections are held in memory only. A shared Firestore cache now keeps weather grids, not detections | Raw inputs and daily aggregates for the history need durable files or object storage |
 
+**Weather evidence for the prototype.** A paired, one-day geographic holdout found that GWIS helped MODIS → MODIS detection ranking and FRP estimation, and CAMS helped VIIRS → VIIRS detection ranking. These are inputs to the pinned comparison, with no change to the calibrated VIIRS warning threshold. Before using either source in a historical correction, repeat the test on additional days and check the weather publication times. [Weather-model methods and results](../../doc/architecture-and-harmonization.md#what-weather-adds-to-the-prediction)
+
 ## 5. Validation
 
 - Hold out whole years and one contrasting region.
