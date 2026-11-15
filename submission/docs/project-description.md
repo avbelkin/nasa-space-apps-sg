@@ -198,6 +198,7 @@ Hosting: GitHub Pages, GitHub Actions, Google Cloud Run.
 **Methods and references**
 
 - Our [literature review](modis-viirs-harmonization-literature-review.md) with its 82 references — the supporting source for the problem statement and the hypothesis.
+- Our [design notes](harmonization-design-notes.md) for the harmonized calendar, with the documentation and studies they cite.
 - Giglio, Schroeder & Justice (2016), the MODIS Collection 6 active fire detection algorithm; Schroeder et al., the VIIRS 375 m active fire algorithm (ATBD) — definitions of glint and viewing geometry.
 - US Naval Observatory approximate solar coordinates; Van Flandern & Pulkkinen low-precision lunar ephemeris — Sun and Moon positions.
 - NASA GIBS `GPM_Precipitation_Rate` colour map, ported into the code.
