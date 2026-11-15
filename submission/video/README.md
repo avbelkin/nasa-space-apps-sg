@@ -50,7 +50,7 @@ Work in blocks, stopping for review after each:
 
 Record the actual page at 1920×1080 or higher. Keep one viewport and one data load for MODIS and VIIRS. Exclude enrichment-status rows from the final composition; NASA FIRMS and the compared counters must remain readable.
 
-Before recording, find a group containing both sensors with populated geometry, land cover and weather. The 17–23-second scene needs actual Sat. off-nadir, Land cover and Weather at acquisition rows for the same group. The four temporary screenshots do not replace this scene. Check recording conditions and claim boundaries against the [recording advice](../docs/advice.md#recording-the-video).
+Before recording, find a group containing both sensors with populated geometry, land cover and weather. The 17–23-second scene needs actual Sat. off-nadir, Land cover and Weather at acquisition rows for the same group. The four temporary screenshots do not replace this scene. Check recording conditions and claim boundaries against the [recording advice](recording-checklist.md#recording-the-video).
 
 ## Voice, captions and export
 

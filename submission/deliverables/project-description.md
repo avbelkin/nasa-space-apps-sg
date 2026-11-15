@@ -172,7 +172,7 @@ The licence column records what we believe applies; the rows marked **check** ha
 |---|---|---|
 | **ESA** — Climate Change Initiative Land Cover, continued by the Copernicus Climate Change Service (C3S) land cover map v2.1.1, year 2019; Cloud Optimized GeoTIFFs hosted by Microsoft Planetary Computer. [DOI](https://doi.org/10.24381/cds.006f2c9a) | Land cover inside each detection's footprint | ESA CCI and C3S licences, attribution required — **check** |
 | **ESA** — Hipparcos catalogue; Yale Bright Star Catalogue | About 230 bright stars in the background of the globe | **check**; confirm the exact provenance of the table in `brightStarCatalog.ts` with its author |
-| Contains modified **Copernicus Sentinel** data 2025 — Sentinel-2 cloudless by EOX IT Services GmbH, [s2maps.eu](https://s2maps.eu) | Earth basemap | **CC BY-NC-SA 4.0, non-commercial only** — conflicts with the rule on third-party materials; see [status](../docs/formal-requirements.md#earth-fire-calendar-status-against-the-formal-requirements) |
+| Contains modified **Copernicus Sentinel** data 2025 — Sentinel-2 cloudless by EOX IT Services GmbH, [s2maps.eu](https://s2maps.eu) | Earth basemap | **CC BY-NC-SA 4.0, non-commercial only** — conflicts with the rule on third-party materials; see [status](../working/requirements-status.md) |
 
 **Other data**
 
