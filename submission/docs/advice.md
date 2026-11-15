@@ -131,15 +131,15 @@ The winners' materials also contain claims of infallibility and accuracy with no
 | 0:10 | How it works: images or a prototype, the user experience, the role of open data from NASA and partner agencies |
 | 0:20–0:30 | A look ahead: what the solution could give people and the world |
 
-The [video script](demo-video.md) is an adaptation of this outline, not a literal execution of it. The project name is spoken; the team name and the challenge appear as captions in the first shot. The presenter's name, a separate tagline and the explanation of why the challenge was chosen are omitted. The outline is the guide's advice, not an eligibility condition.
+The [video script](demo-video.md) adapts this outline to a 29-second story with Lama, Alexey's plush alpaca assistant. A one-second live shot leads into an animated jump into the monitor; the character then narrates a real screen recording. The project name is spoken; the exact team name is added as a caption when supplied. The outline is the guide's advice, not an eligibility condition. The [shooting plan](../video/README.md) specifies the footage and tools.
 
 | Script shot | Criteria it covers |
 |---|---|
-| First: title | Presentation |
-| Second: MODIS | Relevance |
-| Third: switch to VIIRS | Relevance, Validity |
-| Fourth: who saw it, and under what conditions | Creativity, Validity |
-| Fifth: next step | Impact |
+| 0–5.5 seconds: Lama enters the app and introduces himself | Presentation |
+| 5.5–11.5 seconds: MODIS → VIIRS in the same view | Relevance, Validity |
+| 11.5–17 seconds: both sensors and NASA FIRMS attribution | Relevance, Creativity |
+| 17–23 seconds: viewing geometry, land cover and weather | Creativity, Validity |
+| 23–29 seconds: next step | Impact |
 
 ### Official advice on slides
 
@@ -177,10 +177,10 @@ When and against which version the app was checked is in the [status against the
 | **All sensors / MODIS / VIIRS** switch | Filters the live points, the counters and the satellite tracks | The key action of the video |
 | Counters in the **Live active fire spots (NASA FIRMS · 24h)** block | Global over 24 hours. The tiles are **Peak FRP**, **MODIS 1 km** and **VIIRS 375 m**; in MODIS mode the **VIIRS 375 m** tile shows 0, in VIIRS mode the **MODIS 1 km** tile shows 0, and both numbers are visible side by side only in **All sensors** mode | Compare the **MODIS 1 km** tile before the switch with the **VIIRS 375 m** tile after it, and caption them as the whole world; for a still image use **All sensors** |
 | **All sensors** mode | Shows MODIS and VIIRS detections together with no calibration and no removal of duplicates. Its internal name, visible in the link as `sensor=harmonized`, is not a claim | Do not call it harmonization; describe it as both sensors together |
-| **Color fire spots by sensor** and its colour key | Live data. Available only in **All sensors** mode. Detections drawn close together on screen form a group, coloured as both sensors, MODIS only (2+), VIIRS only (2+) or a single detection. The grouping follows screen distance and changes with zoom; it is not a footprint-and-time match between passes | The fourth shot and slide 3. Keep the zoom fixed while the colours are in the shot |
+| **Color fire spots by sensor** and its colour key | Live data. Available only in **All sensors** mode. Detections drawn close together on screen form a group, coloured as both sensors, MODIS only (2+), VIIRS only (2+) or a single detection. The grouping follows screen distance and changes with zoom; it is not a footprint-and-time match between passes | The 11.5–17-second scene and slide 3. Keep the zoom fixed while the colours are in the shot |
 | Pinned card: bars of detections over 24 hours by satellite | Live FIRMS data; known inaccuracies: the VIIRS confidence classes are converted to percentages (25, 65, 95), and `MW total` sums FRP across different passes | Show the bars, not the totals |
 | Pinned card: the `Pass, no fire` and `Processing` labels, the Sun curve | Computed from CelesTrak orbits and fixed processing delays (90 minutes for VIIRS, 120 minutes for MODIS), not FIRMS data; a pass without a detection does not prove the absence of fire | On the slides and the project page only with this explanation; do not read aloud in the video |
-| Pinned card: the observation table with MODIS and VIIRS columns | Our estimate from public orbital elements, not the instruments' own geolocation: off-nadir angle, distance, Sun and Moon elevation, glint | The fourth shot; caption it as an estimate |
+| Pinned card: the observation table with MODIS and VIIRS columns | Our estimate from public orbital elements, not the instruments' own geolocation: off-nadir angle, distance, Sun and Moon elevation, glint | The 17–23-second detail scene; caption it as an estimate |
 | Pinned card: land cover and **Weather at acquisition** | Land cover is a fixed 2019 map. Weather comes from models and satellite products; coverage differs by source, and rows no source could fill are hidden | Choose a detection with filled rows; do not present model values as observations |
 | Status rows in the counter block: **Detections**, **Observation geometry**, **Land cover**, **Weather** | Progress of the background enrichment. Weather is sampled in bulk only for the most recent detections, so its count is smaller than the number of detections | Leave out of the video; record after the pending counts stop changing |
 | **Satellite passes** HUD (`ready` / `processing`) and orbit lines: solid for `ready`, dashed for `in processing` | An estimate from the orbit calculation and a timer, not confirmation that data has arrived | Leave out of the video |
@@ -197,9 +197,9 @@ When and against which version the app was checked is in the [status against the
 - [ ] Record in a 1920×1080 window, or crop so that the counters are fully readable: in a 1440×900 window they are cut off at the bottom. Remove loading waits and accidental camera movements.
 - [ ] Check the rendering: in a browser without graphics acceleration the VIIRS points appeared with a delay after the counters, and there were black patches at the poles of the globe. If they are there, crop without the poles.
 - [ ] The name NASA FIRMS is visible in every shot with live points.
-- [ ] Choose the region and the group for the fourth shot in advance: a group that both sensors saw, with the geometry and weather rows already filled. The enrichment arrives after the detections; wait until the pinned card stops changing.
-- [ ] Leave the orbits, the satellite HUD and the enrichment status rows out of the video; the pinned card appears only in the fourth shot.
-- [ ] Check that the phrase about "far more" VIIRS detections matches the numbers in the shot. During the check, after switching to VIIRS the points became noticeably denser over India, China, Indochina, Indonesia and Australia.
+- [ ] Choose the region and the group for the 17–23-second detail scene in advance: a group containing both sensors, with the geometry, land-cover and weather rows already filled. The enrichment arrives after the detections; wait until the pinned card stops changing.
+- [ ] Leave the orbits, the satellite HUD and the enrichment status rows out of the video; the pinned card appears only in the detail scene.
+- [ ] Use the same viewport and feed snapshot for the MODIS → VIIRS comparison. The voiceover describes different hotspots without promising a fixed ratio or count.
 - [ ] Give the real team name and the member details the rules allow; do not invent missing names.
 - [ ] The duration is set by the recorded take, not by the storyboard. Our recommendation is a margin of one or two seconds below the limit in case the video host rounds up: the Astro Sweepers and QUEÑARIS videos as available today run 30.5 and 30.4 seconds. If the video does not fit, cut text or pauses rather than speeding up the speech.
 - [ ] Check the duration of the exported file, not of the project in the editor.
