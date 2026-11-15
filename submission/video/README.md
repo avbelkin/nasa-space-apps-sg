@@ -1,76 +1,35 @@
 # Production plan for the Lama video
 
-[Script and narration](demo-video.md) · [AI disclosures](disclosures.md) · [Requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
+[Script](demo-video.md) · [Voice and character](voice-direction.md) · [Disclosures](disclosures.md) · [Official requirements](../docs/formal-requirements.md)
 
-The full film targets **29 seconds, 1920×1080, 30 fps — 870 frames**. The current block covers **voice and character only**, including the missing physical jump; the narration will be revised later. See the [voice and character direction](voice-direction.md). The preceding 11.5-second pilot remains a visual reference, but its Charlie voice was rejected. The first full draft was rejected for its adult voice, photo-based character and portrait opening with wide blurred side areas. It is retained as a superseded version, not an approved direction. Media and local review pages stay in the Git-ignored `lama/` folder.
+The user authorized full assembly with the updated **47-word** script and selected **Flicker - Cheerful Fairy & Sparkly Sweetness**. The first full 29-second assembly is in `lama/prepared/assembly-v1/lama-assembly.mp4`. The user accepted its voice and requested two visual corrections: the recorded interface must fill the frame, and Lama must move between relevant details without a repeating wave. That first assembly remains a superseded review artifact, not the final film.
 
-## Current production decisions
+## Current edit
 
-| Element | Decision |
-|---|---|
-| Opening | 1.4-second full-width close-up of the real toy in profile; no side panels |
-| Transition | New rough jump test: controlled flight into the monitor and landing; generated empty background, visible watermark. Transformation/body performance still need review; final timing deferred |
-| Title | Earth Fire Calendar and Harmonization of MODIS and VIIRS Hot Spots; add the exact team name to the final edit when supplied |
-| Narration | Temporary audition copy; wording and scene timing will be revised later, within the final 30-second limit |
-| Voice | Adult female performer voicing a little, smart, lively boy; ElevenLabs Eleven v4 through OpenRouter. Jessica/Bella/Laura auditions with no local pitch shift; selection pending |
-| Character | Living animated interpretation of the toy: cream fur, copper ears, expressive face, orange/navy/ivory scarf, soft two-toed feet |
-| Performance | Weather-presenter staging: greet, step, turn to the display, point, look back at the viewer, nod |
-| Composition | Large presenter in the left foreground; real app display behind and to his right; protect the important data from his gestures |
-| Motion source | OpenAI image generation, then Google Veo 3.1 Lite through OpenRouter; generated green background removed locally |
-| Watermark | AI-generated visibly overlaps the lower body and follows the movement |
-| Captions | English, inside safe margins; large real counter crops; NASA FIRMS attribution with the map |
-| Closing | Project title, next step, URL, NASA FIRMS credit and non-endorsement statement; still required for the full edit |
+- 1920×1080, 30 fps, 29 seconds (870 frames), English narration and subtitles.
+- The photographic plush jumps first. The animated character appears only inside the physical monitor after entry; a camera push alone is insufficient.
+- The five voice files total 23.36 seconds. Their starts are 2.3, 6.3, 12, 17 and 22.5 seconds. No pitch or tempo shift; normalize the final mix's loudness.
+- Alexey's real recordings are in the Git-ignored `screens/` directory. Use these in place of old screenshots, including the new recording with expanded Weather at acquisition.
+- The interface fills the frame. Use readable enlargements of actual data where needed, and keep Lama clear of the highlighted information. Remove the framed presenter-stage layout.
+- Replace the repeated wave with restrained head turns, brief gestures and movement toward the relevant detail. A new bounded motion take is being evaluated; generated anatomy must be inspected before use.
+- Preserve Team Plush, the exact challenge name in the opening, NASA FIRMS attribution, the final future-harmonization caption and NASA non-endorsement note.
 
-Weather-presenter styling does not imply fire forecasting. The narration still describes comparison and future harmonization. The generated motion has expressive mouth movement, not exact lip sync. The generated source introduced an unwanted display at its far right; the composition crops it out and uses only real app imagery.
+## Assets and reproduction
 
-## Tools and reproduction
+Media, captures, API manifests and local review pages remain ignored. Tracked scripts contain no keys. Use installed FFmpeg, Chrome and Node; no packages need installation. `render-assembly.mjs` reproduces the first assembly and optional source replacements, but its framed staging is superseded by the user's review. `render-draft.mjs`, `render-presenter-pilot.mjs` and the older voice/jump renderers preserve historical variants.
 
-Use installed FFmpeg, Chrome and Node; no packages need installation. `chrome.mjs` renders layouts, `render-presenter-pilot.mjs` assembles the current pilot, and `render-draft.mjs` preserves the superseded full draft. The pilot renderer makes no API calls:
+`synthesize.py` defaults to the ID in `voice-selection.json`. It uses the existing research gateway's credentials, HTTP client, budget reservations and ledger. `animate-character.py` submits one bounded motion job and then collects the original saved job ID on subsequent calls. Run Python adapters with the main research checkout's managed interpreter and `--gateway-root`. The existing $0.30 run and shared provider daily caps remain enforced.
 
-```sh
-node submission/video/render-presenter-pilot.mjs /absolute/path/to/submission/video/lama/prepared
-```
+The five completed Flicker takes and one Scribe verification are saved in `lama/prepared/assembly-v1/`, together with exact input text, word timings and measured billing. The six-call cost is $0.030547555555555297 through OpenRouter; this excludes earlier image and motion experiments. Codex subscription usage is not exposed. Do not equate API dollars with a subscription allowance percentage.
 
-The renderer needs the collected motion, full-width intro and two completed Charlie speech files in `presenter-v2/`. `synthesize.py` supports explicit `--voice` and `--delivery`. `animate-character.py` submits one bounded motion job and, on subsequent calls, collects the original saved job ID without resubmitting. Run both with the existing research gateway's managed Python interpreter and `--gateway-root`; credentials, redaction, persistent budget reservations and the spending ledger come from that gateway. The $0.30 run cap and shared provider daily cap remain enforced. No keys or private gateway paths belong in tracked files.
+## Review checkpoints
 
-API references: [OpenRouter speech](https://openrouter.ai/blog/announcements/elevenlabs-on-openrouter/) and [video generation](https://openrouter.ai/docs/guides/overview/multimodal/video-generation). Public-library voice ID DusUNVZxLmrLjz9sJF1w and the legacy Jeremy name were both rejected with HTTP 400; those attempts produced no audio and their reservations were settled. Charlie succeeded. The local manifests preserve every attempt and generation ID.
+1. Voice and updated narration: user accepted the assembled Flicker voice.
+2. Full-frame recordings and revised presenter behavior: current review block. Show an intermediate result before further polishing.
+3. Final duration, audio/caption coverage, readability, disclosures, source continuity and export check.
 
-## Local review files
+Commit and push verified milestones through the isolated feature worktree into main. Keep the actual script, metadata and living production documents consistent. Frozen documents under `submission/docs/` are reference material; do not rewrite them.
 
-Current entry point: `lama/prepared/voice-v3/review.html`, with three female-performed boy voice auditions and the separate silent `jump-v1/jump-pilot.mp4`. No voice is selected. `voice-v3/REVIEW.md`, `review-edits.json` and `accounting.json` record the edits, limitations and every paid job. Reproduce the local artifacts with `prepare-voice-auditions.mjs` and `render-jump-pilot.mjs`, passing the absolute prepared directory. Neither renderer calls an API.
+## Export checks
 
-The following files describe the preceding visual pilot; its Charlie voice was rejected:
-
-Under `lama/prepared/presenter-v2/`:
-
-- `review.html` and `REVIEW.md`: current pilot player, voice comparison and scope;
-- `pilot.mp4`: 11.5-second concept pilot, not the final submission;
-- `render-report.json`: measured export parameters and source-motion timing;
-- `lama-character-green.png`, `lama-motion-green.mp4`, `motion-job.json`: generated reference and collected animation;
-- `voice-charlie/`, `young-voice-1.wav`, `young-voice-2.wav`: original and processed voice;
-- `transcript.json`: transcription check, which does not establish perceived age or acting quality;
-- `intro-full-bleed.mp4`: 42-frame cropped SDR opening.
-
-The old `draft/lama-draft.mp4`, `review.html`, `intro-centered.mp4` and `lama-presenter.png` remain historical material. Do not treat them as the latest creative direction.
-
-Temporary UI captures remain under `prepared/ui/`. MODIS and VIIRS screenshots share one earlier snapshot. The populated context rows are a separate, later capture of a group near −14.906°, 126.865° with 123 detections. `05-context.json` records that example. These are screen-proximity groups, not confirmed matched fires. Show only Sat. off-nadir, Land cover and selected Weather at acquisition rows; exclude FRP forecast, pass predictions, the **Expected detection, no match** flag and totals.
-
-## Review blocks and deadline
-
-1. Asset preparation and its corrections — accepted.
-2. First full draft — technically reviewed, then rejected by the user on creative grounds.
-3. New weather-presenter concept — short visual pilot retained; Charlie voice rejected.
-4. Female-performed little-boy voice auditions and an actual desk-to-screen jump — current review block.
-5. After that review, revise the narration with the user, then complete the film and final UI captures.
-
-Commit and push each verified block from its feature worktree into main. Do not accumulate the entire film before sharing the changes. Media remains local and ignored.
-
-Working targets for 15 November 2026 (SGT): full draft with sound by 21:30; upload by 23:00; deadline 23:59. These are production targets, not scheduled actions. The previously suggested screen-recording fallback would omit the user's requested animated host; discuss that tradeoff if it becomes necessary rather than silently substituting it.
-
-## Final capture and acceptance
-
-Follow the [recording checklist](recording-checklist.md). Keep one viewport and feed snapshot for MODIS→VIIRS, preserve actual counts and timestamps, exclude enrichment statuses, and retain readable NASA FIRMS attribution. Start the context scene from the saved selection; current values may differ.
-
-Listen to the voice and check Lama, Alexey, MODIS, VIIRS and NASA FIRMS. Watch continuous playback and on a phone. Stills, transcripts and ffprobe do not establish acting, lip sync or transition quality. Keep Next in the last phrase and show harmonization as future work.
-
-Export H.264/AAC with the [actual disclosures](disclosures.md) in its description and metadata. Check duration ≤30 seconds, narration completeness, watermark placement and caption margins. The user selected footage with Alexey, a team member; separate consent is not requested in this workflow. The new character's scarf is abstract; the physical toy's original scarf symbols still need review before publication. The exact team name remains pending.
+Inspect actual frames for plush-before-cartoon order, anatomy, unobstructed data, watermark placement and safe caption margins. Decode the entire MP4, verify 870 frames and a duration no greater than 30 seconds, and reconcile every new API job and its cost before claiming completion. Stills, transcripts and ffprobe do not establish acting quality or continuous-motion quality; the user's playback review remains the creative checkpoint. No music is planned.
