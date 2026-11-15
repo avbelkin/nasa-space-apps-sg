@@ -1,6 +1,6 @@
 # Earth Fire Calendar — slide text
 
-[Slides](demo-slides.md) · [Video script](demo-video.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
+[Slides](demo-slides.md) · [Video script](demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
 
 ## Slide 1 — Earth Fire Calendar
 

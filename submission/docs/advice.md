@@ -1,6 +1,6 @@
 # Space Apps 2026: advice on the submission and demo
 
-[Slides](demo-slides.md) · [Video script](demo-video.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
+[Slides](demo-slides.md) · [Video script](demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
 
 This document contains recommendations only: what raises the score and how best to show the project. They rest on the official guides and on our review of the 2025 winners. The conclusions drawn from that review are editorial hypotheses based on a sample of winners alone, not the jury's disclosed reasoning. What is mandatory is covered in the [form fields](form-fields.md) and the [formal requirements](formal-requirements.md).
 

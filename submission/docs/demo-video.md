@@ -1,6 +1,6 @@
 # Earth Fire Calendar: video script
 
-[Slides](demo-slides.md) · [Video script](demo-video.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
+[Slides](demo-slides.md) · [Video script](demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
 
 A video for the **Harmonization of MODIS and VIIRS Hot Spots** challenge: a 29-second storyboard against a 30-second limit. On-screen captions and the voiceover are in English. Replace `[team name]` with the real team name before recording.
 
