@@ -136,7 +136,7 @@ Screenshots to insert in this field, each taken from the version that is submitt
 
 Tick every option that applies. From what the repository shows:
 
-- **Code generation tools** — yes: `Co-Authored-By: Claude` trailers in 35 of 193 commits, branches named `codex/*`, an `AGENTS.md` in the root.
+- **Code generation tools** — yes: `Co-Authored-By: Claude` trailers in 41 of 219 commits (counted at `2d3f5df`), branches named `codex/*`, an `AGENTS.md` in the root.
 - **Large language models for text** — yes: drafts of the documentation, the slide text, the video script and this page.
 - **Image or video generation** — yes: the Lama presenter image was generated with OpenAI ChatGPT from an original photograph; label it `AI-edited image` throughout its appearance. `[Separately confirm: how og-preview.png was made.]`
 - **Generated audio** — yes: English narration synthesized with ElevenLabs Eleven v4 through OpenRouter (Will voice); disclose it in the video description and MP4 metadata.

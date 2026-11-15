@@ -16,6 +16,41 @@ How the general [advice](../docs/advice.md) is applied to Earth Fire Calendar: w
 | **Relevance** | FIRMS data at the centre: the gap between the sensors is shown on it; every NASA resource is tied to a screen or a calculation | PureFlow names its NASA sources; the review recommends tying each one to a specific calculation or screen |
 | **Presentation** | One problem, one action, one result; no tour of all the layers | The PureFlow and QUEÑARIS videos; less successful as a short pitch — the Resonant video, the Astro Sweepers video on Google Drive and the long AakashNet dashboard walkthrough |
 
+## The demonstration case
+
+The advice asks for a traceable example: why this case, and the chain from source data to result.
+
+- **Selection rule.** The case for the 17–23-second scene and for slide 5 is a group of detections that (1) contains both MODIS and VIIRS, (2) was seen by all four satellites within the 24-hour window, (3) has the geometry, land-cover and weather rows filled, and (4) lies inside the prepared view, so that no camera move is needed. Among the groups that qualify, take the one with the highest FRP: it is the easiest to find again on the map.
+- **Candidate at the last check.** In the feed fetched on 15 November at 11:52 UTC, the half-degree cell at 17° S, 124° E (Kimberley, Western Australia) held 89 MODIS and 249 VIIRS detections from Terra, Aqua, NOAA-20 and NOAA-21 and contained the highest FRP in the feed, 1,097.7 MW. Weather is sampled only for the most recent detections, so rule 3 has to be checked on the pinned card at recording time. The feed changes every hour: re-apply the rule on the day of recording and record the cell, the time and the counts here.
+- **Chain.** NASA FIRMS near-real-time records (MODIS_NRT, VIIRS_NOAA20_NRT, VIIRS_NOAA21_NRT) → the app's 24-hour feed, whose summary is saved as a [snapshot](firms-snapshot-2026-11-15T0836Z.json) → the chosen group → assumptions: the group is formed by screen distance, the passes and the viewing geometry are our estimates from orbits, land cover is the 2019 map, weather is modeled → result: the timeline by satellite and the conditions table side by side for MODIS and VIIRS.
+- **Durable copy.** The live link shows different numbers every hour. The snapshot summary and the screenshots keep the numbers the materials quote; the commit of the submitted version is pinned on the project page. Still missing: the deck as a PDF in the repository and a tag on the submitted commit.
+
+## The pitch against the six-part structure
+
+| Part | Where it is covered | Evidence shown | Gap |
+|---|---|---|---|
+| Problem | Slides 2–3; video 5.5–11.5 s; project page, field 2 | A researcher joining the two records; 79,349 VIIRS against 8,127 MODIS detections in the same 24 hours, with the snapshot time | None |
+| Contribution | Slides 3–4; video 11.5–23 s | Colouring by who saw each group; the conditions of every detection | None |
+| Demonstration | Slide 5; video 5.5–23 s | The MODIS → VIIRS switch on one view; one pinned group | The group is not chosen yet: see [the demonstration case](#the-demonstration-case) |
+| Validity | Slide 6; [technical note](../deliverables/technical-note.md) | Estimates labelled as estimates; test plan with criteria fixed in advance; known pitfalls | The first baselines rest on one day of data; say so wherever they appear |
+| NASA relevance | Slides 4 and 7; video caption "NASA FIRMS · last 24 h"; project page, field 7 | FIRMS as the core data, GIBS for context layers, each tied to a screen | None |
+| Impact and next step | Slide 7; video 23–29 s | Goal and next milestone: a harmonized record for one region that passes the hold-out test | The adoption path is thin: the materials name the researcher but not how they get the data out, since export is not built. Keep it as a stated next step |
+
+## Four questions after the first viewing
+
+| Question | Answer the video gives |
+|---|---|
+| What is the problem? | "Same planet. Same day. But MODIS and VIIRS see different hotspots." |
+| What was built? | "Earth Fire Calendar compares their detections using NASA FIRMS data." |
+| What result is visible? | The switch changes the map and the counter; the pinned card shows viewing angle, land cover and weather |
+| Why is NASA data needed? | The narration and the caption name NASA FIRMS as the source of every point |
+
+The script answers all four. Not done yet: showing the finished video once to a person who has not seen the project and asking them the four questions.
+
+## Global awards
+
+The advice lists ten global awards. Proposed targets, for the team to confirm: **Best Use of Data** first, since the project makes FIRMS detections comparable and inspectable detection by detection; **Best Use of Science** second, on the strength of the stated hypothesis and the test plan fixed in advance. The materials should not be bent toward the other eight.
+
 ## What to show and what not to
 
 **The main story.** In the same live NASA FIRMS data over 24 hours, VIIRS yields several times more detections than MODIS, and the two sets overlap only in part, so the twenty-year fire record cannot simply be stitched together. Earth Fire Calendar is a globe that shows which sensor saw each fire and attaches to every detection the conditions of its observation: viewing geometry, land cover and weather. This is evidence for harmonization; harmonization itself is the next step.
@@ -53,8 +88,8 @@ When and against which version the app was checked is in the [status against the
 
 | What | State | Advice |
 |---|---|---|
-| A judge's first visit | With no parameters, on first visit the app opens on Singapore with all layers and **All sensors** mode, and requests geolocation; if allowed, it moves the view to the user when they are more than 100 km from Singapore. In the test screenshot of that view, clouds and night lights covered the map and the fire points were barely visible | Give the link with the prepared view in all materials: it opens the globe in MODIS mode without context layers and does not request geolocation |
+| A judge's first visit | With no parameters and no saved view, the app opens on Singapore with all layers on and **All sensors** mode, and requests geolocation; if allowed, it moves the view to the user when they are more than 100 km from Singapore (re-checked in the code and in a clean browser profile on 15 November). In that view the fire points are visible, but clouds, night lights, orbit lines and the satellite HUD compete with them | Give the link with the prepared view in all materials: it opens the globe in MODIS mode without context layers and does not request geolocation |
 | Statuses | The app shows no sample values. The passes without a detection, the processing marks and the viewing geometry are our estimates from orbits | On the project page, separate live data, estimates and plans |
 | README and page metadata | The README and the description in `ui/index.html` now describe a tool for comparing the sensors; the name is marked as provisional. The link preview image `og-preview.png` still reads "MODIS 1 km · VIIRS 375 m harmonization" and "Seasonal burning baselines & live calendar anomalies" | Replace the preview image: it promises features the app does not have |
-| The version the judges will see | GitHub Pages rebuilds the site on every push to `main` that changes `ui/` or the `deploy-ui.yml` file, and on manual runs; changes only to the README, `doc/` and `backend/` do not touch the site. The published version changes with every push that touches `ui/`; at the last check of the code, `main` was at `2d3f5df` (15 November, evening SGT), and the deployed commit was not confirmed | Pin the commit or tag at the moment of submission and state it on the project page; do not publish changes after the deadline at the link from the submission. Take screenshots and record after the last interface change |
+| The version the judges will see | GitHub Pages rebuilds the site on every push to `main` that changes `ui/` or the `deploy-ui.yml` file, and on manual runs; changes only to the README, `doc/` and `backend/` do not touch the site. The published version changes with every push that touches `ui/`; the version published at the last check is `2d3f5df`, deployed on 15 November at 19:49 SGT | Pin the commit or tag at the moment of submission and state it on the project page; do not publish changes after the deadline at the link from the submission. Take screenshots and record after the last interface change |
 | Consistency of materials | — | Names, numbers and statuses in the demo match the project page and the README |
