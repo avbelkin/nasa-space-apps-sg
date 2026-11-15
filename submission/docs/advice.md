@@ -43,7 +43,7 @@ The strongest shared technique in the review of the 2025 winners: the viewer see
 | Layer | Job | What to put there for Earth Fire Calendar |
 |---|---|---|
 | Demo | Get the main point across on first viewing | One problem, one action, one visible result |
-| Project page | Let the reader study the proposal; the page must make sense without the demo | What was built and how it works; the NASA datasets and the role of each; what runs on live data, what is a sample and what is planned; limitations; screenshots |
+| Project page | Let the reader study the proposal; the page must make sense without the demo | What was built and how it works; the NASA datasets and the role of each; what runs on live data, what is an estimate and what is planned; limitations; screenshots |
 | Documentation in the repository | Answer follow-up questions | Metric, grid, reference scale, test plan with criteria, known pitfalls |
 | Code | Let the implementation be checked | A public repository whose README does not contradict the project page |
 
@@ -60,8 +60,8 @@ Practices from the review that make materials verifiable:
 
 | Criterion | What to show in Earth Fire Calendar | 2025 example |
 |---|---|---|
-| **Impact** | A named user and decision: an emergency manager compares the current month in their area with the typical season — the scenario from the challenge description. A goal is called a goal, not an achieved effect. A map alone does not prove benefit: there must be an explicit link from the layer to the decision a person makes | Twisters: from the user's question to the decision screen; QUEÑARIS: place → consequence → method → action |
-| **Creativity** | One memorable idea: the map shows where it is burning, the calendar shows when and how unusual that is | Resonant: a named mechanism — memorable, but it proves nothing by itself; SpaceGenes+: one central visualization |
+| **Impact** | A named user and decision: a researcher or fire-data analyst joining the MODIS and VIIRS records has to decide where, and under what conditions, the two can be compared. The emergency manager from the challenge description, who needs one consistent record, benefits later: say so as a goal. A goal is called a goal, not an achieved effect. A map alone does not prove benefit: there must be an explicit link from the layer to the decision a person makes | Twisters: from the user's question to the decision screen; QUEÑARIS: place → consequence → method → action |
+| **Creativity** | One memorable idea: every fire is coloured by which sensor saw it, and every detection carries the conditions under which it was observed | Resonant: a named mechanism — memorable, but it proves nothing by itself; SpaceGenes+: one central visualization |
 | **Validity** | Separate statuses; one real comparison — MODIS and VIIRS over the same 24 hours; a test plan with criteria set before looking at the results; known limitations | The Resonant report narrows the pitch's bold claims; for PureFlow, a screen recording does not replace engineering verification |
 | **Relevance** | FIRMS data at the centre: the gap between the sensors is shown on it; every NASA resource is tied to a screen or a calculation | PureFlow names its NASA sources; the review recommends tying each one to a specific calculation or screen |
 | **Presentation** | One problem, one action, one result; no tour of all the layers | The PureFlow and QUEÑARIS videos; less successful as a short pitch — the Resonant video, the Astro Sweepers video on Google Drive and the long AakashNet dashboard walkthrough |
@@ -79,7 +79,7 @@ The goal, according to the guide, is to quickly convey the importance and releva
 3. **A non-trivial case in the key frame.** On Twisters' main screen all indicators read 0%: it shows the interface, not the capability. Choose a frame where the difference is visible at once.
 4. **Only what can be read in time goes on screen.** In the Resonant video, pages of the technical report change faster than they can be read. Move the methodology, test plan and limitations to the project page and the repository.
 5. **No time is spent on credits and atmosphere.** Astro Sweepers puts the team slide before the benefit; the first 17 seconds of A Solar Tale are mood. That is why our names go in a caption, not in the voiceover.
-6. **Statuses are not mixed.** For QUEÑARIS, the seedlings already grown in the video and the first-year planting target on the site are different quantities, and neither is a measured result. A positive example is the SpaceGenes+ site: it says outright that one case works and the rest is a concept. Ours keeps live data, samples and plans separate in the same way.
+6. **Statuses are not mixed.** For QUEÑARIS, the seedlings already grown in the video and the first-year planting target on the site are different quantities, and neither is a measured result. A positive example is the SpaceGenes+ site: it says outright that one case works and the rest is a concept. Ours keeps live data, estimates and plans separate in the same way.
 7. **Subtitles are proofread.** In the PureFlow video the name DONKI turned into "donkey". FIRMS, MODIS and VIIRS get mangled just as easily.
 8. **After the first viewing, the viewer can answer four questions:** what the problem is, what was built, what result is visible and why NASA data is needed.
 
@@ -138,7 +138,7 @@ The [video script](demo-video.md) is an adaptation of this outline, not a litera
 | First: title | Presentation |
 | Second: MODIS | Relevance |
 | Third: switch to VIIRS | Relevance, Validity |
-| Fourth: calendar | Creativity, Validity |
+| Fourth: who saw it, and under what conditions | Creativity, Validity |
 | Fifth: next step | Impact |
 
 ### Official advice on slides
@@ -149,7 +149,7 @@ The [video script](demo-video.md) is an adaptation of this outline, not a litera
 Our advice, not official:
 
 - One point and one image per slide; put the methodology and the full bibliography on the project page and in the repository.
-- Duplicate the meaning of colour with text or a symbol and keep text contrast at 4.5:1 or higher: these are guidelines from the Space Apps brand guide that are also useful for the styling of our own map and calendar. The review of SpaceGenes+ specifically notes a second visual cue besides colour.
+- Duplicate the meaning of colour with text or a symbol and keep text contrast at 4.5:1 or higher: these are guidelines from the Space Apps brand guide that are also useful for the styling of our own map. The review of SpaceGenes+ specifically notes a second visual cue besides colour.
 
 What to show on each of the [seven slides](demo-slides.md):
 
@@ -157,47 +157,48 @@ What to show on each of the [seven slides](demo-slides.md):
 |---|---|---|
 | 1 | Close-up of the globe with live FIRMS points | Presentation, Relevance |
 | 2 | Two screenshots of the same view, MODIS and VIIRS, with the numbers and the snapshot time | Relevance, Validity |
-| 3 | Close-up of the month strip and the **Typical / This year** tiles with the `Sample data` label | Impact, Creativity |
-| 4 | Screenshot of the interface with status labels | Validity, Relevance |
-| 5 | Three numbered frames; the third with the sample label | Presentation, Creativity |
+| 3 | Close-up of one region in **All sensors** mode with **Color fire spots by sensor** on and the colour key visible | Impact, Creativity |
+| 4 | Screenshot of the interface with a pinned group: the timeline and the conditions tables, with the estimates labelled | Validity, Relevance |
+| 5 | Three numbered frames; the third is a pinned group with its MODIS and VIIRS columns | Presentation, Creativity |
 | 6 | Diagram with "working" and "planned" labels | Validity |
 | 7 | Closing frame, readable links, compact attribution | Impact, Presentation |
 
-The numbers on slide 2 come from the check on 15 November at 05:20 SGT; the app received its data snapshot at 21:19 UTC on 14 November, that is, at 05:19 SGT on 15 November. Together they give 90,336 detections. No API response or screenshot from that moment was saved, so the numbers cannot be confirmed after the fact. The numbers on the slide must match the numbers in the screenshots: if you take new screenshots, replace the numbers and the snapshot time along with them.
+The numbers on slide 2 come from the snapshot the app fetched on 15 November at 08:36 UTC, that is, at 16:36 SGT: 79,349 VIIRS and 8,127 MODIS detections, 87,476 together. Its summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](../assets/firms-snapshot-2026-11-15T0836Z.json); the [project page text](project-description.md) and the [technical note](technical-note.md) use the same snapshot. The numbers on the slide must match the numbers in the screenshots: if you take new screenshots, replace the numbers and the snapshot time along with them.
 
 ## Earth Fire Calendar: what to show and what not to
 
-**The main story.** In the same live NASA FIRMS data over 24 hours, VIIRS yields several times more detections than MODIS, so the twenty-year fire record cannot simply be stitched together. Earth Fire Calendar is a globe and a calendar that will show whether fire activity is typical for a chosen place and month. For now the calendar runs on samples.
+**The main story.** In the same live NASA FIRMS data over 24 hours, VIIRS yields several times more detections than MODIS, and the two sets overlap only in part, so the twenty-year fire record cannot simply be stitched together. Earth Fire Calendar is a globe that shows which sensor saw each fire and attaches to every detection the conditions of its observation: viewing geometry, land cover and weather. This is evidence for harmonization; harmonization itself is the next step.
 
 When and against which version the app was checked is in the [status against the formal requirements](formal-requirements.md#earth-fire-calendar-status-against-the-formal-requirements). Exactly which NASA products are used is in the [NASA Data field](form-fields.md#7-nasa-data).
 
 | Element | Status | How to show it |
 |---|---|---|
 | NASA FIRMS active-fire points for 24 hours | Live data worldwide | The main shot |
-| **MODIS / VIIRS** switch | Filters the live points and counters | The key action of the video |
-| Counters in the **Live active fire spots (NASA FIRMS · 24h)** block | Global over 24 hours; independent of the selected location and month. The **Active spots (24h)** tile shows the number for the selected sensor; in MODIS mode the **VIIRS 375 m** tile shows 0, in VIIRS mode the **MODIS 1 km** tile shows 0, and both numbers are visible side by side only in Harmonized mode | Only with `Area: Global`; compare using the **Active spots (24h)** tile and caption it as the whole world and the selected sensor |
-| **Harmonized** mode | Combines MODIS and VIIRS detections with no calibration and no removal of duplicates. The sample index is shown without a multiplier in this mode | Do not call it harmonization; describe it as combined observations |
-| The 0–100 index, the **Typical / This year** tiles, the month strip, the **Locations** list | Sample. The `Sample index` label is in the top row, the `Sample data` label only in the summary block; the Locations list and the month strip have no label of their own. The tooltip on `Sample data` says the values are illustrative "until live FIRMS data is connected", although it already is | As the interface of the future calendar; at least one label must be visible in the shot |
-| Sample texts: the caption under the Global tiles and the texts that appear in the summary after a location is selected | A sample that reads like a finding: "Transition toward wet monsoon conditions aligns closely with historical seasonal decline", "MODIS and VIIRS agree here", peatlands near Singapore, "harmonized FRP normalizes…" | Do not show large or read aloud; better to replace with neutral text before recording |
-| Locations values when the sensor changes | In MODIS and VIIRS modes the location values are multiplied by hard-coded 0.82 and 1.28; the Global tiles and the month strip do not depend on the sensor. For November: Singapore +8 with MODIS and +13 with VIIRS. There is no upper cap, so with VIIRS the sample goes beyond its own 0–100 scale: in peak months Amazon Basin gives 116 and Singapore 108 | In the sensor-switch shot keep only the map and the live counters; do not show a location in a peak month with VIIRS |
-| Point card: bars of detections over 24 hours by satellite | Live FIRMS data; known inaccuracies: in `Conf NN%` the VIIRS categories are converted to percentages (25, 65, 95), and `MW total` sums FRP across different passes | Do not show large |
-| Point card: the `Pass, no fire` and `Processing` labels, the Sun curve | Computed from CelesTrak orbits and fixed processing delays (90 minutes for VIIRS, 120 minutes for MODIS), not FIRMS data; a pass without a detection does not prove the absence of fire | Leave out of the video; on the project page only with this explanation |
+| **All sensors / MODIS / VIIRS** switch | Filters the live points, the counters and the satellite tracks | The key action of the video |
+| Counters in the **Live active fire spots (NASA FIRMS · 24h)** block | Global over 24 hours. The tiles are **Peak FRP**, **MODIS 1 km** and **VIIRS 375 m**; in MODIS mode the **VIIRS 375 m** tile shows 0, in VIIRS mode the **MODIS 1 km** tile shows 0, and both numbers are visible side by side only in **All sensors** mode | Compare the **MODIS 1 km** tile before the switch with the **VIIRS 375 m** tile after it, and caption them as the whole world; for a still image use **All sensors** |
+| **All sensors** mode | Shows MODIS and VIIRS detections together with no calibration and no removal of duplicates. Its internal name, visible in the link as `sensor=harmonized`, is not a claim | Do not call it harmonization; describe it as both sensors together |
+| **Color fire spots by sensor** and its colour key | Live data. Available only in **All sensors** mode. Detections drawn close together on screen form a group, coloured as both sensors, MODIS only (2+), VIIRS only (2+) or a single detection. The grouping follows screen distance and changes with zoom; it is not a footprint-and-time match between passes | The fourth shot and slide 3. Keep the zoom fixed while the colours are in the shot |
+| Pinned card: bars of detections over 24 hours by satellite | Live FIRMS data; known inaccuracies: the VIIRS confidence classes are converted to percentages (25, 65, 95), and `MW total` sums FRP across different passes | Show the bars, not the totals |
+| Pinned card: the `Pass, no fire` and `Processing` labels, the Sun curve | Computed from CelesTrak orbits and fixed processing delays (90 minutes for VIIRS, 120 minutes for MODIS), not FIRMS data; a pass without a detection does not prove the absence of fire | On the slides and the project page only with this explanation; do not read aloud in the video |
+| Pinned card: the observation table with MODIS and VIIRS columns | Our estimate from public orbital elements, not the instruments' own geolocation: off-nadir angle, distance, Sun and Moon elevation, glint | The fourth shot; caption it as an estimate |
+| Pinned card: land cover and **Weather at acquisition** | Land cover is a fixed 2019 map. Weather comes from models and satellite products; coverage differs by source, and rows no source could fill are hidden | Choose a detection with filled rows; do not present model values as observations |
+| Status rows in the counter block: **Detections**, **Observation geometry**, **Land cover**, **Weather** | Progress of the background enrichment. Weather is sampled in bulk only for the most recent detections, so its count is smaller than the number of detections | Leave out of the video; record after the pending counts stop changing |
 | **Satellite passes** HUD (`ready` / `processing`) and orbit lines: solid for `ready`, dashed for `in processing` | An estimate from the orbit calculation and a timer, not confirmation that data has arrived | Leave out of the video |
 | Orbits, clouds, precipitation, night lights, star background | Context layers | Switch off in the key shots; night lights are easily mistaken for fires |
-| Source credits | There is no credit on the map itself. In version `ff90992`, with the **Sources and credits** block collapsed, the sidebar footer shows the short line "NASA FIRMS · NASA GIBS · CelesTrak · EOX / Copernicus Sentinel-2 · Extremum. Not affiliated with NASA."; the full list is in the expanded block. The heading of the counter block names NASA FIRMS | If the shot is cropped to the map, the name NASA FIRMS must appear in the shot's caption |
-| History since 2000, harmonization, validation, arbitrary area selection, CSV export | Not implemented. "Choose an area" currently means choosing one of six predefined locations | Only as the next step |
-
-**A risk for the script and the slides.** The repository has an unmerged branch, `codex/remove-sample-fire-data`, that removes the sample interface. If it is merged into `main`, there will be nothing to show in the fourth shot of the video or for the calendar items on slides 4 and 5: they would have to be rewritten before recording.
+| Source credits | There is no credit on the map itself. With the **Sources and credits** block collapsed, the sidebar footer shows the short line "NASA FIRMS · NASA GIBS · CelesTrak · EOX / Copernicus Sentinel-2 · Extremum SAR GIS. Not affiliated with NASA."; the full list is in the expanded block. The heading of the counter block names NASA FIRMS | If the shot is cropped to the map, the name NASA FIRMS must appear in the shot's caption |
+| History since 2000, harmonization, validation, area and date selection, export | Not implemented | Only as the next step |
+| Seasonal calendar, typical season, anomaly index | Not in the app. The sample calendar interface was removed; the calendar is a possible follow-up and survives only in the provisional name | Do not show or promise; if asked about the name, say it is provisional |
 
 ### Recording the video
 
 - [ ] Record after the last interface change: the footage must match the version the judges will open.
 - [ ] Open the [link with the prepared view](form-fields.md#4-link-to-final-project) in a private window. In a regular window the app restores the last saved view.
-- [ ] Wait for the live counters, the **Latest detection** line and the points on the map. If the block reports that FIRMS data is unavailable, do not record: only samples will remain on the map.
-- [ ] Record with `Area: Global` in a 1920×1080 window, or crop so that the counters are fully readable: in a 1440×900 window they are cut off at the bottom. Remove loading waits and accidental camera movements.
+- [ ] Wait for the live counters, the **Latest detection** line and the points on the map. If the block reports that FIRMS data is unavailable, do not record: the map will have no detections.
+- [ ] Record in a 1920×1080 window, or crop so that the counters are fully readable: in a 1440×900 window they are cut off at the bottom. Remove loading waits and accidental camera movements.
 - [ ] Check the rendering: in a browser without graphics acceleration the VIIRS points appeared with a delay after the counters, and there were black patches at the poles of the globe. If they are there, crop without the poles.
-- [ ] The sample labels are readable in every shot with the index; the name NASA FIRMS is visible in every shot with live points.
-- [ ] Leave the orbits, the satellite HUD, the point card and the API diagnostics out of the video.
+- [ ] The name NASA FIRMS is visible in every shot with live points.
+- [ ] Choose the region and the group for the fourth shot in advance: a group that both sensors saw, with the geometry and weather rows already filled. The enrichment arrives after the detections; wait until the pinned card stops changing.
+- [ ] Leave the orbits, the satellite HUD and the enrichment status rows out of the video; the pinned card appears only in the fourth shot.
 - [ ] Check that the phrase about "far more" VIIRS detections matches the numbers in the shot. During the check, after switching to VIIRS the points became noticeably denser over India, China, Indochina, Indonesia and Australia.
 - [ ] Give the real team name and the member details the rules allow; do not invent missing names.
 - [ ] The duration is set by the recorded take, not by the storyboard. Our recommendation is a margin of one or two seconds below the limit in case the video host rounds up: the Astro Sweepers and QUEÑARIS videos as available today run 30.5 and 30.4 seconds. If the video does not fit, cut text or pauses rather than speeding up the speech.
@@ -207,9 +208,9 @@ When and against which version the app was checked is in the [status against the
 
 ### What not to say
 
-- Do not pass off Harmonized mode and the index multipliers as calibration, samples as results, plans as working features, or computed satellite passes as FIRMS data.
+- Do not pass off **All sensors** mode as harmonization, colouring by sensor as a match between passes, plans as working features, or computed satellite passes and viewing geometry as FIRMS data.
 - FIRMS detections are thermal anomalies, not individual fires; do not attribute a cause such as peatlands or industry to them without data.
-- Do not promise fire forecasting, operational response, accuracy or damage reduction: the calendar answers when an area usually burns and whether the current period is unusual.
+- Do not promise fire forecasting, operational response, accuracy or damage reduction: the app shows where the two sensors disagree and under what conditions each detection was made. Do not describe a seasonal calendar, baselines or anomaly scores as existing features.
 
 ### Project page and repository
 
@@ -217,10 +218,10 @@ The guide advises saving the project page often so as not to lose work.
 
 | What | State | Advice |
 |---|---|---|
-| A judge's first visit | With no parameters, on first visit the app opens on Singapore with all layers, Harmonized mode and the current month, and requests geolocation; if allowed, it moves the view to the user when they are more than 100 km from Singapore. In the test screenshot of that view, clouds and night lights covered the map and the fire points were barely visible | Give the link with the prepared view in all materials: it opens the globe in MODIS mode without context layers and does not request geolocation |
-| Sample texts | The index, the calendar and Locations are labelled as samples, but the texts in the summary read like findings | On the project page, separate live data, sample and plan; replace the sample texts with neutral ones |
-| README and page metadata | The README describes the project in the present tense as showing departures based on harmonized records, although harmonization is not implemented; the name is marked as provisional. The description and title in `ui/index.html` promise the same ("harmonizing MODIS… and VIIRS…", "Harmonized MODIS & VIIRS Fire Anomalies") | Bring the README and metadata into line with the project page |
-| The version the judges will see | GitHub Pages rebuilds the site on every push to `main` that changes `ui/` or the `deploy-ui.yml` file, and on manual runs; changes only to the README, `doc/` and `backend/` do not touch the site. Since the previously checked commit `05161f3`, 18 more commits have been published; the source credits, the point card and the orbit lines changed in that time | Pin the commit or tag at the moment of submission and state it on the project page; do not publish changes after the deadline at the link from the submission. Take screenshots and record after the last interface change |
+| A judge's first visit | With no parameters, on first visit the app opens on Singapore with all layers and **All sensors** mode, and requests geolocation; if allowed, it moves the view to the user when they are more than 100 km from Singapore. In the test screenshot of that view, clouds and night lights covered the map and the fire points were barely visible | Give the link with the prepared view in all materials: it opens the globe in MODIS mode without context layers and does not request geolocation |
+| Statuses | The app shows no sample values. The passes without a detection, the processing marks and the viewing geometry are our estimates from orbits | On the project page, separate live data, estimates and plans |
+| README and page metadata | The README and the description in `ui/index.html` now describe a tool for comparing the sensors; the name is marked as provisional. The link preview image `og-preview.png` still reads "MODIS 1 km · VIIRS 375 m harmonization" and "Seasonal burning baselines & live calendar anomalies" | Replace the preview image: it promises features the app does not have |
+| The version the judges will see | GitHub Pages rebuilds the site on every push to `main` that changes `ui/` or the `deploy-ui.yml` file, and on manual runs; changes only to the README, `doc/` and `backend/` do not touch the site. The version published now is `3da451f`, deployed on 15 November at 17:47 SGT | Pin the commit or tag at the moment of submission and state it on the project page; do not publish changes after the deadline at the link from the submission. Take screenshots and record after the last interface change |
 | Consistency of materials | — | Names, numbers and statuses in the demo match the project page and the README |
 
 **Order of work before the deadline.** First, all the [items marked ⛔](formal-requirements.md#checklist): these include the license information for third-party materials. Then the remaining formal requirements: completeness of sources, AI disclosure. Then what affects the score: separation of statuses on the project page, the README, the link with the prepared view.

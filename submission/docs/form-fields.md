@@ -27,7 +27,7 @@ The form has two link fields (3 and 4). All other materials go in as links insid
 | Field | What goes in | Entry point |
 |---|---|---|
 | 1. Project Name | `Earth Fire Calendar` | — |
-| 2. High-Level Project Summary | Two or three sentences: the problem, what is built, what is still a sample | — |
+| 2. High-Level Project Summary | Two or three sentences: the problem, what is built, what is still planned | — |
 | 3. Link to Project Demo | **Video** recorded from the [script](demo-video.md) | Public video link that opens without sign-in |
 | 4. Link to Final Project | **App** | [Link with the prepared view](#4-link-to-final-project) |
 | 5. Detailed Project Description | [Project text](project-description.md#5-detailed-project-description), screenshots and a closing **Materials** block of four links: slide deck, technical note, literature review, repository | Each link goes straight to the file in `submission/docs`; the repository link goes to the README |
