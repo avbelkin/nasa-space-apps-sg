@@ -1,54 +1,54 @@
 # Earth Fire Calendar presentation
 
-**Checkpoint 01, paused for review. This is not the final submission deck.**
+**Seven-slide visual framework, revision scaffold-r6. Original copy and team placeholders are retained for the next editorial pass.** PDF, PPTX, previews and captured screenshots are local artifacts excluded from Git at the user's request; the links below work in the local checkout.
 
-- [Editable PowerPoint](output/earth-fire-calendar-checkpoint-01-r3.pptx)
-- [Visual review PDF](output/earth-fire-calendar-checkpoint-01-r3.pdf)
-- [Overview](output/earth-fire-calendar-checkpoint-01-r3-overview.png)
-- [Review brief](REVIEW.md)
+- [Presentation PDF](output/earth-fire-calendar-scaffold-r6.pdf) — vector text, shapes and chart; embedded brand fonts; clickable links.
+- [Editable PowerPoint](output/earth-fire-calendar-scaffold-r6.pptx) — editable text, pipeline, and native chart with embedded data workbook.
+- [Overview](output/earth-fire-calendar-scaffold-r6-overview.png)
+- [Verification](output/verification-scaffold-r6.json) and [review record](REVIEW.md)
 
-Slides 1–2 establish the design and count comparison. Slides 3–7 contain the current copy in editable layout scaffolds. The five outlined screenshot positions on slides 3–5 are intentional placeholders for the next reviewed block. The pipeline on slide 6 is still a text scaffold. The existing team-name and member-name placeholders remain unchanged.
+Slides 3–5 now contain real application captures; slide 6 has an editable pipeline. Team name and member names intentionally remain placeholders, as requested. This is a finished layout framework, not a claim that the presentation copy or submission is final. Checkpoint 01 files remain locally in `output/` for comparison.
 
 ## Copy and evidence
 
-The builder reads [demo-slides.md](../docs/demo-slides.md) directly. Its wording, seven-slide order, dates, counts, qualifications and attribution are retained. The source file is not edited. Every source paragraph is checked for coverage before export, and the exported PPTX is checked again separately.
+The builder reads [demo-slides.md](../docs/demo-slides.md) directly. The source file is unchanged. Titles, paragraphs, dates, counts, qualifications and attribution are checked before export and again in the delivered PPTX/PDF. The two descriptive screenshot headings supplement, but do not replace, the source copy.
 
-The native chart on slide 2 uses the [saved 08:36 UTC snapshot](../assets/firms-snapshot-2026-11-15T0836Z.json): 79,349 VIIRS and 8,127 MODIS detections. Its embedded workbook contains those same values. The cover uses a later unretouched browser screenshot; its [capture metadata](assets/screenshots/cover-globe.json) is recorded separately. It is an illustration, not evidence for the earlier count comparison. No live screenshot with different counters is substituted for that snapshot.
+Slide 2 uses the [frozen 08:36 UTC snapshot](../assets/firms-snapshot-2026-11-15T0836Z.json): 79,349 VIIRS and 8,127 MODIS detections. The native chart and its workbook contain these values; the value axis is fixed at 0–100,000. The source date is placed below the chart and the detection qualification directly below the lead.
 
-## Design and assets
+Other slides use a later live illustration, with [capture provenance](assets/screenshots/capture-scenes.json). The same region and live snapshot are used for the MODIS/VIIRS views. The pinned group has both sensors. For legibility, the captured application panel was expanded to 700 CSS pixels in the browser; its data was not changed. These screenshots do not substantiate the earlier count comparison. Images were captured at device scale 2.
 
-16:9, 1600 × 900, 80 px margins. Fira Sans Black on the cover, Fira Sans Bold for headings, Overpass for body copy. Electric Blue to Deep Blue gradient, white content slides, sparse Neon Yellow emphasis and the supplied orbit pattern. [Design tokens](design-tokens.json) centralize the palette, typography and canvas.
+## Design and export
 
-The [existing reference collection](../assets/README.md) supplies the palette and pattern. No NASA or Space Apps logos are inserted. Factual attribution and the original non-affiliation statement are retained.
+16:9, 1600 × 900; Fira Sans Black / Bold and Overpass; the supplied Electric-to-Deep gradient, orbit pattern at 25%, white content slides and limited Neon Yellow emphasis. [Tokens](design-tokens.json) define the 80 / 52 / 30 / 25 / 20 px type scale. [Supplied references](../assets/README.md) govern the palette and branding. No NASA or Space Apps logos are used.
 
-[Font files](assets/fonts/) and their OFL licences are included as project assets, **not installed in the system**. PowerPoint may require those fonts to be installed on the viewing machine; the PPTX does not embed font binaries. The PDF contains the checked slide images and preserves their appearance without installing fonts. It is a visual proof, not a searchable or editable PDF; use the PPTX for text, links and chart editing.
+Artifact Tool produces PPTX. A narrowly scoped OOXML repair preserves image/chart descriptions and meaningful metadata and explicitly fixes the chart scale before the finalizer validates the file. All text and diagram boxes remain editable.
 
-The full 30 MB brand guide is downloaded locally to `.build/space-apps-brand-guide.pdf` and excluded from Git. Official source: https://assets.spaceappschallenge.org/media/documents/Space_Apps_Brand_Guide_VUGpVJm.pdf. Typography, gradient, contrast and pattern guidance were checked against it.
+The PDF uses the same layout records, rendered by Chromium with embedded TrueType font subsets, real text, vectors and URI annotations. Only application screenshots and the reference pattern are raster assets. This avoids the managed Artifact Tool PDF runtime's unavailable standard-font module. It is not a PDF made of whole-slide screenshots. Native PowerPoint may lay out text and charts slightly differently; the supplied PDF is the appearance reference.
 
-Font sources, downloaded 2026-11-15:
+Fonts and OFL licences are included in [assets/fonts](assets/fonts/), with URLs and SHA-256 hashes in [sources.json](assets/fonts/sources.json). They are not installed on the system or embedded in PPTX. Native PowerPoint 16.109.3 opened all seven slides and exported a proof; the slide 2 end labels fit. On this machine PowerPoint substitutes Calibri for Overpass. The supplied PDF embeds the intended fonts and is unaffected.
 
-- Fira Sans Black and Bold: https://github.com/google/fonts/tree/main/ofl/firasans
-- Overpass Regular, Bold and Italic: https://github.com/RedHatOfficial/Overpass/tree/master/fonts/otf
-- The upstream font files and licences are unchanged. The local licence filenames distinguish the two families.
+The full 30 MB brand guide is local at `.build/space-apps-brand-guide.pdf`, excluded from Git. Its official URL is recorded in the [reference collection](../assets/README.md). No package installation was performed.
 
-## Rebuild with existing dependencies
+## Rebuild
 
-Use a managed runtime that already contains `@oai/artifact-tool`, `pdf-lib`, `playwright` and the presentation skill validators. This repository adds no package dependency and the scripts never install anything. The initial checkpoint was built with the installed Codex runtime, Artifact Tool 2.8.157 and its Python 3.12 interpreter.
+Use an existing managed runtime with `@oai/artifact-tool`, `skia-canvas`, `sharp`, `jszip`, `xml-js`, `pdf-lib`, `playwright`, Chrome, Poppler and the presentation skill validators. The recorded build used Artifact Tool 2.8.157 and the bundled Python 3.12 runtime.
 
 ```sh
 export RUNTIME_NODE_MODULES=/absolute/path/to/managed/runtime/dependencies/node/node_modules
 export RUNTIME_PYTHON=/absolute/path/to/managed/runtime/dependencies/python/bin/python
 export PRESENTATIONS_SKILL=/absolute/path/to/presentations/skills/presentations
-export DECK_VERSION=checkpoint-02
-/absolute/path/to/managed/runtime/dependencies/node/bin/node submission/presentation/build.mjs
+export POPPLER_BIN=/absolute/path/to/poppler/bin
+export DECK_VERSION=scaffold-r7
+/absolute/path/to/node submission/presentation/build.mjs
+/absolute/path/to/node submission/presentation/verify.mjs
 ```
 
-Use a new `DECK_VERSION` for each reviewed revision. The finalizer refuses to overwrite an existing PPTX. Output goes to `output/`; draft files, per-slide renders, copy coverage and validation receipts go to `.build/<version>/`. Copy edits can change line lengths and require renewed visual review; the existing block structure is the builder's input contract.
+Use a new version on each build; the finalizer refuses to overwrite a final PPTX. Outputs go to `output/`. Per-slide 2× previews, HTML, shared layout, source coverage, font/link reports and validation receipts go to `.build/<version>/`. Source copy changes require renewed visual review.
 
-`capture-cover.mjs` can refresh the cover screenshot, with `RUNTIME_NODE_MODULES` set and a local Chrome available. A refresh changes the capture metadata and should be reviewed. It must not change slide 2's evidence without also updating the approved text and snapshot.
+On a fresh checkout, first run `capture-scenes.mjs` using the existing Chrome and Playwright to create the ignored local screenshot assets. This refreshes the UI illustrations and requires renewed visual review; it does not change the frozen slide 2 snapshot. On macOS with PowerPoint installed, `verify-powerpoint.applescript` accepts absolute PPTX and proof-PDF paths. The native proof is a separate compatibility check, not the delivered PDF.
 
-## Execution and cost
+## Review and accounting
 
-No approved LLM gateway or model-routing configuration was found in this repository. This small frozen-copy assembly used local deterministic processing and the current Codex session; no bulk API classification or extraction was needed. API provider/model/route: none. API calls: 0; API cost: $0. Subscription work: this Codex session, no subagents. Allowance consumption is unavailable and is not inferred from token prices.
+The user's checkpoint review has been incorporated. A separate Codex reviewer inspected all seven actual PDF pages, source wording/data, OOXML, links and native PowerPoint chart proof. See [REVIEW.md](REVIEW.md) for the accepted revision, coverage and limitations. No Claude job was launched by this session.
 
-No asynchronous API jobs or reviewer jobs were submitted. Claude and the second reviewer have not reviewed this checkpoint. The next action is to collect their comments against this exact checkpoint and correct them before proceeding to the next block.
+No approved LLM API gateway was found in the repository. Local deterministic tools handled assembly; the final independent pass ran inside Codex as required by `AGENTS.md`. API provider/model/route: none; calls: 0; cost: $0. Subscription usage: the primary Codex session plus one independent Codex reviewer; allowance consumption is unavailable. No API or Batch work was submitted.

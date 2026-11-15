@@ -43,6 +43,24 @@
       "bytes": 4392,
       "url": "https://raw.githubusercontent.com/RedHatOfficial/Overpass/master/OFL.txt",
       "sha256": "86e5ff25c701ec446d20b1a85b02ee6d36de8503a7288a4c948f5459809af1f0"
+    },
+    {
+      "name": "Overpass-Regular.ttf",
+      "bytes": 210416,
+      "url": "https://raw.githubusercontent.com/RedHatOfficial/Overpass/master/fonts/ttf/Overpass-Regular.ttf",
+      "sha256": "bf107d7ae99031c2193cd187acc9d4e5ebd45b6ea0e6845159ce68f87eb623aa"
+    },
+    {
+      "name": "Overpass-Bold.ttf",
+      "bytes": 215496,
+      "url": "https://raw.githubusercontent.com/RedHatOfficial/Overpass/master/fonts/ttf/Overpass-Bold.ttf",
+      "sha256": "623f1f421fecc29095d76b3aa472c409e1b0b5db70ef2b3ba4b699546ce3d4af"
+    },
+    {
+      "name": "Overpass-Italic.ttf",
+      "bytes": 200948,
+      "url": "https://raw.githubusercontent.com/RedHatOfficial/Overpass/master/fonts/ttf/Overpass-Italic.ttf",
+      "sha256": "226e7f1ee190a0b233fd17687c1856780471abe0558a8f46d296bdb7aa958363"
     }
   ]
 }
