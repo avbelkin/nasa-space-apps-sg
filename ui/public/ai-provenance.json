@@ -24,8 +24,7 @@
       "documentation",
       "presentation layout",
       "media production"
-    ],
-    "model_identifiers": "Not fully recorded; tool names are not an exhaustive model history."
+    ]
   },
   "model_outputs": {
     "provider": "Earth Fire Calendar team-fitted statistical models",
@@ -60,5 +59,17 @@
       "description": "Code-authored SVG; metadata is embedded in the SVG."
     }
   ],
-  "video": "See submission/video/disclosures.md for final route, voice and MP4 metadata; pilots are not final."
+  "video": "AI character design (OpenAI ChatGPT image), animation (Google Veo 3.1 Lite via OpenRouter) and narration (ElevenLabs Eleven v4, voice Flicker, via OpenRouter); see submission/video/disclosures.md.",
+  "literature_review": {
+    "file": "submission/deliverables/modis-viirs-harmonization-literature-review.md",
+    "assistance": [
+      "Anthropic Claude",
+      "OpenAI Codex",
+      "Google Antigravity",
+      "Muse Code",
+      "Kimi Code",
+      "OpenRouter API models",
+      "Orca"
+    ]
+  }
 }

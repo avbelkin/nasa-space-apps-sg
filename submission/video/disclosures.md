@@ -34,15 +34,8 @@ The pilot identifies itself as a concept rather than the final submission. Inspe
 
 ## Before publication
 
-The user identified Alexey as a team member and selected the footage. This does not establish the written consent required by the participant terms. Keep written consent privately from every identifiable adult shown or heard, covering public submission, NASA display/copy/distribution, and the US Government video licence. Do not publish signatures, addresses or identity documents. No identifiable minors, including names or voices, may appear. An original fictional cartoon alpaca and a synthetic character voice do not establish that a real minor appears; check the actual source footage and voice provenance. The team is Plush, with registered human members Alexey Belkin and Viktoriia Naiman. The physical toy's original scarf symbols still need a rights check. The new animated scarf uses an original abstract pattern. The concept pilot has no closing project-link card and is not a publication-ready submission.
-
-
-## Rights release gate
-
-AI disclosure and a generation receipt do not establish redistribution rights. Preserve the applicable OpenAI image-output terms, Google Veo terms for the OpenRouter route, and ElevenLabs/OpenRouter voice-output terms in force at generation. Establish whether the actual selected voice (Charlie in the rejected pilot; Jessica/Bella/Laura auditions currently unselected) is a licensed stock voice, whether beta restrictions apply, and whether the actual route permits the submission's perpetual government video licence and public redistribution. Direct ElevenLabs paid-plan guidance does not establish the terms of an OpenRouter purchase. See the [rights register](../deliverables/third-party-rights.md).
-
-The old UI captures contain the EOX 2025 basemap (CC BY-NC-SA 4.0). Replacing the live app's basemap does not change those recordings. Recapture all final map scenes using the corrected 2016 CC BY 4.0 layer, show the EOX credit legibly near its use, and include the licence and source in the description. Do not publish the earlier pilot as the final demo. Do not add music without an independently verified reuse licence.
-
-## Model-generated values
-
-The application applies team-fitted regression models to NASA FIRMS inputs. Estimates are outputs of Earth Fire Calendar's models, not NASA products. NASA has not reviewed or validated these outputs and is not responsible for their accuracy. The AI-use selection must include machine learning as well as coding, text, image, animation and speech assistance.
+- **People in the frame.** The participant terms ask for written consent from every adult featured in the video. For Alexey, a one-line message from him ("I agree that my image in the Earth Fire Calendar demo may be used by NASA") kept in the team chat is enough; as a registered participant he also grants NASA this permission under the terms. No one under 18 may appear or be named.
+- **Map scenes.** Record them from the live app, which now uses the EOX 2016 basemap (CC BY 4.0). Older recordings show the 2025 layer (CC BY-NC-SA 4.0); if one stays in the final cut, name that licence in the description and in the [register](../deliverables/third-party-rights.md).
+- **Music.** None; add none without a licence that allows reuse.
+- **Metadata.** Write the actual voice ("Flicker"), motion and image tools into the final MP4 comment and the video description, and keep the `AI-generated` label on the character throughout.
+- **Model outputs.** If the video shows the app's estimates, they are Earth Fire Calendar's, not NASA's.

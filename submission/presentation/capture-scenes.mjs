@@ -5,6 +5,7 @@ const root=import.meta.dirname;
 const require=createRequire(path.join(process.env.RUNTIME_NODE_MODULES,'__capture__.cjs'));
 const {chromium}=require('playwright');
 const assets=path.join(root,'assets/screenshots');
+await fs.mkdir(assets,{recursive:true});
 const browser=await chromium.launch({executablePath:process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
 const page=await browser.newPage({viewport:{width:1920,height:1080},deviceScaleFactor:2});
 const manifest={capturedAt:new Date().toISOString(),viewport:{width:1920,height:1080},deviceScaleFactor:2,source:'https://avbelkin.github.io/nasa-space-apps-sg/',images:[],note:'Current UI illustrations; not the 08:36 UTC count snapshot on slide 2. Captured through normal sensor controls and map clicks. No data is invented or modified.'};
@@ -28,12 +29,25 @@ async function findMap(){
  });
 }
 try {
- await page.goto(`${base}#z=1.8&lat=9&lng=94&sensor=harmonized&proj=globe&orbits=0&clouds=0&lights=0&rain=0`,{waitUntil:'domcontentloaded'});
+ await page.goto(`${base}#z=1.8&lat=9&lng=94&sensor=harmonized&proj=globe&orbits=0&clouds=0&lights=0&rain=0`,{waitUntil:'domcontentloaded',timeout:60000});
  await page.getByRole('switch',{name:'Color fire spots by sensor'}).check();
  await page.waitForFunction(()=>document.body.innerText.includes('loaded'));
  await page.waitForTimeout(9000);
- await page.screenshot({path:path.join(assets,'cover-sensors.png'),clip:{x:523,y:324,width:490,height:490}});
- manifest.images.push({name:'cover-sensors.png',url:page.url(),clip:{x:523,y:324,width:490,height:490},description:'Tight globe crop with sensor colouring enabled.'});
+ if(!await findMap())throw Error('Map instance not found');
+ const mapSources=await page.evaluate(()=>Object.fromEntries(Object.entries(window.__deckMap.getStyle().sources).filter(([,source])=>source.type==='raster')));
+ if(!JSON.stringify(mapSources).includes('s2cloudless_3857')||JSON.stringify(mapSources).includes('s2cloudless-2025'))throw Error('Expected the current EOxCloudless 2016 basemap');
+ manifest.basemap={name:'EOxCloudless 2016',license:'CC BY 4.0',sources:mapSources};
+ const canvas=await page.locator('.maplibregl-canvas').boundingBox();
+ const coverClip={x:canvas.x+canvas.width/2-249,y:canvas.y+canvas.height/2-249,width:498,height:498};
+ await page.screenshot({path:path.join(assets,'cover-sensors.png'),clip:coverClip});
+ manifest.images.push({name:'cover-sensors.png',url:page.url(),capturedAt:new Date().toISOString(),clip:coverClip,description:'Complete globe crop with sensor colouring enabled.'});
+ if(process.env.CAPTURE_SCOPE==='cover'){
+  const previous=JSON.parse(await fs.readFile(path.join(assets,'capture-scenes.json'),'utf8'));
+  previous.images=previous.images.map(item=>item.name==='cover-sensors.png'?manifest.images[0]:item);
+  previous.basemap=manifest.basemap;
+  await fs.writeFile(path.join(assets,'capture-scenes.json'),JSON.stringify(previous,null,2)+'\n');
+  console.log('Updated the cover capture and its provenance.');
+ }else{
  await page.goto(`${base}#z=5&lat=29&lng=76&sensor=harmonized&proj=mercator&orbits=0&clouds=0&lights=0&rain=0`,{waitUntil:'domcontentloaded'});
  await page.waitForTimeout(7000);
  await page.getByRole('switch',{name:'Color fire spots by sensor'}).check();
@@ -77,4 +91,5 @@ try {
  manifest.visibleSnapshotText=(await page.locator('body').innerText()).match(/Latest detection:[\s\S]*?Snapshot fetched[^.]*\./)?.[0];
  await fs.writeFile(path.join(assets,'capture-scenes.json'),JSON.stringify(manifest,null,2)+'\n');
  console.log(JSON.stringify({files:manifest.images.map(x=>x.name),snapshot:manifest.visibleSnapshotText,selection:target.coords}));
+ }
 } finally {await browser.close();}

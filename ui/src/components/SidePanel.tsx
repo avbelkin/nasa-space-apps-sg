@@ -30,6 +30,7 @@ interface SidePanelProps {
   satellites: readonly LiveSatelliteSnapshot[]
   selectedSatelliteId: string | null
   onSelectSatellite: (satellite: LiveSatelliteSnapshot) => void
+  onRetrySatellites?: () => void
   connectionState: ConnectionState
   liveFires: LiveFiresInfo
   pinnedDetails: ReactNode
@@ -45,6 +46,7 @@ export function SidePanel({
   satellites,
   selectedSatelliteId,
   onSelectSatellite,
+  onRetrySatellites,
   connectionState,
   liveFires,
   pinnedDetails,
@@ -95,6 +97,7 @@ export function SidePanel({
         snapshots={satellites}
         selectedSatelliteId={selectedSatelliteId}
         onSelectSatellite={onSelectSatellite}
+        onRetry={onRetrySatellites}
       />
 
       <div className="panel-bottom">

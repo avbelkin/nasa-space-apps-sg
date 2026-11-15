@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-11-15T11:19:39.109Z",
+  "capturedAt": "2026-11-15T13:36:27.757Z",
   "viewport": {
     "width": 1920,
     "height": 1080
@@ -10,113 +10,126 @@
     {
       "name": "cover-sensors.png",
       "url": "https://avbelkin.github.io/nasa-space-apps-sg/#z=1.8&lat=9&lng=94&sensor=harmonized&proj=globe&orbits=0&clouds=0&lights=0&rain=0",
+      "capturedAt": "2026-11-15T13:42:47.032Z",
       "clip": {
-        "x": 523,
-        "y": 324,
-        "width": 490,
-        "height": 490
+        "x": 385,
+        "y": 320,
+        "width": 498,
+        "height": 498
       },
-      "description": "Tight globe crop with sensor colouring enabled."
+      "description": "Complete globe crop with sensor colouring enabled."
     },
     {
       "name": "regional-sensors.png",
       "url": "https://avbelkin.github.io/nasa-space-apps-sg/#z=5&lat=29&lng=76&sensor=harmonized&proj=mercator&orbits=0&clouds=0&lights=0&rain=0",
-      "capturedAt": "2026-11-15T11:19:57.486Z",
+      "capturedAt": "2026-11-15T13:37:04.449Z",
       "description": "Northern India, all sensors; colour key is captured separately."
     },
     {
       "name": "sensor-key.png",
       "url": "https://avbelkin.github.io/nasa-space-apps-sg/#z=5&lat=29&lng=76&sensor=harmonized&proj=mercator&orbits=0&clouds=0&lights=0&rain=0",
-      "capturedAt": "2026-11-15T11:19:57.575Z",
+      "capturedAt": "2026-11-15T13:37:04.538Z",
       "description": "Unmodified in-app legend."
     },
     {
       "name": "step-modis.png",
       "url": "https://avbelkin.github.io/nasa-space-apps-sg/#z=5&lat=29&lng=76&sensor=modis&proj=mercator&orbits=0&clouds=0&lights=0&rain=0",
-      "capturedAt": "2026-11-15T11:19:59.824Z"
+      "capturedAt": "2026-11-15T13:37:06.822Z"
     },
     {
       "name": "step-viirs.png",
       "url": "https://avbelkin.github.io/nasa-space-apps-sg/#z=5&lat=29&lng=76&sensor=viirs&proj=mercator&orbits=0&clouds=0&lights=0&rain=0",
-      "capturedAt": "2026-11-15T11:20:02.093Z"
+      "capturedAt": "2026-11-15T13:37:09.041Z"
     },
     {
       "name": "pinned-timeline.png",
       "url": "https://avbelkin.github.io/nasa-space-apps-sg/#z=5&lat=29&lng=76&sensor=harmonized&proj=mercator&orbits=0&clouds=0&lights=0&rain=0",
-      "capturedAt": "2026-11-15T11:20:16.816Z",
+      "capturedAt": "2026-11-15T13:37:23.932Z",
       "description": "24-hour timeline, actual and estimated passes.",
       "captureStyle": ".app-frame{grid-template-columns:minmax(0,1fr) 700px !important;}",
       "selection": [
-        75.5584716796875,
-        28.951677350293465
+        79.62066650390625,
+        26.907375462719244
       ]
     },
     {
       "name": "pinned-geometry.png",
       "url": "https://avbelkin.github.io/nasa-space-apps-sg/#z=5&lat=29&lng=76&sensor=harmonized&proj=mercator&orbits=0&clouds=0&lights=0&rain=0",
-      "capturedAt": "2026-11-15T11:20:16.894Z",
+      "capturedAt": "2026-11-15T13:37:24.024Z",
       "description": "Estimated viewing geometry, MODIS and VIIRS columns.",
       "captureStyle": ".app-frame{grid-template-columns:minmax(0,1fr) 700px !important;}",
       "selection": [
-        75.5584716796875,
-        28.951677350293465
+        79.62066650390625,
+        26.907375462719244
       ]
     },
     {
       "name": "pinned-weather.png",
       "url": "https://avbelkin.github.io/nasa-space-apps-sg/#z=5&lat=29&lng=76&sensor=harmonized&proj=mercator&orbits=0&clouds=0&lights=0&rain=0",
-      "capturedAt": "2026-11-15T11:20:23.020Z",
+      "capturedAt": "2026-11-15T13:37:30.152Z",
       "description": "Weather-at-acquisition comparison.",
       "captureStyle": ".app-frame{grid-template-columns:minmax(0,1fr) 700px !important;}",
       "selection": [
-        75.5584716796875,
-        28.951677350293465
+        79.62066650390625,
+        26.907375462719244
       ]
     },
     {
       "name": "pinned-summary.png",
       "url": "https://avbelkin.github.io/nasa-space-apps-sg/#z=5&lat=29&lng=76&sensor=harmonized&proj=mercator&orbits=0&clouds=0&lights=0&rain=0",
-      "capturedAt": "2026-11-15T11:20:23.110Z",
+      "capturedAt": "2026-11-15T13:37:30.240Z",
       "description": "Selected real detection group.",
       "captureStyle": ".app-frame{grid-template-columns:minmax(0,1fr) 700px !important;}",
       "selection": [
-        75.5584716796875,
-        28.951677350293465
+        79.62066650390625,
+        26.907375462719244
       ]
     }
   ],
   "note": "Current UI illustrations; not the 08:36 UTC count snapshot on slide 2. Captured through normal sensor controls and map clicks. No data is invented or modified.",
+  "basemap": {
+    "name": "EOxCloudless 2016",
+    "license": "CC BY 4.0",
+    "sources": {
+      "eox-s2cloudless": {
+        "type": "raster",
+        "tiles": [
+          "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg"
+        ],
+        "tileSize": 256,
+        "maxzoom": 15
+      }
+    }
+  },
   "selection": {
     "xy": {
-      "x": 736.905555555557,
-      "y": 500.51389697429613
+      "x": 785.7805555555545,
+      "y": 605.8263969742961
     },
     "coords": [
-      75.5584716796875,
-      28.951677350293465
+      79.62066650390625,
+      26.907375462719244
     ],
     "props": {
-      "spotIndex": 54380,
-      "timestamp": 1794715440000,
-      "frp": 8.3,
-      "brightnessK": 309.7,
-      "confidence": 64,
-      "instrument": "modis",
-      "source": "MODIS 1km",
-      "satellite": "Terra",
+      "spotIndex": 13399,
+      "timestamp": 1794726660000,
+      "frp": 2.1,
+      "brightnessK": 332.2,
+      "confidence": 65,
+      "instrument": "viirs",
+      "source": "VIIRS 375m / NOAA-21",
+      "satellite": "NOAA-21",
       "dayNight": "D",
-      "radiusMeters": 1000,
-      "powerScale": 0.5293172690763053,
-      "certainty": 0.808,
-      "activity": 0.6972892708333334,
-      "phaseCohort": 3,
-      "minZoomAll": 2,
-      "minZoomModis": 1,
-      "minZoomViirs": 7,
-      "sensorGroupAtZoom2": "both",
-      "sensorGroupAtZoom3": "both",
+      "radiusMeters": 375,
+      "powerScale": 0.5044176706827309,
+      "certainty": 0.8133333333333334,
+      "activity": 0.7319613425925926,
+      "phaseCohort": 0,
+      "minZoomAll": 5,
+      "minZoomModis": 7,
+      "minZoomViirs": 5,
       "screenSensorGroup": "both"
     }
   },
-  "visibleSnapshotText": "Latest detection: 2026-11-15 11:05 UTC · Snapshot fetched 2026-11-15 11:11 UTC."
+  "visibleSnapshotText": "Latest detection: 2026-11-15 12:33 UTC · Snapshot fetched 2026-11-15 13:37 UTC."
 }

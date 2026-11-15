@@ -1,9 +1,11 @@
 Earth Fire Calendar
-Copyright 2026 Earth Fire Calendar contributors.
+Copyright 2026 Team Plush (Alexey Belkin, Viktoriia Naiman).
 
-Original contributions are licensed under Apache License 2.0, to the extent the
-contributors hold the necessary rights. Third-party software, datasets, imagery,
-fonts, trademarks and generated media retain their own terms. No third-party
-material is relicensed by the root LICENSE. See submission/deliverables/third-party-rights.md
-and submission/deliverables/software-licenses.md for attribution and open blockers.
-NASA names and data credits do not imply affiliation, review or endorsement.
+The team's original code and documents are licensed under the Apache License 2.0.
+Third-party software, data, imagery, fonts and generated media keep their own
+licences and are not covered by this licence. They are listed, with their
+licences, in submission/deliverables/third-party-rights.md and
+submission/deliverables/software-licenses.md.
+
+Independent project built for the 2026 NASA Space Apps Challenge. Not affiliated
+with or endorsed by NASA.

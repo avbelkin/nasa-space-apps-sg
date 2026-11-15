@@ -8,8 +8,10 @@ import {
 import { FIRE_SPOT_COLORS } from '../src/data/dataPalette.ts'
 import {
   ACTIVE_AGE_SECONDS,
+  aggregateFireSpotLandCover,
   buildFireSpotsGeoJson,
   buildFireSpotLandCoverLookup,
+  isFireSelectionInPayload,
   classifyFireSensorGroup,
   COHORT_PHASE_RADIANS,
   compareMatchedFireSpots,
@@ -162,6 +164,49 @@ describe('buildFireSpotsGeoJson & summarizeFireSpotsForSensor', () => {
     assert.equal(formatFireSpotsTooltip([detections[10]], referenceNowMs, options)?.landCoverLabel, '')
   })
 
+  it('keeps class fractions and coverage in the land cover lookup and aggregates them', () => {
+    const spots: FirmsLiveSpotsResponse['spots'] = [
+      [10, 20, referenceNowMs - 60_000, 20, 345, 90, 0, 'Terra', 'D',
+        { dominantCode: 10, coverage: 0.8, classes: [{ code: 10, fraction: 0.75 }, { code: 130, fraction: 0.25 }] }],
+      [11, 21, referenceNowMs - 120_000, 20, 345, 90, 0, 'Terra', 'D',
+        { dominantCode: 130, coverage: 1, classes: [{ code: 130, fraction: 1 }] }],
+      [12, 22, referenceNowMs - 180_000, 20, 345, 90, 0, 'Terra', 'D', null],
+    ]
+    const payload = {
+      ...samplePayload,
+      spots,
+      landCoverDataset: {
+        id: 'test', year: 2019, resolutionMeters: 1200,
+        classLabels: { 10: 'Cropland', 130: 'Grassland' },
+      },
+    }
+    const lookup = buildFireSpotLandCoverLookup(payload)
+    const inputs: FireSpotTooltipInput[] = spots.map(([lng, lat, timestamp]) => ({
+      lng, lat, timestamp, frp: 20, source: 'MODIS 1km',
+    }))
+
+    const single = aggregateFireSpotLandCover([inputs[0]], lookup)
+    assert.equal(single?.detectionCount, 1)
+    assert.equal(single?.coverage, 0.8)
+    assert.deepEqual(
+      single?.classes.map(({ label, fraction }) => [label, fraction]),
+      [['Cropland', 0.75], ['Grassland', 0.25]],
+    )
+
+    const group = aggregateFireSpotLandCover(inputs, lookup)
+    assert.equal(group?.detectionCount, 2)
+    assert.equal(group?.coverage, 0.9)
+    assert.deepEqual(
+      group?.classes.map(({ label, fraction }) => [label, fraction]),
+      [['Grassland', 0.625], ['Cropland', 0.375]],
+    )
+    assert.equal(aggregateFireSpotLandCover([inputs[2]], lookup), null)
+
+    assert.equal(isFireSelectionInPayload([inputs[0]], payload), true)
+    assert.equal(isFireSelectionInPayload([{ ...inputs[0], timestamp: 1 }], payload), false)
+    assert.equal(isFireSelectionInPayload(inputs, null), false)
+  })
+
   it('summarizes counts, peak FRP, and latest acquisition per sensor filter', () => {
     const harmonized = summarizeFireSpotsForSensor(samplePayload, 'harmonized')
     assert.deepEqual(harmonized, {
@@ -172,11 +217,12 @@ describe('buildFireSpotsGeoJson & summarizeFireSpotsForSensor', () => {
       latestAcquiredAtUtc: new Date(referenceNowMs - 15 * 60_000).toISOString(),
     })
 
+    // Per-sensor counts stay global under a filter: the other sensor must not read as zero.
     const modisOnly = summarizeFireSpotsForSensor(samplePayload, 'modis')
     assert.deepEqual(modisOnly, {
       totalCount: 1,
       modisCount: 1,
-      viirsCount: 0,
+      viirsCount: 3,
       maxFrpMw: 125.5,
       latestAcquiredAtUtc: new Date(referenceNowMs - 15 * 60_000).toISOString(),
     })
@@ -184,7 +230,7 @@ describe('buildFireSpotsGeoJson & summarizeFireSpotsForSensor', () => {
     const viirsOnly = summarizeFireSpotsForSensor(samplePayload, 'viirs')
     assert.deepEqual(viirsOnly, {
       totalCount: 3,
-      modisCount: 0,
+      modisCount: 1,
       viirsCount: 3,
       maxFrpMw: 320.4,
       latestAcquiredAtUtc: new Date(referenceNowMs - 2 * 3600_000).toISOString(),

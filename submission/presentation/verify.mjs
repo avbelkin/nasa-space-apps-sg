@@ -11,7 +11,7 @@ const {xml2js}=require('xml-js');
 const {PDFDocument,PDFName,PDFString,PDFHexString}=require('pdf-lib');
 const firstBlock=process.env.DECK_SCOPE==='first-block';
 const expectedSlideCount=firstBlock?2:7;
-const version=process.env.DECK_VERSION || (firstBlock?'direction-r8':'scaffold-r7');
+const version=process.env.DECK_VERSION || (firstBlock?'direction-r11':'complete-r11');
 const buildDir=path.join(root,'.build',version);
 const tokens=JSON.parse(await fs.readFile(path.join(root,'design-tokens.json'),'utf8'));
 const allowedSizes=new Set(Object.values(tokens.sizes).map(n=>String(n*75)));
@@ -86,7 +86,11 @@ for(const section of sections){
  const expected=[section[2],...section[3].trim().split('\n').filter(x=>x.trim())].map(visible);
  const missing=expected.filter(s=>!noSpace(actual).includes(noSpace(s)));
  if(missing.length)throw Error(`PDF slide ${section[1]} missing text: ${JSON.stringify(missing)}`);
- const words=new Set(descendants(bboxPages[Number(section[1])-1],'word').map(e=>normalize((e.elements||[]).map(t=>t.text||'').join(''))));
+ const wordElements=descendants(bboxPages[Number(section[1])-1],'word');
+ const wordText=wordElements.map(e=>normalize((e.elements||[]).map(t=>t.text||'').join('')));
+ const words=new Set(wordText);
+ // Preserve an existing source hyphen when a compound wraps onto the next line.
+ wordText.forEach((word,i)=>{if(word.endsWith('-')&&i+1<wordText.length&&Number(wordElements[i+1].attributes.yMin)>Number(wordElements[i].attributes.yMin))words.add(word+wordText[i+1]);});
  const missingWords=[...new Set(expected.flatMap(s=>s.split(' ')).filter(w=>!words.has(w)))];
  if(missingWords.length)throw Error(`PDF slide ${section[1]} missing word boundaries: ${JSON.stringify(missingWords)}`);
 }
@@ -102,14 +106,14 @@ for(const [i,page] of pdf.getPages().entries()){
  }
 }
 for(const section of sections)for(const m of section[3].matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)){
- if(!pdfLinks.some(l=>l.slide===Number(section[1])&&l.url===m[2]))throw Error(`Missing PDF link ${m[1]}: ${m[2]}`);
+ if(!pdfLinks.some(l=>l.slide===Number(section[1])&&new URL(l.url).href===new URL(m[2]).href))throw Error(`Missing PDF link ${m[1]}: ${m[2]}`);
 }
 const pdfFonts=execFileSync(path.join(poppler,'pdffonts'),[pdfPath],{encoding:'utf8'});
 await fs.writeFile(path.join(buildDir,'pdf-fonts.txt'),pdfFonts);
-if(!/Overpass/.test(pdfFonts)||(!firstBlock&&!/FiraSans/.test(pdfFonts))||/Calibri/.test(pdfFonts))throw Error('PDF brand fonts missing or substituted');
+if(!/Overpass/.test(pdfFonts)||/Calibri/.test(pdfFonts))throw Error('PDF brand fonts missing or substituted');
 if(/Type 3/.test(pdfFonts))throw Error('Use the supplied TrueType fonts for the presentation PDF');
 const embeddedFaces=[...pdfFonts.matchAll(/^\S+\s+CID TrueType\s+Identity-H\s+yes\s+yes\s+yes\s+\d+\s+\d+\s*$/gm)].length;
-if(embeddedFaces<(firstBlock?3:4))throw Error('Expected embedded Unicode TrueType faces for the selected layout');
+if(embeddedFaces!==3)throw Error('Expected embedded Unicode TrueType faces for the selected layout');
 if(pdf.getTitle()!=='Earth Fire Calendar'||pdf.getAuthor()!=='Earth Fire Calendar')throw Error('Wrong PDF metadata');
 const core=await zip.file('docProps/core.xml').async('string');
 if(/Walnut Exporter|<dc:title>Presentation<\/dc:title>/.test(core))throw Error('Wrong PPTX metadata');
@@ -117,7 +121,7 @@ const layout=JSON.parse(await fs.readFile(path.join(buildDir,'pdf-layout-check.j
 if(layout.overflow.length)throw Error('Unresolved PDF text overflow');
 const receipt=JSON.parse(await fs.readFile(path.join(buildDir,'validation.json'),'utf8'));
 if(receipt.finalSha256!==crypto.createHash('sha256').update(pptxBytes).digest('hex')||receipt.packageIntegrity.status!=='pass'||receipt.presentationLayout.findingCount!==0||!receipt.firstPartyImport.passed)throw Error('PPTX finalization receipt mismatch or failed checks');
-const result={revision:version,slides:reports,slideCount,pdfPages:pdf.getPageCount(),pdf:'vector text and shapes, embedded fonts, original 2x screenshot assets',pdfCopy:'all source lines preserved and extractable',pdfLinks,chart:'native with embedded workbook and fixed 0–100,000 scale',counts:{modis:snapshot.modisCount,viirs:snapshot.viirsCount},altTextObjects:altCount,fontSizesPx:[...fontSizes].map(n=>Number(n)/75).sort((a,b)=>a-b),sourceSha256:crypto.createHash('sha256').update(source).digest('hex'),pptxSha256:crypto.createHash('sha256').update(pptxBytes).digest('hex'),pdfSha256:crypto.createHash('sha256').update(await fs.readFile(pdfPath)).digest('hex'),limitations:['Team-name and member-name placeholders retained by user request.','Fonts supplied separately; not embedded in PPTX. Native PowerPoint may substitute fonts; use the supplied PDF for stable appearance.'],accounting:{apiProvider:null,apiModel:null,apiRoute:null,apiCalls:0,apiCostUsd:0,subscription:'Codex; allowance usage unavailable'}};
+const result={revision:version,slides:reports,slideCount,pdfPages:pdf.getPageCount(),pdf:'vector text and shapes, embedded fonts, resized frozen screenshot assets',pdfCopy:'all source lines preserved and extractable',pdfLinks,chart:'native with embedded workbook and fixed 0–100,000 scale',counts:{modis:snapshot.modisCount,viirs:snapshot.viirsCount},altTextObjects:altCount,fontSizesPx:[...fontSizes].map(n=>Number(n)/75).sort((a,b)=>a-b),sourceSha256:crypto.createHash('sha256').update(source).digest('hex'),pptxSha256:crypto.createHash('sha256').update(pptxBytes).digest('hex'),pdfSha256:crypto.createHash('sha256').update(await fs.readFile(pdfPath)).digest('hex'),limitations:['Fonts supplied separately; not embedded in PPTX. Native PowerPoint may substitute fonts; use the supplied PDF for stable appearance.'],accounting:{apiProvider:null,apiModel:null,apiRoute:null,apiCalls:0,apiCostUsd:0,subscription:'Codex; allowance usage unavailable'}};
 if(firstBlock)result.limitations.unshift('Visual direction checkpoint: slides 1–2 only; slides 3–7 remain the earlier baseline.');
 result.finalization={packageIntegrity:'pass',layoutFindings:0,artifactToolReimport:'pass',pdfEmbeddedFontFaces:embeddedFaces};
 result.accounting.subscription='Primary Codex session plus one independent Codex reviewer; allowance usage unavailable';

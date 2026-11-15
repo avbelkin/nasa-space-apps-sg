@@ -14,6 +14,7 @@ import { forecastNextPassFrp } from '../utils/frpForecast'
 import { fetchPinnedFireWeather, type FireObservationWeather } from '../utils/fireObservationWeather'
 import { getWeatherPassAdjustment } from '../utils/weatherPassModels'
 import { FireDetectionPowerSummary, FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
+import { FireLandCoverBar } from './FireLandCoverBar'
 import { FireObservationDetails } from './FireObservationDetails'
 import { CloseIcon } from './icons'
 
@@ -26,6 +27,10 @@ export interface PinnedFireSelection {
 
 interface PinnedFireDetailsProps {
   selection: PinnedFireSelection
+  // Live clock from App while a pin is open; falls back to the click time.
+  nowMs?: number
+  // True when the pinned detections no longer appear in the latest feed snapshot.
+  notInLatestSnapshot?: boolean
   feedGeometry?: readonly (FireObservationGeometry | null)[]
   landCoverBySpot: FireSpotLandCoverLookup
   overpassIndex: SatelliteOverpassIndex | null
@@ -40,7 +45,7 @@ const passTimeFormat = new Intl.DateTimeFormat(undefined, { hour: 'numeric', min
 const scoreFormat = new Intl.NumberFormat(undefined, { style: 'percent', maximumFractionDigits: 0 })
 const oddsFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 })
 
-export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, overpassIndex, fireFeed, forecastNowMs, onUnpin }: PinnedFireDetailsProps) {
+export function PinnedFireDetails({ selection, nowMs, notInLatestSnapshot, feedGeometry, landCoverBySpot, overpassIndex, fireFeed, forecastNowMs, onUnpin }: PinnedFireDetailsProps) {
   const { inputs } = selection
   const [weatherResult, setWeatherResult] = useState<{
     inputs: typeof inputs
@@ -58,12 +63,12 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
   const weatherObservations = weatherResult?.inputs === inputs ? weatherResult.observations : undefined
 
   const details = useMemo(
-    () => formatFireSpotsTooltip(selection.inputs, selection.nowMs, {
+    () => formatFireSpotsTooltip(selection.inputs, nowMs ?? selection.nowMs, {
       sensorFilter: selection.sensorFilter,
       overpassIndex,
       landCoverBySpot,
     }),
-    [selection, overpassIndex, landCoverBySpot],
+    [selection, nowMs, overpassIndex, landCoverBySpot],
   )
   const solo = useMemo(() => {
     if (details?.count !== 1 || !overpassIndex) return null
@@ -123,16 +128,19 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
               </span>
             )}
             {!forecast && <FireDetectionPowerSummary timeline={timeline} />}
-            {details.landCoverLabel && (
-              <span className="fire-land-cover">Land cover · {details.landCoverLabel}</span>
-            )}
           </p>
+          {notInLatestSnapshot && (
+            <p className="pinned-fire-stale-badge">Not in latest snapshot</p>
+          )}
         </div>
         <button type="button" className="secondary-btn pinned-fire-unpin" onClick={onUnpin}>
           <CloseIcon />
           Unpin
         </button>
       </header>
+      {details.landCoverSummary && (
+        <FireLandCoverBar summary={details.landCoverSummary} />
+      )}
       {forecast && (
         <div className="fire-frp-forecast">
           <span>{weatherFrp == null ? 'Predicted FRP if detected' : 'GWIS-adjusted FRP if detected'} · {forecast.pass.satellite} · {passTimeFormat.format(forecast.pass.timestampMs)}</span>
@@ -143,14 +151,13 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
           <span className="fire-frp-forecast-original">Original detection {frpFormat.format(forecast.originalMw)} MW</span>
         </div>
       )}
-      {forecast && <p className="panel-note">Experimental Earth Fire Calendar model estimate, conditional on a later detection.
-        NASA has not validated this output and is not responsible for its accuracy.</p>}
+      {forecast && <p className="panel-note">Experimental Earth Fire Calendar model estimate, not a NASA product.</p>}
       <FireDetectionsTimelineCard timeline={timeline} />
       {expectedMiss && (
         <div className="fire-second-pass-note fire-second-pass-note--error">
           <strong>Expected detection, no match</strong>
           <p>{expectedMiss.pass.satellite} VIIRS · {passTimeFormat.format(expectedMiss.pass.timestampMs)} · {scoreFormat.format(expectedMiss.score)} detection score</p>
-          <p>No matching FIRMS detection within 1 km of this spot. Experimental Earth Fire Calendar model score, trained on 500 m matches; not a validated probability for this 1 km check. NASA has not validated this output and is not responsible for its accuracy.</p>
+          <p>No matching FIRMS detection within 1 km of this spot. Experimental Earth Fire Calendar model score, not a NASA product.</p>
         </div>
       )}
       {!expectedMiss && outlook && (
@@ -172,7 +179,7 @@ export function PinnedFireDetails({ selection, feedGeometry, landCoverBySpot, ov
         <p className="fire-observation-status">
           {weatherAdjustment.source} context for {weatherAdjustment.pass.satellite} at {passTimeFormat.format(weatherAdjustment.pass.timestampMs)}
           {' · '}{oddsFormat.format(weatherAdjustment.oddsMultiplier)}× study baseline detection odds
-          {' · '}Experimental Earth Fire Calendar model; NASA has not validated it and is not responsible for its accuracy.
+          {' · '}experimental Earth Fire Calendar model
         </p>
       )}
       <FireObservationDetails inputs={inputs} feedGeometry={feedGeometry} weatherObservations={weatherObservations} />

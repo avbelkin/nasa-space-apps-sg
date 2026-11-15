@@ -17,7 +17,7 @@ export async function renderVectorPdf({root,version,slides,tokens,buildDir,out})
  const require=createRequire(path.join(process.env.RUNTIME_NODE_MODULES,'__pdf__.cjs'));
  const {chromium}=require('playwright');
  const {PDFDocument}=require('pdf-lib');
- const fontSpecs=[['Fira Sans Black','FiraSans-Black.ttf',900,'normal'],['Fira Sans','FiraSans-Bold.ttf',700,'normal'],['Overpass','Overpass-Regular.ttf',400,'normal'],['Overpass','Overpass-Bold.ttf',700,'normal'],['Overpass','Overpass-Italic.ttf',400,'italic']];
+ const fontSpecs=[['Overpass','Overpass-Regular.ttf',400,'normal'],['Overpass','Overpass-Bold.ttf',700,'normal'],['Overpass','Overpass-Italic.ttf',400,'italic']];
  const faces=await Promise.all(fontSpecs.map(async([family,file,weight,style])=>`@font-face{font-family:'${family}';src:url(data:font/${file.endsWith('.ttf')?'ttf':'otf'};base64,${(await fs.readFile(path.join(root,'assets/fonts',file))).toString('base64')});font-weight:${weight};font-style:${style};}`));
  const parts=[];
  for(const slide of slides){
@@ -25,6 +25,7 @@ export async function renderVectorPdf({root,version,slides,tokens,buildDir,out})
   for(const e of slide.elements){
    const pos=cssPos(e);
    if(e.kind==='text')children.push(`<div class="text" data-name="${escape(e.name)}" style="${pos}font-family:'${e.font}';font-size:${e.size}px;font-weight:${e.bold?700:e.font==='Fira Sans Black'?900:400};color:${e.color};text-align:${e.align||'left'};line-height:1.18;">${rich(e.runs)}</div>`);
+   if(e.kind==='dot')children.push(`<svg style="${pos}" viewBox="0 0 ${e.w} ${e.h}"><circle cx="${e.w/2}" cy="${e.h/2}" r="${e.w/2-.5}" fill="${e.color}" stroke="${tokens.colors.deep}" stroke-width=".6"/></svg>`);
    if(e.kind==='rect')children.push(`<div class="rect" style="${pos}background:${e.fill};${e.line&&e.line!=='none'?`border:1px solid ${e.line};`:''}"></div>`);
    if(e.kind==='image')children.push(`<img alt="${escape(e.alt)}" src="data:image/${e.path.endsWith('.jpg')?'jpeg':'png'};base64,${(await fs.readFile(e.path)).toString('base64')}" style="${pos}object-fit:${e.fit||'contain'};${e.circle?'border-radius:50%;':''}opacity:${e.opacity??1};"/>`);
    if(e.kind==='mini-bar')children.push(`<svg role="img" aria-label="${escape(e.alt)}" style="${pos}" viewBox="0 0 ${e.w} ${e.h}"><rect width="${e.w*e.value/e.max}" height="${e.h}" fill="${e.color}"/></svg>`);
