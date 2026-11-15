@@ -57,6 +57,8 @@ Working cutoffs for 15 November 2026 (SGT): full draft with sound by 21:30; uplo
 
 ## Final capture and acceptance
 
+Follow the [recording checklist](recording-checklist.md#recording-the-video) alongside the scene-specific directions below.
+
 Keep one viewport and data load for the MODIS→VIIRS comparison. Preserve the actual counts and snapshot timestamp together. The later context capture is a separate example; do not imply that its group generated the earlier global counters. Exclude enrichment-status rows in the final framing and retain legible NASA FIRMS attribution. Start from the saved group to reduce capture time; live values and selection counts can change.
 
 Check the pronunciation of Lama, Alexey, MODIS, VIIRS and NASA FIRMS, as well as the requested youthful energy. Watch the transition and full edit in motion and on a phone. Technical duration checks and still frames do not establish motion or voice quality. Keep the final phrase's Next: harmonization wording; do not claim completed harmonization or forecast future fires.

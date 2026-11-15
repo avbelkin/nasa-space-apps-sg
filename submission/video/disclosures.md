@@ -16,7 +16,7 @@ This describes the tools actually used for the draft. If a later revision change
 
 ## Submission AI-use field
 
-The [project description](../deliverables/project-description.md#6-use-of-super-intelligence-si) and [field map](../docs/form-fields.md) include image generation and synthetic narration, alongside coding and writing assistance. OpenRouter is the route; ElevenLabs is the speech provider.
+The [project description](../deliverables/project-description.md#6-use-of-super-intelligence-si) and [field map](../working/form-fields.md) include image generation and synthetic narration, alongside coding and writing assistance. OpenRouter is the route; ElevenLabs is the speech provider.
 
 ## MP4 metadata
 

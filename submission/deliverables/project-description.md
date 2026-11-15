@@ -1,8 +1,8 @@
 # Earth Fire Calendar: project page text
 
-[Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](../docs/form-fields.md) · [Formal requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
+[Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](project-description.md) · [Technical note](technical-note.md) · [Form fields](../working/form-fields.md) · [Formal requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
 
-Draft text for the **Project** tab, field by field, in the order of the [form](../docs/form-fields.md). It describes the app as of commit `75f89b8` (15 November 2026, 19:03 SGT). Replace everything in `[square brackets]` before submitting; the items the team still has to confirm are collected in [Before submitting](#before-submitting).
+Draft text for the **Project** tab, field by field, in the order of the [form](../working/form-fields.md). It describes the app as of commit `75f89b8` (15 November 2026, 19:03 SGT). Replace everything in `[square brackets]` before submitting; the items the team still has to confirm are collected in [Before submitting](#before-submitting).
 
 The live numbers come from one snapshot of the app's feed, fetched on 15 November 2026 at 08:36 UTC; its summary is saved in [`firms-snapshot-2026-11-15T0836Z.json`](firms-snapshot-2026-11-15T0836Z.json). If the slides or the video use a different snapshot, use one set of numbers everywhere.
 
@@ -172,7 +172,7 @@ The licence column records what we believe applies; the rows marked **check** ha
 |---|---|---|
 | **ESA** — Climate Change Initiative Land Cover, continued by the Copernicus Climate Change Service (C3S) land cover map v2.1.1, year 2019; Cloud Optimized GeoTIFFs hosted by Microsoft Planetary Computer. [DOI](https://doi.org/10.24381/cds.006f2c9a) | Land cover inside each detection's footprint | ESA CCI and C3S licences, attribution required — **check** |
 | **ESA** — Hipparcos catalogue; Yale Bright Star Catalogue | About 230 bright stars in the background of the globe | **check**; confirm the exact provenance of the table in `brightStarCatalog.ts` with its author |
-| Contains modified **Copernicus Sentinel** data 2025 — Sentinel-2 cloudless by EOX IT Services GmbH, [s2maps.eu](https://s2maps.eu) | Earth basemap | **CC BY-NC-SA 4.0, non-commercial only** — conflicts with the rule on third-party materials; see [status](../docs/formal-requirements.md#earth-fire-calendar-status-against-the-formal-requirements) |
+| Contains modified **Copernicus Sentinel** data 2025 — Sentinel-2 cloudless by EOX IT Services GmbH, [s2maps.eu](https://s2maps.eu) | Earth basemap | **CC BY-NC-SA 4.0, non-commercial only** — conflicts with the rule on third-party materials; see [status](../working/requirements-status.md) |
 
 **Other data**
 
@@ -207,7 +207,7 @@ Hosting: GitHub Pages, GitHub Actions, Google Cloud Run, Google Cloud Firestore.
 **Methods and references**
 
 - Our [literature review](modis-viirs-harmonization-literature-review.md) with its 82 references — the supporting source for the problem statement and the hypothesis.
-- Our [design notes](../docs/harmonization-design-notes.md) for the harmonized calendar, with the documentation and studies they cite.
+- Our [design notes](../working/harmonization-design-notes.md) for the harmonized calendar, with the documentation and studies they cite.
 - Giglio, Schroeder & Justice (2016), the MODIS Collection 6 active fire detection algorithm; Schroeder et al., the VIIRS 375 m active fire algorithm (ATBD) — definitions of glint and viewing geometry.
 - US Naval Observatory approximate solar coordinates; Van Flandern & Pulkkinen low-precision lunar ephemeris — Sun and Moon positions.
 - NASA GIBS `GPM_Precipitation_Rate` colour map, ported into the code.

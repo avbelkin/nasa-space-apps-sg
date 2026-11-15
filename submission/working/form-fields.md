@@ -1,8 +1,8 @@
 # Space Apps 2026: submission form fields
 
-[Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](../deliverables/project-description.md) · [Technical note](../deliverables/technical-note.md) · [Form fields](form-fields.md) · [Formal requirements](formal-requirements.md) · [Advice](advice.md)
+[Slides](../presentation/demo-slides.md) · [Video script](../video/demo-video.md) · [Project page text](../deliverables/project-description.md) · [Technical note](../deliverables/technical-note.md) · [Form fields](form-fields.md) · [Formal requirements](../docs/formal-requirements.md) · [Advice](../docs/advice.md)
 
-The form is on the **Project** tab of the team page (**My Team → Project → Edit**). This is the page the judges score. Below is every field in order: what must go in it and what may. Requirements common to all fields (language, link access, rights, AI, deadlines) are in the [formal requirements](formal-requirements.md).
+The form is on the **Project** tab of the team page (**My Team → Project → Edit**). This is the page the judges score. Below is every field in order: what must go in it and what may. Requirements common to all fields (language, link access, rights, AI, deadlines) are in the [formal requirements](../docs/formal-requirements.md).
 
 ## Summary
 
@@ -99,7 +99,7 @@ Both options are ready for Earth Fire Calendar: the [video script](../video/demo
 
 A code repository is one of the options, not a requirement.
 
-For Earth Fire Calendar this field takes the link to the app with the prepared view ([why](advice.md#project-page-and-repository)):
+For Earth Fire Calendar this field takes the link to the app with the prepared view ([why](project-notes.md#project-page-and-repository)):
 
 `https://avbelkin.github.io/nasa-space-apps-sg/#z=3&lat=1.3521&lng=103.8198&sensor=modis&proj=globe&orbits=0&clouds=0&lights=0&rain=0`
 
@@ -129,13 +129,13 @@ The [repository](https://github.com/avbelkin/nasa-space-apps-sg) is named in the
 
 **What counts as SI.** The guide and the FAQs include machine learning, chatbots and conversational assistants, large language and foundation models, image and video generation, and code-generation tools. A project with a machine-learning model, or code written with an assistant, falls under this definition.
 
-The judges are not shown this answer: it is collected for data purposes only. It therefore does not replace the [AI disclosures in the project itself](formal-requirements.md#ai-use).
+The judges are not shown this answer: it is collected for data purposes only. It therefore does not replace the [AI disclosures in the project itself](../docs/formal-requirements.md#ai-use).
 
 ## 7. NASA Data
 
 **Required:** name in detail the NASA data and resources used. At least one NASA dataset or resource is a condition of eligibility for a global award; the guide does not call its absence an automatic exclusion from global judging.
 
-For Earth Fire Calendar:
+For Earth Fire Calendar the current, complete text is [field 7 of the project page text](../deliverables/project-description.md#7-nasa-data); the table below is a summary and may lag behind it.
 
 | Resource | What exactly | Role |
 |---|---|---|
@@ -168,9 +168,9 @@ The repository README lists EPIC and EONET endpoints; the interface does not use
 - Turkish Space Agency;
 - UK Space Agency.
 
-Data from agencies not on this list is ordinary third-party material and is subject to the [license requirements](formal-requirements.md#rights-sources-and-licenses). This is our inference from the participant terms, not a quotation.
+Data from agencies not on this list is ordinary third-party material and is subject to the [license requirements](../docs/formal-requirements.md#rights-sources-and-licenses). This is our inference from the participant terms, not a quotation.
 
-For Earth Fire Calendar, list with licenses:
+For Earth Fire Calendar the current, complete list is [field 8 of the project page text](../deliverables/project-description.md#8-space-agency-partner-data-and-other-references); the summary below may lag behind it. List with licenses:
 
 - the EOX Sentinel-2 cloudless basemap (Copernicus Sentinel);
 - EUMETSAT, NOAA and JMA cloud imagery and the VIIRS polar mosaic via Extremum;
@@ -217,7 +217,7 @@ The demo itself, as found: slides only — Twisters (6) and Gaia+LEO (7); video 
 | Description of the design process: the author's UX case study, written after the win, and a FigJam board that did not open | SpaceGenes+ |
 | Image folder on Google Drive (linked from the project page, not saved) | Twisters |
 
-Which of these materials are worth preparing is covered in the [advice](advice.md#layers-of-materials).
+Which of these materials are worth preparing is covered in the [advice](../docs/advice.md#layers-of-materials).
 
 ## Form buttons
 
