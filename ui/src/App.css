@@ -16,7 +16,8 @@
 @media (min-width: 60rem) {
   .app-frame {
     block-size: 100dvh;
-    grid-template-columns: minmax(0, 1fr) minmax(19rem, 23rem);
+    /* Leave room for the 26rem pinned timeline, panel padding, and scrollbar. */
+    grid-template-columns: minmax(0, 1fr) clamp(32rem, 35vw, 40rem);
     grid-template-rows: auto minmax(0, 1fr);
     grid-template-areas:
       "topbar   topbar"
