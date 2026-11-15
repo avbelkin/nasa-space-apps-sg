@@ -32,16 +32,28 @@ public sealed class HotspotGeometryWorker(
         bool includeGeometry,
         CancellationToken cancellationToken)
     {
-        var work = snapshot.Count == 0 ? null : Schedule(snapshot);
-        if (!includeGeometry)
+        if (includeGeometry)
         {
-            return null;
+            return await GetGeometryAsync(snapshot, selected, cancellationToken).ConfigureAwait(false);
         }
+
+        if (snapshot.Count > 0)
+        {
+            Schedule(snapshot);
+        }
+        return null;
+    }
+
+    internal async Task<HotspotGeometryBatch> GetGeometryAsync(
+        IReadOnlyList<FirmsHotspot> snapshot,
+        IReadOnlyList<FirmsHotspot?> selected,
+        CancellationToken cancellationToken)
+    {
         if (selected.Count == 0)
         {
             return new("ready", []);
         }
-        if (work is null)
+        if (Schedule(snapshot) is not { } work)
         {
             return new("pending", null);
         }
@@ -53,7 +65,7 @@ public sealed class HotspotGeometryWorker(
             var result = await work.Completion.Task.WaitAsync(ResponseWait, cancellationToken).ConfigureAwait(false);
             return result is null
                 ? new("unavailable", null)
-                : new("ready", selected.Select(spot => result.GetValueOrDefault(spot)).ToArray());
+                : new("ready", selected.Select(spot => spot is null ? null : result.GetValueOrDefault(spot)).ToArray());
         }
         catch (TimeoutException)
         {

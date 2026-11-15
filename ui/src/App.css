@@ -590,6 +590,40 @@
   block-size: 1rem;
 }
 
+.fire-observation-status {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.fire-observation-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  border-block-start: 1px solid var(--border-subtle);
+  font-size: var(--fs-12);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.fire-observation-table th,
+.fire-observation-table td {
+  padding: 0.08rem 0 0.08rem 0.35rem;
+  text-align: end;
+}
+
+.fire-observation-table th:first-child {
+  padding-inline-start: 0;
+  text-align: start;
+}
+
+.fire-observation-table td {
+  white-space: nowrap;
+}
+
+.fire-observation-table tbody th {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
 .fire-timeline-scroll:focus-visible {
   outline: 2px solid var(--focus-ring, var(--accent));
   outline-offset: 2px;

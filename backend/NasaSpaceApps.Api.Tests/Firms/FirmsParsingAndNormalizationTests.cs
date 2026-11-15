@@ -134,6 +134,7 @@ public sealed class FirmsParsingAndNormalizationTests
 
         var releaseTles = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var tleRequests = 0;
+        var firmsRequests = 0;
         var factory = new StubHttpClientFactory(async (request, token) =>
         {
             if (request.RequestUri!.AbsolutePath.StartsWith("/NORAD/"))
@@ -142,9 +143,17 @@ public sealed class FirmsParsingAndNormalizationTests
                 await releaseTles.Task.WaitAsync(token);
                 return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
             }
+            Interlocked.Increment(ref firmsRequests);
+            var feed = request.RequestUri.AbsolutePath.Contains("/VIIRS_NOAA21_NRT/")
+                ? csv.Replace("38.7000,-120.5000", "42.0000,-90.0000").Replace(",1,VIIRS,", ",2,VIIRS,")
+                : csv;
+            if (request.RequestUri.AbsolutePath.Contains("/MODIS_NRT/"))
+            {
+                feed = csv.Split('\n', 2)[0].TrimEnd();
+            }
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(csv, Encoding.UTF8, "text/csv"),
+                Content = new StringContent(feed, Encoding.UTF8, "text/csv"),
             };
         });
 
@@ -167,17 +176,21 @@ public sealed class FirmsParsingAndNormalizationTests
             Assert.Null(response.Geometry);
             Assert.Equal(24, response.WindowHours);
             Assert.Equal(TimeSpan.FromHours(24), response.WindowEndUtc - response.WindowStartUtc);
-            Assert.Equal(2, response.Count); // Both NOAA feeds return the stub row.
+            Assert.Equal(2, response.Count);
+            Assert.Equal(["NOAA-20", "NOAA-21"], response.Spots.Select(row => (string)row[7]).Order().ToArray());
             Assert.All(response.Spots, row =>
             {
-                Assert.Equal("NOAA-20", row[7]);
                 Assert.Equal(95, row[5]);
                 Assert.Equal(9, row.Length);
             });
 
-            var pending = await clientResponse(true);
-            Assert.Equal("pending", pending.Geometry?.Status);
-            Assert.Null(pending.Geometry?.Spots);
+            static FirmsSpotGeometryKey Key(object[] row) => new((double)row[0], (double)row[1], (long)row[2], (string)row[7]);
+            var first = Key(response.Spots[0]);
+            var second = Key(response.Spots[1]);
+            var pinned = new FirmsSpotGeometryRequest([second, first with { Satellite = "Aqua" }, first]);
+            var pending = await client.GetSelectedSpotGeometryAsync(pinned, timeout.Token);
+            Assert.Equal("pending", pending.Status);
+            Assert.Null(pending.Spots);
             releaseTles.SetResult();
 
             FirmsLiveSpotsResponse ready;
@@ -190,6 +203,10 @@ public sealed class FirmsParsingAndNormalizationTests
             Assert.Same(response.Spots, ready.Spots);
             Assert.Equal(ready.Count, ready.Geometry!.Spots!.Count);
             Assert.All(ready.Geometry.Spots, spot => Assert.InRange(Assert.IsType<HotspotGeometry>(spot).MoonIlluminatedFraction, 0, 1));
+            var enrichedPin = await client.GetSelectedSpotGeometryAsync(pinned, timeout.Token);
+            Assert.Equal("ready", enrichedPin.Status);
+            Assert.Equal([ready.Geometry.Spots[1], null, ready.Geometry.Spots[0]], enrichedPin.Spots);
+            Assert.Equal(3, firmsRequests); // Pin requests reuse the map feed's cached snapshot.
             Assert.Equal(2, tleRequests); // One attempt per CelesTrak group, shared across requests.
         }
         finally
@@ -199,7 +216,7 @@ public sealed class FirmsParsingAndNormalizationTests
 
         Task<FirmsLiveSpotsResponse> clientResponse(bool includeGeometry)
         {
-            return client.GetLiveSpotsAsync("viirs", 24, "world", timeout.Token, includeGeometry);
+            return client.GetLiveSpotsAsync("harmonized", 24, "world", timeout.Token, includeGeometry);
         }
     }
 }

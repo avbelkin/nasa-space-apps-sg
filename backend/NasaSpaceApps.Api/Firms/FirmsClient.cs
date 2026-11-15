@@ -302,6 +302,47 @@ public sealed class FirmsClient(
         return new CachedLiveResponse(response, filtered);
     }
 
+    public async Task<HotspotGeometryBatch> GetSelectedSpotGeometryAsync(
+        FirmsSpotGeometryRequest request, CancellationToken cancellationToken)
+    {
+        if (request.Spots is not { Count: >= 1 and <= 512 } keys)
+        {
+            throw new ArgumentException("Provide between 1 and 512 spots.");
+        }
+
+        // Use the same world snapshot as the 24-hour map feed. Join by detection
+        // identity, since row positions can change between the map load and a pin.
+        var (_, sources) = ResolveSources("harmonized");
+        var snapshot = await GetAreaSnapshotAsync("world", 2, sources, cancellationToken).ConfigureAwait(false);
+        var wanted = keys.ToHashSet();
+        var locations = keys.Select(key => (key.Lng, key.Lat, key.TimestampMs)).ToHashSet();
+        var matches = new Dictionary<FirmsSpotGeometryKey, FirmsHotspot>();
+        for (var i = snapshot.Spots.Count - 1; i >= 0 && wanted.Count > 0; i--)
+        {
+            var spot = snapshot.Spots[i];
+            var location = (Math.Round(spot.Longitude, 4), Math.Round(spot.Latitude, 4), spot.AcquiredAtUtc.ToUnixTimeMilliseconds());
+            if (!locations.Contains(location))
+            {
+                continue;
+            }
+
+            var satellite = FirmsSensorCatalog.NormalizeSatelliteLabel(spot.Satellite, spot.SourceDataset);
+            var key = new FirmsSpotGeometryKey(location.Item1, location.Item2, location.Item3, satellite);
+            if (wanted.Remove(key))
+            {
+                matches.Add(key, spot);
+            }
+        }
+
+        if (matches.Count == 0)
+        {
+            return new HotspotGeometryBatch("ready", new HotspotGeometry?[keys.Count]);
+        }
+
+        var selected = keys.Select(key => matches.GetValueOrDefault(key)).ToArray();
+        return await geometryWorker.GetGeometryAsync(snapshot.Spots, selected, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<FirmsGeoJsonFeatureCollection> GetLiveSpotsGeoJsonAsync(
         string? sensor = null,
         int? hours = null,

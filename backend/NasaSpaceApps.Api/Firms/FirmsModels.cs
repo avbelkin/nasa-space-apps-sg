@@ -43,6 +43,10 @@ public sealed record FirmsHotspot(
     double FrpMw,
     string DayNight);
 
+public readonly record struct FirmsSpotGeometryKey(double Lng, double Lat, long TimestampMs, string Satellite);
+
+public sealed record FirmsSpotGeometryRequest(IReadOnlyList<FirmsSpotGeometryKey>? Spots);
+
 public sealed record FirmsHotspotsResponse(
     string Area,
     int DayRange,

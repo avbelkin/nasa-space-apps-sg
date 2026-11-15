@@ -3,6 +3,7 @@ import type { SensorFilter } from '../data/mapTypes'
 import { formatFireSpotsTooltip, type FireSpotTooltipInput } from '../utils/fireSpots'
 import type { SatelliteOverpassIndex } from '../utils/satelliteOverpassTimeline'
 import { FireDetectionPowerSummary, FireDetectionsTimelineCard } from './FireDetectionsTimelineCard'
+import { FireObservationDetails } from './FireObservationDetails'
 import { CloseIcon } from './icons'
 
 export interface PinnedFireSelection {
@@ -56,6 +57,7 @@ export function PinnedFireDetails({ selection, overpassIndex, onUnpin }: PinnedF
         </button>
       </header>
       <FireDetectionsTimelineCard timeline={timeline} />
+      <FireObservationDetails inputs={selection.inputs} />
     </section>
   )
 }
