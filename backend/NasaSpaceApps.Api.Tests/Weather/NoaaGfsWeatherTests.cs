@@ -34,6 +34,10 @@ public sealed class NoaaGfsWeatherTests
         Assert.InRange(Assert.IsType<double>(water.Value), 0, 10);
         Assert.Equal(Run.AddHours(6), water.ValidThroughUtc);
         Assert.Equal(24, water.AgeMinutesAtAcquisition);
+        var ice = forecast.Values["cloud_ice_water_mixing_ratio_300hPa"];
+        Assert.Equal(3.696e-5, Assert.IsType<double>(ice.Value), 10);
+        Assert.Equal(water.ValidThroughUtc, ice.ValidThroughUtc);
+        Assert.Equal(0, forecast.Values["cloud_liquid_water_mixing_ratio_300hPa"].Value);
         Assert.InRange(Assert.IsType<double>(forecast.Values["plant_available_water_0_to_100cm"].Value), 0, 100);
         var deficit = forecast.Values["soil_water_deficit_to_field_capacity_0_to_100cm"];
         Assert.InRange(Assert.IsType<double>(deficit.Value), 0, 1000);

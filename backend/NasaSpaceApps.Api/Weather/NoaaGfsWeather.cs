@@ -10,6 +10,7 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
     private const string BaseUrl = "https://nomads.ncep.noaa.gov/cgi-bin/filter_";
     private const int TileDegrees = 4;
     private static readonly int[] HeightLevelsHpa = [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100];
+    private static readonly int[] CondensateLevelsHpa = [925, 850, 700, 500, 300];
     private static readonly string PressureLevels = string.Concat(HeightLevelsHpa.Select(p => $"&lev_{p}_mb=on"));
     private static readonly (string Name, int Bottom, int Top)[] CloudLevels = [("low", 212, 213), ("middle", 222, 223), ("high", 232, 233)];
     private static readonly (string Name, Parameter Key, string Unit)[] NativeFields =
@@ -125,6 +126,15 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
             }
         }
 
+        foreach (var level in CondensateLevelsHpa)
+        {
+            var pressurePa = level * 100;
+            var liquid = Sample(new(0, 1, 22, 100, pressurePa, 0), "kg/kg");
+            var ice = Sample(new(0, 1, 23, 100, pressurePa, 0), "kg/kg");
+            values.Add($"cloud_liquid_water_mixing_ratio_{level}hPa", AboveGround(liquid, pressurePa, surfacePressure));
+            values.Add($"cloud_ice_water_mixing_ratio_{level}hPa", AboveGround(ice, pressurePa, surfacePressure));
+        }
+
         var wilting = values["soil_wilting_point"];
         var capacity = values["soil_field_capacity"];
         var top = Sample(new(2, 0, 192, 106, 0, 10), "m³/m³");
@@ -171,6 +181,13 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
         MissingReason = value.HasValue ? null : source.MissingReason ?? "no_source_coverage",
     };
 
+    private static HotspotWeatherValue AboveGround(HotspotWeatherValue value, int levelPa, double? surfacePressurePa)
+    {
+        if (value.Value is null) return value;
+        if (surfacePressurePa > levelPa) return value;
+        return value with { Value = null, MissingReason = surfacePressurePa.HasValue ? "below_ground" : "no_source_coverage" };
+    }
+
     private static HotspotWeatherValue Read(Dictionary<Parameter, Frame>? data, Parameter parameter, string unit,
         DateTimeOffset acquired, double lat, double lon)
     {
@@ -187,7 +204,7 @@ internal sealed class NoaaGfsWeather(IHttpClientFactory clients, IMemoryCache ca
         var file = snow ? FormattableString.Invariant($"gfs.t{run:HH}z.sfluxgrbf{lead:000}.grib2")
             : FormattableString.Invariant($"gfs.t{run:HH}z.pgrb2.0p25.f{lead:000}");
         var fields = snow ? "&var_SNOWC=on&lev_surface=on" :
-            "&var_HGT=on&var_PRES=on&var_CWAT=on&var_WILT=on&var_FLDCP=on&var_SOILW=on&var_CRAIN=on&var_CFRZR=on&var_CICEP=on&var_CSNOW=on" +
+            "&var_HGT=on&var_PRES=on&var_CWAT=on&var_WILT=on&var_FLDCP=on&var_SOILW=on&var_CRAIN=on&var_CFRZR=on&var_CICEP=on&var_CSNOW=on&var_CLWMR=on&var_ICMR=on" +
             "&lev_surface=on&lev_cloud_ceiling=on&lev_entire_atmosphere_(considered_as_a_single_layer)=on" +
             "&lev_low_cloud_bottom_level=on&lev_middle_cloud_bottom_level=on&lev_high_cloud_bottom_level=on" +
             "&lev_low_cloud_top_level=on&lev_middle_cloud_top_level=on&lev_high_cloud_top_level=on" +
