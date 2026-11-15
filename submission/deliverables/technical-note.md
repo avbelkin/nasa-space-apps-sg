@@ -294,7 +294,7 @@ The baseline scores in section 6 are recorded in the same document. The fitted F
 
 ## 11. Data, licences and AI use
 
-All data sources, software components and their licences are listed in the [third-party materials register](third-party-rights.md) and the [software inventory](software-licenses.md); NASA data and its role in [field 7 of the project page](project-description.md#7-nasa-data). The team's own code and documents are released under Apache-2.0.
+All data sources, software components and their licences are listed in the [third-party materials register](third-party-rights.md) and the [software inventory](software-licenses.md); NASA data and its role are described in the NASA Data field of the project page. The team's own code and documents are released under Apache-2.0.
 
 AI coding assistants (Anthropic Claude Code and OpenAI Codex) were used to write and review code and to draft documentation, including this note. The app makes no calls to AI services and shows no generated text or images. The browser evaluates the statistical models in section 6, including the GWIS- and CAMS-assisted variants; their estimates are Earth Fire Calendar's, not NASA's, and NASA is not responsible for their accuracy. The idea, the hypothesis and the decisions on what to build are the team's.
 
