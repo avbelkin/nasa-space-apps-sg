@@ -23,4 +23,8 @@ public sealed record HotspotWeatherValue(
     DateTimeOffset? ValidFromUtc,
     DateTimeOffset? ValidThroughUtc,
     double? AgeMinutesAtAcquisition,
-    string? MissingReason);
+    string? MissingReason)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public DateOnly? ValidDateUtc { get; init; }
+}

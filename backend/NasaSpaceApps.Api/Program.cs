@@ -98,6 +98,8 @@ builder.Services.AddSingleton<ILandCoverEnricher, PlanetaryComputerLandCover>();
 builder.Services.AddHttpClient(OpenMeteoHotspotWeather.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5))
     .RemoveAllLoggers();
 builder.Services.AddSingleton<OpenMeteoHotspotWeather>();
+builder.Services.AddHttpClient(CopernicusFireWeather.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddSingleton<CopernicusFireWeather>();
 builder.Services.AddSingleton<FirmsClient>();
 builder.Services.AddSingleton<HotspotGeometryWorker>();
 builder.Services.AddHostedService(services => services.GetRequiredService<HotspotGeometryWorker>());
@@ -272,6 +274,7 @@ app.MapPost("/api/fires/spots/weather", (
     FirmsOptions firms,
     FirmsClient firmsClient,
     OpenMeteoHotspotWeather weather,
+    CopernicusFireWeather fireWeather,
     CancellationToken cancellationToken) =>
     ExecuteFirmsQueryAsync(firms, async () =>
     {
@@ -281,7 +284,15 @@ app.MapPost("/api/fires/spots/weather", (
         }
 
         var spots = await firmsClient.GetSelectedLiveSpotsAsync(keys, cancellationToken);
-        return await weather.EnrichAsync(spots, cancellationToken);
+        var forecastTask = weather.EnrichAsync(spots, cancellationToken);
+        var fireWeatherTask = fireWeather.EnrichAsync(spots, cancellationToken);
+        await Task.WhenAll(forecastTask, fireWeatherTask);
+        var forecast = await forecastTask;
+        var fireWeatherSources = await fireWeatherTask;
+        return new HotspotWeatherResponse(forecast.Spots.Select((spot, index) =>
+            spot is not null && fireWeatherSources[index] is { } source
+                ? spot with { Sources = [.. spot.Sources, source] }
+                : spot).ToArray());
     }));
 
 app.MapGet("/api/satellites/orbits", async (

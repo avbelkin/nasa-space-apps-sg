@@ -37,6 +37,8 @@ public sealed class HotspotWeatherTests
                 services.AddHttpClient("Firms").ConfigurePrimaryHttpMessageHandler(() => firmsHandler);
                 services.AddHttpClient(OpenMeteoHotspotWeather.HttpClientName)
                     .ConfigurePrimaryHttpMessageHandler(() => weatherHandler);
+                services.AddHttpClient(CopernicusFireWeather.HttpClientName)
+                    .ConfigurePrimaryHttpMessageHandler(() => new OfflineHandler());
             });
         });
         using var client = factory.CreateClient();
@@ -52,6 +54,7 @@ public sealed class HotspotWeatherTests
         Assert.Equal(277.15, body.Spots[0]?.Sources[0].Values["temperature_2m"].Value);
         Assert.Equal(276.15, body.Spots[2]?.Sources[0].Values["temperature_2m"].Value);
         Assert.Equal(2, weatherHandler.RequestCount);
+        Assert.Equal("source_unavailable", body.Spots[0]?.Sources[2].Status);
     }
 
     [Fact]
@@ -133,5 +136,11 @@ public sealed class HotspotWeatherTests
                 : header;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(payload) });
         }
+    }
+
+    private sealed class OfflineHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
     }
 }
