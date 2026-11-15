@@ -68,3 +68,7 @@ All three hotspot routes return cached land cover with their normal response. Wh
 - Raw area hotspots expose `hotspots[].landCover`. Live GeoJSON exposes `features[].properties.landCover`.
 - A populated object reports `dominantCode`, `coverage` (the fraction of the footprint with classified data), and `classes` (code/fraction pairs sorted by descending share, with ties resolved by the lower code). Class shares use only classified area. `landCoverDataset` identifies the year, sampling resolution and class labels.
 - `landCover` is null for unclassified footprints and for footprints awaiting required blocks. FIRMS detections remain available.
+
+## Live hotspot weather enrichment
+
+The [24-hour weather enrichment proposal](./live-hotspot-weather-enrichment.md) ranks weather, surface, and sensor fields for comparing recent MODIS and VIIRS detections. It describes how to attach available weather at each spot's acquisition time.
