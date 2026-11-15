@@ -2,7 +2,7 @@
 
 Companion to the [literature review](../deliverables/modis-viirs-harmonization-literature-review.md). The review covers what is published; these notes record what the challenge asks for, what the FIRMS data can and cannot support, and the design decisions that follow for the harmonized record and the calendar.
 
-**Status.** Nothing in sections 3, 5 and 6 is implemented. Metrics, reference scale and calibration method are candidates until they pass the validation in [section 5](#5-validation). Statements about the prototype in [section 4](#4-prototype-against-these-notes) were made at commit `82f1a17` (15 November 2026); all rows were re-checked at `2d3f5df`, and the code behind them has not changed up to `c73d0b5`. Since `82f1a17` the app has gained first baselines fitted on one 24-hour snapshot (unmatched predicted passes, a detection score for the other VIIRS satellite's pass, and FRP difference between passes), described in [doc/architecture-and-harmonization.md](../../doc/architecture-and-harmonization.md). They are not the calibration discussed here.
+**Status.** Nothing in sections 3, 5 and 6 is implemented. Metrics, reference scale and calibration method are candidates until they pass the validation in [section 5](#5-validation). Statements about the prototype in [section 4](#4-prototype-against-these-notes) were made at commit `82f1a17` (15 November 2026); all rows were re-checked at `2d3f5df`, and the backend code behind them has not changed up to `c16b7b7`. Since `82f1a17` the app has gained first baselines fitted on one 24-hour snapshot (unmatched predicted passes, a detection score for the other VIIRS satellite's pass, FRP difference between passes, and variants of the detection and FRP models with GWIS or CAMS weather fields), described in [doc/architecture-and-harmonization.md](../../doc/architecture-and-harmonization.md). They are not the calibration discussed here.
 
 ## 1. What the challenge asks for
 
@@ -131,7 +131,7 @@ The same guide warns of large sampling bias in MODIS analyses over periods short
 
 ## 4. Prototype against these notes
 
-Checked in the code at `82f1a17`; every row re-checked at `2d3f5df` and still accurate unless the row says otherwise. Between `2d3f5df` and `c73d0b5` only the weather worker and the colour of one note changed, so the rows stand.
+Checked in the code at `82f1a17`; every row re-checked at `2d3f5df` and still accurate unless the row says otherwise. Between `2d3f5df` and `c73d0b5` only the weather worker and the colour of one note changed. Between `c73d0b5` and `c16b7b7` only the interface changed: the weather-assisted models, the notes that attribute model estimates to Earth Fire Calendar, the credits and the 2016 basemap. The rows stand.
 
 | Topic | In the prototype | Note |
 |---|---|---|
