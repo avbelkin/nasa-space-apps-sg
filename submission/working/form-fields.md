@@ -84,7 +84,7 @@ Exceeding the limit makes the project ineligible for global judging; the guide n
 - a file in a GitHub repository;
 - any other external site, cloud service or code repository: the guide ends the list with "etc.".
 
-Earth Fire Calendar has a completed [public seven-slide PDF](../presentation/earth-fire-calendar.pdf), now linked in field 3 and in the supporting materials. The preferred video remains in production and has no final public URL; the local 29-second assembly is superseded. The public PDF supplies a usable demo link until the video is published.
+The demo is the public video https://youtu.be/K_RLqjW4eNk, linked in field 3. The [seven-slide PDF](../presentation/earth-fire-calendar.pdf) is linked in the Materials block of field 5.
 
 ## 4. Link to Final Project
 

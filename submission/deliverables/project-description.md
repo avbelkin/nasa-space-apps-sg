@@ -24,7 +24,13 @@ The app is a tool for studying this difference and a source of detection-level d
 
 ## 3. Link to Project Demo
 
-The demo is the 30-second video presented by Lama. The seven-slide presentation is linked in Materials in field 5.
+The demo is the 30-second video presented by Lama:
+
+```text
+https://youtu.be/K_RLqjW4eNk
+```
+
+The seven-slide presentation is linked in Materials in field 5.
 
 ## 4. Link to Final Project
 
@@ -117,6 +123,7 @@ Independent project. Not affiliated with or endorsed by NASA.
 
 MATERIALS
 
+- Demo video: https://youtu.be/K_RLqjW4eNk
 - Slides: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/presentation/earth-fire-calendar.pdf
 - Technical note: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/technical-note.md
 - Literature review: https://github.com/avbelkin/nasa-space-apps-sg/blob/main/submission/deliverables/modis-viirs-harmonization-literature-review.md
