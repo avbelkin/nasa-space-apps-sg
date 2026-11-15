@@ -6,6 +6,7 @@ using NasaSpaceApps.Api.Firms;
 using NasaSpaceApps.Api.LandCover;
 using NasaSpaceApps.Api.NasaOpenApi;
 using NasaSpaceApps.Api.Satellites;
+using NasaSpaceApps.Api.Weather;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -94,6 +95,25 @@ builder.Services.AddHttpClient(PlanetaryComputerLandCover.HttpClientName, client
     client.Timeout = TimeSpan.FromSeconds(5);
 }).RemoveAllLoggers(); // Azure range URLs include short-lived access tokens.
 builder.Services.AddSingleton<ILandCoverEnricher, PlanetaryComputerLandCover>();
+builder.Services.AddHttpClient(OpenMeteoHotspotWeather.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5))
+    .RemoveAllLoggers();
+builder.Services.AddSingleton<OpenMeteoHotspotWeather>();
+builder.Services.AddHttpClient(CopernicusFireWeather.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddSingleton<CopernicusFireWeather>();
+builder.Services.AddHttpClient(NoaaWeatherObservations.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddSingleton<NoaaWeatherObservations>();
+builder.Services.AddHttpClient(NoaaGfsWeather.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddSingleton<NoaaGfsWeather>();
+builder.Services.AddHttpClient(NoaaGoesWeather.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(6))
+    .RemoveAllLoggers();
+builder.Services.AddSingleton<NoaaGoesWeather>();
+builder.Services.AddHttpClient(CopernicusSoilDrought.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(7))
+    .RemoveAllLoggers();
+builder.Services.AddSingleton<CopernicusSoilDrought>();
+builder.Services.AddHttpClient(NoaaSoilMoistureAnomaly.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddSingleton<NoaaSoilMoistureAnomaly>();
+builder.Services.AddHttpClient(UsfsFuelMoisture.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddSingleton<UsfsFuelMoisture>();
 builder.Services.AddSingleton<FirmsClient>();
 builder.Services.AddSingleton<HotspotGeometryWorker>();
 builder.Services.AddHostedService(services => services.GetRequiredService<HotspotGeometryWorker>());
@@ -262,6 +282,51 @@ app.MapPost("/api/fires/spots/geometry", (
     FirmsClient firmsClient,
     CancellationToken cancellationToken) =>
     ExecuteFirmsQueryAsync(firms, () => firmsClient.GetSelectedSpotGeometryAsync(request, cancellationToken)));
+
+app.MapPost("/api/fires/spots/weather", (
+    FirmsSpotGeometryRequest request,
+    FirmsOptions firms,
+    FirmsClient firmsClient,
+    OpenMeteoHotspotWeather weather,
+    CopernicusFireWeather fireWeather,
+    NoaaWeatherObservations observations,
+    NoaaGfsWeather gfsWeather,
+    NoaaGoesWeather goesWeather,
+    CopernicusSoilDrought soilDrought,
+    NoaaSoilMoistureAnomaly soilAnomaly,
+    UsfsFuelMoisture fuelMoisture,
+    CancellationToken cancellationToken) =>
+    ExecuteFirmsQueryAsync(firms, async () =>
+    {
+        if (request.Spots is not { Count: >= 1 and <= OpenMeteoHotspotWeather.MaximumSpots } keys)
+        {
+            throw new ArgumentException($"Provide between 1 and {OpenMeteoHotspotWeather.MaximumSpots} spots.");
+        }
+
+        var spots = await firmsClient.GetSelectedLiveSpotsAsync(keys, cancellationToken);
+        var forecastTask = weather.EnrichAsync(spots, cancellationToken);
+        var fireWeatherTask = fireWeather.EnrichAsync(spots, cancellationToken);
+        var observationsTask = observations.EnrichAsync(spots, cancellationToken);
+        var gfsWeatherTask = gfsWeather.EnrichAsync(spots, cancellationToken);
+        var goesWeatherTask = goesWeather.EnrichAsync(spots, cancellationToken);
+        var droughtTask = soilDrought.EnrichAsync(spots, cancellationToken);
+        var anomalyTask = soilAnomaly.EnrichAsync(spots, cancellationToken);
+        var fuelMoistureTask = fuelMoisture.EnrichAsync(spots, cancellationToken);
+        await Task.WhenAll(forecastTask, fireWeatherTask, observationsTask, gfsWeatherTask, goesWeatherTask, droughtTask, anomalyTask, fuelMoistureTask);
+        var forecast = await forecastTask;
+        var fireWeatherSources = await fireWeatherTask;
+        var observationSources = await observationsTask;
+        var gfsSources = await gfsWeatherTask;
+        var goesSources = await goesWeatherTask;
+        var droughtSources = await droughtTask;
+        var anomalySources = await anomalyTask;
+        var fuelMoistureSources = await fuelMoistureTask;
+        return new HotspotWeatherResponse(forecast.Spots.Select((spot, index) =>
+            spot is not null && fireWeatherSources[index] is { } source && droughtSources[index] is { } drought &&
+                anomalySources[index] is { } anomaly && fuelMoistureSources[index] is { } fuel
+                ? spot with { Sources = [.. gfsSources[index], .. spot.Sources, source, .. observationSources[index], .. goesSources[index], drought, anomaly, fuel] }
+                : spot).ToArray());
+    }));
 
 app.MapGet("/api/satellites/orbits", async (
     int? pastMinutes,
