@@ -37,7 +37,7 @@ The supplied comparison uses All sensors with sensor coloring, not a recorded MO
 - [x] The full-frame review decodes completely: H.264/AAC, 1920×1080, 30 fps, 870 frames, 29 seconds.
 - [x] Enlarged right-panel excerpts preserve real values and cover enrichment statuses, missing-pass warnings, experimental model text and timeline totals.
 - [x] NASA FIRMS attribution, English subtitles and visible AI labels are included.
-- [ ] First-second keyboard foley and globe-background closing checked in the new assembly-v4 export.
+- [x] First-second keyboard foley and globe-background closing independently checked in the new assembly-v4 export; audio verification was mechanical, without listening.
 - [x] Independent frame-based acceptance of the final motion and composed artifact; exact hash, coverage and limitations are recorded in [REVIEW.md](REVIEW.md) and local `assembly-v4/ACCEPTANCE.md`.
 - [ ] User playback review of the revised motion, scene changes and jump continuity.
 - [ ] Phone playback and the eventual public link, when supplied.

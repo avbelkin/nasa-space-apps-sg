@@ -1,3 +1,18 @@
+# Keyboard and Earth-background revision: independent acceptance
+
+Accepted by native Codex reviewer `/root/lama_draft_acceptance` with no blocking findings.
+
+- Artifact: `lama/prepared/assembly-v4/lama-fullscreen.mp4`.
+- SHA256: `3a467439d15bd47084a80b6d93a9562432f754ef1e9f07eee229afe17294298e`.
+- Full decode passed; 29 seconds, 870 frames, 1920×1080, H.264/AAC.
+- Keyboard audio is present during the first second. Later mixed PCM and narration match v3 exactly.
+- Seven earlier scene files are byte-identical. Caption pixels, wording and timings are unchanged.
+- Inspected final frames with and without subtitles: Earth background, text, credits, Lama and watermark remain clear.
+- Globe provenance identifies the real presentation capture and EOxCloudless 2016.
+- No new API jobs or API cost. All work in this revision was local. Codex subscription usage is unavailable.
+
+Audio was verified mechanically, without independent listening; keyboard realism remains for user playback. Prior scene and publication limitations remain as recorded in the preceding checkpoint below.
+
 # Lama full-frame video: independent review checkpoint
 
 Accepted for this review checkpoint by the native Codex reviewer `/root/lama_draft_acceptance` on 15 November 2026. No blocking artifact defects found. This is not publication clearance or user creative acceptance.
