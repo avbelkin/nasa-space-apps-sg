@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
 import { apiBaseUrl } from '../state/apiStatus'
 import { fetchPinnedFireGeometry, summarizeFireGeometry } from '../utils/fireObservationGeometry'
+import { fetchPinnedFireWeather, summarizeFireWeather } from '../utils/fireObservationWeather'
 import type { FireSpotTooltipInput } from '../utils/fireSpots'
 
 export function FireObservationDetails({ inputs }: { inputs: readonly FireSpotTooltipInput[] }) {
   const [result, setResult] = useState<{
     inputs: readonly FireSpotTooltipInput[]
     summary: ReturnType<typeof summarizeFireGeometry>
+  } | null>(null)
+  const [weatherResult, setWeatherResult] = useState<{
+    inputs: readonly FireSpotTooltipInput[]
+    summary: ReturnType<typeof summarizeFireWeather>
   } | null>(null)
 
   useEffect(() => {
@@ -20,21 +25,51 @@ export function FireObservationDetails({ inputs }: { inputs: readonly FireSpotTo
         if (!signal.aborted) setResult({ inputs, summary: null })
       },
     )
+    void fetchPinnedFireWeather(apiBaseUrl, inputs, signal).then(
+      (observations) => {
+        if (!signal.aborted) setWeatherResult({ inputs, summary: summarizeFireWeather(inputs, observations) })
+      },
+      () => {
+        if (!signal.aborted) setWeatherResult({ inputs, summary: null })
+      },
+    )
     return () => controller.abort()
   }, [inputs])
 
   const settled = result?.inputs === inputs
   const summary = settled ? result.summary : null
-  if (!summary) {
-    return (
-      <p className="fire-observation-status" role="status">
-        {settled ? 'Observation geometry unavailable' : 'Loading observation geometry…'}
-      </p>
-    )
-  }
+  const weatherSettled = weatherResult?.inputs === inputs
+  const weather = weatherSettled ? weatherResult.summary : null
 
   return (
-    <table className="fire-observation-table" aria-label="Estimated observation geometry">
+    <>
+      {summary ? (
+        <ObservationTable label="Estimated observation geometry" summary={summary} />
+      ) : (
+        <p className="fire-observation-status" role="status">
+          {settled ? 'Observation geometry unavailable' : 'Loading observation geometry…'}
+        </p>
+      )}
+      <details className="fire-weather-details">
+        <summary>Weather at acquisition</summary>
+        {weather ? (
+          <ObservationTable label="Weather at acquisition" summary={weather} />
+        ) : (
+          <p className="fire-observation-status" role="status">
+            {weatherSettled ? 'Weather unavailable' : 'Loading weather…'}
+          </p>
+        )}
+      </details>
+    </>
+  )
+}
+
+function ObservationTable({ label, summary }: {
+  label: string
+  summary: NonNullable<ReturnType<typeof summarizeFireGeometry>>
+}) {
+  return (
+    <table className="fire-observation-table" aria-label={label}>
       {summary.sensors.length > 1 && (
         <thead>
           <tr>
