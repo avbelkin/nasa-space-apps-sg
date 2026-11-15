@@ -3,7 +3,18 @@ import type { FireSpotTooltipInput } from './fireSpots.ts'
 
 export interface FireObservationWeather {
   acquiredAtUtc: string
-  sources: { values: Record<string, { value: number | null; unit: string }> }[]
+  sources: {
+    provider?: string
+    model?: string
+    status?: string
+    values: Record<string, {
+      value: number | null
+      unit: string
+      validDateUtc?: string | null
+      validFromUtc?: string | null
+      validThroughUtc?: string | null
+    }>
+  }[]
 }
 
 const MAX_BATCH_SIZE = 16

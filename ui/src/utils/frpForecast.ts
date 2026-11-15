@@ -9,7 +9,7 @@ const MINUTE_MS = 60_000
 
 const models: Record<string, { intercept: number; coefficients: Record<string, number> }> = coefficients
 
-function band(value: number | null | undefined, boundaries: readonly number[]): string {
+export function bandPassFeature(value: number | null | undefined, boundaries: readonly number[]): string {
   if (value == null || !Number.isFinite(value)) return 'missing'
   const upper = boundaries.find((boundary) => value < boundary)
   return upper === undefined ? `>=${boundaries.at(-1)}` : `<${upper}`
@@ -35,8 +35,19 @@ export function forecastNextPassFrp(
   const pair = `pair=${satellite} to ${pass.satellite}`
   if (!model || !Object.hasOwn(model.coefficients, pair)) return null
 
-  // Feature names and cut points match the November 2026 FRP regression training.
-  const features = [
+  const features = passModelFeatures(spot, pass, geometry, landCoverCode)
+  const logChange = features.reduce((sum, feature) => sum + (model.coefficients[feature] ?? 0), model.intercept)
+  const predictedMw = Math.max(0, Math.expm1(Math.log1p(spot.frp) + logChange))
+  return { pass, predictedMw, originalMw: spot.frp, differenceMw: predictedMw - spot.frp }
+}
+
+export function passModelFeatures(
+  spot: FireSpotTooltipInput, pass: ComputedOverpass,
+  geometry?: FireObservationGeometry | null, landCoverCode?: number,
+): string[] {
+  const band = bandPassFeature
+  // These tokens are shared by the FRP and weather-model training scripts.
+  return [
     `frp=${band(spot.frp, [2, 5, 10, 20, 50, 100, 250])}`,
     `brightness=${band(spot.brightnessK, [300, 315, 330, 345, 360, 400, 450])}`,
     `confidence=${band(spot.confidence, [30, 50, 65, 80, 95, 100])}`,
@@ -49,9 +60,6 @@ export function forecastNextPassFrp(
     `sun=${band(geometry?.sun?.elevationDeg, [-30, -12, 0, 15, 30, 45, 60])}`,
     `moon=${band(geometry?.moon?.elevationDeg, [-30, 0, 30, 60])}`,
     `cover=${landCoverCode ?? 'missing'}`,
-    pair,
+    `pair=${normalizeFullSatelliteLabel(spot.satellite, spot.source, spot.instrument)} to ${pass.satellite}`,
   ]
-  const logChange = features.reduce((sum, feature) => sum + (model.coefficients[feature] ?? 0), model.intercept)
-  const predictedMw = Math.max(0, Math.expm1(Math.log1p(spot.frp) + logChange))
-  return { pass, predictedMw, originalMw: spot.frp, differenceMw: predictedMw - spot.frp }
 }
