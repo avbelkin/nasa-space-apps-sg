@@ -41,10 +41,17 @@
   "assets": [
     {
       "file": "og-preview.png",
-      "kind": "Original typographic diagram",
-      "creation": "scripts/create-link-preview.mjs; OpenAI Codex-assisted HTML rendered locally in Chrome; no external images",
-      "visible_label": "AI-generated diagram",
-      "sha256": "4588a9c0980b25d0ea9f2b418127813881c5c73f87c37cb2b96a8064b722a7b0"
+      "kind": "Earth Fire Calendar screenshot with typography and source credits",
+      "creation": "Screenshot supplied by a project contributor. OpenAI Codex assisted with card layout and typography. The screenshot retains the contributor-selected globe view and the real fire timeline.",
+      "source_url": "https://avbelkin.github.io/nasa-space-apps-sg/",
+      "source_screenshot_sha256": "2ad5463c76f99a2dcb9e698459ddc04cbeb6e69b61e3365531705890ba663e13",
+      "displayed_time_utc": "2026-11-15T13:15Z",
+      "basemap": {
+        "layer": "s2cloudless_3857",
+        "credit": "EOxCloudless https://cloudless.eox.at by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016 & 2017)",
+        "license": "https://creativecommons.org/licenses/by/4.0/"
+      },
+      "sha256": "bdaeacbfc14112988f06329bb7ca8ab77cd398dfb18d1ee1b17e5202b2d60523"
     },
     {
       "file": "favicon.svg",
