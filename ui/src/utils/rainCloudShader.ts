@@ -53,17 +53,6 @@ export const RAIN_TIME_STEP_MS = RAIN_TIME_STEP_MINUTES * 60 * 1000
 export const MAX_RAIN_LOOKBACK_MINUTES = 24 * 60
 export const DEFAULT_RAIN_FALLBACK_LAG_MS = 5.5 * 60 * 60 * 1000
 
-export const RAIN_LOOKBACK_PRESETS = [
-  { minutes: 0, label: 'Latest' },
-  { minutes: 30, label: '-30m' },
-  { minutes: 60, label: '-1h' },
-  { minutes: 120, label: '-2h' },
-  { minutes: 240, label: '-4h' },
-  { minutes: 360, label: '-6h' },
-  { minutes: 720, label: '-12h' },
-  { minutes: 1440, label: '-24h' },
-] as const
-
 export interface GibsTimeInterval {
   startMs: number
   endMs: number

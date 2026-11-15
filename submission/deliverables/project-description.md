@@ -62,7 +62,7 @@ Earth Fire Calendar is a public web app. It works on live NASA FIRMS data, with 
 
 6. What the next pass may show. For a single pinned detection the app notes a predicted pass by another satellite, of the same sensor or the other one, that reported nothing there, and says under which conditions our one-day baseline saw fewer or more such misses. It also shows the fire radiative power the next pass would report if it detects the fire. Both are experimental: they are fitted on one 24-hour snapshot and give no probability for an individual detection.
 
-7. Context layers. Satellite ground tracks and scan swaths, cloud imagery, GPM IMERG precipitation and VIIRS Black Marble night lights can be switched on and off.
+7. Context layers. Satellite ground tracks and scan swaths, cloud imagery, GPM IMERG precipitation and VIIRS Black Marble night lights can be switched on and off. The precipitation layer shows the latest available data and refreshes every 10 minutes while visible.
 
 HOW IT WORKS
 

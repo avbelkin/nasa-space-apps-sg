@@ -1,5 +1,4 @@
 import type { ProjectionMode, SensorFilter } from '../data/mapTypes.ts'
-import { snapRainLookbackMinutes } from '../utils/rainCloudShader.ts'
 
 // Versioned: the first key was written on every load (with a hard-coded September) by earlier
 // builds, so its values say nothing about a visitor's choice and are ignored.
@@ -26,8 +25,6 @@ export interface UrlHashState extends MapViewportState {
   showClouds: boolean
   // NASA GIBS IMERG 30-min rain clouds (z6+); hash carries only the off state (rain=0)
   showRain: boolean
-  // 30-min stepped lookback offset in minutes; hash carries rainBack=<minutes> when > 0
-  rainBackMinutes: number
   // Night-hemisphere VIIRS Black Marble blending; the hash carries only the off state (lights=0)
   showNightLights: boolean
   // Live NASA FIRMS fire spots; the hash carries only the off state (fires=0)
@@ -52,7 +49,6 @@ export function createDefaultUrlHashState(): UrlHashState {
     showOrbits: true,
     showClouds: true,
     showRain: true,
-    rainBackMinutes: 0,
     showNightLights: true,
     showFires: true,
   }
@@ -262,21 +258,6 @@ const HASH_FEATURE_CODECS: readonly HashFeatureCodec[] = [
     },
   },
   {
-    key: 'rainBack',
-    serialize: (state) => {
-      const snapped = snapRainLookbackMinutes(state.rainBackMinutes)
-      return snapped > 0 ? String(snapped) : null
-    },
-    parse: (raw, draft) => {
-      const parsed = parseFiniteNumber(raw)
-      if (parsed === null || parsed < 0) {
-        return false
-      }
-      draft.rainBackMinutes = snapRainLookbackMinutes(parsed)
-      return true
-    },
-  },
-  {
     key: 'fires',
     serialize: (state) => (state.showFires ? null : '0'),
     parse: (raw, draft) => {
@@ -299,6 +280,7 @@ const RESERVED_CORE_KEYS = new Set<string>([
   'mode',
   'month',
   'region',
+  'rainBack',
   ...HASH_FEATURE_CODECS.map((codec) => codec.key),
 ])
 
@@ -350,7 +332,6 @@ function cloneFallbackState(fallback: UrlHashState): UrlHashState {
     showOrbits: fallback.showOrbits,
     showClouds: fallback.showClouds,
     showRain: fallback.showRain,
-    rainBackMinutes: snapRainLookbackMinutes(fallback.rainBackMinutes),
     showNightLights: fallback.showNightLights,
     showFires: fallback.showFires,
     ...(fallback.extraParams ? { extraParams: { ...fallback.extraParams } } : {}),
