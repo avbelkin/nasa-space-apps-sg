@@ -14,7 +14,7 @@ Local files, also synchronized to this directory in the main checkout:
 
 The new cover uses a solid Deep Blue background, a larger globe and Overpass typography. Slide 2 gives the two counts the strongest visual emphasis. The wording of slides 1–2 has not been rewritten.
 
-The canonical slide text was updated independently across slides 1–7 to reflect the app and its experimental one-day baselines. These edits are preserved. Direction-r10 uses the current wording of slides 1–2. The earlier seven-slide r6 output predates these text changes; the next full build must incorporate the current copy and receive renewed visual review.
+The canonical slide text was updated independently across slides 1–7 to reflect the app and its experimental one-day baselines. These edits are preserved. On 15 November the text of slides 4, 6 and 7 was updated again for the app at `c16b7b7`: the weather-assisted detection odds, the paired GWIS and CAMS result with sample sizes, and the EOxCloudless 2016 and CAMS credits. The number and order of text blocks on every slide are unchanged, and slides 1–3 and 5 were not touched. Direction-r10 uses the current wording of slides 1–2. The earlier seven-slide r6 output predates these text changes; the next full build must incorporate the current copy and receive renewed visual review.
 
 ## Everything lives here
 

@@ -31,7 +31,7 @@ The form has two link fields (3 and 4). All other materials go in as links insid
 | 3. Link to Project Demo | **Video** recorded from the [script](../video/demo-video.md) | Public video link that opens without sign-in |
 | 4. Link to Final Project | **App** | [Link with the prepared view](#4-link-to-final-project) |
 | 5. Detailed Project Description | [Project text](../deliverables/project-description.md#5-detailed-project-description), screenshots and a closing **Materials** block: slide deck, technical note, literature review, rights register, software inventory, repository | Use public, verified URLs for the actual files; local Git-ignored exports are not published by committing Markdown links. |
-| 6. Use of Super Intelligence (SI) | AI-use selections: code, text drafts, OpenAI-generated Lama design, Google Veo 3.1 Lite character animation and ElevenLabs synthetic narration through OpenRouter | — |
+| 6. Use of Super Intelligence (SI) | AI-use selections: code, text drafts, OpenAI-generated Lama design, Google Veo 3.1 Lite character animation, ElevenLabs synthetic narration through OpenRouter, and machine learning in the app itself: the statistical models for next-pass FRP, the VIIRS detection score and the GWIS- and CAMS-assisted detection odds | — |
 | 7. NASA Data | FIRMS and GIBS with the role of each dataset | Links to the NASA product pages |
 | 8. Space Agency Partner Data and Other References | Third-party data, libraries and licences; the literature review as the supporting source | The rights register and software inventory, plus the review bibliography |
 | 9. Two checkboxes | Tick both | — |
@@ -43,9 +43,10 @@ How a judge reaches each material:
 | Video | Field 3 | — |
 | App | Field 4 | Slides 5 and 7, README |
 | [Seven-slide](../presentation/demo-slides.md) deck, PDF in the repository | Final public PDF link in the Materials block in field 5 | README |
-| [Technical note](../deliverables/technical-note.md), draft | Second link of the Materials block | Slide 6, README |
+| [Technical note](../deliverables/technical-note.md) | Second link of the Materials block | Slides 6 and 7, README |
 | [Literature review](../deliverables/modis-viirs-harmonization-literature-review.md) | Third link of the Materials block | Field 8, technical note |
-| Code | Fourth link of the Materials block | The README is the table of contents for the whole set |
+| [Rights register](../deliverables/third-party-rights.md) and [software inventory](../deliverables/software-licenses.md) | Fourth and fifth links of the Materials block | Field 8, slide 7, README |
+| Code | Last link of the Materials block | The README is the table of contents for the whole set |
 
 Not checked on the live form: whether field 5 accepts clickable links and images. If it does not, the Materials addresses go in as plain text.
 
@@ -172,10 +173,10 @@ Data from agencies not on this list is ordinary third-party material and is subj
 
 For Earth Fire Calendar the current, complete list is [field 8 of the project page text](../deliverables/project-description.md#8-space-agency-partner-data-and-other-references); the summary below may lag behind it. List with licenses:
 
-- the EOX Sentinel-2 cloudless basemap (Copernicus Sentinel);
+- the EOxCloudless 2016 basemap by EOX (CC BY 4.0; contains modified Copernicus Sentinel data 2016 and 2017);
 - EUMETSAT, NOAA and JMA cloud imagery and the VIIRS polar mosaic via Extremum;
 - the 2019 global land cover map of the ESA Climate Change Initiative and the Copernicus Climate Change Service, read as GeoTIFFs from Microsoft Planetary Computer; ESA is a partner agency;
-- weather at acquisition: NOAA GFS model fields (NOMADS and the NOAA open data mirrors on Google Cloud Storage and AWS), NOAA GOES-R and nowCOAST radar and satellite observations, NOAA Climate Prediction Center soil-moisture anomalies, modeled weather and air quality via Open-Meteo, fire danger from Copernicus GWIS, the soil-moisture anomaly of the Copernicus Global Drought Observatory, dead fuel moisture from the US Forest Service;
+- weather at acquisition: NOAA GFS model fields (NOMADS and the NOAA open data mirrors on Google Cloud Storage and AWS), NOAA GOES-R and nowCOAST radar and satellite observations, NOAA Climate Prediction Center soil-moisture anomalies, modeled weather and Copernicus CAMS aerosol and air-quality fields via Open-Meteo, fire danger from Copernicus GWIS, the soil-moisture anomaly of the Copernicus Global Drought Observatory, dead fuel moisture from the US Forest Service;
 - CelesTrak orbital elements, including the fallback sets hard-coded in the source;
 - the bright-star catalogue for the star background: the code names the source as "Bright Star / Hipparcos"; confirm the exact provenance with the author; Hipparcos is a catalogue of ESA, a partner agency;
 - the NASA GIBS precipitation colour scale, ported into the code;
