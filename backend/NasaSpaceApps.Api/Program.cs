@@ -102,6 +102,8 @@ builder.Services.AddHttpClient(CopernicusFireWeather.HttpClientName, client => c
 builder.Services.AddSingleton<CopernicusFireWeather>();
 builder.Services.AddHttpClient(NoaaWeatherObservations.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
 builder.Services.AddSingleton<NoaaWeatherObservations>();
+builder.Services.AddHttpClient(NoaaGfsWeather.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddSingleton<NoaaGfsWeather>();
 builder.Services.AddSingleton<FirmsClient>();
 builder.Services.AddSingleton<HotspotGeometryWorker>();
 builder.Services.AddHostedService(services => services.GetRequiredService<HotspotGeometryWorker>());
@@ -278,6 +280,7 @@ app.MapPost("/api/fires/spots/weather", (
     OpenMeteoHotspotWeather weather,
     CopernicusFireWeather fireWeather,
     NoaaWeatherObservations observations,
+    NoaaGfsWeather gfsWeather,
     CancellationToken cancellationToken) =>
     ExecuteFirmsQueryAsync(firms, async () =>
     {
@@ -290,13 +293,15 @@ app.MapPost("/api/fires/spots/weather", (
         var forecastTask = weather.EnrichAsync(spots, cancellationToken);
         var fireWeatherTask = fireWeather.EnrichAsync(spots, cancellationToken);
         var observationsTask = observations.EnrichAsync(spots, cancellationToken);
-        await Task.WhenAll(forecastTask, fireWeatherTask, observationsTask);
+        var gfsWeatherTask = gfsWeather.EnrichAsync(spots, cancellationToken);
+        await Task.WhenAll(forecastTask, fireWeatherTask, observationsTask, gfsWeatherTask);
         var forecast = await forecastTask;
         var fireWeatherSources = await fireWeatherTask;
         var observationSources = await observationsTask;
+        var gfsSources = await gfsWeatherTask;
         return new HotspotWeatherResponse(forecast.Spots.Select((spot, index) =>
             spot is not null && fireWeatherSources[index] is { } source
-                ? spot with { Sources = [.. spot.Sources, source, .. observationSources[index]] }
+                ? spot with { Sources = [.. spot.Sources, source, .. observationSources[index], .. gfsSources[index]] }
                 : spot).ToArray());
     }));
 

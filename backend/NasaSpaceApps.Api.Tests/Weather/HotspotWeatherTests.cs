@@ -41,6 +41,8 @@ public sealed class HotspotWeatherTests
                     .ConfigurePrimaryHttpMessageHandler(() => new OfflineHandler());
                 services.AddHttpClient(NoaaWeatherObservations.HttpClientName)
                     .ConfigurePrimaryHttpMessageHandler(() => new OfflineHandler());
+                services.AddHttpClient(NoaaGfsWeather.HttpClientName)
+                    .ConfigurePrimaryHttpMessageHandler(() => new OfflineHandler());
             });
         });
         using var client = factory.CreateClient();
