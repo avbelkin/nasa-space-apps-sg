@@ -122,14 +122,15 @@ builder.Services.AddSingleton<NoaaSoilMoistureAnomaly>();
 builder.Services.AddHttpClient(UsfsFuelMoisture.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
 builder.Services.AddSingleton<UsfsFuelMoisture>();
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddHttpClient(FirestoreWeatherSampleStore.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(4))
+builder.Services.AddHttpClient(FirestoreWeatherGridStore.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(4))
     .RemoveAllLoggers();
-builder.Services.AddHttpClient(FirestoreWeatherSampleStore.MetadataHttpClientName, client =>
+builder.Services.AddHttpClient(FirestoreWeatherGridStore.MetadataHttpClientName, client =>
 {
     client.Timeout = TimeSpan.FromSeconds(2);
     client.DefaultRequestHeaders.Add("Metadata-Flavor", "Google");
 }).RemoveAllLoggers();
-builder.Services.AddSingleton<ISharedWeatherSampleStore, FirestoreWeatherSampleStore>();
+builder.Services.AddSingleton<FirestoreWeatherGridStore>();
+builder.Services.AddSingleton<EncodedWeatherGridCache>();
 builder.Services.AddSingleton<WeatherSampleCache>();
 builder.Services.AddSingleton<DeferredHotspotWeather>();
 builder.Services.AddHostedService(services => services.GetRequiredService<DeferredHotspotWeather>());

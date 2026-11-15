@@ -1,6 +1,9 @@
 using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using NasaSpaceApps.Api.Firms;
 using NasaSpaceApps.Api.Weather;
@@ -58,6 +61,39 @@ public sealed class NoaaGfsWeatherTests
     }
 
     [Fact]
+    public async Task AnotherBackendSamplesADifferentSpotFromTheSameSharedEncodedGrids()
+    {
+        var acquisition = Run.AddHours(6).AddMinutes(24);
+        var clock = new FixedClock(acquisition);
+        using var upstream = new FixtureHandler();
+        using var remote = new GridDocuments();
+        using var firstMemory = new MemoryCache(new MemoryCacheOptions());
+        using var secondMemory = new MemoryCache(new MemoryCacheOptions());
+        var first = CreateBackend(firstMemory);
+        var second = CreateBackend(secondMemory);
+
+        var original = Assert.Single(await first.EnrichAsync([Spot(acquisition, 1.5, 101)], default));
+        var reused = Assert.Single(await second.EnrichAsync([Spot(acquisition.AddMinutes(1), 1.5, 100.75)], default));
+
+        Assert.Equal(2, upstream.Urls.Count);
+        Assert.Equal(2, remote.EncodedDocuments.Count);
+        Assert.All(remote.EncodedDocuments.Values, document => Assert.True(document.GetProperty("encoded")
+            .GetProperty("bytesValue").GetBytesFromBase64().AsSpan(0, 4).SequenceEqual("GRIB"u8)));
+        Assert.NotNull(original[0].Values["temperature_2m"].Value);
+        Assert.NotNull(reused[0].Values["temperature_2m"].Value);
+        Assert.Equal(25, reused[0].Values["temperature_2m"].AgeMinutesAtAcquisition);
+
+        NoaaGfsWeather CreateBackend(IMemoryCache memory)
+        {
+            var google = new LocalWeatherCredentials("testing", "weather-cache");
+            google.Update("test-token");
+            var documents = new FirestoreWeatherGridStore(new ClientFactory(remote), new ConfigurationBuilder().Build(), clock, google);
+            var grids = new EncodedWeatherGridCache(documents, clock, NullLogger<EncodedWeatherGridCache>.Instance);
+            return new NoaaGfsWeather(new ClientFactory(upstream), memory, NullLogger<NoaaGfsWeather>.Instance, grids: grids);
+        }
+    }
+
+    [Fact]
     public void InterpolatesContinuousFieldsAcrossTheGridAndKeepsCategoricalPixels()
     {
         var grid = new GfsGribSubset.Grid(179, 1, [0, 1], 2);
@@ -91,6 +127,38 @@ public sealed class NoaaGfsWeatherTests
     private sealed class ClientFactory(HttpMessageHandler handler) : IHttpClientFactory
     {
         public HttpClient CreateClient(string name) => new(handler, disposeHandler: false);
+    }
+
+    private sealed class FixedClock(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    private sealed class GridDocuments : HttpMessageHandler
+    {
+        internal ConcurrentDictionary<string, JsonElement> EncodedDocuments { get; } = new();
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            using var json = await request.Content!.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
+            if (request.RequestUri!.AbsolutePath.EndsWith(":batchGet", StringComparison.Ordinal))
+            {
+                var name = json!.RootElement.GetProperty("documents")[0].GetString()!;
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = EncodedDocuments.TryGetValue(name, out var fields)
+                        ? JsonContent.Create(new[] { new { found = new { name, fields, updateTime = "2026-11-15T06:24:00Z" } } })
+                        : JsonContent.Create(new[] { new { missing = name } }),
+                };
+            }
+            var write = json!.RootElement.GetProperty("writes")[0];
+            var update = write.GetProperty("update");
+            var path = update.GetProperty("name").GetString()!;
+            Assert.Contains("/weatherGridCache/liveV1/hotspotWeatherV1/", path);
+            Assert.False(write.GetProperty("currentDocument").GetProperty("exists").GetBoolean());
+            Assert.True(EncodedDocuments.TryAdd(path, update.GetProperty("fields").Clone()));
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { status = new[] { new { } } }) };
+        }
     }
 
     private sealed class FixtureHandler : HttpMessageHandler
